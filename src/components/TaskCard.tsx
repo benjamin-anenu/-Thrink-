@@ -1,5 +1,5 @@
-
 import React, { useState, useRef } from 'react';
+import HealthIndicator from './HealthIndicator';
 
 export interface Task {
   id: string;
@@ -15,6 +15,11 @@ export interface Task {
     completed: number;
     total: number;
   };
+  health?: {
+    status: 'green' | 'yellow' | 'red';
+    score: number;
+  };
+  project?: string;
 }
 
 interface TaskCardProps {
@@ -68,11 +73,24 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDragStart, onDragEnd, onSta
       onDragEnd={handleDragEnd}
       className={`task-card p-4 bg-card rounded-md border border-border shadow-sm hover:shadow-md transition-all duration-200 h-44 flex flex-col ${isDragging ? 'dragging' : ''}`}
     >
-      {/* Header with tag and due date */}
+      {/* Header with tag, health indicator, and due date */}
       <div className="flex justify-between items-start mb-3 flex-shrink-0">
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${getTagClass()}`}>
-          {task.tag.label}
-        </span>
+        <div className="flex flex-col gap-1 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${getTagClass()}`}>
+              {task.tag.label}
+            </span>
+            {task.health && (
+              <HealthIndicator 
+                health={task.health.status} 
+                score={task.health.score}
+              />
+            )}
+          </div>
+          {task.project && (
+            <span className="text-xs text-muted-foreground">{task.project}</span>
+          )}
+        </div>
         <span className="text-muted-foreground text-xs">{task.dueDate}</span>
       </div>
       

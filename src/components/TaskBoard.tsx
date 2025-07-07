@@ -1,51 +1,47 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import TaskColumn, { Column } from './TaskColumn';
 import { Task } from './TaskCard';
 
-// Initial data for the task board
+// Updated initial data for project management focus
 const initialColumns: Column[] = [
   {
-    id: 'todo',
-    title: 'To Do',
+    id: 'planning',
+    title: 'Planning',
     color: 'muted',
     tasks: [
       {
         id: 't1',
-        title: 'Update landing page hero section',
-        description: 'Review new design mockups and update copy',
-        tag: { color: 'purple', label: 'Design' },
-        dueDate: 'May 20',
+        title: 'Project Atlas - Payment Gateway Integration',
+        description: 'Set up secure payment processing for client transactions',
+        tag: { color: 'blue', label: 'Development' },
+        dueDate: 'Dec 15',
         assignees: 2,
-        progress: { completed: 3, total: 5 }
+        progress: { completed: 1, total: 5 },
+        health: { status: 'yellow', score: 75 },
+        project: 'Project Atlas'
       },
       {
         id: 't2',
-        title: 'Social media campaign planning',
-        description: 'Outline Q2 campaign goals and content calendar',
-        tag: { color: 'accent', label: 'Marketing' },
-        dueDate: 'May 22',
+        title: 'Stakeholder Onboarding - Beta Users',
+        description: 'Create onboarding flow for beta test participants',
+        tag: { color: 'purple', label: 'Design' },
+        dueDate: 'Dec 18',
         assignees: 1,
-        progress: { completed: 0, total: 4 }
+        progress: { completed: 0, total: 4 },
+        health: { status: 'green', score: 85 },
+        project: 'User Experience'
       },
       {
         id: 't3',
-        title: 'Set up automated testing',
-        description: 'Configure CI/CD pipeline for test automation',
-        tag: { color: 'blue', label: 'Development' },
-        dueDate: 'May 24',
+        title: 'Resource Allocation Q1 Planning',
+        description: 'Plan team capacity and skill assignments for Q1',
+        tag: { color: 'accent', label: 'Management' },
+        dueDate: 'Dec 20',
         assignees: 2,
-        progress: { completed: 0, total: 6 }
-      },
-      {
-        id: 't4',
-        title: 'Create brand style guide',
-        description: 'Document colors, typography, and UI components',
-        tag: { color: 'purple', label: 'Design' },
-        dueDate: 'May 25',
-        assignees: 1,
-        progress: { completed: 0, total: 3 }
+        progress: { completed: 0, total: 3 },
+        health: { status: 'green', score: 90 },
+        project: 'Operations'
       }
     ]
   },
@@ -55,65 +51,66 @@ const initialColumns: Column[] = [
     color: 'blue',
     tasks: [
       {
-        id: 't5',
-        title: 'API integration with payment gateway',
-        description: 'Connect payment processor and test transactions',
+        id: 't4',
+        title: 'AI Dashboard Development',
+        description: 'Build intelligent project health monitoring dashboard',
         tag: { color: 'blue', label: 'Development' },
-        dueDate: 'May 18',
-        assignees: 1,
-        progress: { completed: 2, total: 3 }
+        dueDate: 'Dec 12',
+        assignees: 3,
+        progress: { completed: 3, total: 6 },
+        health: { status: 'green', score: 88 },
+        project: 'Planova Core'
+      },
+      {
+        id: 't5',
+        title: 'Milo AI Assistant Integration',
+        description: 'Implement conversational AI for project insights',
+        tag: { color: 'purple', label: 'AI/ML' },
+        dueDate: 'Dec 14',
+        assignees: 2,
+        progress: { completed: 4, total: 7 },
+        health: { status: 'yellow', score: 72 },
+        project: 'Planova Core'
       },
       {
         id: 't6',
-        title: 'SEO optimization',
-        description: 'Improve meta descriptions and keywords across site',
-        tag: { color: 'accent', label: 'Marketing' },
-        dueDate: 'May 19',
-        assignees: 2,
-        progress: { completed: 5, total: 8 }
-      },
-      {
-        id: 't7',
-        title: 'Mobile responsive design',
-        description: 'Optimize UI for tablets and mobile devices',
-        tag: { color: 'purple', label: 'Design' },
-        dueDate: 'May 17',
+        title: 'Timeline Baseline Tracking',
+        description: 'Implement project timeline variance monitoring',
+        tag: { color: 'accent', label: 'Features' },
+        dueDate: 'Dec 16',
         assignees: 1,
-        progress: { completed: 3, total: 4 }
+        progress: { completed: 2, total: 4 },
+        health: { status: 'green', score: 82 },
+        project: 'Project Tools'
       }
     ]
   },
   {
-    id: 'in-review',
-    title: 'In Review',
+    id: 'review',
+    title: 'Review',
     color: 'amber',
     tasks: [
       {
+        id: 't7',
+        title: 'Stakeholder Communication Matrix',
+        description: 'Define escalation paths and communication preferences',
+        tag: { color: 'accent', label: 'Management' },
+        dueDate: 'Dec 10',
+        assignees: 1,
+        progress: { completed: 3, total: 3 },
+        health: { status: 'green', score: 95 },
+        project: 'Operations'
+      },
+      {
         id: 't8',
-        title: 'Email newsletter content',
-        description: 'Review draft and provide feedback',
-        tag: { color: 'accent', label: 'Marketing' },
-        dueDate: 'May 15',
-        assignees: 1,
-        progress: { completed: 4, total: 5 }
-      },
-      {
-        id: 't9',
-        title: 'User authentication system',
-        description: 'Code review for login and registration flows',
-        tag: { color: 'blue', label: 'Development' },
-        dueDate: 'May 16',
+        title: 'Resource Skills Assessment',
+        description: 'Evaluate team capabilities and identify skill gaps',
+        tag: { color: 'purple', label: 'HR' },
+        dueDate: 'Dec 11',
         assignees: 2,
-        progress: { completed: 6, total: 6 }
-      },
-      {
-        id: 't10',
-        title: 'Icon set redesign',
-        description: 'Review updated icon set for consistent branding',
-        tag: { color: 'purple', label: 'Design' },
-        dueDate: 'May 14',
-        assignees: 1,
-        progress: { completed: 12, total: 12 }
+        progress: { completed: 4, total: 5 },
+        health: { status: 'yellow', score: 78 },
+        project: 'Team Development'
       }
     ]
   },
@@ -123,31 +120,37 @@ const initialColumns: Column[] = [
     color: 'accent',
     tasks: [
       {
-        id: 't11',
-        title: 'Create user flow diagrams',
-        description: 'Document onboarding process for new users',
-        tag: { color: 'purple', label: 'Design' },
-        dueDate: 'May 10',
-        assignees: 1,
-        progress: { completed: 5, total: 5 }
-      },
-      {
-        id: 't12',
-        title: 'Setup analytics tracking',
-        description: 'Implement event tracking across main user flows',
+        id: 't9',
+        title: 'Project Health Scoring Algorithm',
+        description: 'Developed automated R/Y/G project health indicators',
         tag: { color: 'blue', label: 'Development' },
-        dueDate: 'May 9',
+        dueDate: 'Dec 8',
         assignees: 1,
-        progress: { completed: 4, total: 4 }
+        progress: { completed: 5, total: 5 },
+        health: { status: 'green', score: 100 },
+        project: 'Planova Core'
       },
       {
-        id: 't13',
-        title: 'Competitive analysis report',
-        description: 'Research competitors and document findings',
-        tag: { color: 'accent', label: 'Marketing' },
-        dueDate: 'May 8',
+        id: 't10',
+        title: 'Automated Notification System',
+        description: 'Built multi-channel notification delivery system',
+        tag: { color: 'blue', label: 'Development' },
+        dueDate: 'Dec 5',
         assignees: 2,
-        progress: { completed: 7, total: 7 }
+        progress: { completed: 6, total: 6 },
+        health: { status: 'green', score: 100 },
+        project: 'Infrastructure'
+      },
+      {
+        id: 't11',
+        title: 'Executive Dashboard Prototype',
+        description: 'Created portfolio-level project overview interface',
+        tag: { color: 'purple', label: 'Design' },
+        dueDate: 'Dec 3',
+        assignees: 1,
+        progress: { completed: 4, total: 4 },
+        health: { status: 'green', score: 100 },
+        project: 'Analytics'
       }
     ]
   }
@@ -227,18 +230,18 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ className }) => {
     
     setColumns(newColumns);
     
-    // Show a toast notification
+    // Show a toast notification with Milo's friendly tone
     const targetColumn = columns.find(col => col.id === targetColumnId);
     if (targetColumn && draggedTask) {
       toast({
-        title: "Task moved",
-        description: `${draggedTask.title} moved to ${targetColumn.title}`,
+        title: "Nice work! 🎯",
+        description: `Moved "${draggedTask.title}" to ${targetColumn.title}. Milo says: Keep up the momentum!`,
       });
     }
   };
 
   const handleStatusChange = (taskId: string, newStatus: string) => {
-    // This function can be used for programmatic status changes (not used in this implementation)
+    // This function can be used for programmatic status changes
   };
 
   return (
