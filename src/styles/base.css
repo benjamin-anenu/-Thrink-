@@ -1,0 +1,104 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 3%; /* Ultra dark */
+    --foreground: 0 0% 98%; /* Premium white */
+
+    --card: 0 0% 6%; /* Deep charcoal */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 217 91% 60%; /* Premium blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 10%; /* Rich dark */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 12%; /* Subtle background */
+    --muted-foreground: 0 0% 60%; /* Refined grey */
+
+    --accent: 217 91% 60%; /* Matching primary */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 15%; /* Subtle borders */
+    --input: 0 0% 12%;
+    --ring: 217 91% 60%; /* Premium focus ring */
+
+    --radius: 0.75rem;
+    
+    /* Premium gradients */
+    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
+    --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+    --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+    
+    /* Shadows */
+    --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 10px 40px -8px rgba(59, 130, 246, 0.15);
+    --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.3);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    letter-spacing: -0.01em;
+    font-optical-sizing: auto;
+  }
+  
+  ::selection {
+    @apply bg-primary/20 text-primary;
+  }
+
+  /* Premium Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  /* Premium Scroll Behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--gradient-primary);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--gradient-secondary);
+  }
+
+  /* Enhanced Focus States */
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+}
