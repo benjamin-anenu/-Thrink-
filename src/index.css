@@ -1,6 +1,4 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -70,7 +68,7 @@
   }
 
   body {
-    @apply bg-background font-inter text-foreground antialiased;
+    @apply bg-background text-foreground antialiased;
     letter-spacing: -0.025em;
   }
   
@@ -78,151 +76,192 @@
     @apply bg-primary text-primary-foreground;
   }
 
-  .cosmic-gradient {
-    background: linear-gradient(135deg, rgba(64, 64, 64, 0.2) 0%, rgba(32, 32, 32, 0.4) 100%);
-  }
-
-  .light-mode .cosmic-gradient {
-    background: linear-gradient(135deg, rgba(230, 230, 230, 0.8) 0%, rgba(200, 200, 200, 0.6) 100%);
-  }
-
-  .cosmic-glow {
-    position: relative;
-  }
-
-  .cosmic-glow::before {
-    content: "";
+  /* AI Processing Visualization */
+  .ai-processing-bg {
     position: absolute;
-    top: -20px;
-    left: -20px;
-    right: -20px;
-    bottom: -20px;
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-    z-index: -1;
-    border-radius: inherit;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0.4;
   }
 
-  .light-mode .cosmic-glow::before {
-    background: radial-gradient(circle at center, rgba(64, 64, 64, 0.08) 0%, transparent 70%);
+  .ai-node {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(45deg, #60a5fa, #a78bfa);
+    border-radius: 50%;
+    animation: ai-pulse 3s ease-in-out infinite;
   }
 
-  .cosmic-grid {
+  .ai-connection {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #60a5fa, transparent);
+    animation: ai-flow 4s linear infinite;
+  }
+
+  .project-card-float {
+    position: absolute;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    animation: float-project 8s ease-in-out infinite;
+  }
+
+  .code-fragment {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #60a5fa;
+    opacity: 0.6;
+    animation: code-drift 12s linear infinite;
+  }
+
+  /* Enhanced 3D Grid */
+  .neural-grid {
     background-image: 
-      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-    background-size: 30px 30px;
+      linear-gradient(rgba(96, 165, 250, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(96, 165, 250, 0.1) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: grid-pulse 6s ease-in-out infinite;
   }
 
-  .light-mode .cosmic-grid {
-    background-image: 
-      linear-gradient(rgba(64, 64, 64, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(64, 64, 64, 0.08) 1px, transparent 1px);
+  /* Split Screen Layout */
+  .hero-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    min-height: 100vh;
   }
 
-  .text-balance {
-    text-wrap: balance;
-  }
-  
-  .cosmic-glass {
-    @apply backdrop-blur-sm bg-card border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)];
-  }
-
-  .light-mode .cosmic-glass {
-    @apply backdrop-blur-sm bg-card border border-black/10 shadow-[0_0_15px_rgba(0,0,0,0.05)];
-  }
-  
-  .cosmic-card {
-    @apply bg-card border border-border backdrop-blur-sm;
-  }
-  
-  .nav-pill {
-    @apply backdrop-blur-md bg-card border border-border rounded-full;
-  }
-  
-  .nav-pill-item {
-    @apply px-4 py-2 text-sm rounded-full transition-colors;
-  }
-  
-  .nav-pill-item:hover {
-    @apply bg-accent text-accent-foreground;
-  }
-  
-  .nav-pill-item.active {
-    @apply bg-accent text-accent-foreground;
-  }
-  
-  .icon-glow {
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
-    transition: filter 0.3s ease;
+  @media (max-width: 768px) {
+    .hero-split {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
   }
 
-  .light-mode .icon-glow {
-    filter: drop-shadow(0 0 6px rgba(64, 64, 64, 0.2));
-  }
-  
-  .collapsible-trigger:hover .icon-glow {
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
-  }
-
-  .light-mode .collapsible-trigger:hover .icon-glow {
-    filter: drop-shadow(0 0 10px rgba(64, 64, 64, 0.3));
+  /* Glassmorphism Effects */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   }
 
-  .task-card {
-    @apply transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg hover:border-primary/30;
-  }
-  
-  .task-card.dragging {
-    @apply scale-105 shadow-lg border-primary opacity-70 rotate-1 z-10;
-  }
-  
-  .task-card.dragged-over {
-    @apply border-primary border-dashed;
-  }
-  
-  .task-card-enter {
-    @apply opacity-0 -translate-y-4;
-  }
-  
-  .task-card-enter-active {
-    @apply opacity-100 translate-y-0 transition-all duration-300 ease-out;
-  }
-  
-  .task-card-exit {
-    @apply opacity-100;
-  }
-  
-  .task-card-exit-active {
-    @apply opacity-0 translate-y-4 transition-all duration-300 ease-in;
-  }
-  
-  .column-highlight {
-    @apply bg-accent/20 transition-all duration-300;
+  /* AI Brain Visualization */
+  .ai-brain {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
   }
 
-  /* Enhanced 3D Effects */
-  .perspective-1000 {
-    perspective: 1000px;
+  .brain-node {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(45deg, #60a5fa, #a78bfa);
+    border-radius: 50%;
+    animation: brain-pulse 2s ease-in-out infinite;
   }
 
-  .bg-gradient-radial {
-    background: radial-gradient(circle, var(--tw-gradient-stops));
+  .brain-connection {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    opacity: 0.6;
+    animation: brain-flow 3s ease-in-out infinite;
   }
 
-  .animation-delay-500 {
-    animation-delay: 0.5s;
+  /* Animations */
+  @keyframes ai-pulse {
+    0%, 100% { 
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 1;
+      transform: scale(1.5);
+    }
   }
 
-  .animation-delay-1000 {
-    animation-delay: 1s;
+  @keyframes ai-flow {
+    0% { 
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    50% { 
+      opacity: 1;
+    }
+    100% { 
+      opacity: 0;
+      transform: translateX(100%);
+    }
   }
 
-  .animation-delay-2000 {
-    animation-delay: 2s;
+  @keyframes float-project {
+    0%, 100% { 
+      transform: translateY(0px) rotate(0deg);
+      opacity: 0.6;
+    }
+    33% {
+      transform: translateY(-30px) rotate(5deg);
+      opacity: 0.8;
+    }
+    66% {
+      transform: translateY(-15px) rotate(-3deg);
+      opacity: 1;
+    }
   }
 
-  .animation-delay-3000 {
-    animation-delay: 3s;
+  @keyframes code-drift {
+    0% { 
+      transform: translateX(-100vw) translateY(0px);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.6;
+    }
+    90% {
+      opacity: 0.6;
+    }
+    100% { 
+      transform: translateX(100vw) translateY(-50px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes grid-pulse {
+    0%, 100% { 
+      opacity: 0.1;
+    }
+    50% { 
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes brain-pulse {
+    0%, 100% { 
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 1;
+      transform: scale(1.2);
+    }
+  }
+
+  @keyframes brain-flow {
+    0%, 100% { 
+      opacity: 0.3;
+    }
+    50% { 
+      opacity: 0.8;
+    }
   }
 
   /* Enhanced Floating Animation */
@@ -275,5 +314,33 @@
 
   .animate-pulse-slow {
     animation: pulse-slow 4s ease-in-out infinite;
+  }
+
+  .animation-delay-500 {
+    animation-delay: 0.5s;
+  }
+
+  .animation-delay-1000 {
+    animation-delay: 1s;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-3000 {
+    animation-delay: 3s;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }

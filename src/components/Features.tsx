@@ -1,59 +1,47 @@
 
 import React, { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, Layers, Grid3x3, ListCheck, BookOpen, Star, LayoutDashboard } from "lucide-react";
+import { ChevronDown, Brain, Target, Shield, Users, Zap, Code } from "lucide-react";
 
 const Features = () => {
   const [openFeature, setOpenFeature] = useState<number | null>(null);
   
   const features = [
     {
-      title: "Payment Automation",
-      description: "Automate payment processing and reconciliation to reduce manual errors and improve efficiency.",
-      expandedDescription: "Set up automated payment workflows with custom approval chains. Schedule recurring payments, automate invoice processing, and create conditional rules for different transaction types. Reduce manual intervention and ensure compliance with financial regulations.",
-      icon: (
-        <Layers size={24} className="text-cosmic-accent" />
-      )
+      title: "Project Health Monitoring",
+      description: "AI continuously monitors project vital signs and predicts potential issues before they impact delivery.",
+      expandedDescription: "Advanced machine learning algorithms analyze project metrics, team performance, and external factors to provide real-time health scores. Get early warnings about budget overruns, timeline delays, and resource conflicts. Automated health reports keep stakeholders informed without manual intervention.",
+      icon: <Brain size={24} className="text-primary" />
     },
     {
-      title: "Real-time Analytics",
-      description: "Monitor financial performance with real-time dashboards and comprehensive reporting.",
-      expandedDescription: "Track key financial metrics with customizable dashboards. Monitor cash flow, payment volumes, and transaction success rates in real-time. Generate detailed reports for stakeholders and identify trends before they impact your business.",
-      icon: (
-        <Grid3x3 size={24} className="text-cosmic-accent" />
-      )
+      title: "Intelligent Task Routing",
+      description: "Smart task assignment based on team skills, workload, and project priorities using AI optimization.",
+      expandedDescription: "Our AI engine analyzes team member expertise, current workload, and project dependencies to automatically route tasks to the most suitable person. Reduce bottlenecks, optimize team efficiency, and ensure critical path tasks are prioritized. Smart escalation when capacity limits are reached.",
+      icon: <Target size={24} className="text-primary" />
     },
     {
-      title: "Risk Management",
-      description: "Advanced fraud detection and risk assessment tools to protect your business.",
-      expandedDescription: "Utilize machine learning algorithms to detect suspicious transactions and prevent fraud. Set up custom risk rules, monitor transaction patterns, and receive instant alerts for unusual activity. Protect your business with enterprise-grade security measures.",
-      icon: (
-        <LayoutDashboard size={24} className="text-cosmic-accent" />
-      )
+      title: "Risk Prediction & Alerts",
+      description: "Proactive risk identification using predictive analytics to prevent project failures before they happen.",
+      expandedDescription: "Machine learning models trained on thousands of projects identify patterns that lead to delays, budget overruns, and scope creep. Receive intelligent alerts with actionable recommendations. Historical analysis helps teams learn from past projects and avoid repeated mistakes.",
+      icon: <Shield size={24} className="text-primary" />
     },
     {
-      title: "Compliance Tools",
-      description: "Built-in compliance features to meet regulatory requirements effortlessly.",
-      expandedDescription: "Stay compliant with financial regulations across multiple jurisdictions. Automated KYC/AML checks, transaction monitoring, and regulatory reporting. Generate audit trails and maintain documentation to meet compliance standards.",
-      icon: (
-        <ListCheck size={24} className="text-cosmic-accent" />
-      )
+      title: "Smart Resource Allocation",
+      description: "AI-powered resource optimization ensures optimal team utilization and project capacity planning.",
+      expandedDescription: "Dynamic resource allocation based on project demands, team availability, and skill requirements. Predictive capacity planning helps you make informed hiring decisions. Identify underutilized resources and redistribute workload automatically for maximum efficiency.",
+      icon: <Users size={24} className="text-primary" />
     },
     {
-      title: "Multi-currency Support",
-      description: "Process payments in multiple currencies with real-time exchange rates.",
-      expandedDescription: "Accept and process payments in over 150 currencies with competitive exchange rates. Automatic currency conversion, hedging tools, and multi-currency accounting. Expand your business globally with seamless international payment processing.",
-      icon: (
-        <Star size={24} className="text-cosmic-accent" />
-      )
+      title: "Automated Workflow Optimization",
+      description: "Continuous process improvement through AI analysis of team workflows and project patterns.",
+      expandedDescription: "AI studies your team's working patterns and suggests workflow optimizations. Automated process recommendations reduce manual overhead and eliminate inefficiencies. Custom automation rules adapt to your team's unique requirements and preferences.",
+      icon: <Zap size={24} className="text-primary" />
     },
     {
-      title: "API Integration",
-      description: "Powerful APIs for seamless integration with your existing financial systems.",
-      expandedDescription: "Connect with your ERP, accounting software, and banking systems through our comprehensive APIs. Real-time webhooks, detailed documentation, and SDKs for popular programming languages. Build custom integrations that fit your unique business needs.",
-      icon: (
-        <BookOpen size={24} className="text-cosmic-accent" />
-      )
+      title: "Advanced Project APIs",
+      description: "Comprehensive APIs for seamless integration with your existing development and project management tools.",
+      expandedDescription: "Connect with popular development tools, CI/CD pipelines, and project management platforms through our robust APIs. Real-time webhooks for project events, detailed documentation, and SDKs for popular languages. Build custom integrations that fit your unique development workflow.",
+      icon: <Code size={24} className="text-primary" />
     }
   ];
   
@@ -62,14 +50,14 @@ const Features = () => {
   };
   
   return (
-    <section id="features" className="w-full py-12 md:py-16 px-6 md:px-12">
-      <div className="max-w-7xl mx-auto space-y-12">
-        <div className="text-center space-y-3 max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-medium tracking-tighter">
-            Everything your business needs
+    <section id="features" className="w-full py-20 px-6 md:px-12 bg-card/30">
+      <div className="max-w-7xl mx-auto space-y-16">
+        <div className="text-center space-y-4 max-w-3xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tighter bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+            AI-Powered Project Intelligence
           </h2>
-          <p className="text-cosmic-muted text-lg">
-            Comprehensive fintech solutions to streamline your financial operations and drive growth
+          <p className="text-muted-foreground text-xl leading-relaxed">
+            Transform your project management with intelligent automation and predictive insights that keep your teams ahead of challenges
           </p>
         </div>
         
@@ -79,28 +67,32 @@ const Features = () => {
               key={index}
               open={openFeature === index}
               onOpenChange={() => toggleFeature(index)}
-              className={`rounded-xl border ${openFeature === index ? 'border-cosmic-light/40' : 'border-cosmic-light/20'} cosmic-gradient transition-all duration-300`}
+              className={`rounded-2xl border transition-all duration-300 glass-card hover:shadow-lg hover:shadow-primary/10 ${
+                openFeature === index ? 'border-primary/40 shadow-lg shadow-primary/20' : 'border-border/50'
+              }`}
             >
-              <CollapsibleTrigger className="w-full text-left p-6 flex flex-col">
-                <div className="flex justify-between items-start">
-                  <div className="h-16 w-16 rounded-full bg-cosmic-light/10 flex items-center justify-center mb-6">
+              <CollapsibleTrigger className="w-full text-left p-6 flex flex-col group">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     {feature.icon}
                   </div>
                   <ChevronDown
-                    className={`h-5 w-5 text-cosmic-muted transition-transform duration-200 ${
+                    className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${
                       openFeature === index ? 'rotate-180' : ''
                     }`}
                   />
                 </div>
-                <h3 className="text-xl font-medium tracking-tighter mb-3">{feature.title}</h3>
-                <p className="text-cosmic-muted">{feature.description}</p>
+                <h3 className="text-xl font-semibold tracking-tight mb-3 text-foreground group-hover:text-primary transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
               </CollapsibleTrigger>
-              <CollapsibleContent className="px-6 pb-6 pt-2">
-                <div className="pt-3 border-t border-cosmic-light/10">
-                  <p className="text-cosmic-muted">{feature.expandedDescription}</p>
-                  <div className="mt-4 flex justify-end">
-                    <button className="text-cosmic-accent hover:text-cosmic-accent/80 text-sm font-medium">
-                      Learn more →
+              <CollapsibleContent className="px-6 pb-6">
+                <div className="pt-4 border-t border-border/30">
+                  <p className="text-muted-foreground leading-relaxed mb-4">{feature.expandedDescription}</p>
+                  <div className="flex justify-end">
+                    <button className="text-primary hover:text-primary/80 text-sm font-medium transition-colors flex items-center gap-1">
+                      Learn more <ChevronDown className="h-4 w-4 -rotate-90" />
                     </button>
                   </div>
                 </div>
