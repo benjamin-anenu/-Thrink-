@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Logo from './Logo';
-import { Menu, X, CircleDot, LayoutDashboard, DollarSign, Sun, Moon, FolderOpen, Users, BarChart3 } from 'lucide-react';
+import { Menu, X, CircleDot, LayoutDashboard, DollarSign, Sun, Moon, FolderOpen, Users, BarChart3, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Switch } from '@/components/ui/switch';
@@ -20,6 +19,7 @@ const Header = () => {
     if (path === '/dashboard') setActivePage('dashboard');
     else if (path === '/projects') setActivePage('projects');
     else if (path === '/resources') setActivePage('resources');
+    else if (path === '/stakeholders') setActivePage('stakeholders');
     else if (path === '/analytics') setActivePage('analytics');
     else if (path === '/' && location.hash) {
       const section = location.hash.substring(1);
@@ -145,6 +145,18 @@ const Header = () => {
                     </Link>
                   </ToggleGroupItem>
                   <ToggleGroupItem 
+                    value="stakeholders" 
+                    className={cn(
+                      "px-4 py-2 rounded-full transition-colors relative",
+                      activePage === 'stakeholders' ? 'text-accent-foreground bg-accent' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}
+                    asChild
+                  >
+                    <Link to="/stakeholders">
+                      <UserCheck size={16} className="inline-block mr-1.5" /> Stakeholders
+                    </Link>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
                     value="analytics" 
                     className={cn(
                       "px-4 py-2 rounded-full transition-colors relative",
@@ -215,6 +227,15 @@ const Header = () => {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <Users size={16} className="inline-block mr-1.5" /> Resources
+                  </Link>
+                  <Link 
+                    to="/stakeholders" 
+                    className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                      activePage === 'stakeholders' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <UserCheck size={16} className="inline-block mr-1.5" /> Stakeholders
                   </Link>
                   <Link 
                     to="/analytics" 
