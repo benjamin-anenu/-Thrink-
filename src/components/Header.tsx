@@ -277,8 +277,15 @@ const Header = () => {
             />
             <Sun size={18} className={`${!isDarkMode ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
-          <div className="rounded-2xl">
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">Log in</Button>
+          <div className="rounded-2xl flex gap-2">
+            <Link to="/login">
+              <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                Log in
+              </Button>
+            </Link>
+            <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
+              Get Started
+            </Button>
           </div>
         </div>
       </header>

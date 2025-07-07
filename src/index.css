@@ -199,4 +199,81 @@
   .column-highlight {
     @apply bg-accent/20 transition-all duration-300;
   }
+
+  /* Enhanced 3D Effects */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .animation-delay-500 {
+    animation-delay: 0.5s;
+  }
+
+  .animation-delay-1000 {
+    animation-delay: 1s;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-3000 {
+    animation-delay: 3s;
+  }
+
+  /* Enhanced Floating Animation */
+  @keyframes float {
+    0%, 100% { 
+      transform: translateY(0px) rotate(0deg);
+      opacity: 0.6;
+    }
+    25% {
+      transform: translateY(-20px) rotate(90deg);
+      opacity: 0.8;
+    }
+    50% { 
+      transform: translateY(-10px) rotate(180deg);
+      opacity: 1;
+    }
+    75% {
+      transform: translateY(-15px) rotate(270deg);
+      opacity: 0.8;
+    }
+  }
+
+  /* Gradient Shift Animation */
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Enhanced Pulse */
+  @keyframes pulse-slow {
+    0%, 100% { 
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 0.4;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-gradient-shift {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 4s ease-in-out infinite;
+  }
 }
