@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Brain, Sparkles } from 'lucide-react';
+import { Brain, Zap } from 'lucide-react';
 
 interface DashboardHeaderProps {
   aiConfidence: number;
@@ -8,26 +7,32 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ aiConfidence }) => {
   return (
-    <div className="p-8 border-b border-primary/10 bg-gradient-to-r from-card/80 to-card/60">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-glow animate-pulse">
-            <Brain className="h-6 w-6 text-white" />
+    <div className="bg-gradient-to-r from-card/95 to-card/90 backdrop-blur-2xl p-8 border-b border-primary/20">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-5">
+          <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary via-purple-500 to-cyan-500 flex items-center justify-center shadow-glow">
+            <Brain className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-foreground">AI Project Intelligence</h3>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Sparkles className="h-3 w-3 text-primary animate-pulse" />
-              Advanced real-time analysis active
-            </p>
+            <h2 className="text-2xl font-bold text-foreground">AI Project Intelligence</h2>
+            <div className="text-sm text-muted-foreground flex items-center gap-3 mt-1">
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+              <span>Enterprise Intelligence Network</span>
+              <div className="px-3 py-1 bg-emerald-400/20 text-emerald-400 rounded-lg text-xs font-bold">
+                ACTIVE
+              </div>
+            </div>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="h-3 w-3 bg-emerald-400 rounded-full animate-pulse shadow-glow"></div>
-          <span className="text-sm text-emerald-400 font-bold">AI Processing</span>
-          <div className="px-3 py-1 bg-primary/20 text-primary rounded-lg text-xs font-bold border border-primary/30">
-            {aiConfidence}% Confidence
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">AI Confidence</div>
+            <div className="text-2xl font-bold text-primary">{aiConfidence}%</div>
+          </div>
+          <div className="h-12 px-4 rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/30 flex items-center text-primary text-sm font-bold shadow-elevated">
+            <Zap className="h-4 w-4 mr-2 animate-pulse" />
+            Processing
           </div>
         </div>
       </div>
