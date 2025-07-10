@@ -1,68 +1,40 @@
+
 import React from 'react';
-import { Brain, TrendingUp, AlertCircle, Lightbulb } from 'lucide-react';
+import { Brain, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
 
 const AIInsights: React.FC = () => {
-  const insights = [
-    {
-      icon: <TrendingUp className="h-5 w-5 text-emerald-400" />,
-      title: "Performance Optimization",
-      description: "Team velocity increased by 23% after AI workflow integration",
-      confidence: 94,
-      type: "success"
-    },
-    {
-      icon: <AlertCircle className="h-5 w-5 text-orange-400" />,
-      title: "Resource Bottleneck",
-      description: "Backend team approaching capacity - recommend scaling",
-      confidence: 87,
-      type: "warning"
-    },
-    {
-      icon: <Lightbulb className="h-5 w-5 text-blue-400" />,
-      title: "Automation Opportunity",
-      description: "Testing phase can be 60% automated with current patterns",
-      confidence: 91,
-      type: "insight"
-    }
-  ];
-
   return (
-    <div className="mt-8">
-      <div className="flex items-center gap-3 mb-6">
-        <Brain className="h-6 w-6 text-primary" />
-        <h3 className="text-xl font-bold text-foreground">AI Intelligence Feed</h3>
-        <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+    <div className="space-y-4">
+      <h6 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+        <Brain className="h-5 w-5 text-primary animate-pulse" />
+        Live AI Insights
+      </h6>
+      
+      <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-400/25 animate-fade-in shadow-elevated">
+        <CheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+        <div className="text-sm flex-1">
+          <span className="text-emerald-400 font-bold">Smart Assignment Complete</span>
+          <span className="text-muted-foreground"> - AI assigned critical path tasks to optimal team members</span>
+        </div>
+        <div className="text-xs text-emerald-400 font-medium">Just now</div>
       </div>
 
-      <div className="space-y-4">
-        {insights.map((insight, index) => (
-          <div key={index} className="glass-card p-6 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all duration-300">
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-xl bg-primary/10">
-                {insight.icon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-foreground">{insight.title}</h4>
-                  <div className="text-xs text-muted-foreground">
-                    {insight.confidence}% confidence
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">{insight.description}</p>
-                <div className="mt-3 h-1 bg-card rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-1000 rounded-full ${
-                      insight.type === 'success' ? 'bg-gradient-to-r from-emerald-400 to-cyan-400' :
-                      insight.type === 'warning' ? 'bg-gradient-to-r from-orange-400 to-red-400' :
-                      'bg-gradient-to-r from-blue-400 to-purple-400'
-                    }`}
-                    style={{ width: `${insight.confidence}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 to-blue-500/5 border border-blue-400/25 animate-fade-in animation-delay-500 shadow-elevated">
+        <TrendingUp className="h-5 w-5 text-blue-400 flex-shrink-0" />
+        <div className="text-sm flex-1">
+          <span className="text-blue-400 font-bold">Performance Boost Detected</span>
+          <span className="text-muted-foreground"> - Team velocity increased 34% after AI optimization</span>
+        </div>
+        <div className="text-xs text-blue-400 font-medium">2 min ago</div>
+      </div>
+
+      <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-400/25 animate-fade-in animation-delay-1000 shadow-elevated">
+        <AlertTriangle className="h-5 w-5 text-purple-400 flex-shrink-0" />
+        <div className="text-sm flex-1">
+          <span className="text-purple-400 font-bold">Proactive Risk Mitigation</span>
+          <span className="text-muted-foreground"> - AI identified and resolved potential bottleneck</span>
+        </div>
+        <div className="text-xs text-purple-400 font-medium">5 min ago</div>
       </div>
     </div>
   );

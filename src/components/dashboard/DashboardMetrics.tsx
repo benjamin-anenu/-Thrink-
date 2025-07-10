@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { TrendingUp, Shield, Users, Zap } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 interface DashboardMetricsProps {
   successRate: number;
@@ -12,53 +13,31 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   successRate,
   efficiency,
   riskLevel,
-  teamProductivity,
+  teamProductivity
 }) => {
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'Low': return 'text-emerald-400';
-      case 'Medium': return 'text-orange-400';
-      case 'High': return 'text-red-400';
-      default: return 'text-emerald-400';
-    }
-  };
-
   return (
     <div className="grid grid-cols-4 gap-6">
-      <div className="glass-card p-6 rounded-2xl border border-primary/20">
-        <div className="flex items-center justify-between mb-3">
-          <TrendingUp className="h-6 w-6 text-emerald-400" />
-          <span className="text-2xl font-bold text-emerald-400">{successRate}%</span>
-        </div>
-        <h3 className="text-sm font-semibold text-muted-foreground">Success Rate</h3>
-        <p className="text-xs text-muted-foreground mt-1">Above target by 12%</p>
+      <div className="text-center p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-400/25 shadow-elevated hover:shadow-glow transition-all duration-300">
+        <div className="text-3xl font-black text-emerald-400 mb-1">{Math.round(successRate)}%</div>
+        <div className="text-xs text-muted-foreground font-medium">Success Rate</div>
+        <div className="text-xs text-emerald-400 mt-1">↗ +2.3%</div>
       </div>
-
-      <div className="glass-card p-6 rounded-2xl border border-primary/20">
-        <div className="flex items-center justify-between mb-3">
-          <Zap className="h-6 w-6 text-blue-400" />
-          <span className="text-2xl font-bold text-blue-400">{efficiency}%</span>
-        </div>
-        <h3 className="text-sm font-semibold text-muted-foreground">Efficiency</h3>
-        <p className="text-xs text-muted-foreground mt-1">Optimal performance</p>
+      <div className="text-center p-4 rounded-2xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-400/25 shadow-elevated hover:shadow-glow transition-all duration-300">
+        <div className="text-3xl font-black text-blue-400 mb-1">{Math.round(efficiency)}%</div>
+        <div className="text-xs text-muted-foreground font-medium">AI Efficiency</div>
+        <div className="text-xs text-blue-400 mt-1">↗ +4.1%</div>
       </div>
-
-      <div className="glass-card p-6 rounded-2xl border border-primary/20">
-        <div className="flex items-center justify-between mb-3">
-          <Shield className="h-6 w-6 text-orange-400" />
-          <span className={`text-2xl font-bold ${getRiskColor(riskLevel)}`}>{riskLevel}</span>
+      <div className="text-center p-4 rounded-2xl bg-gradient-to-br from-purple-500/15 to-purple-500/5 border border-purple-400/25 shadow-elevated hover:shadow-glow transition-all duration-300">
+        <div className="text-3xl font-black text-purple-400 mb-1">{riskLevel}</div>
+        <div className="text-xs text-muted-foreground font-medium">Risk Assessment</div>
+        <div className="text-xs text-purple-400 mt-1">
+          <Shield className="h-3 w-3 inline mr-1" />Secured
         </div>
-        <h3 className="text-sm font-semibold text-muted-foreground">Risk Level</h3>
-        <p className="text-xs text-muted-foreground mt-1">AI monitoring active</p>
       </div>
-
-      <div className="glass-card p-6 rounded-2xl border border-primary/20">
-        <div className="flex items-center justify-between mb-3">
-          <Users className="h-6 w-6 text-purple-400" />
-          <span className="text-2xl font-bold text-purple-400">{teamProductivity}%</span>
-        </div>
-        <h3 className="text-sm font-semibold text-muted-foreground">Team Productivity</h3>
-        <p className="text-xs text-muted-foreground mt-1">Enhanced by AI</p>
+      <div className="text-center p-4 rounded-2xl bg-gradient-to-br from-cyan-500/15 to-cyan-500/5 border border-cyan-400/25 shadow-elevated hover:shadow-glow transition-all duration-300">
+        <div className="text-3xl font-black text-cyan-400 mb-1">{Math.round(teamProductivity)}%</div>
+        <div className="text-xs text-muted-foreground font-medium">Team Velocity</div>
+        <div className="text-xs text-cyan-400 mt-1">↗ +12.5%</div>
       </div>
     </div>
   );
