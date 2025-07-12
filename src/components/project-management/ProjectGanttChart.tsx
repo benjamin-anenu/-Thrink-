@@ -4,17 +4,17 @@ import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Target } from 'lucide-react';
+import { Plus, Filter, Download, ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { toast } from 'sonner';
-import { parseISO, addDays, startOfMonth, endOfMonth, format, differenceInDays } from 'date-fns';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 
-import GanttTimeline from './gantt/GanttTimeline';
-import GanttTaskRow from './gantt/GanttTaskRow';
+import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 
 interface ProjectGanttChartProps {
@@ -23,13 +23,14 @@ interface ProjectGanttChartProps {
 
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const { getProject, addTask, updateTask, deleteTask, rebaselineTasks } = useProject();
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showRebaselineDialog, setShowRebaselineDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
-  const [selectedMilestone, setSelectedMilestone] = useState<ProjectMilestone | null>(null);
   const [rebaselineTask, setRebaselineTask] = useState<ProjectTask | null>(null);
   const [rebaselineData, setRebaselineData] = useState({ newStartDate: '', newEndDate: '', reason: '' });
+  const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<string>('startDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const project = getProject(projectId);
   if (!project) return <div>Project not found</div>;
@@ -49,33 +50,41 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     { id: 'mike-wilson', name: 'Mike Wilson', role: 'Tech Lead' }
   ];
 
-  // Calculate timeline bounds based on project dates
-  const timelineBounds = useMemo(() => {
-    const projectStart = parseISO(project.startDate);
-    const projectEnd = parseISO(project.endDate);
+  // Group tasks by milestone
+  const groupedTasks = useMemo(() => {
+    const groups: { [key: string]: { milestone: ProjectMilestone | null; tasks: ProjectTask[] } } = {};
     
-    // Add some padding to show context
-    const startDate = addDays(startOfMonth(projectStart), -7);
-    const endDate = addDays(endOfMonth(projectEnd), 7);
+    // Initialize groups for each milestone
+    project.milestones.forEach(milestone => {
+      groups[milestone.id] = { milestone, tasks: [] };
+    });
     
-    return { startDate, endDate };
-  }, [project.startDate, project.endDate]);
-
-  const getMilestonePosition = (milestone: ProjectMilestone) => {
-    const milestoneDate = parseISO(milestone.date);
-    const totalDays = differenceInDays(timelineBounds.endDate, timelineBounds.startDate) + 1;
-    const position = differenceInDays(milestoneDate, timelineBounds.startDate);
-    return Math.max(0, Math.min(100, (position / totalDays) * 100));
-  };
-
-  const getMilestoneStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'in-progress': return 'bg-blue-500';
-      case 'delayed': return 'bg-red-500';
-      default: return 'bg-gray-400';
-    }
-  };
+    // Add group for tasks without milestone
+    groups['no-milestone'] = { milestone: null, tasks: [] };
+    
+    // Assign tasks to groups
+    project.tasks.forEach(task => {
+      const groupKey = task.milestoneId || 'no-milestone';
+      if (groups[groupKey]) {
+        groups[groupKey].tasks.push(task);
+      }
+    });
+    
+    // Sort tasks within each group
+    Object.values(groups).forEach(group => {
+      group.tasks.sort((a, b) => {
+        const aValue = (a as any)[sortBy];
+        const bValue = (b as any)[sortBy];
+        const modifier = sortDirection === 'asc' ? 1 : -1;
+        
+        if (aValue < bValue) return -1 * modifier;
+        if (aValue > bValue) return 1 * modifier;
+        return 0;
+      });
+    });
+    
+    return groups;
+  }, [project.tasks, project.milestones, sortBy, sortDirection]);
 
   const handleCreateTask = (task: Omit<ProjectTask, 'id'>) => {
     addTask(projectId, task);
@@ -89,7 +98,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
 
   const handleUpdateTask = (taskId: string, updates: Partial<ProjectTask>) => {
     updateTask(projectId, taskId, updates);
-    setEditingTask(null);
     toast.success('Task updated successfully');
   };
 
@@ -129,20 +137,23 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  const handleMilestoneClick = (milestone: ProjectMilestone) => {
-    setSelectedMilestone(milestone);
+  const toggleMilestone = (milestoneId: string) => {
+    const newExpanded = new Set(expandedMilestones);
+    if (newExpanded.has(milestoneId)) {
+      newExpanded.delete(milestoneId);
+    } else {
+      newExpanded.add(milestoneId);
+    }
+    setExpandedMilestones(newExpanded);
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setMonth(newDate.getMonth() - 1);
-      } else {
-        newDate.setMonth(newDate.getMonth() + 1);
-      }
-      return newDate;
-    });
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortDirection('asc');
+    }
   };
 
   return (
@@ -151,26 +162,16 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Interactive Gantt Chart
+              Project Task Management
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigateMonth('prev')}
-              >
-                <ChevronLeft className="h-4 w-4" />
+              <Button variant="outline" size="sm">
+                <Filter className="h-4 w-4 mr-2" />
+                Filter
               </Button>
-              <span className="text-sm font-medium min-w-[120px] text-center">
-                {format(currentDate, 'MMMM yyyy')}
-              </span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigateMonth('next')}
-              >
-                <ChevronRight className="h-4 w-4" />
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
               </Button>
               <Button 
                 className="flex items-center gap-2"
@@ -184,84 +185,119 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
               </Button>
             </div>
           </div>
-          
-          {selectedMilestone && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  {selectedMilestone.name}
-                </h3>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedMilestone(null)}>
-                  ×
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground mb-2">{selectedMilestone.description}</p>
-              <div className="text-sm">
-                <span className="font-medium">Progress: {selectedMilestone.progress}%</span>
-                <span className="mx-2">•</span>
-                <span>Due: {format(parseISO(selectedMilestone.date), 'MMM d, yyyy')}</span>
-                <span className="mx-2">•</span>
-                <span>{project.tasks.filter(t => t.milestoneId === selectedMilestone.id).length} tasks</span>
-              </div>
-            </div>
-          )}
         </CardHeader>
         
         <CardContent>
           <div className="overflow-x-auto">
-            <div className="min-w-full">
-              {/* Timeline Header */}
-              <GanttTimeline 
-                startDate={timelineBounds.startDate}
-                endDate={timelineBounds.endDate}
-                viewMode="day"
-              />
-
-              {/* Milestones Row */}
-              <div className="flex items-center mb-4">
-                <div className="w-80 flex-shrink-0 pr-4">
-                  <div className="font-medium text-sm text-blue-600">Milestones</div>
-                </div>
-                <div className="flex-1 relative h-8">
-                  <div className="absolute inset-0 flex">
-                    {Array.from({ length: differenceInDays(timelineBounds.endDate, timelineBounds.startDate) + 1 }).map((_, index) => (
-                      <div key={index} className="flex-1 border-r border-border/20 h-full"></div>
-                    ))}
-                  </div>
-                  {project.milestones.map((milestone) => {
-                    const position = getMilestonePosition(milestone);
-                    return (
-                      <div
-                        key={milestone.id}
-                        className={`absolute top-0 w-2 h-8 ${getMilestoneStatusColor(milestone.status)} cursor-pointer hover:opacity-80 transition-opacity`}
-                        style={{ left: `${position}%` }}
-                        onClick={() => handleMilestoneClick(milestone)}
-                        title={`${milestone.name} - ${format(parseISO(milestone.date), 'MMM d, yyyy')}`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Separator className="mb-4" />
-
-              {/* Task Rows */}
-              <div className="space-y-1">
-                {project.tasks.map((task) => (
-                  <GanttTaskRow
-                    key={task.id}
-                    task={task}
-                    startDate={timelineBounds.startDate}
-                    endDate={timelineBounds.endDate}
-                    onEditTask={handleEditTask}
-                    onDeleteTask={handleDeleteTask}
-                    onRebaselineTask={handleRebaselineClick}
-                    availableResources={availableResources}
-                  />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('name')}>
+                    Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
+                    Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('priority')}>
+                    Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead>Assigned Resources</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('startDate')}>
+                    Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('endDate')}>
+                    End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('duration')}>
+                    Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('progress')}>
+                    Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead>Dependencies</TableHead>
+                  <TableHead>Milestone</TableHead>
+                  <TableHead>Variance</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(groupedTasks).map(([groupKey, group]) => (
+                  <React.Fragment key={groupKey}>
+                    {/* Milestone Header */}
+                    {group.milestone && (
+                      <TableRow className="bg-muted/50">
+                        <td colSpan={12} className="p-4">
+                          <Collapsible
+                            open={expandedMilestones.has(group.milestone.id)}
+                            onOpenChange={() => toggleMilestone(group.milestone.id)}
+                          >
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+                              {expandedMilestones.has(group.milestone.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                              <Target className="h-4 w-4 text-blue-600" />
+                              <span className="font-semibold">{group.milestone.name}</span>
+                              <Badge variant="outline" className="ml-2">
+                                {group.tasks.length} tasks
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
+                                className={`ml-1 ${
+                                  group.milestone.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                                  group.milestone.status === 'delayed' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {group.milestone.status}
+                              </Badge>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              {group.tasks.map((task) => (
+                                <TaskTableRow
+                                  key={task.id}
+                                  task={task}
+                                  milestones={project.milestones}
+                                  availableResources={availableResources}
+                                  availableStakeholders={availableStakeholders}
+                                  allTasks={project.tasks}
+                                  onUpdateTask={handleUpdateTask}
+                                  onDeleteTask={handleDeleteTask}
+                                  onEditTask={handleEditTask}
+                                  onRebaselineTask={handleRebaselineClick}
+                                />
+                              ))}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </td>
+                      </TableRow>
+                    )}
+                    
+                    {/* Tasks without milestone */}
+                    {groupKey === 'no-milestone' && group.tasks.length > 0 && (
+                      <>
+                        {group.tasks.map((task) => (
+                          <TaskTableRow
+                            key={task.id}
+                            task={task}
+                            milestones={project.milestones}
+                            availableResources={availableResources}
+                            availableStakeholders={availableStakeholders}
+                            allTasks={project.tasks}
+                            onUpdateTask={handleUpdateTask}
+                            onDeleteTask={handleDeleteTask}
+                            onEditTask={handleEditTask}
+                            onRebaselineTask={handleRebaselineClick}
+                          />
+                        ))}
+                      </>
+                    )}
+                  </React.Fragment>
                 ))}
-              </div>
-            </div>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
