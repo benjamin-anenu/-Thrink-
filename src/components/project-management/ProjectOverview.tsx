@@ -1,26 +1,15 @@
 
 import React from 'react';
+import { useProject } from '@/contexts/ProjectContext';
+import { ProjectData } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import HealthIndicator from '../HealthIndicator';
-import { Calendar, Users, Target, Clock, DollarSign, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import HealthIndicator from '@/components/HealthIndicator';
+import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 
 interface ProjectOverviewProps {
-  project: {
-    id: string;
-    name: string;
-    description: string;
-    status: string;
-    priority: string;
-    progress: number;
-    health: { status: 'green' | 'yellow' | 'red'; score: number };
-    startDate: string;
-    endDate: string;
-    teamSize: number;
-    budget: string;
-    tags: string[];
-  };
+  project: ProjectData;
 }
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
@@ -45,30 +34,41 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
     const startDate = new Date(project.startDate);
     const endDate = new Date(project.endDate);
     const diffTime = endDate.getTime() - startDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 1000));
     return diffDays;
+  };
+
+  // Calculate actual project statistics from real data
+  const projectStats = {
+    totalTasks: project.tasks.length,
+    completedTasks: project.tasks.filter(t => t.status === 'Completed').length,
+    inProgressTasks: project.tasks.filter(t => t.status === 'In Progress').length,
+    delayedTasks: project.tasks.filter(t => new Date(t.endDate) > new Date(t.baselineEndDate)).length,
+    totalMilestones: project.milestones.length,
+    completedMilestones: project.milestones.filter(m => m.status === 'completed').length,
+    averageProgress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length)
   };
 
   return (
     <div className="space-y-6">
-      {/* Project Header */}
+      {/* Project Summary */}
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-2xl mb-2">{project.name}</CardTitle>
-              <p className="text-muted-foreground">{project.description}</p>
-            </div>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Project Overview</CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
-                {project.priority}
+                {project.priority} Priority
               </Badge>
               <HealthIndicator health={project.health.status} score={project.health.score} />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">{project.description}</p>
+          
+          {/* Status and Progress */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium mb-2">Current Status</p>
               <Badge variant="secondary" className="text-sm">{project.status}</Badge>
@@ -76,11 +76,13 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
             <div>
               <p className="text-sm font-medium mb-2">Overall Progress</p>
               <div className="flex items-center gap-2">
-                <Progress value={project.progress} className="flex-1" />
-                <span className="text-sm font-medium">{project.progress}%</span>
+                <Progress value={projectStats.averageProgress} className="flex-1" />
+                <span className="text-sm font-medium">{projectStats.averageProgress}%</span>
               </div>
             </div>
           </div>
+
+          {/* Tags */}
           <div>
             <p className="text-sm font-medium mb-2">Tags</p>
             <div className="flex flex-wrap gap-2">
@@ -94,7 +96,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
         </CardContent>
       </Card>
 
-      {/* Key Metrics */}
+      {/* Project Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -103,7 +105,9 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
               <div>
                 <p className="text-sm text-muted-foreground">Timeline</p>
                 <p className="font-semibold">{getProjectDuration()} days</p>
-                <p className="text-xs text-muted-foreground">Total duration</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -149,92 +153,162 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
         </Card>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Task & Milestone Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              Tasks Completed
+              <Target className="h-5 w-5" />
+              Task Statistics
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-sm text-muted-foreground">Out of 20 total tasks</p>
-            <Progress value={60} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-              Progress Velocity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+15%</div>
-            <p className="text-sm text-muted-foreground">This week vs last week</p>
-            <div className="flex items-center gap-1 mt-2">
-              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-green-600">Above target</span>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">{projectStats.completedTasks}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
+              </div>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">{projectStats.inProgressTasks}</p>
+                <p className="text-sm text-muted-foreground">In Progress</p>
+              </div>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Total Tasks</span>
+              <span className="font-semibold">{projectStats.totalTasks}</span>
+            </div>
+            {projectStats.delayedTasks > 0 && (
+              <div className="flex justify-between items-center text-orange-600">
+                <span className="text-sm flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4" />
+                  Delayed Tasks
+                </span>
+                <span className="font-semibold">{projectStats.delayedTasks}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Risk Assessment
+              <MapPin className="h-5 w-5" />
+              Milestone Progress
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Low</div>
-            <p className="text-sm text-muted-foreground">Current risk level</p>
-            <div className="flex items-center gap-1 mt-2">
-              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-green-600">No major risks</span>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">{projectStats.completedMilestones}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
+              </div>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <p className="text-2xl font-bold text-gray-600">{projectStats.totalMilestones - projectStats.completedMilestones}</p>
+                <p className="text-sm text-muted-foreground">Remaining</p>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Total Milestones</span>
+              <span className="font-semibold">{projectStats.totalMilestones}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Completion Rate</span>
+              <span className="font-semibold">{Math.round((projectStats.completedMilestones / projectStats.totalMilestones) * 100)}%</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity */}
+      {/* Health Score Details */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            Project Health Analysis
+            <HealthIndicator health={project.health.status} score={project.health.score} />
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="h-2 w-2 bg-green-500 rounded-full mt-2"></div>
-              <div>
-                <p className="text-sm">Task "User Interface Mockups" completed by Emily Rodriguez</p>
-                <p className="text-xs text-muted-foreground">2 hours ago</p>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Overall Health Score</span>
+              <span className="font-semibold">{project.health.score}/100</span>
+            </div>
+            <Progress value={project.health.score} className="h-2" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div className="text-center p-3 border rounded-lg">
+                <div className="h-3 bg-green-500 rounded mb-2"></div>
+                <p className="text-sm font-medium">On Track</p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((projectStats.completedTasks / projectStats.totalTasks) * 100)}% Tasks
+                </p>
+              </div>
+              <div className="text-center p-3 border rounded-lg">
+                <div className="h-3 bg-yellow-500 rounded mb-2"></div>
+                <p className="text-sm font-medium">At Risk</p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((projectStats.inProgressTasks / projectStats.totalTasks) * 100)}% Tasks
+                </p>
+              </div>
+              <div className="text-center p-3 border rounded-lg">
+                <div className="h-3 bg-red-500 rounded mb-2"></div>
+                <p className="text-sm font-medium">Critical</p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((projectStats.delayedTasks / projectStats.totalTasks) * 100)}% Tasks
+                </p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
-              <div>
-                <p className="text-sm">New milestone "Design Phase" added to project timeline</p>
-                <p className="text-xs text-muted-foreground">5 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="h-2 w-2 bg-yellow-500 rounded-full mt-2"></div>
-              <div>
-                <p className="text-sm">Resource allocation updated for Frontend Development phase</p>
-                <p className="text-xs text-muted-foreground">1 day ago</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="h-2 w-2 bg-purple-500 rounded-full mt-2"></div>
-              <div>
-                <p className="text-sm">Budget review completed - all expenses within limits</p>
-                <p className="text-xs text-muted-foreground">2 days ago</p>
-              </div>
-            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {project.tasks
+              .filter(task => task.status === 'Completed' || task.progress > 80)
+              .slice(-5)
+              .map((task, index) => (
+                <div key={task.id} className="flex items-start gap-3">
+                  <div className={`h-2 w-2 rounded-full mt-2 ${
+                    task.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'
+                  }`}></div>
+                  <div>
+                    <p className="text-sm">
+                      {task.status === 'Completed' 
+                        ? `Task "${task.name}" completed`
+                        : `Task "${task.name}" is ${task.progress}% complete`
+                      }
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {task.status === 'Completed' ? 'Completed' : 'Updated'} recently
+                    </p>
+                  </div>
+                </div>
+              ))}
+            
+            {project.milestones
+              .filter(milestone => milestone.status === 'completed' || milestone.status === 'in-progress')
+              .slice(-2)
+              .map((milestone) => (
+                <div key={milestone.id} className="flex items-start gap-3">
+                  <div className={`h-2 w-2 rounded-full mt-2 ${
+                    milestone.status === 'completed' ? 'bg-yellow-500' : 'bg-purple-500'
+                  }`}></div>
+                  <div>
+                    <p className="text-sm">
+                      Milestone "{milestone.name}" {milestone.status === 'completed' ? 'achieved' : 'in progress'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Due: {new Date(milestone.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
           </div>
         </CardContent>
       </Card>

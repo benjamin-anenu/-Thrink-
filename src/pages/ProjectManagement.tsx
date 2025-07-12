@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useProject } from '@/contexts/ProjectContext';
 import Header from '@/components/Header';
 import MiloAssistant from '@/components/MiloAssistant';
 import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
@@ -15,23 +16,32 @@ import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target } from 'lucide-
 const ProjectManagement = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { getProject, setCurrentProject } = useProject();
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Mock project data - in real app, this would be fetched based on ID
-  const project = {
-    id: id || '1',
-    name: 'E-commerce Platform Redesign',
-    description: 'Complete overhaul of the user interface and user experience for our main e-commerce platform.',
-    status: 'In Progress',
-    priority: 'High',
-    progress: 85,
-    health: { status: 'green' as const, score: 92 },
-    startDate: '2024-01-15',
-    endDate: '2024-03-30',
-    teamSize: 8,
-    budget: '$125,000',
-    tags: ['Frontend', 'UX/UI', 'E-commerce']
-  };
+  const project = getProject(id || '');
+
+  useEffect(() => {
+    if (id) {
+      setCurrentProject(id);
+    }
+  }, [id, setCurrentProject]);
+
+  if (!project) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background text-foreground">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
+            <Button onClick={() => navigate('/projects')}>
+              Back to Projects
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
