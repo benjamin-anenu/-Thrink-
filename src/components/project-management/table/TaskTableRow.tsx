@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -48,10 +47,13 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
     { value: 'High', label: 'High', color: 'bg-red-500' }
   ];
 
-  const milestoneOptions = milestones.map(m => ({
-    value: m.id,
-    label: m.name
-  }));
+  const milestoneOptions = [
+    { value: '', label: 'None' },
+    ...milestones.map(m => ({
+      value: m.id,
+      label: m.name
+    }))
+  ];
 
   const dependencyOptions = allTasks
     .filter(t => t.id !== task.id)
@@ -174,9 +176,10 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
       <TableCell>
         <InlineSelectEdit
           value={task.milestoneId || ''}
-          options={[{ value: '', label: 'None' }, ...milestoneOptions]}
+          options={milestoneOptions}
           onSave={(value) => onUpdateTask(task.id, { milestoneId: value || undefined })}
           placeholder="Select milestone"
+          allowEmpty={true}
         />
       </TableCell>
       
