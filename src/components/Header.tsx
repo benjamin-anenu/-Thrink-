@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Logo from './Logo';
+import WorkspaceSelector from './WorkspaceSelector';
 import { Menu, X, CircleDot, LayoutDashboard, DollarSign, Sun, Moon, FolderOpen, Users, BarChart3, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -178,6 +179,13 @@ const Header = () => {
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-20 left-4 right-4 bg-background/95 backdrop-blur-md py-4 px-6 border border-border rounded-2xl shadow-lg z-50">
             <div className="flex flex-col gap-4">
+              {/* Add workspace selector for mobile */}
+              {!isLandingPage && (
+                <div className="pb-2 border-b border-border">
+                  <WorkspaceSelector />
+                </div>
+              )}
+              
               {isLandingPage ? (
                 <>
                   <a 
@@ -267,6 +275,9 @@ const Header = () => {
         )}
         
         <div className="hidden md:flex items-center gap-4">
+          {/* Add workspace selector for desktop (only when not on landing page) */}
+          {!isLandingPage && <WorkspaceSelector />}
+          
           {/* Theme toggle for desktop */}
           <div className="flex items-center gap-2 rounded-full px-3 py-2">
             <Moon size={18} className={`${isDarkMode ? 'text-primary' : 'text-muted-foreground'}`} />
