@@ -1,23 +1,29 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import MiloAssistant from '@/components/MiloAssistant';
 import HealthIndicator from '@/components/HealthIndicator';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
-import GanttChart from '@/components/GanttChart';
 import BulkImportModal from '@/components/BulkImportModal';
+import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Projects = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [activeView, setActiveView] = useState<'grid' | 'gantt'>('grid');
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
 
   const projects = [
     {
@@ -78,49 +84,6 @@ const Projects = () => {
     }
   ];
 
-  const ganttTasks = [
-    {
-      id: '1',
-      name: 'E-commerce Platform Redesign',
-      startDate: '2024-01-15',
-      endDate: '2024-03-30',
-      progress: 85,
-      assignees: 8,
-      priority: 'High' as const,
-      status: 'In Progress' as const
-    },
-    {
-      id: '2',
-      name: 'Mobile App Development',
-      startDate: '2024-02-01',
-      endDate: '2024-05-15',
-      progress: 60,
-      assignees: 6,
-      priority: 'High' as const,
-      status: 'In Progress' as const
-    },
-    {
-      id: '3',
-      name: 'Marketing Campaign Q2',
-      startDate: '2024-03-01',
-      endDate: '2024-06-30',
-      progress: 92,
-      assignees: 4,
-      priority: 'Medium' as const,
-      status: 'In Progress' as const
-    },
-    {
-      id: '4',
-      name: 'Infrastructure Upgrade',
-      startDate: '2024-04-01',
-      endDate: '2024-07-31',
-      progress: 25,
-      assignees: 5,
-      priority: 'Medium' as const,
-      status: 'Not Started' as const
-    }
-  ];
-
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     project.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -138,12 +101,20 @@ const Projects = () => {
   const handleProjectCreated = (project: any) => {
     console.log('New project created:', project);
     setShowCreationWizard(false);
-    // In a real app, this would update the projects list
   };
 
   const handleBulkImport = (data: any) => {
     console.log('Bulk import data:', data);
     setShowBulkImport(false);
+  };
+
+  const handleViewDetails = (project: any) => {
+    setSelectedProject(project);
+    setShowProjectDetails(true);
+  };
+
+  const handleOpenProject = (projectId: string) => {
+    navigate(`/project/${projectId}`);
   };
 
   return (
@@ -192,15 +163,15 @@ const Projects = () => {
         </div>
 
         {/* View Tabs */}
-        <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'grid' | 'gantt')} className="mb-6">
+        <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'grid' | 'list')} className="mb-6">
           <TabsList>
             <TabsTrigger value="grid" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
+              <Grid3x3 className="h-4 w-4" />
               Grid View
             </TabsTrigger>
-            <TabsTrigger value="gantt" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Gantt View
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              List View
             </TabsTrigger>
           </TabsList>
 
@@ -280,10 +251,22 @@ const Projects = () => {
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 flex items-center gap-2"
+                        onClick={() => handleViewDetails(project)}
+                      >
+                        <Eye className="h-4 w-4" />
                         View Details
                       </Button>
-                      <Button variant="default" size="sm" className="flex-1">
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="flex-1 flex items-center gap-2"
+                        onClick={() => handleOpenProject(project.id)}
+                      >
+                        <ArrowRight className="h-4 w-4" />
                         Open Project
                       </Button>
                     </div>
@@ -300,8 +283,85 @@ const Projects = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="gantt" className="mt-6">
-            <GanttChart tasks={ganttTasks} />
+          <TabsContent value="list" className="mt-6">
+            {/* Projects List */}
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Progress</TableHead>
+                      <TableHead>Team Size</TableHead>
+                      <TableHead>Budget</TableHead>
+                      <TableHead>Health</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProjects.map((project) => (
+                      <TableRow key={project.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <p className="font-medium">{project.name}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{project.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
+                            {project.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={project.progress} className="h-2 w-16" />
+                            <span className="text-sm">{project.progress}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{project.teamSize}</TableCell>
+                        <TableCell>{project.budget}</TableCell>
+                        <TableCell>
+                          <HealthIndicator 
+                            health={project.health.status} 
+                            score={project.health.score}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewDetails(project)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm"
+                              onClick={() => handleOpenProject(project.id)}
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {filteredProjects.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
+                <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
@@ -321,6 +381,14 @@ const Projects = () => {
           isOpen={showBulkImport}
           onClose={() => setShowBulkImport(false)}
           onImport={handleBulkImport}
+        />
+      )}
+
+      {showProjectDetails && selectedProject && (
+        <ProjectDetailsModal
+          isOpen={showProjectDetails}
+          onClose={() => setShowProjectDetails(false)}
+          project={selectedProject}
         />
       )}
     </div>

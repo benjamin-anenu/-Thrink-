@@ -1,0 +1,110 @@
+
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import Header from '@/components/Header';
+import MiloAssistant from '@/components/MiloAssistant';
+import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
+import ProjectOverview from '@/components/project-management/ProjectOverview';
+import ProjectResources from '@/components/project-management/ProjectResources';
+import ProjectTimeline from '@/components/project-management/ProjectTimeline';
+import ProjectReports from '@/components/project-management/ProjectReports';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target } from 'lucide-react';
+
+const ProjectManagement = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Mock project data - in real app, this would be fetched based on ID
+  const project = {
+    id: id || '1',
+    name: 'E-commerce Platform Redesign',
+    description: 'Complete overhaul of the user interface and user experience for our main e-commerce platform.',
+    status: 'In Progress',
+    priority: 'High',
+    progress: 85,
+    health: { status: 'green' as const, score: 92 },
+    startDate: '2024-01-15',
+    endDate: '2024-03-30',
+    teamSize: 8,
+    budget: '$125,000',
+    tags: ['Frontend', 'UX/UI', 'E-commerce']
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <Header />
+      <main className="flex-1 container mx-auto px-4 py-8">
+        {/* Breadcrumb and Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/projects')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Projects
+          </Button>
+          <div className="h-4 w-px bg-border"></div>
+          <div>
+            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <p className="text-muted-foreground">Project Management Dashboard</p>
+          </div>
+        </div>
+
+        {/* Project Management Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="gantt" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Gantt Chart
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Resources
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Reports
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <ProjectOverview project={project} />
+          </TabsContent>
+
+          <TabsContent value="gantt">
+            <ProjectGanttChart projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="resources">
+            <ProjectResources projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="timeline">
+            <ProjectTimeline projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <ProjectReports projectId={project.id} />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      <MiloAssistant />
+    </div>
+  );
+};
+
+export default ProjectManagement;

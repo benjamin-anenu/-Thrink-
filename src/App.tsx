@@ -8,6 +8,7 @@ import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
+import ProjectManagement from "./pages/ProjectManagement";
 import Resources from "./pages/Resources";
 import Stakeholders from "./pages/Stakeholders";
 import Analytics from "./pages/Analytics";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/project/:id" element={<ProjectManagement />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/stakeholders" element={<Stakeholders />} />
             <Route path="/analytics" element={<Analytics />} />
