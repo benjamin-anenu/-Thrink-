@@ -117,7 +117,7 @@ const Projects = () => {
       progress: 25,
       assignees: 5,
       priority: 'Medium' as const,
-      status: 'Planning' as const
+      status: 'Not Started' as const
     }
   ];
 
