@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import MiloAssistant from '@/components/MiloAssistant';
 import HealthIndicator from '@/components/HealthIndicator';
+import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Plus, Search, Filter, Calendar, Users, Target } from 'lucide-react';
 
 const Projects = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreationWizard, setShowCreationWizard] = useState(false);
 
   const projects = [
     {
@@ -86,6 +87,12 @@ const Projects = () => {
     }
   };
 
+  const handleProjectCreated = (project: any) => {
+    console.log('New project created:', project);
+    setShowCreationWizard(false);
+    // In a real app, this would update the projects list
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
@@ -95,7 +102,10 @@ const Projects = () => {
             <h1 className="text-3xl font-bold mb-2">Projects</h1>
             <p className="text-muted-foreground">Manage and track all your projects in one place</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setShowCreationWizard(true)}
+          >
             <Plus size={16} />
             New Project
           </Button>
@@ -208,12 +218,20 @@ const Projects = () => {
         {filteredProjects.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
-            <Button>Create New Project</Button>
+            <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
           </div>
         )}
       </main>
 
       <MiloAssistant />
+
+      {showCreationWizard && (
+        <ProjectCreationWizard
+          isOpen={showCreationWizard}
+          onClose={() => setShowCreationWizard(false)}
+          onProjectCreated={handleProjectCreated}
+        />
+      )}
     </div>
   );
 };
