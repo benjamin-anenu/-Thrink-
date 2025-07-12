@@ -17,6 +17,7 @@ interface TaskColumnProps {
   onTaskDragStart: (e: React.DragEvent, task: Task) => void;
   onTaskDragEnd: () => void;
   onStatusChange: (taskId: string, newStatus: string) => void;
+  onTaskClick?: (task: Task) => void;
 }
 
 const TaskColumn: React.FC<TaskColumnProps> = ({
@@ -26,7 +27,8 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   onDragLeave,
   onTaskDragStart,
   onTaskDragEnd,
-  onStatusChange
+  onStatusChange,
+  onTaskClick
 }) => {
   const [isOver, setIsOver] = useState(false);
   
@@ -72,13 +74,14 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
       
       <div className="p-2 flex-1 space-y-2 overflow-auto">
         {column.tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onDragStart={onTaskDragStart}
-            onDragEnd={onTaskDragEnd}
-            onStatusChange={onStatusChange}
-          />
+          <div key={task.id} onClick={() => onTaskClick?.(task)} className="cursor-pointer">
+            <TaskCard
+              task={task}
+              onDragStart={onTaskDragStart}
+              onDragEnd={onTaskDragEnd}
+              onStatusChange={onStatusChange}
+            />
+          </div>
         ))}
       </div>
     </div>
