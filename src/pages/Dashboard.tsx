@@ -1,142 +1,195 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '@/components/Header';
 import MiloAssistant from '@/components/MiloAssistant';
-import TaskBoard from '@/components/TaskBoard';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
+import AIInsights from '@/components/dashboard/AIInsights';
+import AIProjectDashboard from '@/components/AIProjectDashboard';
+import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Calendar, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'lucide-react';
 
 const Dashboard = () => {
+  const [activeProject, setActiveProject] = useState(0);
+
+  const projects = [
+    {
+      name: 'E-commerce Platform Redesign',
+      status: 'In Progress',
+      progress: 85,
+      risk: 'Low',
+      team: 8,
+      deadline: '2 weeks',
+      aiInsight: 'Project is 12% ahead of schedule. Team velocity has increased by 23% this sprint. Recommend maintaining current resource allocation.',
+      color: 'from-blue-500 to-cyan-500',
+      priority: 'High'
+    },
+    {
+      name: 'Mobile App Development',
+      status: 'In Progress',
+      progress: 60,
+      risk: 'Medium',
+      team: 6,
+      deadline: '6 weeks',
+      aiInsight: 'Backend integration phase showing delays. Consider adding 1 senior developer to maintain timeline. 78% probability of on-time delivery.',
+      color: 'from-purple-500 to-pink-500',
+      priority: 'High'
+    },
+    {
+      name: 'Marketing Campaign Q2',
+      status: 'Planning',
+      progress: 30,
+      risk: 'Low',
+      team: 4,
+      deadline: '8 weeks',
+      aiInsight: 'Early planning phase progressing well. Budget allocation is optimal. Recommend stakeholder review in 2 weeks.',
+      color: 'from-green-500 to-emerald-500',
+      priority: 'Medium'
+    }
+  ];
+
+  // Cycle through projects every 5 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveProject((prev) => (prev + 1) % projects.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [projects.length]);
+
+  const upcomingDeadlines = [
+    { project: 'E-commerce Platform', task: 'Final Testing', date: '2024-01-20', priority: 'High' },
+    { project: 'Mobile App', task: 'Beta Release', date: '2024-01-25', priority: 'Medium' },
+    { project: 'Marketing Campaign', task: 'Content Review', date: '2024-02-01', priority: 'Low' }
+  ];
+
+  const recentActivity = [
+    { action: 'Project milestone completed', project: 'E-commerce Platform', time: '2 hours ago' },
+    { action: 'New team member added', project: 'Mobile App', time: '4 hours ago' },
+    { action: 'Budget approved', project: 'Marketing Campaign', time: '1 day ago' },
+    { action: 'Risk assessment updated', project: 'Infrastructure Upgrade', time: '2 days ago' }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
-          <p className="text-muted-foreground">Here's what's happening with your projects today.</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+            <p className="text-muted-foreground">Welcome back! Here's what's happening with your projects.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-green-100 text-green-700">
+              All Systems Operational
+            </Badge>
+            <Button variant="outline" size="sm">
+              <Calendar className="h-4 w-4 mr-2" />
+              Schedule Review
+            </Button>
+          </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">+2 from last month</p>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              AI Insights
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Projects
+            </TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tasks Due Today</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">8</div>
-              <p className="text-xs text-muted-foreground">3 high priority</p>
-            </CardContent>
-          </Card>
+          <TabsContent value="overview" className="space-y-6">
+            <DashboardMetrics />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Upcoming Deadlines */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Upcoming Deadlines
+                  </CardTitle>
+                  <CardDescription>
+                    Critical tasks and milestones approaching
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {upcomingDeadlines.map((deadline, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <p className="font-medium">{deadline.task}</p>
+                        <p className="text-sm text-muted-foreground">{deadline.project}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{deadline.date}</p>
+                        <Badge 
+                          variant="outline" 
+                          className={
+                            deadline.priority === 'High' ? 'text-red-600 border-red-200' :
+                            deadline.priority === 'Medium' ? 'text-yellow-600 border-yellow-200' :
+                            'text-green-600 border-green-200'
+                          }
+                        >
+                          {deadline.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">At Risk Projects</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">Needs attention</p>
-            </CardContent>
-          </Card>
+              {/* Recent Activity */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Recent Activity
+                  </CardTitle>
+                  <CardDescription>
+                    Latest updates across all projects
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {recentActivity.map((activity, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="w-2 h-2 bg-primary rounded-full mt-2" />
+                      <div className="flex-1">
+                        <p className="text-sm">{activity.action}</p>
+                        <p className="text-xs text-muted-foreground">{activity.project} • {activity.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed This Week</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">24</div>
-              <p className="text-xs text-muted-foreground">+12% from last week</p>
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="analytics">
+            <AIProjectDashboard />
+          </TabsContent>
 
-        {/* Project Health Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Project Health Overview</CardTitle>
-              <CardDescription>Current status of your active projects</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">E-commerce Redesign</span>
-                  <Badge variant="default" className="bg-green-500">Healthy</Badge>
-                </div>
-                <Progress value={85} className="h-2" />
-                <p className="text-xs text-muted-foreground">85% complete • On track</p>
-              </div>
+          <TabsContent value="ai-insights">
+            <AIInsights />
+          </TabsContent>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Mobile App Development</span>
-                  <Badge variant="secondary" className="bg-yellow-500">At Risk</Badge>
-                </div>
-                <Progress value={60} className="h-2" />
-                <p className="text-xs text-muted-foreground">60% complete • 3 days behind</p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Marketing Campaign</span>
-                  <Badge variant="default" className="bg-green-500">Healthy</Badge>
-                </div>
-                <Progress value={92} className="h-2" />
-                <p className="text-xs text-muted-foreground">92% complete • Ahead of schedule</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Milo's Insights</CardTitle>
-              <CardDescription>AI-powered recommendations</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  💡 The Mobile App project is falling behind. Consider reallocating resources from the Marketing team.
-                </p>
-              </div>
-              <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  🎯 Great progress on E-commerce Redesign! You're ahead of schedule by 2 days.
-                </p>
-              </div>
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  ⚠️ Three team members are overallocated this week. Review workload distribution.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Task Board */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Tasks</CardTitle>
-            <CardDescription>Manage your current tasks and priorities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TaskBoard />
-          </CardContent>
-        </Card>
+          <TabsContent value="projects">
+            <ProjectDisplay projects={projects} activeProject={activeProject} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <MiloAssistant />
