@@ -1,72 +1,83 @@
 
 import React, { useState } from 'react';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import moment from 'moment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   Clock, Users, Target, Filter
 } from 'lucide-react';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-
-const localizer = momentLocalizer(moment);
 
 interface CalendarEvent {
   id: string;
   title: string;
-  start: Date;
-  end: Date;
-  type: 'milestone' | 'deadline' | 'meeting' | 'task' | 'project-start' | 'project-end';
+  description: string;
+  type: 'call' | 'meeting' | 'deadline' | 'milestone' | 'review';
+  date: Date;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  projectId: string;
+  projectName: string;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
-  project?: string;
-  attendees?: number;
   status?: 'completed' | 'in-progress' | 'pending' | 'overdue';
-  description?: string;
 }
 
-const ProjectCalendar: React.FC = () => {
-  const [currentView, setCurrentView] = useState('month');
-  const [currentDate, setCurrentDate] = useState(new Date());
+interface ProjectCalendarProps {
+  events?: CalendarEvent[];
+  onCreateEvent?: (event: Omit<CalendarEvent, 'id'>) => void;
+  onEventClick?: (event: CalendarEvent) => void;
+}
+
+const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ 
+  events = [], 
+  onCreateEvent, 
+  onEventClick 
+}) => {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
 
-  // Sample events data
-  const events: CalendarEvent[] = [
+  // Sample events data if none provided
+  const defaultEvents: CalendarEvent[] = [
     {
       id: '1',
       title: 'Project Alpha Kickoff',
-      start: new Date(2024, 2, 15, 9, 0),
-      end: new Date(2024, 2, 15, 10, 30),
-      type: 'project-start',
+      description: 'Initial project meeting',
+      type: 'meeting',
+      date: new Date(2024, 2, 15),
+      startTime: '09:00',
+      endTime: '10:30',
+      location: 'Conference Room A',
+      projectId: 'proj-1',
+      projectName: 'Project Alpha',
       priority: 'High',
-      project: 'Project Alpha',
-      attendees: 8,
       status: 'completed'
     },
     {
       id: '2',
       title: 'Design Review Milestone',
-      start: new Date(2024, 2, 22, 14, 0),
-      end: new Date(2024, 2, 22, 16, 0),
+      description: 'Review design mockups',
       type: 'milestone',
-      priority: 'Medium',
-      project: 'E-commerce Platform',
+      date: new Date(2024, 2, 22),
+      startTime: '14:00',
+      endTime: '16:00',
+      projectId: 'proj-2',
+      projectName: 'E-commerce Platform',
       status: 'in-progress'
-    },
-    // ... more events
+    }
   ];
+
+  const displayEvents = events.length > 0 ? events : defaultEvents;
 
   const getEventVariant = (type: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
     switch (type) {
       case 'milestone': return 'success';
       case 'deadline': return 'error';
       case 'meeting': return 'info';
-      case 'task': return 'warning';
-      case 'project-start':
-      case 'project-end': return 'info';
+      case 'call': return 'warning';
+      case 'review': return 'info';
       default: return 'default';
     }
   };
@@ -91,46 +102,17 @@ const ProjectCalendar: React.FC = () => {
     }
   };
 
-  const eventStyleGetter = (event: CalendarEvent) => {
-    let backgroundColor = 'hsl(var(--primary))';
-    let borderColor = 'hsl(var(--primary))';
-    
-    switch (event.type) {
-      case 'milestone':
-        backgroundColor = 'hsl(var(--success))';
-        borderColor = 'hsl(var(--success))';
-        break;
-      case 'deadline':
-        backgroundColor = 'hsl(var(--error))';
-        borderColor = 'hsl(var(--error))';
-        break;
-      case 'meeting':
-        backgroundColor = 'hsl(var(--info))';
-        borderColor = 'hsl(var(--info))';
-        break;
-      case 'task':
-        backgroundColor = 'hsl(var(--warning))';
-        borderColor = 'hsl(var(--warning))';
-        break;
-    }
-
-    return {
-      style: {
-        backgroundColor,
-        borderColor,
-        color: 'hsl(var(--primary-foreground))',
-        border: '1px solid',
-        borderRadius: '4px',
-        opacity: event.status === 'completed' ? 0.7 : 1,
-      }
-    };
-  };
-
   const filteredEvents = filterType === 'all' 
-    ? events 
-    : events.filter(event => event.type === filterType);
+    ? displayEvents 
+    : displayEvents.filter(event => event.type === filterType);
 
-  const eventTypes = ['all', 'milestone', 'deadline', 'meeting', 'task', 'project-start', 'project-end'];
+  const eventTypes = ['all', 'milestone', 'deadline', 'meeting', 'call', 'review'];
+
+  const getEventsForDate = (date: Date) => {
+    return filteredEvents.filter(event => 
+      event.date.toDateString() === date.toDateString()
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -164,72 +146,91 @@ const ProjectCalendar: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* Calendar */}
-      <Card className="bg-card border-border">
-        <CardContent className="p-6">
-          <div className="calendar-container" style={{ height: '600px' }}>
+      {/* Calendar and Events */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Calendar */}
+        <Card className="lg:col-span-2 bg-card border-border">
+          <CardContent className="p-6">
             <Calendar
-              localizer={localizer}
-              events={filteredEvents}
-              startAccessor="start"
-              endAccessor="end"
-              view={currentView}
-              onView={setCurrentView}
-              date={currentDate}
-              onNavigate={setCurrentDate}
-              eventPropGetter={eventStyleGetter}
-              onSelectEvent={setSelectedEvent}
-              views={['month', 'week', 'day', 'agenda']}
-              className="bg-background text-foreground"
-              components={{
-                toolbar: ({ label, onNavigate, onView, view }) => (
-                  <div className="flex items-center justify-between mb-4 p-4 bg-surface-muted rounded-lg border border-border">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onNavigate('PREV')}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onNavigate('TODAY')}
-                      >
-                        Today
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onNavigate('NEXT')}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Events List */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5" />
+              {selectedDate ? `Events for ${selectedDate.toLocaleDateString()}` : 'All Events'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {selectedDate ? (
+                getEventsForDate(selectedDate).length > 0 ? (
+                  getEventsForDate(selectedDate).map(event => (
+                    <div
+                      key={event.id}
+                      className="p-3 border border-border rounded-lg hover:bg-surface-hover cursor-pointer transition-colors"
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        if (onEventClick) onEventClick(event);
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm">{event.title}</h4>
+                        <StatusBadge variant={getEventVariant(event.type)}>
+                          {event.type}
+                        </StatusBadge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {event.startTime && (
+                          <>
+                            <Clock className="h-3 w-3" />
+                            <span>{event.startTime} - {event.endTime}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    
-                    <h2 className="text-xl font-semibold">{label}</h2>
-                    
-                    <div className="flex gap-1">
-                      {['month', 'week', 'day', 'agenda'].map(viewName => (
-                        <Button
-                          key={viewName}
-                          variant={view === viewName ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => onView(viewName)}
-                          className="capitalize"
-                        >
-                          {viewName}
-                        </Button>
-                      ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No events for this date
+                  </p>
+                )
+              ) : (
+                filteredEvents.slice(0, 5).map(event => (
+                  <div
+                    key={event.id}
+                    className="p-3 border border-border rounded-lg hover:bg-surface-hover cursor-pointer transition-colors"
+                    onClick={() => {
+                      setSelectedEvent(event);
+                      if (onEventClick) onEventClick(event);
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">{event.title}</h4>
+                      <StatusBadge variant={getEventVariant(event.type)}>
+                        {event.type}
+                      </StatusBadge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CalendarIcon className="h-3 w-3" />
+                      <span>{event.date.toLocaleDateString()}</span>
                     </div>
                   </div>
-                )
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Event Details Modal */}
       {selectedEvent && (
@@ -249,7 +250,7 @@ const ProjectCalendar: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <StatusBadge variant={getEventVariant(selectedEvent.type)}>
-                {selectedEvent.type.replace('-', ' ')}
+                {selectedEvent.type}
               </StatusBadge>
               {selectedEvent.priority && (
                 <StatusBadge variant={getPriorityVariant(selectedEvent.priority)}>
@@ -266,34 +267,30 @@ const ProjectCalendar: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                <span>{moment(selectedEvent.start).format('MMMM D, YYYY')}</span>
+                <span>{selectedEvent.date.toLocaleDateString()}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {moment(selectedEvent.start).format('h:mm A')} - {moment(selectedEvent.end).format('h:mm A')}
-                </span>
-              </div>
-              {selectedEvent.project && (
+              {selectedEvent.startTime && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <span>{selectedEvent.project}</span>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{selectedEvent.startTime} - {selectedEvent.endTime}</span>
                 </div>
               )}
-              {selectedEvent.attendees && (
+              <div className="flex items-center gap-2 text-sm">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                <span>{selectedEvent.projectName}</span>
+              </div>
+              {selectedEvent.location && (
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{selectedEvent.attendees} attendees</span>
+                  <span>{selectedEvent.location}</span>
                 </div>
               )}
             </div>
 
-            {selectedEvent.description && (
-              <div>
-                <h4 className="text-sm font-medium mb-1">Description</h4>
-                <p className="text-sm text-muted-foreground">{selectedEvent.description}</p>
-              </div>
-            )}
+            <div>
+              <h4 className="text-sm font-medium mb-1">Description</h4>
+              <p className="text-sm text-muted-foreground">{selectedEvent.description}</p>
+            </div>
           </CardContent>
         </Card>
       )}

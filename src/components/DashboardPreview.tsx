@@ -5,6 +5,47 @@ import TaskBoard from './TaskBoard';
 const DashboardPreview = () => {
   const [isVisible, setIsVisible] = useState(false);
 
+  // Mock tasks data with status property
+  const mockTasks = [
+    {
+      id: '1',
+      title: 'Design Landing Page',
+      description: 'Create wireframes and mockups for the new landing page',
+      tag: { color: 'blue', label: 'High' },
+      dueDate: 'Dec 15',
+      assignees: 3,
+      progress: { completed: 2, total: 5 },
+      project: 'Website Redesign',
+      status: 'todo'
+    },
+    {
+      id: '2',
+      title: 'Implement Authentication',
+      description: 'Set up user login and registration system',
+      tag: { color: 'orange', label: 'Medium' },
+      dueDate: 'Dec 20',
+      assignees: 2,
+      progress: { completed: 1, total: 3 },
+      project: 'Backend API',
+      status: 'inProgress'
+    },
+    {
+      id: '3',
+      title: 'Code Review',
+      description: 'Review pull requests for the new features',
+      tag: { color: 'green', label: 'Low' },
+      dueDate: 'Dec 18',
+      assignees: 1,
+      progress: { completed: 3, total: 3 },
+      project: 'Quality Assurance',
+      status: 'review'
+    }
+  ];
+
+  const handleTaskUpdate = (taskId: string, newStatus: string) => {
+    console.log(`Task ${taskId} moved to ${newStatus}`);
+  };
+
   useEffect(() => {
     // Use IntersectionObserver to trigger animation when component enters viewport
     const observer = new IntersectionObserver(
@@ -144,7 +185,9 @@ const DashboardPreview = () => {
                 </div>
                 
                 {/* Kanban Board - replaced static implementation with TaskBoard component */}
-                <TaskBoard className="h-[400px]" />
+                <div className="h-[400px]">
+                  <TaskBoard tasks={mockTasks} onTaskUpdate={handleTaskUpdate} />
+                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,5 @@
+
 import React, { useState, useCallback } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import TaskColumn from './TaskColumn';
 import TaskCard, { Task } from './TaskCard';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
   const columns = [
     { id: 'todo', title: 'To Do' },
@@ -24,27 +24,28 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
     { id: 'completed', title: 'Completed' },
   ];
 
-  const handleDragEnd = useCallback(
-    (result: DropResult) => {
-      const { destination, source, draggableId } = result;
+  const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
+    setDraggedTask(task);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', task.id);
+  }, []);
 
-      if (!destination) {
-        return;
-      }
+  const handleDragEnd = useCallback(() => {
+    setDraggedTask(null);
+  }, []);
 
-      if (
-        destination.droppableId === source.droppableId &&
-        destination.index === source.index
-      ) {
-        return;
-      }
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
 
-      if (destination.droppableId !== source.droppableId) {
-        onTaskUpdate(draggableId, destination.droppableId);
-      }
-    },
-    [onTaskUpdate]
-  );
+  const handleDrop = useCallback((e: React.DragEvent, columnId: string) => {
+    e.preventDefault();
+    if (draggedTask && draggedTask.status !== columnId) {
+      onTaskUpdate(draggedTask.id, columnId);
+    }
+    setDraggedTask(null);
+  }, [draggedTask, onTaskUpdate]);
 
   const filteredTasks = tasks.filter(task => {
     const searchMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -130,59 +131,42 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
 
       {/* Board */}
       <div className="flex-1 overflow-x-auto p-4">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-6 min-w-max">
-            {columns.map(column => (
-              <div key={column.id} className="w-80">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-foreground">{column.title}</h3>
-                  <StatusBadge variant="info">
-                    {filteredTasks.filter(task => task.status === column.id).length}
-                  </StatusBadge>
-                </div>
-                
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-96 p-3 rounded-lg border-2 border-dashed transition-colors ${
-                        snapshot.isDraggingOver 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border bg-surface-muted'
-                      }`}
-                    >
-                      <div className="space-y-3">
-                        {filteredTasks
-                          .filter(task => task.status === column.id)
-                          .map((task, index) => (
-                            <Draggable key={task.id} draggableId={task.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={snapshot.isDragging ? 'rotate-2 scale-105' : ''}
-                                >
-                                  <TaskCard
-                                    task={task}
-                                    onDragStart={() => {}}
-                                    onDragEnd={() => {}}
-                                    onStatusChange={onTaskUpdate}
-                                  />
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                      </div>
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
+        <div className="flex gap-6 min-w-max">
+          {columns.map(column => (
+            <div key={column.id} className="w-80">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-foreground">{column.title}</h3>
+                <StatusBadge variant="info">
+                  {filteredTasks.filter(task => task.status === column.id).length}
+                </StatusBadge>
               </div>
-            ))}
-          </div>
-        </DragDropContext>
+              
+              <div
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, column.id)}
+                className={`min-h-96 p-3 rounded-lg border-2 border-dashed transition-colors ${
+                  draggedTask && draggedTask.status !== column.id
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-border bg-surface-muted'
+                }`}
+              >
+                <div className="space-y-3">
+                  {filteredTasks
+                    .filter(task => task.status === column.id)
+                    .map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onStatusChange={onTaskUpdate}
+                      />
+                    ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

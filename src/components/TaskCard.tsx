@@ -21,13 +21,14 @@ export interface Task {
     score: number;
   };
   project?: string;
+  status: string; // Added missing status property
 }
 
 interface TaskCardProps {
   task: Task;
-  onDragStart: (e: React.DragEvent, task: Task) => void;
-  onDragEnd: () => void;
-  onStatusChange: (taskId: string, newStatus: string) => void;
+  onDragStart?: (e: React.DragEvent, task: Task) => void;
+  onDragEnd?: () => void;
+  onStatusChange?: (taskId: string, newStatus: string) => void;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onDragStart, onDragEnd, onStatusChange }) => {
@@ -53,12 +54,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDragStart, onDragEnd, onSta
       }, 0);
     }
     
-    onDragStart(e, task);
+    if (onDragStart) {
+      onDragStart(e, task);
+    }
   };
 
   const handleDragEnd = () => {
     setIsDragging(false);
-    onDragEnd();
+    if (onDragEnd) {
+      onDragEnd();
+    }
   };
   
   // Generate tag background class using theme-aware colors

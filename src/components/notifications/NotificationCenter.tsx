@@ -1,138 +1,112 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Bell, BellOff, Settings, Trash2, MarkAsRead, Filter,
-  AlertTriangle, Info, CheckCircle, Clock, Users, Target
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { 
+  Bell, 
+  CheckCircle, 
+  AlertTriangle, 
+  Info, 
+  Calendar, 
+  Users, 
+  Settings,
+  Search,
+  Filter,
+  Archive
 } from 'lucide-react';
 
 interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'warning' | 'error' | 'success';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  category: 'project' | 'task' | 'team' | 'system' | 'deadline';
+  type: 'info' | 'warning' | 'success' | 'error';
+  category: 'project' | 'deadline' | 'team' | 'system';
   timestamp: Date;
   read: boolean;
-  actionRequired?: boolean;
+  priority: 'low' | 'medium' | 'high' | 'critical';
   projectId?: string;
-  taskId?: string;
-  userId?: string;
+  projectName?: string;
 }
 
 const NotificationCenter: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: '1',
+      title: 'Project Deadline Approaching',
+      message: 'E-commerce Platform project deadline is in 3 days',
+      type: 'warning',
+      category: 'deadline',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+      read: false,
+      priority: 'high',
+      projectId: 'proj-1',
+      projectName: 'E-commerce Platform'
+    },
+    {
+      id: '2',
+      title: 'New Team Member Added',
+      message: 'Sarah Johnson has been added to the Marketing team',
+      type: 'info',
+      category: 'team',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+      read: false,
+      priority: 'medium'
+    },
+    {
+      id: '3',
+      title: 'Task Completed',
+      message: 'UI Design Review has been marked as completed',
+      type: 'success',
+      category: 'project',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
+      read: true,
+      priority: 'low',
+      projectId: 'proj-2',
+      projectName: 'Mobile App Redesign'
+    }
+  ]);
 
-  useEffect(() => {
-    // Simulate loading notifications
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        title: 'Project Milestone Overdue',
-        message: 'E-commerce Platform milestone "Design Review" is 2 days overdue.',
-        type: 'error',
-        priority: 'high',
-        category: 'project',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        read: false,
-        actionRequired: true,
-        projectId: 'proj-1'
-      },
-      {
-        id: '2',
-        title: 'New Task Assignment',
-        message: 'You have been assigned to "Update User Dashboard" task.',
-        type: 'info',
-        priority: 'medium',
-        category: 'task',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-        read: false,
-        taskId: 'task-1'
-      },
-      {
-        id: '3',
-        title: 'Team Member Added',
-        message: 'Sarah Johnson has joined Project Alpha team.',
-        type: 'success',
-        priority: 'low',
-        category: 'team',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-        read: true,
-        userId: 'user-1'
-      },
-      {
-        id: '4',
-        title: 'Budget Alert',
-        message: 'Project Beta has exceeded 85% of allocated budget.',
-        type: 'warning',
-        priority: 'high',
-        category: 'project',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        read: false,
-        actionRequired: true,
-        projectId: 'proj-2'
-      },
-      {
-        id: '5',
-        title: 'System Maintenance',
-        message: 'Scheduled maintenance will occur tonight from 2-4 AM.',
-        type: 'info',
-        priority: 'medium',
-        category: 'system',
-        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
-        read: true
-      }
-    ];
-    
-    setNotifications(mockNotifications);
-  }, []);
+  const [filter, setFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [notificationSettings, setNotificationSettings] = useState({
+    email: true,
+    push: true,
+    slack: false,
+    deadlines: true,
+    teamUpdates: true,
+    projectMilestones: true,
+    systemAlerts: false
+  });
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'error': return AlertTriangle;
-      case 'warning': return AlertTriangle;
-      case 'success': return CheckCircle;
-      case 'info': return Info;
-      default: return Bell;
+      case 'success': return <CheckCircle className="h-4 w-4 text-success" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-warning" />;
+      case 'error': return <AlertTriangle className="h-4 w-4 text-error" />;
+      default: return <Info className="h-4 w-4 text-info" />;
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-error text-error-foreground';
+      case 'high': return 'bg-warning text-warning-foreground';
+      case 'medium': return 'bg-info text-info-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'project': return Target;
-      case 'task': return CheckCircle;
-      case 'team': return Users;
-      case 'deadline': return Clock;
-      case 'system': return Settings;
-      default: return Bell;
-    }
-  };
-
-  const getTypeVariant = (type: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
-    switch (type) {
-      case 'success': return 'success';
-      case 'warning': return 'warning';
-      case 'error': return 'error';
-      case 'info': return 'info';
-      default: return 'default';
-    }
-  };
-
-  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'default' => {
-    switch (priority) {
-      case 'critical':
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'success';
-      default: return 'default';
+      case 'deadline': return <Calendar className="h-4 w-4" />;
+      case 'team': return <Users className="h-4 w-4" />;
+      case 'system': return <Settings className="h-4 w-4" />;
+      default: return <Info className="h-4 w-4" />;
     }
   };
 
@@ -155,21 +129,27 @@ const NotificationCenter: React.FC = () => {
   };
 
   const filteredNotifications = notifications.filter(notif => {
-    const categoryMatch = selectedCategory === 'all' || notif.category === selectedCategory;
-    const readMatch = !showUnreadOnly || !notif.read;
-    return categoryMatch && readMatch;
+    const matchesFilter = filter === 'all' || 
+                         (filter === 'unread' && !notif.read) ||
+                         (filter === 'read' && notif.read) ||
+                         notif.category === filter;
+    
+    const matchesSearch = notif.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         notif.message.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesFilter && matchesSearch;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const categories = ['all', 'project', 'task', 'team', 'deadline', 'system'];
+  const unreadCount = notifications.filter(notif => !notif.read).length;
 
   const formatTimestamp = (timestamp: Date) => {
     const now = new Date();
     const diff = now.getTime() - timestamp.getTime();
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
 
+    if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     return `${days}d ago`;
@@ -177,110 +157,108 @@ const NotificationCenter: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Card className="bg-surface border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Bell className="h-6 w-6 text-primary" />
+              <Bell className="h-6 w-6" />
               <div>
-                <CardTitle className="text-xl">Notifications</CardTitle>
+                <CardTitle className="text-2xl font-bold">Notification Center</CardTitle>
                 <CardDescription>
-                  Stay updated with your project activities
+                  Stay updated with project activities and team communications
                 </CardDescription>
               </div>
-              {unreadCount > 0 && (
-                <StatusBadge variant="error">
-                  {unreadCount} unread
-                </StatusBadge>
-              )}
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowUnreadOnly(!showUnreadOnly)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                {showUnreadOnly ? 'Show All' : 'Unread Only'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={markAllAsRead}
-                disabled={unreadCount === 0}
-              >
-                <MarkAsRead className="h-4 w-4 mr-2" />
-                Mark All Read
-              </Button>
-            </div>
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="ml-auto">
+                {unreadCount} unread
+              </Badge>
+            )}
           </div>
         </CardHeader>
       </Card>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((category) => {
-          const CategoryIcon = getCategoryIcon(category);
-          return (
-            <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(category)}
-              className="flex items-center gap-2 capitalize"
-            >
-              <CategoryIcon className="h-4 w-4" />
-              {category}
-            </Button>
-          );
-        })}
-      </div>
+      <Tabs defaultValue="notifications" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
 
-      {/* Notifications List */}
-      <Card className="bg-card border-border">
-        <CardContent className="p-0">
-          <ScrollArea className="h-[600px]">
-            <div className="divide-y divide-border">
+        <TabsContent value="notifications" className="space-y-6">
+          {/* Filters and Search */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search notifications..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full sm:w-64"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex gap-1">
+                    {['all', 'unread', 'read', 'project', 'deadline', 'team', 'system'].map(filterType => (
+                      <Button
+                        key={filterType}
+                        variant={filter === filterType ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setFilter(filterType)}
+                        className="capitalize"
+                      >
+                        {filterType}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={markAllAsRead}
+                  variant="outline"
+                  size="sm"
+                  disabled={unreadCount === 0}
+                >
+                  Mark All Read
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notifications List */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-0">
               {filteredNotifications.length === 0 ? (
-                <div className="p-8 text-center">
-                  <BellOff className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No notifications</h3>
-                  <p className="text-muted-foreground">
-                    {showUnreadOnly ? 'No unread notifications' : 'All caught up!'}
-                  </p>
+                <div className="text-center py-8">
+                  <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">No notifications found</p>
                 </div>
               ) : (
-                filteredNotifications.map((notification) => {
-                  const TypeIcon = getTypeIcon(notification.type);
-                  
-                  return (
+                <div className="divide-y divide-border">
+                  {filteredNotifications.map(notification => (
                     <div
                       key={notification.id}
-                      className={`p-4 transition-colors hover:bg-surface-hover ${
-                        !notification.read ? 'bg-surface-muted' : ''
+                      className={`p-4 hover:bg-surface-hover transition-colors ${
+                        !notification.read ? 'bg-primary/5 border-l-4 border-l-primary' : ''
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-lg border ${
-                          notification.type === 'error' ? 'bg-error-muted border-error/20' :
-                          notification.type === 'warning' ? 'bg-warning-muted border-warning/20' :
-                          notification.type === 'success' ? 'bg-success-muted border-success/20' :
-                          'bg-info-muted border-info/20'
-                        }`}>
-                          <TypeIcon className="h-4 w-4" />
+                        <div className="flex-shrink-0 mt-1">
+                          {getTypeIcon(notification.type)}
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <h4 className={`font-medium ${!notification.read ? 'font-semibold' : ''}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className={`font-medium text-sm ${!notification.read ? 'font-semibold' : ''}`}>
                               {notification.title}
                             </h4>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <StatusBadge variant={getPriorityVariant(notification.priority)}>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`text-xs ${getPriorityColor(notification.priority)}`}>
                                 {notification.priority}
-                              </StatusBadge>
+                              </Badge>
                               <span className="text-xs text-muted-foreground">
                                 {formatTimestamp(notification.timestamp)}
                               </span>
@@ -293,48 +271,145 @@ const NotificationCenter: React.FC = () => {
                           
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <StatusBadge variant={getTypeVariant(notification.type)}>
-                                {notification.type}
-                              </StatusBadge>
-                              <StatusBadge variant="default">
+                              {getCategoryIcon(notification.category)}
+                              <span className="text-xs text-muted-foreground capitalize">
                                 {notification.category}
-                              </StatusBadge>
-                              {notification.actionRequired && (
-                                <StatusBadge variant="warning">
-                                  Action Required
-                                </StatusBadge>
+                              </span>
+                              {notification.projectName && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {notification.projectName}
+                                  </span>
+                                </>
                               )}
                             </div>
                             
                             <div className="flex items-center gap-1">
                               {!notification.read && (
                                 <Button
+                                  onClick={() => markAsRead(notification.id)}
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => markAsRead(notification.id)}
+                                  className="h-6 px-2 text-xs"
                                 >
-                                  <MarkAsRead className="h-4 w-4" />
+                                  Mark Read
                                 </Button>
                               )}
                               <Button
+                                onClick={() => deleteNotification(notification.id)}
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => deleteNotification(notification.id)}
+                                className="h-6 px-2 text-xs text-muted-foreground hover:text-error"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Archive className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>
+                Configure how and when you receive notifications
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h4 className="font-medium">Delivery Methods</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="email-notifications">Email Notifications</Label>
+                    <Switch
+                      id="email-notifications"
+                      checked={notificationSettings.email}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, email: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="push-notifications">Push Notifications</Label>
+                    <Switch
+                      id="push-notifications"
+                      checked={notificationSettings.push}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, push: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="slack-notifications">Slack Integration</Label>
+                    <Switch
+                      id="slack-notifications"
+                      checked={notificationSettings.slack}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, slack: checked }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="font-medium">Notification Types</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="deadline-notifications">Project Deadlines</Label>
+                    <Switch
+                      id="deadline-notifications"
+                      checked={notificationSettings.deadlines}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, deadlines: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="team-notifications">Team Updates</Label>
+                    <Switch
+                      id="team-notifications"
+                      checked={notificationSettings.teamUpdates}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, teamUpdates: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="milestone-notifications">Project Milestones</Label>
+                    <Switch
+                      id="milestone-notifications"
+                      checked={notificationSettings.projectMilestones}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, projectMilestones: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="system-notifications">System Alerts</Label>
+                    <Switch
+                      id="system-notifications"
+                      checked={notificationSettings.systemAlerts}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings(prev => ({ ...prev, systemAlerts: checked }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
