@@ -4,26 +4,30 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface StatusBadgeProps {
-  variant: 'success' | 'warning' | 'error' | 'info' | 'default';
-  children: React.ReactNode;
+  status: 'active' | 'inactive' | 'pending';
   className?: string;
 }
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, children, className }) => {
-  const variantClasses = {
-    success: 'bg-success-muted text-success-muted-foreground border-success/20',
-    warning: 'bg-warning-muted text-warning-muted-foreground border-warning/20',
-    error: 'bg-error-muted text-error-muted-foreground border-error/20',
-    info: 'bg-info-muted text-info-muted-foreground border-info/20',
-    default: 'bg-muted text-muted-foreground border-border'
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
+  const getStatusColor = () => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'inactive':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   return (
     <Badge 
       variant="outline" 
-      className={cn(variantClasses[variant], className)}
+      className={cn(getStatusColor(), className)}
     >
-      {children}
+      {status}
     </Badge>
   );
 };
