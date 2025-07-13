@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
@@ -7,6 +6,48 @@
 
 @layer base {
   :root {
+    --background: 0 0% 100%; /* Light mode - pure white */
+    --foreground: 240 10% 3.9%; /* Light mode - dark text */
+
+    --card: 0 0% 100%; /* Light mode - white cards */
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 217 91% 60%; /* Premium blue */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 4.8% 95.9%; /* Light mode - light grey */
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%; /* Light mode - subtle background */
+    --muted-foreground: 240 3.8% 46.1%; /* Light mode - muted text */
+
+    --accent: 240 4.8% 95.9%; /* Light mode - accent background */
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%; /* Light mode - light borders */
+    --input: 240 5.9% 90%; /* Light mode - input backgrounds */
+    --ring: 217 91% 60%; /* Premium focus ring */
+
+    --radius: 0.75rem;
+    
+    /* Premium gradients */
+    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
+    --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+    --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+    
+    /* Light mode shadows */
+    --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+    --shadow-elevated: 0 10px 40px -8px rgba(59, 130, 246, 0.1);
+    --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+
+  .dark {
     --background: 0 0% 3%; /* Ultra dark */
     --foreground: 0 0% 98%; /* Premium white */
 
@@ -34,15 +75,8 @@
     --border: 0 0% 15%; /* Subtle borders */
     --input: 0 0% 12%;
     --ring: 217 91% 60%; /* Premium focus ring */
-
-    --radius: 0.75rem;
     
-    /* Premium gradients */
-    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
-    --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
-    --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
-    
-    /* Shadows */
+    /* Dark mode shadows */
     --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
     --shadow-elevated: 0 10px 40px -8px rgba(59, 130, 246, 0.15);
     --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.3);
@@ -58,6 +92,7 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     letter-spacing: -0.01em;
     font-optical-sizing: auto;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
   
   ::selection {
@@ -71,126 +106,98 @@
     line-height: 1.2;
   }
 
-  /* Ultra Premium AI Processing Background */
+  /* Theme-aware AI Processing Background */
   .ai-processing-bg {
     position: absolute;
     inset: 0;
     overflow: hidden;
     opacity: 0.4;
-    background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+    background: radial-gradient(ellipse at center, hsl(var(--primary) / 0.05) 0%, transparent 70%);
   }
 
   .neural-grid {
     background-image: 
-      linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-      radial-gradient(circle at 25% 25%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+      linear-gradient(hsl(var(--primary) / 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary) / 0.08) 1px, transparent 1px),
+      radial-gradient(circle at 25% 25%, hsl(var(--accent) / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, hsl(var(--accent) / 0.05) 0%, transparent 50%);
     background-size: 60px 60px, 60px 60px, 400px 400px, 400px 400px;
     animation: grid-flow 20s linear infinite;
   }
 
-  .ai-node-interactive {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background: var(--gradient-primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: ai-pulse-premium 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-glow);
-    border: 2px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .ai-node-interactive:hover {
-    transform: scale(1.8) !important;
-    box-shadow: 0 0 50px rgba(59, 130, 246, 0.6);
-    border-color: rgba(59, 130, 246, 0.8);
-  }
-
-  .ai-connection-glow {
-    position: absolute;
-    height: 3px;
-    background: var(--gradient-primary);
-    animation: ai-flow-premium 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
-    border-radius: 2px;
-  }
-
-  .project-intelligence-float {
-    position: absolute;
-    padding: 20px;
-    background: rgba(6, 6, 6, 0.8);
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 16px;
+  /* Premium Glass Effects - Theme Aware */
+  .glass-card {
+    background: hsl(var(--card) / 0.6);
     backdrop-filter: blur(40px);
-    animation: float-intelligence-premium 12s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid hsl(var(--border) / 0.1);
     box-shadow: var(--shadow-premium);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .project-intelligence-float:hover {
-    transform: scale(1.05) translateY(-10px);
+  .glass-card:hover {
+    background: hsl(var(--card) / 0.8);
+    border-color: hsl(var(--primary) / 0.25);
     box-shadow: var(--shadow-elevated);
-    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-4px);
   }
 
-  .code-fragment-enhanced {
-    position: absolute;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 14px;
-    font-weight: 500;
-    opacity: 0.9;
-    animation: code-drift-premium 18s linear infinite;
-    padding: 12px 16px;
-    background: rgba(6, 6, 6, 0.9);
-    border-radius: 12px;
-    border: 1px solid rgba(59, 130, 246, 0.15);
-    backdrop-filter: blur(20px);
-    box-shadow: var(--shadow-premium);
+  /* Table-specific styles */
+  .table-container {
+    @apply bg-card border border-border rounded-lg overflow-hidden;
   }
 
-  /* Premium AI Brain */
-  .ai-brain-enhanced {
-    position: relative;
-    width: 160px;
-    height: 160px;
-    margin: 0 auto;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  .table-header {
+    @apply bg-muted/50 border-b border-border;
   }
 
-  .ai-brain-enhanced:hover {
-    transform: scale(1.1) rotate(5deg);
+  .table-row {
+    @apply border-b border-border hover:bg-muted/30 transition-colors;
   }
 
-  .brain-node {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    background: var(--gradient-primary);
-    border-radius: 50%;
-    animation: brain-pulse-premium 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-    border: 2px solid rgba(59, 130, 246, 0.3);
+  .table-cell {
+    @apply p-4 text-sm align-middle border-r border-border/50 last:border-r-0;
   }
 
-  .brain-connection-glow {
-    position: absolute;
-    height: 4px;
-    background: var(--gradient-primary);
-    opacity: 0.8;
-    animation: brain-flow-premium 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
-    border-radius: 2px;
+  .table-cell-editing {
+    @apply bg-primary/5 ring-1 ring-primary/20;
   }
 
-  /* Premium Animations */
+  /* Enhanced scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Focus improvements */
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Smooth transitions for theme changes */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  /* Keep existing animations and keyframes */
   @keyframes grid-flow {
     0% { 
       background-position: 0px 0px, 0px 0px, 0px 0px, 0px 0px;

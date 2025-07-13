@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -35,16 +36,16 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   onRebaselineTask
 }) => {
   const statusOptions = [
-    { value: 'Not Started', label: 'Not Started', color: 'bg-gray-500' },
-    { value: 'In Progress', label: 'In Progress', color: 'bg-blue-500' },
-    { value: 'Completed', label: 'Completed', color: 'bg-green-500' },
-    { value: 'On Hold', label: 'On Hold', color: 'bg-yellow-500' }
+    { value: 'Not Started', label: 'Not Started', color: 'bg-gray-500 dark:bg-gray-600' },
+    { value: 'In Progress', label: 'In Progress', color: 'bg-blue-500 dark:bg-blue-600' },
+    { value: 'Completed', label: 'Completed', color: 'bg-green-500 dark:bg-green-600' },
+    { value: 'On Hold', label: 'On Hold', color: 'bg-yellow-500 dark:bg-yellow-600' }
   ];
 
   const priorityOptions = [
-    { value: 'Low', label: 'Low', color: 'bg-green-500' },
-    { value: 'Medium', label: 'Medium', color: 'bg-yellow-500' },
-    { value: 'High', label: 'High', color: 'bg-red-500' }
+    { value: 'Low', label: 'Low', color: 'bg-green-500 dark:bg-green-600' },
+    { value: 'Medium', label: 'Medium', color: 'bg-yellow-500 dark:bg-yellow-600' },
+    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' }
   ];
 
   const milestoneOptions = [
@@ -76,10 +77,6 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   const scheduleVariance = getScheduleVariance();
   const delayed = isDelayed();
 
-  const handleProgressUpdate = (newProgress: number) => {
-    onUpdateTask(task.id, { progress: newProgress });
-  };
-
   const handleDurationUpdate = (newDuration: string) => {
     const duration = parseInt(newDuration);
     if (!isNaN(duration) && duration > 0) {
@@ -96,8 +93,8 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   };
 
   return (
-    <TableRow className={delayed ? 'bg-red-50' : ''}>
-      <TableCell className="font-medium">
+    <TableRow className={`table-row ${delayed ? 'bg-red-50 dark:bg-red-950/30' : ''}`}>
+      <TableCell className="table-cell font-medium">
         <InlineTextEdit
           value={task.name}
           onSave={(value) => onUpdateTask(task.id, { name: value })}
@@ -105,7 +102,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineSelectEdit
           value={task.status}
           options={statusOptions}
@@ -114,7 +111,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineSelectEdit
           value={task.priority}
           options={priorityOptions}
@@ -123,7 +120,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineMultiSelectEdit
           value={task.assignedResources}
           options={availableResources}
@@ -132,7 +129,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineDateEdit
           value={task.startDate}
           onSave={(value) => onUpdateTask(task.id, { startDate: value })}
@@ -140,7 +137,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineDateEdit
           value={task.endDate}
           onSave={(value) => onUpdateTask(task.id, { endDate: value })}
@@ -148,7 +145,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineTextEdit
           value={task.duration.toString()}
           onSave={handleDurationUpdate}
@@ -157,14 +154,14 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         <span className="text-xs text-muted-foreground ml-1">days</span>
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <div className="flex items-center gap-2">
           <Progress value={task.progress} className="flex-1" />
           <span className="text-sm font-medium">{task.progress}%</span>
         </div>
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineMultiSelectEdit
           value={task.dependencies}
           options={dependencyOptions}
@@ -173,7 +170,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <InlineSelectEdit
           value={task.milestoneId || ''}
           options={milestoneOptions}
@@ -183,20 +180,20 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         />
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         {delayed && (
-          <Badge variant="outline" className="bg-red-100 text-red-800">
+          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
             +{scheduleVariance}d
           </Badge>
         )}
         {scheduleVariance < 0 && (
-          <Badge variant="outline" className="bg-green-100 text-green-800">
+          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
             {scheduleVariance}d
           </Badge>
         )}
       </TableCell>
       
-      <TableCell>
+      <TableCell className="table-cell">
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

@@ -1,21 +1,23 @@
-
 import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Filter, Download, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { Plus, Filter, ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
+import TableControls from './table/TableControls';
+import ResizableTable from './table/ResizableTable';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -31,6 +33,10 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<string>('startDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // New table state management
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
   const project = getProject(projectId);
   if (!project) return <div>Project not found</div>;
@@ -85,6 +91,16 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     
     return groups;
   }, [project.tasks, project.milestones, sortBy, sortDirection]);
+
+  // Table control handlers
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 2));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
+  const handleZoomReset = () => setZoomLevel(1);
+  const handleDensityChange = (density: 'compact' | 'normal' | 'comfortable') => setTableDensity(density);
+  
+  const handleExport = () => {
+    toast.info('Export functionality will be implemented');
+  };
 
   const handleCreateTask = (task: Omit<ProjectTask, 'id'>) => {
     addTask(projectId, task);
@@ -158,20 +174,17 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="table-container">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Project Task Management
             </CardTitle>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <Button variant="outline" size="sm">
                 <Filter className="h-4 w-4 mr-2" />
                 Filter
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
               </Button>
               <Button 
                 className="flex items-center gap-2"
@@ -187,37 +200,51 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           </div>
         </CardHeader>
         
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+        <CardContent className="p-0">
+          <TableControls
+            zoomLevel={zoomLevel}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+            tableDensity={tableDensity}
+            onDensityChange={handleDensityChange}
+            onExport={handleExport}
+          />
+          
+          <div className="overflow-hidden">
+            <ResizableTable
+              zoomLevel={zoomLevel}
+              tableDensity={tableDensity}
+              className="table-container"
+            >
+              <TableHeader className="table-header">
                 <TableRow>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('name')}>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('name')}>
                     Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('status')}>
                     Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('priority')}>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('priority')}>
                     Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead>Assigned Resources</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('startDate')}>
+                  <TableHead className="table-cell">Assigned Resources</TableHead>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('startDate')}>
                     Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('endDate')}>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('endDate')}>
                     End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('duration')}>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('duration')}>
                     Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('progress')}>
+                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('progress')}>
                     Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </TableHead>
-                  <TableHead>Dependencies</TableHead>
-                  <TableHead>Milestone</TableHead>
-                  <TableHead>Variance</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="table-cell">Dependencies</TableHead>
+                  <TableHead className="table-cell">Milestone</TableHead>
+                  <TableHead className="table-cell">Variance</TableHead>
+                  <TableHead className="table-cell">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -225,8 +252,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                   <React.Fragment key={groupKey}>
                     {/* Milestone Header */}
                     {group.milestone && (
-                      <TableRow className="bg-muted/50">
-                        <td colSpan={12} className="p-4">
+                      <TableRow className="table-row bg-muted/50">
+                        <td colSpan={12} className="table-cell">
                           <Collapsible
                             open={expandedMilestones.has(group.milestone.id)}
                             onOpenChange={() => toggleMilestone(group.milestone.id)}
@@ -237,7 +264,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                               ) : (
                                 <ChevronRight className="h-4 w-4" />
                               )}
-                              <Target className="h-4 w-4 text-blue-600" />
+                              <Target className="h-4 w-4 text-primary" />
                               <span className="font-semibold">{group.milestone.name}</span>
                               <Badge variant="outline" className="ml-2">
                                 {group.tasks.length} tasks
@@ -245,10 +272,10 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                               <Badge 
                                 variant="outline" 
                                 className={`ml-1 ${
-                                  group.milestone.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                  group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                                  group.milestone.status === 'delayed' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
+                                  group.milestone.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                                  group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
+                                  group.milestone.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
+                                  'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                                 }`}
                               >
                                 {group.milestone.status}
@@ -297,12 +324,11 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                   </React.Fragment>
                 ))}
               </TableBody>
-            </Table>
+            </ResizableTable>
           </div>
         </CardContent>
       </Card>
 
-      {/* Task Creation/Edit Dialog */}
       <TaskCreationDialog
         open={showTaskDialog}
         onOpenChange={setShowTaskDialog}
@@ -315,7 +341,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         availableStakeholders={availableStakeholders}
       />
 
-      {/* Rebaseline Dialog */}
       <AlertDialog open={showRebaselineDialog} onOpenChange={setShowRebaselineDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
