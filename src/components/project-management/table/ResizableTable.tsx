@@ -59,12 +59,12 @@ const ResizableTable: React.FC<ResizableTableProps> = ({
       }}
     >
       <Table ref={tableRef} className={`${getDensityClasses()} ${className}`}>
-        {React.Children.map(children, (child, index) => {
+        {React.Children.map(children, (child) => {
           if (React.isValidElement(child) && child.type === TableHeader) {
-            return React.cloneElement(child, {
+            return React.cloneElement(child as React.ReactElement<any>, {
               children: React.Children.map(child.props.children, (headerRow) => {
                 if (React.isValidElement(headerRow) && headerRow.type === TableRow) {
-                  return React.cloneElement(headerRow, {
+                  return React.cloneElement(headerRow as React.ReactElement<any>, {
                     children: React.Children.map(headerRow.props.children, (headerCell, cellIndex) => {
                       if (React.isValidElement(headerCell) && headerCell.type === TableHead) {
                         return (

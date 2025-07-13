@@ -1,16 +1,21 @@
 
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
-import { TableCell, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Edit, Trash2, AlertTriangle } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
-import InlineTextEdit from './InlineTextEdit';
-import InlineSelectEdit from './InlineSelectEdit';
-import InlineDateEdit from './InlineDateEdit';
-import InlineMultiSelectEdit from './InlineMultiSelectEdit';
+import { TableRow } from '@/components/ui/table';
+import {
+  TaskNameCell,
+  TaskStatusCell,
+  TaskPriorityCell,
+  TaskResourcesCell,
+  TaskStartDateCell,
+  TaskEndDateCell,
+  TaskDurationCell,
+  TaskProgressCell,
+  TaskDependenciesCell,
+  TaskMilestoneCell,
+  TaskVarianceCell
+} from './TaskTableCells';
+import TaskActionsCell from './TaskActionsCell';
 
 interface TaskTableRowProps {
   task: ProjectTask;
@@ -28,202 +33,38 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   task,
   milestones,
   availableResources,
-  availableStakeholders,
   allTasks,
   onUpdateTask,
   onDeleteTask,
   onEditTask,
   onRebaselineTask
 }) => {
-  const statusOptions = [
-    { value: 'Not Started', label: 'Not Started', color: 'bg-gray-500 dark:bg-gray-600' },
-    { value: 'In Progress', label: 'In Progress', color: 'bg-blue-500 dark:bg-blue-600' },
-    { value: 'Completed', label: 'Completed', color: 'bg-green-500 dark:bg-green-600' },
-    { value: 'On Hold', label: 'On Hold', color: 'bg-yellow-500 dark:bg-yellow-600' }
-  ];
-
-  const priorityOptions = [
-    { value: 'Low', label: 'Low', color: 'bg-green-500 dark:bg-green-600' },
-    { value: 'Medium', label: 'Medium', color: 'bg-yellow-500 dark:bg-yellow-600' },
-    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' }
-  ];
-
-  const milestoneOptions = [
-    { value: '', label: 'None' },
-    ...milestones.map(m => ({
-      value: m.id,
-      label: m.name
-    }))
-  ];
-
-  const dependencyOptions = allTasks
-    .filter(t => t.id !== task.id)
-    .map(t => ({
-      id: t.id,
-      name: t.name,
-      role: t.status
-    }));
-
   const isDelayed = () => {
     return new Date(task.endDate) > new Date(task.baselineEndDate);
   };
 
-  const getScheduleVariance = () => {
-    const actualEnd = new Date(task.endDate);
-    const baselineEnd = new Date(task.baselineEndDate);
-    return differenceInDays(actualEnd, baselineEnd);
-  };
-
-  const scheduleVariance = getScheduleVariance();
   const delayed = isDelayed();
-
-  const handleDurationUpdate = (newDuration: string) => {
-    const duration = parseInt(newDuration);
-    if (!isNaN(duration) && duration > 0) {
-      // Calculate new end date based on start date + duration
-      const startDate = new Date(task.startDate);
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + duration - 1);
-      
-      onUpdateTask(task.id, { 
-        duration,
-        endDate: endDate.toISOString().split('T')[0]
-      });
-    }
-  };
 
   return (
     <TableRow className={`table-row ${delayed ? 'bg-red-50 dark:bg-red-950/30' : ''}`}>
-      <TableCell className="table-cell font-medium">
-        <InlineTextEdit
-          value={task.name}
-          onSave={(value) => onUpdateTask(task.id, { name: value })}
-          placeholder="Task name"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineSelectEdit
-          value={task.status}
-          options={statusOptions}
-          onSave={(value) => onUpdateTask(task.id, { status: value as any })}
-          placeholder="Select status"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineSelectEdit
-          value={task.priority}
-          options={priorityOptions}
-          onSave={(value) => onUpdateTask(task.id, { priority: value as any })}
-          placeholder="Select priority"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineMultiSelectEdit
-          value={task.assignedResources}
-          options={availableResources}
-          onSave={(value) => onUpdateTask(task.id, { assignedResources: value })}
-          placeholder="Assign resources"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineDateEdit
-          value={task.startDate}
-          onSave={(value) => onUpdateTask(task.id, { startDate: value })}
-          placeholder="Start date"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineDateEdit
-          value={task.endDate}
-          onSave={(value) => onUpdateTask(task.id, { endDate: value })}
-          placeholder="End date"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineTextEdit
-          value={task.duration.toString()}
-          onSave={handleDurationUpdate}
-          placeholder="Duration"
-        />
-        <span className="text-xs text-muted-foreground ml-1">days</span>
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <div className="flex items-center gap-2">
-          <Progress value={task.progress} className="flex-1" />
-          <span className="text-sm font-medium">{task.progress}%</span>
-        </div>
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineMultiSelectEdit
-          value={task.dependencies}
-          options={dependencyOptions}
-          onSave={(value) => onUpdateTask(task.id, { dependencies: value })}
-          placeholder="Add dependencies"
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <InlineSelectEdit
-          value={task.milestoneId || ''}
-          options={milestoneOptions}
-          onSave={(value) => onUpdateTask(task.id, { milestoneId: value || undefined })}
-          placeholder="Select milestone"
-          allowEmpty={true}
-        />
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        {delayed && (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-            +{scheduleVariance}d
-          </Badge>
-        )}
-        {scheduleVariance < 0 && (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-            {scheduleVariance}d
-          </Badge>
-        )}
-      </TableCell>
-      
-      <TableCell className="table-cell">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEditTask(task)}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          {delayed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onRebaselineTask(task)}
-              className="h-8 w-8 p-0 text-orange-500"
-              title="Rebaseline task"
-            >
-              <AlertTriangle className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDeleteTask(task.id)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </TableCell>
+      <TaskNameCell task={task} onUpdateTask={onUpdateTask} />
+      <TaskStatusCell task={task} onUpdateTask={onUpdateTask} />
+      <TaskPriorityCell task={task} onUpdateTask={onUpdateTask} />
+      <TaskResourcesCell task={task} availableResources={availableResources} onUpdateTask={onUpdateTask} />
+      <TaskStartDateCell task={task} onUpdateTask={onUpdateTask} />
+      <TaskEndDateCell task={task} onUpdateTask={onUpdateTask} />
+      <TaskDurationCell task={task} onUpdateTask={onUpdateTask} />
+      <TaskProgressCell task={task} />
+      <TaskDependenciesCell task={task} allTasks={allTasks} onUpdateTask={onUpdateTask} />
+      <TaskMilestoneCell task={task} milestones={milestones} onUpdateTask={onUpdateTask} />
+      <TaskVarianceCell task={task} />
+      <TaskActionsCell 
+        task={task} 
+        isDelayed={delayed}
+        onEditTask={onEditTask}
+        onDeleteTask={onDeleteTask}
+        onRebaselineTask={onRebaselineTask}
+      />
     </TableRow>
   );
 };
