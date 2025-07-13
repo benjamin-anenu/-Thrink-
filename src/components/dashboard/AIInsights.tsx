@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { 
   Brain, Zap, TrendingUp, AlertTriangle, Lightbulb, 
   Target, Users, Clock, DollarSign, Sparkles,
@@ -160,21 +160,21 @@ const AIInsights = () => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'prediction': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'optimization': return 'text-purple-600 bg-purple-50 border-purple-200';
-      case 'risk': return 'text-red-600 bg-red-50 border-red-200';
-      case 'opportunity': return 'text-green-600 bg-green-50 border-green-200';
-      case 'alert': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'prediction': return 'text-info bg-info-muted border-info/20';
+      case 'optimization': return 'text-primary bg-surface-muted border-primary/20';
+      case 'risk': return 'text-error bg-error-muted border-error/20';
+      case 'opportunity': return 'text-success bg-success-muted border-success/20';
+      case 'alert': return 'text-warning bg-warning-muted border-warning/20';
+      default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 
-  const getImpactColor = (impact: string) => {
+  const getImpactBadgeVariant = (impact: string): 'success' | 'warning' | 'error' | 'default' => {
     switch (impact) {
-      case 'high': return 'text-red-600 bg-red-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'low': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'high': return 'error';
+      case 'medium': return 'warning';
+      case 'low': return 'success';
+      default: return 'default';
     }
   };
 
@@ -197,15 +197,15 @@ const AIInsights = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+      {/* Header - Updated with theme-aware background */}
+      <Card className="bg-surface border-border shadow-elevated">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Brain className="h-6 w-6 text-blue-600" />
+              <Brain className="h-6 w-6 text-primary" />
               <div>
                 <CardTitle className="text-xl">AI Insights Dashboard</CardTitle>
-                <CardDescription className="text-blue-700">
+                <CardDescription className="text-muted-foreground">
                   Predictive analytics and intelligent recommendations
                 </CardDescription>
               </div>
@@ -249,7 +249,7 @@ const AIInsights = () => {
           const TypeIcon = getTypeIcon(insight.type);
           
           return (
-            <Card key={insight.id} className="transition-all duration-200 hover:shadow-lg">
+            <Card key={insight.id} className="transition-all duration-200 hover:shadow-lg bg-card border-border">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -259,12 +259,12 @@ const AIInsights = () => {
                     <div>
                       <CardTitle className="text-lg">{insight.title}</CardTitle>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className={getImpactColor(insight.impact)}>
+                        <StatusBadge variant={getImpactBadgeVariant(insight.impact)}>
                           {insight.impact} impact
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
+                        </StatusBadge>
+                        <StatusBadge variant="info">
                           {insight.confidence}% confidence
-                        </Badge>
+                        </StatusBadge>
                       </div>
                     </div>
                   </div>
@@ -275,24 +275,28 @@ const AIInsights = () => {
                 <p className="text-sm text-muted-foreground">{insight.description}</p>
                 
                 {insight.metrics && (
-                  <div className="p-3 bg-muted/30 rounded-lg">
+                  <div className="p-3 bg-surface-muted rounded-lg border border-border/50">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Current:</span>
-                        <span className="ml-2 font-semibold">{insight.metrics.current}%</span>
+                        <span className="ml-2 font-semibold text-foreground">{insight.metrics.current}%</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Projected:</span>
-                        <span className="ml-2 font-semibold">{insight.metrics.projected}%</span>
+                        <span className="ml-2 font-semibold text-foreground">{insight.metrics.projected}%</span>
                       </div>
                     </div>
                     {insight.metrics.improvement && (
                       <div className="mt-2">
                         <Progress 
                           value={Math.abs(insight.metrics.improvement)} 
-                          className={`h-2 ${insight.metrics.improvement > 0 ? 'text-green-600' : 'text-red-600'}`}
+                          className="h-2"
                         />
-                        <p className={`text-xs mt-1 ${insight.metrics.improvement > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-xs mt-1 ${
+                          insight.metrics.improvement > 0 
+                            ? 'text-success-muted-foreground' 
+                            : 'text-error-muted-foreground'
+                        }`}>
                           {insight.metrics.improvement > 0 ? '+' : ''}{insight.metrics.improvement}% change
                         </p>
                       </div>
@@ -314,7 +318,7 @@ const AIInsights = () => {
                   </div>
                 )}
                 
-                <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm">
                       <Eye className="h-4 w-4 mr-1" />
@@ -340,7 +344,7 @@ const AIInsights = () => {
       </div>
 
       {filteredInsights.length === 0 && (
-        <Card>
+        <Card className="bg-card border-border">
           <CardContent className="text-center py-12">
             <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No insights available</h3>

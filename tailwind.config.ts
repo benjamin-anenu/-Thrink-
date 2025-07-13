@@ -26,11 +26,11 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				cosmic: {
-					dark: '#404040', /* Medium grey for light mode */
-					darker: '#303030', /* Darker grey for light mode */
-					light: '#f0f0f0', /* Light grey for light mode */
-					accent: '#606060', /* Medium-dark grey accent */
-					muted: '#909090', /* Medium grey */
+					dark: '#404040',
+					darker: '#303030',
+					light: '#f0f0f0',
+					accent: '#606060',
+					muted: '#909090',
 				},
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
@@ -59,6 +59,38 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
+				},
+				// New semantic status colors
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))',
+					muted: 'hsl(var(--success-muted))',
+					'muted-foreground': 'hsl(var(--success-muted-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))',
+					muted: 'hsl(var(--warning-muted))',
+					'muted-foreground': 'hsl(var(--warning-muted-foreground))'
+				},
+				error: {
+					DEFAULT: 'hsl(var(--error))',
+					foreground: 'hsl(var(--error-foreground))',
+					muted: 'hsl(var(--error-muted))',
+					'muted-foreground': 'hsl(var(--error-muted-foreground))'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))',
+					muted: 'hsl(var(--info-muted))',
+					'muted-foreground': 'hsl(var(--info-muted-foreground))'
+				},
+				// Surface colors for layered UI
+				surface: {
+					DEFAULT: 'hsl(var(--surface))',
+					foreground: 'hsl(var(--surface-foreground))',
+					muted: 'hsl(var(--surface-muted))',
+					hover: 'hsl(var(--surface-hover))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',

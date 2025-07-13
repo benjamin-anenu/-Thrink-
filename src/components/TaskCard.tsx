@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import HealthIndicator from './HealthIndicator';
 
@@ -60,9 +61,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDragStart, onDragEnd, onSta
     onDragEnd();
   };
   
-  // Generate tag background class using only grey/white colors
+  // Generate tag background class using theme-aware colors
   const getTagClass = () => {
-    return 'bg-muted/50 text-muted-foreground border border-border';
+    return 'bg-surface-muted text-muted-foreground border border-border';
   };
 
   return (
@@ -71,7 +72,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDragStart, onDragEnd, onSta
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`task-card p-4 bg-card rounded-md border border-border shadow-sm hover:shadow-md transition-all duration-200 h-44 flex flex-col ${isDragging ? 'dragging' : ''}`}
+      className={`task-card p-4 bg-card rounded-md border border-border shadow-sm hover:shadow-md hover:bg-surface-hover transition-all duration-200 h-44 flex flex-col ${isDragging ? 'dragging' : ''}`}
     >
       {/* Header with tag, health indicator, and due date */}
       <div className="flex justify-between items-start mb-3 flex-shrink-0">
@@ -108,16 +109,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDragStart, onDragEnd, onSta
             {[...Array(task.assignees)].map((_, i) => (
               <div 
                 key={i}
-                className="h-6 w-6 rounded-full bg-muted border-2 border-card"
+                className="h-6 w-6 rounded-full bg-surface-muted border-2 border-card hover:border-primary/20 transition-colors"
                 style={{
-                  backgroundColor: `hsl(var(--muted) / ${0.8 - i * 0.1})`
+                  backgroundColor: `hsl(var(--surface-muted) / ${0.8 - i * 0.1})`
                 }}
               ></div>
             ))}
           </div>
           
           {task.progress.completed === task.progress.total ? (
-            <span className="flex items-center gap-1 text-accent text-xs font-medium">
+            <span className="flex items-center gap-1 text-success text-xs font-medium">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M5 12L10 17L19 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

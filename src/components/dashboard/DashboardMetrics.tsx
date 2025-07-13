@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { 
   TrendingUp, TrendingDown, Calendar, Users, 
   DollarSign, Target, Clock, CheckCircle,
@@ -32,22 +31,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
 }) => {
   const getTrendIcon = () => {
     switch (trend) {
-      case 'up': return <ArrowUpRight className="h-4 w-4 text-green-500" />;
-      case 'down': return <ArrowDownRight className="h-4 w-4 text-red-500" />;
+      case 'up': return <ArrowUpRight className="h-4 w-4 text-success" />;
+      case 'down': return <ArrowDownRight className="h-4 w-4 text-error" />;
       default: return null;
     }
   };
 
   const getTrendColor = () => {
     switch (trend) {
-      case 'up': return 'text-green-600';
-      case 'down': return 'text-red-600';
+      case 'up': return 'text-success';
+      case 'down': return 'text-error';
       default: return 'text-muted-foreground';
     }
   };
 
   return (
-    <Card className="transition-all duration-200 hover:shadow-lg">
+    <Card className="transition-all duration-200 hover:shadow-lg bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className={`h-4 w-4 ${color}`} />
@@ -80,7 +79,7 @@ const DashboardMetrics = () => {
       change: 15.8,
       changeLabel: 'last month',
       icon: Target,
-      color: 'text-blue-500',
+      color: 'text-info',
       trend: 'up' as const
     },
     {
@@ -89,7 +88,7 @@ const DashboardMetrics = () => {
       change: 8.2,
       changeLabel: 'last quarter',
       icon: Users,
-      color: 'text-green-500',
+      color: 'text-success',
       trend: 'up' as const
     },
     {
@@ -98,7 +97,7 @@ const DashboardMetrics = () => {
       change: -5.4,
       changeLabel: 'last month',
       icon: DollarSign,
-      color: 'text-purple-500',
+      color: 'text-primary',
       progress: 78,
       trend: 'down' as const
     },
@@ -108,7 +107,7 @@ const DashboardMetrics = () => {
       change: -12.3,
       changeLabel: 'last quarter',
       icon: Clock,
-      color: 'text-orange-500',
+      color: 'text-warning',
       trend: 'up' as const
     },
     {
@@ -117,7 +116,7 @@ const DashboardMetrics = () => {
       change: 25.0,
       changeLabel: 'last month',
       icon: CheckCircle,
-      color: 'text-emerald-500',
+      color: 'text-success',
       trend: 'up' as const
     },
     {
@@ -126,7 +125,7 @@ const DashboardMetrics = () => {
       change: 0,
       changeLabel: 'this week',
       icon: Calendar,
-      color: 'text-red-500',
+      color: 'text-error',
       trend: 'neutral' as const
     }
   ];
@@ -159,13 +158,13 @@ const DashboardMetrics = () => {
     }
   ];
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
     switch (status) {
-      case 'excellent': return 'text-green-600 bg-green-50 border-green-200';
-      case 'good': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'warning': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'danger': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'excellent': return 'success';
+      case 'good': return 'info';
+      case 'warning': return 'warning';
+      case 'danger': return 'error';
+      default: return 'default';
     }
   };
 
@@ -189,7 +188,7 @@ const DashboardMetrics = () => {
       </div>
 
       {/* Performance Indicators */}
-      <Card>
+      <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -205,9 +204,9 @@ const DashboardMetrics = () => {
               <div key={index} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{indicator.label}</span>
-                  <Badge variant="outline" className={getStatusColor(indicator.status)}>
+                  <StatusBadge variant={getStatusBadgeVariant(indicator.status)}>
                     {indicator.status}
-                  </Badge>
+                  </StatusBadge>
                 </div>
                 
                 <div className="space-y-2">
@@ -234,10 +233,10 @@ const DashboardMetrics = () => {
                           key={star}
                           className={`w-4 h-4 rounded-full ${
                             star <= Math.floor(indicator.value)
-                              ? 'bg-yellow-400'
+                              ? 'bg-warning'
                               : star <= indicator.value
-                              ? 'bg-yellow-200'
-                              : 'bg-gray-200'
+                              ? 'bg-warning/50'
+                              : 'bg-muted'
                           }`}
                         />
                       ))}
@@ -251,7 +250,7 @@ const DashboardMetrics = () => {
       </Card>
 
       {/* Quick Actions */}
-      <Card>
+      <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>
@@ -260,21 +259,11 @@ const DashboardMetrics = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 px-3 py-1">
-              Export Reports
-            </Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 px-3 py-1">
-              Schedule Review
-            </Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 px-3 py-1">
-              Update Resources
-            </Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 px-3 py-1">
-              View Analytics
-            </Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 px-3 py-1">
-              Send Updates
-            </Badge>
+            <StatusBadge variant="default">Export Reports</StatusBadge>
+            <StatusBadge variant="default">Schedule Review</StatusBadge>
+            <StatusBadge variant="default">Update Resources</StatusBadge>
+            <StatusBadge variant="default">View Analytics</StatusBadge>
+            <StatusBadge variant="default">Send Updates</StatusBadge>
           </div>
         </CardContent>
       </Card>

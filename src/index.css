@@ -36,6 +36,33 @@
 
     --radius: 0.75rem;
     
+    /* Enhanced semantic status colors for light mode */
+    --success: 120 60% 50%;
+    --success-foreground: 0 0% 98%;
+    --success-muted: 120 60% 96%;
+    --success-muted-foreground: 120 60% 20%;
+    
+    --warning: 43 96% 56%;
+    --warning-foreground: 43 100% 11%;
+    --warning-muted: 43 100% 95%;
+    --warning-muted-foreground: 43 96% 25%;
+    
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 98%;
+    --error-muted: 0 100% 97%;
+    --error-muted-foreground: 0 84% 25%;
+    
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 98%;
+    --info-muted: 217 100% 97%;
+    --info-muted-foreground: 217 91% 25%;
+    
+    /* Surface colors for layered UI */
+    --surface: 0 0% 100%;
+    --surface-foreground: 240 10% 3.9%;
+    --surface-muted: 240 4.8% 98%;
+    --surface-hover: 240 4.8% 95.9%;
+    
     /* Premium gradients */
     --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
     --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
@@ -75,6 +102,33 @@
     --border: 0 0% 15%; /* Subtle borders */
     --input: 0 0% 12%;
     --ring: 217 91% 60%; /* Premium focus ring */
+    
+    /* Enhanced semantic status colors for dark mode */
+    --success: 120 60% 50%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 120 20% 15%;
+    --success-muted-foreground: 120 60% 80%;
+    
+    --warning: 43 96% 56%;
+    --warning-foreground: 43 100% 11%;
+    --warning-muted: 43 30% 15%;
+    --warning-muted-foreground: 43 96% 80%;
+    
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+    --error-muted: 0 30% 15%;
+    --error-muted-foreground: 0 84% 80%;
+    
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --info-muted: 217 30% 15%;
+    --info-muted-foreground: 217 91% 80%;
+    
+    /* Surface colors for layered UI in dark mode */
+    --surface: 0 0% 6%;
+    --surface-foreground: 0 0% 98%;
+    --surface-muted: 0 0% 10%;
+    --surface-hover: 0 0% 12%;
     
     /* Dark mode shadows */
     --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
