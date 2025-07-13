@@ -1,343 +1,302 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
+import moment from 'moment';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, ChevronLeft, ChevronRight, Search, Plus, Filter } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon,
+  Clock, Users, Target, Filter
+} from 'lucide-react';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+const localizer = momentLocalizer(moment);
 
 interface CalendarEvent {
   id: string;
   title: string;
-  description: string;
-  type: 'call' | 'meeting' | 'deadline' | 'milestone' | 'review';
-  date: Date;
-  startTime?: string;
-  endTime?: string;
-  location?: string;
-  projectId: string;
-  projectName: string;
+  start: Date;
+  end: Date;
+  type: 'milestone' | 'deadline' | 'meeting' | 'task' | 'project-start' | 'project-end';
+  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+  project?: string;
+  attendees?: number;
+  status?: 'completed' | 'in-progress' | 'pending' | 'overdue';
+  description?: string;
 }
 
-interface ProjectCalendarProps {
-  events: CalendarEvent[];
-  onCreateEvent: (event: Omit<CalendarEvent, 'id'>) => void;
-  onEventClick: (event: CalendarEvent) => void;
-}
-
-const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ events, onCreateEvent, onEventClick }) => {
+const ProjectCalendar: React.FC = () => {
+  const [currentView, setCurrentView] = useState('month');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterProject, setFilterProject] = useState<string>('all');
 
-  const eventTypes = [
-    { value: 'call', label: 'Calls', color: 'bg-blue-500' },
-    { value: 'meeting', label: 'Meetings', color: 'bg-green-500' },
-    { value: 'deadline', label: 'Deadlines', color: 'bg-red-500' },
-    { value: 'milestone', label: 'Milestones', color: 'bg-purple-500' },
-    { value: 'review', label: 'Reviews', color: 'bg-orange-500' }
+  // Sample events data
+  const events: CalendarEvent[] = [
+    {
+      id: '1',
+      title: 'Project Alpha Kickoff',
+      start: new Date(2024, 2, 15, 9, 0),
+      end: new Date(2024, 2, 15, 10, 30),
+      type: 'project-start',
+      priority: 'High',
+      project: 'Project Alpha',
+      attendees: 8,
+      status: 'completed'
+    },
+    {
+      id: '2',
+      title: 'Design Review Milestone',
+      start: new Date(2024, 2, 22, 14, 0),
+      end: new Date(2024, 2, 22, 16, 0),
+      type: 'milestone',
+      priority: 'Medium',
+      project: 'E-commerce Platform',
+      status: 'in-progress'
+    },
+    // ... more events
   ];
 
-  const projects = [
-    { id: 'proj-1', name: 'E-commerce Platform' },
-    { id: 'proj-2', name: 'Mobile App Redesign' },
-    { id: 'proj-3', name: 'AI Integration Project' }
-  ];
-
-  const getEventTypeConfig = (type: string) => {
-    return eventTypes.find(et => et.value === type) || eventTypes[0];
+  const getEventVariant = (type: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+    switch (type) {
+      case 'milestone': return 'success';
+      case 'deadline': return 'error';
+      case 'meeting': return 'info';
+      case 'task': return 'warning';
+      case 'project-start':
+      case 'project-end': return 'info';
+      default: return 'default';
+    }
   };
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || event.type === filterType;
-    const matchesProject = filterProject === 'all' || event.projectId === filterProject;
+  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'default' => {
+    switch (priority) {
+      case 'Critical':
+      case 'High': return 'error';
+      case 'Medium': return 'warning';
+      case 'Low': return 'success';
+      default: return 'default';
+    }
+  };
+
+  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+    switch (status) {
+      case 'completed': return 'success';
+      case 'in-progress': return 'info';
+      case 'pending': return 'warning';
+      case 'overdue': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const eventStyleGetter = (event: CalendarEvent) => {
+    let backgroundColor = 'hsl(var(--primary))';
+    let borderColor = 'hsl(var(--primary))';
     
-    return matchesSearch && matchesType && matchesProject;
-  });
+    switch (event.type) {
+      case 'milestone':
+        backgroundColor = 'hsl(var(--success))';
+        borderColor = 'hsl(var(--success))';
+        break;
+      case 'deadline':
+        backgroundColor = 'hsl(var(--error))';
+        borderColor = 'hsl(var(--error))';
+        break;
+      case 'meeting':
+        backgroundColor = 'hsl(var(--info))';
+        borderColor = 'hsl(var(--info))';
+        break;
+      case 'task':
+        backgroundColor = 'hsl(var(--warning))';
+        borderColor = 'hsl(var(--warning))';
+        break;
+    }
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  const getEventsForDate = (date: Date) => {
-    return filteredEvents.filter(event => isSameDay(event.date, date));
+    return {
+      style: {
+        backgroundColor,
+        borderColor,
+        color: 'hsl(var(--primary-foreground))',
+        border: '1px solid',
+        borderRadius: '4px',
+        opacity: event.status === 'completed' ? 0.7 : 1,
+      }
+    };
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(direction === 'prev' ? subMonths(currentDate, 1) : addMonths(currentDate, 1));
-  };
+  const filteredEvents = filterType === 'all' 
+    ? events 
+    : events.filter(event => event.type === filterType);
 
-  const CalendarGrid = () => (
-    <div className="grid grid-cols-7 gap-1">
-      {/* Header */}
-      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-        <div key={day} className="p-2 text-center font-medium text-sm text-muted-foreground">
-          {day}
-        </div>
-      ))}
-      
-      {/* Days */}
-      {monthDays.map(day => {
-        const dayEvents = getEventsForDate(day);
-        const isToday = isSameDay(day, new Date());
-        
-        return (
-          <div
-            key={day.toISOString()}
-            className={`min-h-[100px] p-2 border rounded-lg ${
-              isSameMonth(day, currentDate) ? 'bg-background' : 'bg-muted/30'
-            } ${isToday ? 'ring-2 ring-primary' : ''}`}
-          >
-            <div className="font-medium text-sm mb-1">
-              {format(day, 'd')}
-            </div>
-            <div className="space-y-1">
-              {dayEvents.slice(0, 2).map(event => {
-                const typeConfig = getEventTypeConfig(event.type);
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => onEventClick(event)}
-                    className={`text-xs p-1 rounded cursor-pointer text-white ${typeConfig.color}`}
-                  >
-                    {event.title}
-                  </div>
-                );
-              })}
-              {dayEvents.length > 2 && (
-                <div className="text-xs text-muted-foreground">
-                  +{dayEvents.length - 2} more
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const EventsList = () => {
-    const todayEvents = filteredEvents.filter(event => isSameDay(event.date, new Date()));
-    const upcomingEvents = filteredEvents.filter(event => event.date > new Date()).slice(0, 5);
-
-    return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="font-medium mb-3">Today's Events</h3>
-          {todayEvents.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No events today</p>
-          ) : (
-            <div className="space-y-2">
-              {todayEvents.map(event => {
-                const typeConfig = getEventTypeConfig(event.type);
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => onEventClick(event)}
-                    className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-3 h-3 rounded-full ${typeConfig.color}`} />
-                      <span className="font-medium">{event.title}</span>
-                      <Badge variant="outline">{typeConfig.label}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{event.description}</p>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {event.startTime && `${event.startTime} - ${event.endTime}`}
-                      {event.location && ` • ${event.location}`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h3 className="font-medium mb-3">Upcoming Events</h3>
-          {upcomingEvents.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No upcoming events</p>
-          ) : (
-            <div className="space-y-2">
-              {upcomingEvents.map(event => {
-                const typeConfig = getEventTypeConfig(event.type);
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => onEventClick(event)}
-                    className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-3 h-3 rounded-full ${typeConfig.color}`} />
-                      <span className="font-medium">{event.title}</span>
-                      <Badge variant="outline">{format(event.date, 'MMM d')}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{event.projectName}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const eventTypes = ['all', 'milestone', 'deadline', 'meeting', 'task', 'project-start', 'project-end'];
 
   return (
     <div className="space-y-6">
-      {/* Header Controls */}
-      <Card>
+      {/* Header */}
+      <Card className="bg-surface border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Project Calendar
-            </CardTitle>
-            <Button onClick={() => onCreateEvent({
-              title: '',
-              description: '',
-              type: 'meeting',
-              date: new Date(),
-              projectId: 'proj-1',
-              projectName: 'E-commerce Platform'
-            })}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Event
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              <Input
-                placeholder="Search events..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
-              />
-            </div>
-            
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-40">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {eventTypes.map(type => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterProject} onValueChange={setFilterProject}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Calendar Views */}
-      <Tabs value={view} onValueChange={(v) => setView(v as 'month' | 'week' | 'day')}>
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="month">Month</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="day">Day</TabsTrigger>
-          </TabsList>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="font-semibold text-lg min-w-[200px] text-center">
-              {format(currentDate, 'MMMM yyyy')}
-            </h2>
-            <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <TabsContent value="month" className="space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <CalendarGrid />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="week" className="space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center text-muted-foreground">
-                Week view coming soon...
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="day" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-center text-muted-foreground">
-                    Day view coming soon...
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
             <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Events</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EventsList />
-                </CardContent>
-              </Card>
+              <CardTitle className="text-2xl font-bold">Project Calendar</CardTitle>
+              <CardDescription>
+                Track milestones, deadlines, and important project events
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex gap-1">
+                {eventTypes.map(type => (
+                  <Button
+                    key={type}
+                    variant={filterType === type ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilterType(type)}
+                    className="capitalize"
+                  >
+                    {type.replace('-', ' ')}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Legend */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Event Types</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {eventTypes.map(type => (
-              <div key={type.value} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${type.color}`} />
-                <span className="text-sm">{type.label}</span>
-              </div>
-            ))}
+      </Card>
+
+      {/* Calendar */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-6">
+          <div className="calendar-container" style={{ height: '600px' }}>
+            <Calendar
+              localizer={localizer}
+              events={filteredEvents}
+              startAccessor="start"
+              endAccessor="end"
+              view={currentView}
+              onView={setCurrentView}
+              date={currentDate}
+              onNavigate={setCurrentDate}
+              eventPropGetter={eventStyleGetter}
+              onSelectEvent={setSelectedEvent}
+              views={['month', 'week', 'day', 'agenda']}
+              className="bg-background text-foreground"
+              components={{
+                toolbar: ({ label, onNavigate, onView, view }) => (
+                  <div className="flex items-center justify-between mb-4 p-4 bg-surface-muted rounded-lg border border-border">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onNavigate('PREV')}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onNavigate('TODAY')}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onNavigate('NEXT')}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    <h2 className="text-xl font-semibold">{label}</h2>
+                    
+                    <div className="flex gap-1">
+                      {['month', 'week', 'day', 'agenda'].map(viewName => (
+                        <Button
+                          key={viewName}
+                          variant={view === viewName ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => onView(viewName)}
+                          className="capitalize"
+                        >
+                          {viewName}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              }}
+            />
           </div>
         </CardContent>
       </Card>
+
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <Card className="fixed inset-x-4 top-1/2 transform -translate-y-1/2 z-50 max-w-md mx-auto bg-card border-border shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">{selectedEvent.title}</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedEvent(null)}
+              >
+                ×
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <StatusBadge variant={getEventVariant(selectedEvent.type)}>
+                {selectedEvent.type.replace('-', ' ')}
+              </StatusBadge>
+              {selectedEvent.priority && (
+                <StatusBadge variant={getPriorityVariant(selectedEvent.priority)}>
+                  {selectedEvent.priority}
+                </StatusBadge>
+              )}
+              {selectedEvent.status && (
+                <StatusBadge variant={getStatusVariant(selectedEvent.status)}>
+                  {selectedEvent.status}
+                </StatusBadge>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                <span>{moment(selectedEvent.start).format('MMMM D, YYYY')}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {moment(selectedEvent.start).format('h:mm A')} - {moment(selectedEvent.end).format('h:mm A')}
+                </span>
+              </div>
+              {selectedEvent.project && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span>{selectedEvent.project}</span>
+                </div>
+              )}
+              {selectedEvent.attendees && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span>{selectedEvent.attendees} attendees</span>
+                </div>
+              )}
+            </div>
+
+            {selectedEvent.description && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Description</h4>
+                <p className="text-sm text-muted-foreground">{selectedEvent.description}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

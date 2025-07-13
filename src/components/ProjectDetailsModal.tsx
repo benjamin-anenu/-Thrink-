@@ -1,235 +1,293 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
-import HealthIndicator from './HealthIndicator';
-import { Calendar, Users, Target, Clock, MapPin, DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Calendar, Users, DollarSign, Target, Clock, AlertTriangle,
+  CheckCircle, TrendingUp, FileText, MessageSquare, Settings
+} from 'lucide-react';
 
-interface ProjectDetailsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  project: {
-    id: string;
-    name: string;
-    description: string;
-    status: string;
-    priority: string;
-    progress: number;
-    health: { status: 'green' | 'yellow' | 'red'; score: number };
-    startDate: string;
-    endDate: string;
-    teamSize: number;
-    budget: string;
-    tags: string[];
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: 'Planning' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  progress: number;
+  startDate: string;
+  endDate: string;
+  budget: number;
+  spent: number;
+  team: Array<{ id: string; name: string; role: string; avatar?: string }>;
+  milestones: Array<{ id: string; name: string; date: string; completed: boolean }>;
+  risks: Array<{ id: string; description: string; impact: 'Low' | 'Medium' | 'High'; probability: 'Low' | 'Medium' | 'High' }>;
+  health?: {
+    overall: 'green' | 'yellow' | 'red';
+    schedule: 'green' | 'yellow' | 'red';
+    budget: 'green' | 'yellow' | 'red';
+    scope: 'green' | 'yellow' | 'red';
+    quality: 'green' | 'yellow' | 'red';
   };
 }
 
+interface ProjectDetailsModalProps {
+  project: Project | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit?: (project: Project) => void;
+}
+
 const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
+  project,
   isOpen,
   onClose,
-  project
+  onEdit
 }) => {
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'High': return 'bg-red-500';
-      case 'Medium': return 'bg-yellow-500';
-      case 'Low': return 'bg-green-500';
-      default: return 'bg-muted';
+  const [activeTab, setActiveTab] = useState('overview');
+
+  if (!project) return null;
+
+  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+    switch (status) {
+      case 'Completed': return 'success';
+      case 'In Progress': return 'info';
+      case 'On Hold': return 'warning';
+      case 'Cancelled': return 'error';
+      default: return 'default';
     }
   };
 
-  const getDaysRemaining = () => {
-    const endDate = new Date(project.endDate);
-    const today = new Date();
-    const diffTime = endDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'default' => {
+    switch (priority) {
+      case 'Critical': 
+      case 'High': return 'error';
+      case 'Medium': return 'warning';
+      case 'Low': return 'success';
+      default: return 'default';
+    }
   };
 
-  const getProjectDuration = () => {
-    const startDate = new Date(project.startDate);
-    const endDate = new Date(project.endDate);
-    const diffTime = endDate.getTime() - startDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const getHealthVariant = (health: string): 'success' | 'warning' | 'error' | 'default' => {
+    switch (health) {
+      case 'green': return 'success';
+      case 'yellow': return 'warning';
+      case 'red': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const getRiskVariant = (level: string): 'success' | 'warning' | 'error' | 'default' => {
+    switch (level) {
+      case 'High': return 'error';
+      case 'Medium': return 'warning';
+      case 'Low': return 'success';
+      default: return 'default';
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{project.name}</span>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
-                {project.priority}
-              </Badge>
-              <HealthIndicator health={project.health.status} score={project.health.score} />
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-2xl font-bold">{project.name}</DialogTitle>
+              <p className="text-muted-foreground mt-1">{project.description}</p>
             </div>
-          </DialogTitle>
+            <div className="flex items-center gap-2">
+              <StatusBadge variant={getStatusVariant(project.status)}>
+                {project.status}
+              </StatusBadge>
+              <StatusBadge variant={getPriorityVariant(project.priority)}>
+                {project.priority}
+              </StatusBadge>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Project Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Project Overview</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">{project.description}</p>
-              
-              {/* Status and Progress */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium mb-2">Current Status</p>
-                  <Badge variant="secondary" className="text-sm">{project.status}</Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium mb-2">Overall Progress</p>
-                  <div className="flex items-center gap-2">
-                    <Progress value={project.progress} className="flex-1" />
-                    <span className="text-sm font-medium">{project.progress}%</span>
-                  </div>
-                </div>
-              </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="milestones">Milestones</TabsTrigger>
+            <TabsTrigger value="risks">Risks</TabsTrigger>
+            <TabsTrigger value="health">Health</TabsTrigger>
+          </TabsList>
 
-              {/* Tags */}
-              <div>
-                <p className="text-sm font-medium mb-2">Tags</p>
-                <div className="flex flex-wrap gap-2">
-                  {project.tags.map((tag, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="mt-4 overflow-y-auto">
+            <TabsContent value="overview" className="space-y-6">
+              {/* Project Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Progress</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{project.progress}%</div>
+                    <Progress value={project.progress} className="mt-2" />
+                  </CardContent>
+                </Card>
 
-          {/* Project Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-8 w-8 text-blue-500" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Timeline</p>
-                    <p className="font-semibold">{getProjectDuration()} days</p>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Budget</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${project.spent.toLocaleString()}</div>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                      of ${project.budget.toLocaleString()} ({Math.round((project.spent / project.budget) * 100)}%)
                     </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <Progress value={(project.spent / project.budget) * 100} className="mt-2" />
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Clock className="h-8 w-8 text-orange-500" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Days Remaining</p>
-                    <p className="font-semibold">{getDaysRemaining()} days</p>
-                    <p className="text-xs text-muted-foreground">Until completion</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Timeline</CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm font-medium">{project.startDate}</div>
+                    <div className="text-sm text-muted-foreground">to {project.endDate}</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Users className="h-8 w-8 text-green-500" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Team Size</p>
-                    <p className="font-semibold">{project.teamSize} members</p>
-                    <p className="text-xs text-muted-foreground">Active contributors</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <TabsContent value="team" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {project.team.map(member => (
+                  <Card key={member.id}>
+                    <CardContent className="flex items-center space-x-4 p-4">
+                      <div className="w-10 h-10 bg-surface-muted rounded-full flex items-center justify-center">
+                        {member.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-sm text-muted-foreground">{member.role}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <DollarSign className="h-8 w-8 text-purple-500" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Budget</p>
-                    <p className="font-semibold">{project.budget}</p>
-                    <p className="text-xs text-muted-foreground">Total allocated</p>
-                  </div>
+            <TabsContent value="milestones" className="space-y-4">
+              {project.milestones.map(milestone => (
+                <Card key={milestone.id}>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex items-center space-x-3">
+                      {milestone.completed ? (
+                        <CheckCircle className="h-5 w-5 text-success" />
+                      ) : (
+                        <Clock className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium">{milestone.name}</p>
+                        <p className="text-sm text-muted-foreground">{milestone.date}</p>
+                      </div>
+                    </div>
+                    <StatusBadge variant={milestone.completed ? 'success' : 'default'}>
+                      {milestone.completed ? 'Completed' : 'Pending'}
+                    </StatusBadge>
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="risks" className="space-y-4">
+              {project.risks.map(risk => (
+                <Card key={risk.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium">{risk.description}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-sm text-muted-foreground">Impact:</span>
+                          <StatusBadge variant={getRiskVariant(risk.impact)}>
+                            {risk.impact}
+                          </StatusBadge>
+                          <span className="text-sm text-muted-foreground">Probability:</span>
+                          <StatusBadge variant={getRiskVariant(risk.probability)}>
+                            {risk.probability}
+                          </StatusBadge>
+                        </div>
+                      </div>
+                      <AlertTriangle className="h-5 w-5 text-warning mt-1" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="health" className="space-y-4">
+              {project.health && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Overall Health</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <StatusBadge variant={getHealthVariant(project.health.overall)}>
+                        {project.health.overall.toUpperCase()}
+                      </StatusBadge>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Detailed Health</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Schedule</span>
+                        <StatusBadge variant={getHealthVariant(project.health.schedule)}>
+                          {project.health.schedule}
+                        </StatusBadge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Budget</span>
+                        <StatusBadge variant={getHealthVariant(project.health.budget)}>
+                          {project.health.budget}
+                        </StatusBadge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Scope</span>
+                        <StatusBadge variant={getHealthVariant(project.health.scope)}>
+                          {project.health.scope}
+                        </StatusBadge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Quality</span>
+                        <StatusBadge variant={getHealthVariant(project.health.quality)}>
+                          {project.health.quality}
+                        </StatusBadge>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </TabsContent>
           </div>
+        </Tabs>
 
-          {/* Health Score Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                Project Health
-                <HealthIndicator health={project.health.status} score={project.health.score} />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Overall Health Score</span>
-                  <span className="font-semibold">{project.health.score}/100</span>
-                </div>
-                <Progress value={project.health.score} className="h-2" />
-                <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
-                  <div className="text-center">
-                    <div className="h-2 bg-green-500 rounded mb-1"></div>
-                    <p className="text-muted-foreground">On Track</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="h-2 bg-yellow-500 rounded mb-1"></div>
-                    <p className="text-muted-foreground">At Risk</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="h-2 bg-red-500 rounded mb-1"></div>
-                    <p className="text-muted-foreground">Critical</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="h-2 w-2 bg-green-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm">Task "User Interface Mockups" completed</p>
-                    <p className="text-xs text-muted-foreground">2 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm">New team member assigned to project</p>
-                    <p className="text-xs text-muted-foreground">1 day ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="h-2 w-2 bg-yellow-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm">Milestone "Design Phase" achieved</p>
-                    <p className="text-xs text-muted-foreground">3 days ago</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex justify-end gap-2 pt-4 border-t border-border">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          {onEdit && (
+            <Button onClick={() => onEdit(project)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Edit Project
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

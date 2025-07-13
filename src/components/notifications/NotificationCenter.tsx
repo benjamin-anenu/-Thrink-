@@ -1,381 +1,340 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Bell, 
-  Mail, 
-  MessageSquare, 
-  Settings, 
-  History, 
-  Calendar,
-  Shield,
-  TestTube,
-  Send,
-  CheckCircle,
-  XCircle,
-  Clock,
-  RefreshCw
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Bell, BellOff, Settings, Trash2, MarkAsRead, Filter,
+  AlertTriangle, Info, CheckCircle, Clock, Users, Target
 } from 'lucide-react';
-import BlackoutPeriodsManager from './BlackoutPeriodsManager';
 
-interface NotificationSettings {
-  dailyNotifications: boolean;
-  taskNotifications: boolean;
-  projectNotifications: boolean;
-  automatedReports: boolean;
-  milestoneAlerts: boolean;
-  delayWarnings: boolean;
-}
-
-interface EmailConfig {
-  smtpHost: string;
-  smtpPort: string;
-  username: string;
-  password: string;
-  senderEmail: string;
-  senderName: string;
-}
-
-interface NotificationHistory {
+interface Notification {
   id: string;
-  type: string;
-  recipient: string;
-  subject: string;
-  status: 'delivered' | 'failed' | 'pending';
-  timestamp: string;
-  retryCount: number;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  category: 'project' | 'task' | 'team' | 'system' | 'deadline';
+  timestamp: Date;
+  read: boolean;
+  actionRequired?: boolean;
+  projectId?: string;
+  taskId?: string;
+  userId?: string;
 }
 
 const NotificationCenter: React.FC = () => {
-  const [settings, setSettings] = useState<NotificationSettings>({
-    dailyNotifications: true,
-    taskNotifications: true,
-    projectNotifications: false,
-    automatedReports: true,
-    milestoneAlerts: true,
-    delayWarnings: true
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+
+  useEffect(() => {
+    // Simulate loading notifications
+    const mockNotifications: Notification[] = [
+      {
+        id: '1',
+        title: 'Project Milestone Overdue',
+        message: 'E-commerce Platform milestone "Design Review" is 2 days overdue.',
+        type: 'error',
+        priority: 'high',
+        category: 'project',
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        read: false,
+        actionRequired: true,
+        projectId: 'proj-1'
+      },
+      {
+        id: '2',
+        title: 'New Task Assignment',
+        message: 'You have been assigned to "Update User Dashboard" task.',
+        type: 'info',
+        priority: 'medium',
+        category: 'task',
+        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+        read: false,
+        taskId: 'task-1'
+      },
+      {
+        id: '3',
+        title: 'Team Member Added',
+        message: 'Sarah Johnson has joined Project Alpha team.',
+        type: 'success',
+        priority: 'low',
+        category: 'team',
+        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
+        read: true,
+        userId: 'user-1'
+      },
+      {
+        id: '4',
+        title: 'Budget Alert',
+        message: 'Project Beta has exceeded 85% of allocated budget.',
+        type: 'warning',
+        priority: 'high',
+        category: 'project',
+        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        read: false,
+        actionRequired: true,
+        projectId: 'proj-2'
+      },
+      {
+        id: '5',
+        title: 'System Maintenance',
+        message: 'Scheduled maintenance will occur tonight from 2-4 AM.',
+        type: 'info',
+        priority: 'medium',
+        category: 'system',
+        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        read: true
+      }
+    ];
+    
+    setNotifications(mockNotifications);
+  }, []);
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'error': return AlertTriangle;
+      case 'warning': return AlertTriangle;
+      case 'success': return CheckCircle;
+      case 'info': return Info;
+      default: return Bell;
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'project': return Target;
+      case 'task': return CheckCircle;
+      case 'team': return Users;
+      case 'deadline': return Clock;
+      case 'system': return Settings;
+      default: return Bell;
+    }
+  };
+
+  const getTypeVariant = (type: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+    switch (type) {
+      case 'success': return 'success';
+      case 'warning': return 'warning';
+      case 'error': return 'error';
+      case 'info': return 'info';
+      default: return 'default';
+    }
+  };
+
+  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'default' => {
+    switch (priority) {
+      case 'critical':
+      case 'high': return 'error';
+      case 'medium': return 'warning';
+      case 'low': return 'success';
+      default: return 'default';
+    }
+  };
+
+  const markAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(notif => ({ ...notif, read: true }))
+    );
+  };
+
+  const deleteNotification = (id: string) => {
+    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  };
+
+  const filteredNotifications = notifications.filter(notif => {
+    const categoryMatch = selectedCategory === 'all' || notif.category === selectedCategory;
+    const readMatch = !showUnreadOnly || !notif.read;
+    return categoryMatch && readMatch;
   });
 
-  const [emailConfig, setEmailConfig] = useState<EmailConfig>({
-    smtpHost: 'smtp.gmail.com',
-    smtpPort: '587',
-    username: '',
-    password: '',
-    senderEmail: 'notifications@company.com',
-    senderName: 'Project Management System'
-  });
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const categories = ['all', 'project', 'task', 'team', 'deadline', 'system'];
 
-  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const formatTimestamp = (timestamp: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-  const notificationHistory: NotificationHistory[] = [
-    {
-      id: '1',
-      type: 'Daily Summary',
-      recipient: 'john@company.com',
-      subject: 'Daily Project Summary - March 15, 2024',
-      status: 'delivered',
-      timestamp: '2024-03-15T09:00:00Z',
-      retryCount: 0
-    },
-    {
-      id: '2',
-      type: 'Task Reminder',
-      recipient: 'alice@company.com',
-      subject: 'Task Due Tomorrow: UI Design Review',
-      status: 'failed',
-      timestamp: '2024-03-15T14:30:00Z',
-      retryCount: 2
-    },
-    {
-      id: '3',
-      type: 'Milestone Alert',
-      recipient: 'sarah@company.com',
-      subject: 'Milestone Completed: Beta Release',
-      status: 'delivered',
-      timestamp: '2024-03-15T16:45:00Z',
-      retryCount: 0
-    }
-  ];
-
-  const emailTemplates = [
-    { id: 'daily-summary', name: 'Daily Summary', description: 'Morning project summary' },
-    { id: 'evening-update', name: 'Evening Update', description: 'End of day progress update' },
-    { id: 'task-reminder', name: 'Task Reminder', description: 'Upcoming task notifications' },
-    { id: 'weekly-report', name: 'Weekly Report', description: 'Comprehensive weekly analysis' },
-    { id: 'milestone-alert', name: 'Milestone Alert', description: 'Milestone completion notifications' },
-    { id: 'delay-warning', name: 'Delay Warning', description: 'Potential delay notifications' }
-  ];
-
-  const handleSettingChange = (key: keyof NotificationSettings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleEmailConfigChange = (key: keyof EmailConfig, value: string) => {
-    setEmailConfig(prev => ({ ...prev, [key]: value }));
-  };
-
-  const testEmailConfig = async () => {
-    setIsTestingEmail(true);
-    // Simulate email test
-    setTimeout(() => {
-      setIsTestingEmail(false);
-      // Would show actual test result
-    }, 2000);
-  };
-
-  const retryFailedEmail = (id: string) => {
-    console.log(`Retrying email ${id}`);
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'delivered':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      default:
-        return null;
-    }
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Notifications & Automation</h2>
-        <p className="text-muted-foreground">
-          Configure notification preferences, email settings, and automation rules
-        </p>
+      {/* Header */}
+      <Card className="bg-surface border-border">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Bell className="h-6 w-6 text-primary" />
+              <div>
+                <CardTitle className="text-xl">Notifications</CardTitle>
+                <CardDescription>
+                  Stay updated with your project activities
+                </CardDescription>
+              </div>
+              {unreadCount > 0 && (
+                <StatusBadge variant="error">
+                  {unreadCount} unread
+                </StatusBadge>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                {showUnreadOnly ? 'Show All' : 'Unread Only'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={markAllAsRead}
+                disabled={unreadCount === 0}
+              >
+                <MarkAsRead className="h-4 w-4 mr-2" />
+                Mark All Read
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2">
+        {categories.map((category) => {
+          const CategoryIcon = getCategoryIcon(category);
+          return (
+            <Button
+              key={category}
+              variant={selectedCategory === category ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(category)}
+              className="flex items-center gap-2 capitalize"
+            >
+              <CategoryIcon className="h-4 w-4" />
+              {category}
+            </Button>
+          );
+        })}
       </div>
 
-      <Tabs defaultValue="preferences" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="email">Email Config</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="blackout">Blackout</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="preferences" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notification Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium">General Notifications</h4>
-                  {Object.entries(settings).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <Label htmlFor={key} className="text-sm">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </Label>
-                      <Switch
-                        id={key}
-                        checked={value}
-                        onCheckedChange={() => handleSettingChange(key as keyof NotificationSettings)}
-                      />
-                    </div>
-                  ))}
+      {/* Notifications List */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-0">
+          <ScrollArea className="h-[600px]">
+            <div className="divide-y divide-border">
+              {filteredNotifications.length === 0 ? (
+                <div className="p-8 text-center">
+                  <BellOff className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No notifications</h3>
+                  <p className="text-muted-foreground">
+                    {showUnreadOnly ? 'No unread notifications' : 'All caught up!'}
+                  </p>
                 </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium">Blackout Periods</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-sm">Weekends</Label>
-                      <Switch defaultChecked />
-                    </div>
-                    <div>
-                      <Label className="text-sm">After Hours (6 PM - 8 AM)</Label>
-                      <Switch defaultChecked />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Holidays</Label>
-                      <Switch defaultChecked />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="email" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Email Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium">SMTP Settings</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <Label>SMTP Host</Label>
-                      <Input
-                        value={emailConfig.smtpHost}
-                        onChange={(e) => handleEmailConfigChange('smtpHost', e.target.value)}
-                        placeholder="smtp.gmail.com"
-                      />
-                    </div>
-                    <div>
-                      <Label>SMTP Port</Label>
-                      <Input
-                        value={emailConfig.smtpPort}
-                        onChange={(e) => handleEmailConfigChange('smtpPort', e.target.value)}
-                        placeholder="587"
-                      />
-                    </div>
-                    <div>
-                      <Label>Username</Label>
-                      <Input
-                        value={emailConfig.username}
-                        onChange={(e) => handleEmailConfigChange('username', e.target.value)}
-                        placeholder="your-email@gmail.com"
-                      />
-                    </div>
-                    <div>
-                      <Label>Password</Label>
-                      <Input
-                        type="password"
-                        value={emailConfig.password}
-                        onChange={(e) => handleEmailConfigChange('password', e.target.value)}
-                        placeholder="your-app-password"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium">Sender Information</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <Label>Sender Email</Label>
-                      <Input
-                        value={emailConfig.senderEmail}
-                        onChange={(e) => handleEmailConfigChange('senderEmail', e.target.value)}
-                        placeholder="notifications@company.com"
-                      />
-                    </div>
-                    <div>
-                      <Label>Sender Name</Label>
-                      <Input
-                        value={emailConfig.senderName}
-                        onChange={(e) => handleEmailConfigChange('senderName', e.target.value)}
-                        placeholder="Project Management System"
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={testEmailConfig}
-                    disabled={isTestingEmail}
-                    className="w-full mt-4"
-                  >
-                    {isTestingEmail ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Testing...
-                      </>
-                    ) : (
-                      'Test Configuration'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="templates" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Templates</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {emailTemplates.map((template) => (
-                  <Card key={template.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">{template.name}</h4>
-                        <p className="text-sm text-muted-foreground">{template.description}</p>
-                        <Button variant="outline" size="sm" className="w-full">
-                          Edit Template
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="blackout">
-          <BlackoutPeriodsManager />
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {notificationHistory.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      {getStatusIcon(notification.status)}
-                      <div>
-                        <div className="font-medium">{notification.subject}</div>
-                        <div className="text-sm text-muted-foreground">
-                          To: {notification.recipient} • {new Date(notification.timestamp).toLocaleString()}
+              ) : (
+                filteredNotifications.map((notification) => {
+                  const TypeIcon = getTypeIcon(notification.type);
+                  
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`p-4 transition-colors hover:bg-surface-hover ${
+                        !notification.read ? 'bg-surface-muted' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg border ${
+                          notification.type === 'error' ? 'bg-error-muted border-error/20' :
+                          notification.type === 'warning' ? 'bg-warning-muted border-warning/20' :
+                          notification.type === 'success' ? 'bg-success-muted border-success/20' :
+                          'bg-info-muted border-info/20'
+                        }`}>
+                          <TypeIcon className="h-4 w-4" />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h4 className={`font-medium ${!notification.read ? 'font-semibold' : ''}`}>
+                              {notification.title}
+                            </h4>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <StatusBadge variant={getPriorityVariant(notification.priority)}>
+                                {notification.priority}
+                              </StatusBadge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTimestamp(notification.timestamp)}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {notification.message}
+                          </p>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <StatusBadge variant={getTypeVariant(notification.type)}>
+                                {notification.type}
+                              </StatusBadge>
+                              <StatusBadge variant="default">
+                                {notification.category}
+                              </StatusBadge>
+                              {notification.actionRequired && (
+                                <StatusBadge variant="warning">
+                                  Action Required
+                                </StatusBadge>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-1">
+                              {!notification.read && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markAsRead(notification.id)}
+                                >
+                                  <MarkAsRead className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteNotification(notification.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={notification.status === 'delivered' ? 'default' : 'destructive'}>
-                        {notification.status}
-                      </Badge>
-                      {notification.status === 'failed' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => retryFailedEmail(notification.id)}
-                        >
-                          <RefreshCw className="mr-1 h-3 w-3" />
-                          Retry
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
     </div>
   );
 };
