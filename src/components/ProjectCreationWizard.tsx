@@ -7,6 +7,8 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
 import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
 import ResourcePlanningStep from '@/components/project-creation/ResourcePlanningStep';
+import StakeholderManagementStep from '@/components/project-creation/StakeholderManagementStep';
+import MilestonePlanningStep from '@/components/project-creation/MilestonePlanningStep';
 import AIReviewStep from '@/components/project-creation/AIReviewStep';
 import ProjectInitiationStep from '@/components/project-creation/ProjectInitiationStep';
 
@@ -35,6 +37,9 @@ interface ProjectData {
     budget: string;
     timeline: { start: string; end: string };
   };
+  stakeholders: any[];
+  escalationMatrix: any[];
+  milestones: any[];
   aiGenerated: {
     projectPlan: string;
     riskAssessment: string;
@@ -72,6 +77,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       budget: '',
       timeline: { start: '', end: '' }
     },
+    stakeholders: [],
+    escalationMatrix: [],
+    milestones: [],
     aiGenerated: {
       projectPlan: '',
       riskAssessment: '',
@@ -88,8 +96,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     { number: 1, title: 'Kickoff Session', component: KickoffSessionStep },
     { number: 2, title: 'Requirements Gathering', component: RequirementsGatheringStep },
     { number: 3, title: 'Resource Planning', component: ResourcePlanningStep },
-    { number: 4, title: 'AI Review & Planning', component: AIReviewStep },
-    { number: 5, title: 'Project Initiation', component: ProjectInitiationStep }
+    { number: 4, title: 'Stakeholder Management', component: StakeholderManagementStep },
+    { number: 5, title: 'Milestone Planning', component: MilestonePlanningStep },
+    { number: 6, title: 'AI Review & Planning', component: AIReviewStep },
+    { number: 7, title: 'Project Initiation', component: ProjectInitiationStep }
   ];
 
   const currentStepData = steps[currentStep - 1];

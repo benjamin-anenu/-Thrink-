@@ -1,15 +1,29 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, Mail, Settings, Clock, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { 
+  Bell, 
+  Mail, 
+  MessageSquare, 
+  Settings, 
+  History, 
+  Calendar,
+  Shield,
+  TestTube,
+  Send,
+  CheckCircle,
+  XCircle,
+  Clock,
+  RefreshCw
+} from 'lucide-react';
+import BlackoutPeriodsManager from './BlackoutPeriodsManager';
 
 interface NotificationSettings {
   dailyNotifications: boolean;
@@ -135,15 +149,24 @@ const NotificationCenter: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="settings" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="email-config">Email Config</TabsTrigger>
+      <div>
+        <h2 className="text-2xl font-bold mb-2">Notifications & Automation</h2>
+        <p className="text-muted-foreground">
+          Configure notification preferences, email settings, and automation rules
+        </p>
+      </div>
+
+      <Tabs defaultValue="preferences" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="email">Email Config</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="blackout">Blackout</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="schedule">Schedule</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="settings" className="space-y-6">
+        <TabsContent value="preferences" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -191,7 +214,7 @@ const NotificationCenter: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="email-config" className="space-y-6">
+        <TabsContent value="email" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -304,6 +327,10 @@ const NotificationCenter: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="blackout">
+          <BlackoutPeriodsManager />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-6">

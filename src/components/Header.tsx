@@ -1,18 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Logo from './Logo';
 import WorkspaceSelector from './WorkspaceSelector';
-import { Menu, X, CircleDot, LayoutDashboard, DollarSign, Sun, Moon, FolderOpen, Users, BarChart3, UserCheck } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Switch } from '@/components/ui/switch';
 import { Link, useLocation } from 'react-router-dom';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
+  const { currentWorkspace } = useWorkspace();
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   
   useEffect(() => {
     // Set active page based on current route
@@ -30,17 +32,6 @@ const Header = () => {
     }
   }, [location]);
   
-  useEffect(() => {
-    // Apply the theme to the document when it changes
-    if (isDarkMode) {
-      document.documentElement.classList.remove('light-mode');
-      document.documentElement.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-      document.documentElement.classList.add('light-mode');
-    }
-  }, [isDarkMode]);
-  
   const handleNavClick = (page: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setActivePage(page);
@@ -57,11 +48,8 @@ const Header = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   const isLandingPage = location.pathname === '/';
+  const isLoginPage = location.pathname === '/login';
 
   return (
     <div className="sticky top-0 z-50 pt-8 px-4">
@@ -71,6 +59,14 @@ const Header = () => {
             <Logo />
           </Link>
         </div>
+        
+        {/* Show current workspace prominently on dashboard */}
+        {!isLandingPage && !isLoginPage && currentWorkspace && (
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full">
+            <span className="text-sm text-muted-foreground">Workspace:</span>
+            <span className="font-semibold text-foreground">{currentWorkspace.name}</span>
+          </div>
+        )}
         
         {/* Mobile menu button */}
         <button 
@@ -180,7 +176,7 @@ const Header = () => {
           <div className="md:hidden absolute top-20 left-4 right-4 bg-background/95 backdrop-blur-md py-4 px-6 border border-border rounded-2xl shadow-lg z-50">
             <div className="flex flex-col gap-4">
               {/* Add workspace selector for mobile */}
-              {!isLandingPage && (
+              {!isLandingPage && !isLoginPage && (
                 <div className="pb-2 border-b border-border">
                   <WorkspaceSelector />
                 </div>
@@ -258,17 +254,9 @@ const Header = () => {
               )}
               
               {/* Add theme toggle for mobile */}
-              <div className="flex items-center justify-between px-3 py-2">
+              <div className="flex items-center justify-between px-3 py-2 pt-4 border-t border-border">
                 <span className="text-sm text-muted-foreground">Theme</span>
-                <div className="flex items-center gap-2">
-                  <Moon size={16} className={`${isDarkMode ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <Switch 
-                    checked={!isDarkMode} 
-                    onCheckedChange={toggleTheme} 
-                    className="data-[state=checked]:bg-primary"
-                  />
-                  <Sun size={16} className={`${!isDarkMode ? 'text-primary' : 'text-muted-foreground'}`} />
-                </div>
+                <ThemeToggle />
               </div>
             </div>
           </div>
@@ -276,28 +264,24 @@ const Header = () => {
         
         <div className="hidden md:flex items-center gap-4">
           {/* Add workspace selector for desktop (only when not on landing page) */}
-          {!isLandingPage && <WorkspaceSelector />}
+          {!isLandingPage && !isLoginPage && <WorkspaceSelector />}
           
           {/* Theme toggle for desktop */}
-          <div className="flex items-center gap-2 rounded-full px-3 py-2">
-            <Moon size={18} className={`${isDarkMode ? 'text-primary' : 'text-muted-foreground'}`} />
-            <Switch 
-              checked={!isDarkMode} 
-              onCheckedChange={toggleTheme} 
-              className="data-[state=checked]:bg-primary"
-            />
-            <Sun size={18} className={`${!isDarkMode ? 'text-primary' : 'text-muted-foreground'}`} />
-          </div>
-          <div className="rounded-2xl flex gap-2">
-            <Link to="/login">
-              <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                Log in
+          <ThemeToggle />
+          
+          {/* Show login buttons only on landing page and login page */}
+          {(isLandingPage || isLoginPage) && (
+            <div className="rounded-2xl flex gap-2">
+              <Link to="/login">
+                <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                  Log in
+                </Button>
+              </Link>
+              <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
+                Get Started
               </Button>
-            </Link>
-            <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
-              Get Started
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       </header>
     </div>
