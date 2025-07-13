@@ -1,23 +1,19 @@
+
 import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Filter, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
 import { toast } from 'sonner';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
-import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import TableControls from './table/TableControls';
 import ResizableTable from './table/ResizableTable';
+import GanttTableHeader from './gantt/GanttTableHeader';
+import GanttTableContent from './gantt/GanttTableContent';
+import RebaselineDialog from './gantt/RebaselineDialog';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -34,7 +30,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [sortBy, setSortBy] = useState<string>('startDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
-  // New table state management
+  // Table state management
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
@@ -217,113 +213,24 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
               tableDensity={tableDensity}
               className="table-container"
             >
-              <TableHeader className="table-header">
-                <TableRow>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('name')}>
-                    Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('status')}>
-                    Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('priority')}>
-                    Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="table-cell">Assigned Resources</TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('startDate')}>
-                    Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('endDate')}>
-                    End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('duration')}>
-                    Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('progress')}>
-                    Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="table-cell">Dependencies</TableHead>
-                  <TableHead className="table-cell">Milestone</TableHead>
-                  <TableHead className="table-cell">Variance</TableHead>
-                  <TableHead className="table-cell">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(groupedTasks).map(([groupKey, group]) => (
-                  <React.Fragment key={groupKey}>
-                    {/* Milestone Header */}
-                    {group.milestone && (
-                      <TableRow className="table-row bg-muted/50">
-                        <td colSpan={12} className="table-cell">
-                          <Collapsible
-                            open={expandedMilestones.has(group.milestone.id)}
-                            onOpenChange={() => toggleMilestone(group.milestone.id)}
-                          >
-                            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
-                              {expandedMilestones.has(group.milestone.id) ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                              <Target className="h-4 w-4 text-primary" />
-                              <span className="font-semibold">{group.milestone.name}</span>
-                              <Badge variant="outline" className="ml-2">
-                                {group.tasks.length} tasks
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className={`ml-1 ${
-                                  group.milestone.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                                  group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
-                                  group.milestone.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
-                                  'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                                }`}
-                              >
-                                {group.milestone.status}
-                              </Badge>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              {group.tasks.map((task) => (
-                                <TaskTableRow
-                                  key={task.id}
-                                  task={task}
-                                  milestones={project.milestones}
-                                  availableResources={availableResources}
-                                  availableStakeholders={availableStakeholders}
-                                  allTasks={project.tasks}
-                                  onUpdateTask={handleUpdateTask}
-                                  onDeleteTask={handleDeleteTask}
-                                  onEditTask={handleEditTask}
-                                  onRebaselineTask={handleRebaselineClick}
-                                />
-                              ))}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </td>
-                      </TableRow>
-                    )}
-                    
-                    {/* Tasks without milestone */}
-                    {groupKey === 'no-milestone' && group.tasks.length > 0 && (
-                      <>
-                        {group.tasks.map((task) => (
-                          <TaskTableRow
-                            key={task.id}
-                            task={task}
-                            milestones={project.milestones}
-                            availableResources={availableResources}
-                            availableStakeholders={availableStakeholders}
-                            allTasks={project.tasks}
-                            onUpdateTask={handleUpdateTask}
-                            onDeleteTask={handleDeleteTask}
-                            onEditTask={handleEditTask}
-                            onRebaselineTask={handleRebaselineClick}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
+              <GanttTableHeader
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <GanttTableContent
+                groupedTasks={groupedTasks}
+                expandedMilestones={expandedMilestones}
+                onToggleMilestone={toggleMilestone}
+                allTasks={project.tasks}
+                milestones={project.milestones}
+                availableResources={availableResources}
+                availableStakeholders={availableStakeholders}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onEditTask={handleEditTask}
+                onRebaselineTask={handleRebaselineClick}
+              />
             </ResizableTable>
           </div>
         </CardContent>
@@ -341,54 +248,14 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         availableStakeholders={availableStakeholders}
       />
 
-      <AlertDialog open={showRebaselineDialog} onOpenChange={setShowRebaselineDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rebaseline Task</AlertDialogTitle>
-            <AlertDialogDescription>
-              You are about to rebaseline "{rebaselineTask?.name}". This will update the task's timeline and may affect dependent tasks.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="newStartDate">New Start Date</Label>
-                <Input
-                  id="newStartDate"
-                  type="date"
-                  value={rebaselineData.newStartDate}
-                  onChange={(e) => setRebaselineData(prev => ({ ...prev, newStartDate: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="newEndDate">New End Date</Label>
-                <Input
-                  id="newEndDate"
-                  type="date"
-                  value={rebaselineData.newEndDate}
-                  onChange={(e) => setRebaselineData(prev => ({ ...prev, newEndDate: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="reason">Reason for Rebaseline</Label>
-              <Textarea
-                id="reason"
-                value={rebaselineData.reason}
-                onChange={(e) => setRebaselineData(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder="Explain why this task needs to be rebaselined..."
-                required
-              />
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRebaseline}>
-              Rebaseline Task
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RebaselineDialog
+        open={showRebaselineDialog}
+        onOpenChange={setShowRebaselineDialog}
+        task={rebaselineTask}
+        rebaselineData={rebaselineData}
+        onDataChange={setRebaselineData}
+        onRebaseline={handleRebaseline}
+      />
     </div>
   );
 };
