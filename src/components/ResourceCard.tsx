@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Mail, Phone, MapPin, Clock, UserPlus, Target } from 'lucide-react';
+import { PerformanceTracker } from '@/services/PerformanceTracker';
 
 interface Resource {
   id: string;
@@ -29,6 +29,14 @@ interface ResourceCardProps {
 }
 
 const ResourceCard = ({ resource, onAssignTask }: ResourceCardProps) => {
+  const [performanceProfile, setPerformanceProfile] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const tracker = PerformanceTracker.getInstance();
+    const profile = tracker.getPerformanceProfile(resource.id);
+    setPerformanceProfile(profile);
+  }, [resource.id]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Available': return 'bg-green-500';
@@ -55,6 +63,21 @@ const ResourceCard = ({ resource, onAssignTask }: ResourceCardProps) => {
             <div>
               <CardTitle className="text-lg">{resource.name}</CardTitle>
               <CardDescription>{resource.role}</CardDescription>
+              {/* Performance indicator */}
+              {performanceProfile && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge 
+                    variant={performanceProfile.trend === 'improving' ? 'default' : 
+                           performanceProfile.trend === 'declining' ? 'destructive' : 'secondary'}
+                    className="text-xs"
+                  >
+                    {Math.round(performanceProfile.currentScore)}/100
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {performanceProfile.trend}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <Badge className={`${getStatusColor(resource.status)} text-white`}>
@@ -126,6 +149,31 @@ const ResourceCard = ({ resource, onAssignTask }: ResourceCardProps) => {
           <span className="text-sm font-medium">Rate: {resource.hourlyRate}</span>
           <Clock className="h-4 w-4 text-muted-foreground" />
         </div>
+
+        {/* Performance Insights */}
+        {performanceProfile && (
+          <div>
+            <p className="text-sm font-medium mb-2">AI Performance Insights</p>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span>Performance Score</span>
+                <span className={`font-medium ${
+                  performanceProfile.currentScore > 80 ? 'text-green-600' :
+                  performanceProfile.currentScore > 60 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {Math.round(performanceProfile.currentScore)}/100
+                </span>
+              </div>
+              <Progress value={performanceProfile.currentScore} className="h-1" />
+              {performanceProfile.riskLevel !== 'low' && (
+                <p className="text-xs text-orange-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {performanceProfile.riskLevel} risk level
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">

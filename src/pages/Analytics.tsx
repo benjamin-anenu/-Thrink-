@@ -13,6 +13,9 @@ import ReportScheduler from '@/components/reports/ReportScheduler';
 import ProjectCalendar from '@/components/calendar/ProjectCalendar';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import { toast } from 'sonner';
+import PerformanceDashboard from '@/components/performance/PerformanceDashboard';
+import { simulateAIMonitoring, PerformanceTracker } from '@/services/PerformanceTracker';
+import { startEmailReminderService } from '@/services/EmailReminderService';
 
 interface CalendarEvent {
   id: string;
@@ -31,6 +34,12 @@ const Analytics = () => {
   const [selectedProject, setSelectedProject] = useState('all');
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Initialize AI services
+  React.useEffect(() => {
+    simulateAIMonitoring();
+    startEmailReminderService();
+  }, []);
 
   const mockEvents: CalendarEvent[] = [
     {
@@ -98,13 +107,14 @@ const Analytics = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">Analytics & Reports</h1>
-            <p className="text-muted-foreground">Comprehensive project insights, automated reports, and calendar management</p>
+            <p className="text-muted-foreground">Comprehensive project insights, automated reports, performance tracking, and AI-powered email reminders</p>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -188,6 +198,10 @@ const Analytics = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-6">
+            <PerformanceDashboard />
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">
