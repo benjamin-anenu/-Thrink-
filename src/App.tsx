@@ -9,9 +9,6 @@ import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ResourceProvider } from '@/contexts/ResourceContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
-import { AuthGuard } from '@/components/auth/AuthGuard';
-import { useMultiTabSync } from '@/hooks/useMultiTabSync';
-import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { initializeNotificationIntegration } from '@/services/NotificationIntegrationService';
 import { startEmailReminderService } from '@/services/EmailReminderService';
 import { initializePerformanceTracking } from '@/services/PerformanceTracker';
@@ -51,10 +48,6 @@ initializePerformanceTracking();
 function AppContent() {
   const offlineStatus = useOfflineStatus();
   const { preferences } = useAccessibility();
-  
-  // Initialize multi-tab sync and session timeout
-  useMultiTabSync();
-  useSessionTimeout({ timeoutMinutes: 120, warningMinutes: 10 });
 
   return (
     <div id="main-content" className="min-h-screen bg-background font-sans antialiased">
@@ -66,13 +59,13 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-          <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
-          <Route path="/project/:id" element={<AuthGuard><ProjectManagement /></AuthGuard>} />
-          <Route path="/resources" element={<AuthGuard><Resources /></AuthGuard>} />
-          <Route path="/stakeholders" element={<AuthGuard><Stakeholders /></AuthGuard>} />
-          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/workspaces" element={<AuthGuard><Workspaces /></AuthGuard>} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/project/:id" element={<ProjectManagement />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/stakeholders" element={<Stakeholders />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
@@ -83,12 +76,11 @@ function AppContent() {
   );
 }
 
-
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>

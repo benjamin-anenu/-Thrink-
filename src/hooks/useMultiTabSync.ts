@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
 
 export function useMultiTabSync() {
-  const { user, refreshProfile, forceSignOut } = useAuth()
+  const { user, refreshProfile } = useAuth()
 
   useEffect(() => {
     if (!user) return
@@ -14,13 +14,6 @@ export function useMultiTabSync() {
     // Listen for profile updates from other tabs
     channel.on('broadcast', { event: 'profile_updated' }, () => {
       refreshProfile()
-    })
-    
-    // Listen for forced signout events from other devices
-    channel.on('broadcast', { event: 'force_signout' }, (payload) => {
-      if (payload.payload.userId === user.id) {
-        forceSignOut(payload.payload.reason || 'remote_signout')
-      }
     })
     
     // Subscribe to the channel
@@ -34,27 +27,13 @@ export function useMultiTabSync() {
       }
     }
 
-    // Listen for BroadcastChannel messages (cross-tab signout)
-    let broadcastChannel: BroadcastChannel | null = null
-    if (window.BroadcastChannel) {
-      broadcastChannel = new BroadcastChannel(`auth_${user.id}`)
-      broadcastChannel.addEventListener('message', (event) => {
-        if (event.data.type === 'FORCE_SIGNOUT') {
-          forceSignOut(event.data.reason || 'cross_tab_signout')
-        }
-      })
-    }
-
     window.addEventListener('storage', handleStorageChange)
 
     return () => {
       channel.unsubscribe()
       window.removeEventListener('storage', handleStorageChange)
-      if (broadcastChannel) {
-        broadcastChannel.close()
-      }
     }
-  }, [user, refreshProfile, forceSignOut])
+  }, [user, refreshProfile])
 
   // Function to broadcast profile updates to other tabs
   const broadcastProfileUpdate = () => {

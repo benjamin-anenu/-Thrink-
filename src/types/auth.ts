@@ -47,8 +47,7 @@ export interface AuthContextType {
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>
-  signOut: (options?: { everywhere?: boolean; reason?: string }) => Promise<{ error: any }>
-  forceSignOut: (reason?: string) => Promise<{ error: any }>
+  signOut: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>
   hasRole: (requiredRole: AppRole) => boolean

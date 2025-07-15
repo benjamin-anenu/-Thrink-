@@ -31,26 +31,9 @@ export function UserButton() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true)
-    try {
-      await signOut()
-      navigate('/')
-    } catch (error) {
-      console.error('Signout error:', error)
-    } finally {
-      setIsSigningOut(false)
-    }
-  }
-
-  const handleSignOutEverywhere = async () => {
-    setIsSigningOut(true)
-    try {
-      await signOut({ everywhere: true })
-      navigate('/')
-    } catch (error) {
-      console.error('Signout everywhere error:', error)
-    } finally {
-      setIsSigningOut(false)
-    }
+    await signOut()
+    setIsSigningOut(false)
+    navigate('/')
   }
 
   const getInitials = (name?: string) => {
@@ -173,15 +156,6 @@ export function UserButton() {
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>{isSigningOut ? 'Signing out...' : 'Sign out'}</span>
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          className="cursor-pointer text-destructive focus:text-destructive"
-          onClick={handleSignOutEverywhere}
-          disabled={isSigningOut}
-        >
-          <Shield className="mr-2 h-4 w-4" />
-          <span>{isSigningOut ? 'Signing out...' : 'Sign out everywhere'}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
