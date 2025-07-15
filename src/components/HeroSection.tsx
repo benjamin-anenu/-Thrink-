@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import MiloAssistant from './MiloAssistant';
+import TinkAssistant from './TinkAssistant';
 import AIBackgroundEffects from './hero/AIBackgroundEffects';
 import HeroBadge from './hero/HeroBadge';
 import HeroHeading from './hero/HeroHeading';
@@ -86,7 +85,7 @@ const HeroSection = () => {
         </div>
       </div>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </section>
   );
 };

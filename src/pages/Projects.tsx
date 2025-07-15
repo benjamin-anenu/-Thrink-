@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import HealthIndicator from '@/components/HealthIndicator';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import BulkImportModal from '@/components/BulkImportModal';
@@ -336,7 +335,7 @@ const Projects = () => {
         </Tabs>
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
 
       {showCreationWizard && (
         <ProjectCreationWizard

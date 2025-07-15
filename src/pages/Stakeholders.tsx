@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
 import EscalationMatrix from '@/components/EscalationMatrix';
@@ -313,7 +312,7 @@ const Stakeholders = () => {
         />
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };
