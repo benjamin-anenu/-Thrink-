@@ -15,74 +15,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useProject } from '@/contexts/ProjectContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Projects = () => {
   const navigate = useNavigate();
+  const { projects, addProject } = useProject();
+  const { currentWorkspace } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
-
-  const projects = [
-    {
-      id: '1',
-      name: 'E-commerce Platform Redesign',
-      description: 'Complete overhaul of the user interface and user experience for our main e-commerce platform.',
-      status: 'In Progress',
-      priority: 'High',
-      progress: 85,
-      health: { status: 'green' as const, score: 92 },
-      startDate: '2024-01-15',
-      endDate: '2024-03-30',
-      teamSize: 8,
-      budget: '$125,000',
-      tags: ['Frontend', 'UX/UI', 'E-commerce']
-    },
-    {
-      id: '2',
-      name: 'Mobile App Development',
-      description: 'Native mobile application for iOS and Android platforms with core functionality.',
-      status: 'In Progress',
-      priority: 'High',
-      progress: 60,
-      health: { status: 'yellow' as const, score: 68 },
-      startDate: '2024-02-01',
-      endDate: '2024-05-15',
-      teamSize: 6,
-      budget: '$200,000',
-      tags: ['Mobile', 'iOS', 'Android']
-    },
-    {
-      id: '3',
-      name: 'Marketing Campaign Q2',
-      description: 'Comprehensive marketing strategy and execution for Q2 product launches.',
-      status: 'In Progress',
-      priority: 'Medium',
-      progress: 92,
-      health: { status: 'green' as const, score: 95 },
-      startDate: '2024-03-01',
-      endDate: '2024-06-30',
-      teamSize: 4,
-      budget: '$75,000',
-      tags: ['Marketing', 'Strategy', 'Content']
-    },
-    {
-      id: '4',
-      name: 'Infrastructure Upgrade',
-      description: 'Server infrastructure modernization and cloud migration project.',
-      status: 'Planning',
-      priority: 'Medium',
-      progress: 25,
-      health: { status: 'green' as const, score: 88 },
-      startDate: '2024-04-01',
-      endDate: '2024-07-31',
-      teamSize: 5,
-      budget: '$150,000',
-      tags: ['Infrastructure', 'Cloud', 'DevOps']
-    }
-  ];
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,8 +43,29 @@ const Projects = () => {
     }
   };
 
-  const handleProjectCreated = (project: any) => {
-    console.log('New project created:', project);
+  const handleProjectCreated = (projectData: any) => {
+    console.log('Creating new project:', projectData);
+    
+    // Transform wizard data to ProjectData format
+    const newProject = {
+      name: projectData.name || 'New Project',
+      description: projectData.description || '',
+      status: 'Planning' as const,
+      priority: 'Medium' as const,
+      progress: 0,
+      health: { status: 'green' as const, score: 100 },
+      startDate: projectData.resources?.timeline?.start || new Date().toISOString().split('T')[0],
+      endDate: projectData.resources?.timeline?.end || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      teamSize: projectData.resources?.teamMembers?.length || 1,
+      budget: projectData.resources?.budget || '$0',
+      tags: projectData.tags || ['New'],
+      resources: projectData.resources?.teamMembers?.map((m: any) => m.id) || [],
+      stakeholders: projectData.stakeholders?.map((s: any) => s.id) || [],
+      milestones: projectData.milestones || [],
+      tasks: []
+    };
+
+    addProject(newProject);
     setShowCreationWizard(false);
   };
 
@@ -124,7 +90,10 @@ const Projects = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">Projects</h1>
-            <p className="text-muted-foreground">Manage and track all your projects in one place</p>
+            <p className="text-muted-foreground">
+              {currentWorkspace ? `${currentWorkspace.name} - ` : ''}
+              Manage and track all your projects in one place
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Button 

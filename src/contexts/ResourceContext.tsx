@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { dataPersistence } from '@/services/DataPersistence';
 import { contextSynchronizer } from '@/services/ContextSynchronizer';
 import { eventBus } from '@/services/EventBus';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export interface Resource {
   id: string;
@@ -18,6 +18,7 @@ export interface Resource {
   hourlyRate: string;
   utilization: number;
   status: 'Available' | 'Busy' | 'Overallocated';
+  workspaceId: string;
   createdAt?: string;
   updatedAt?: string;
   lastActive?: string;
@@ -47,8 +48,14 @@ export const useResources = () => {
 };
 
 export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [allResources, setAllResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(false);
+  const { currentWorkspace } = useWorkspace();
+
+  // Filter resources by current workspace
+  const resources = allResources.filter(resource => 
+    currentWorkspace ? resource.workspaceId === currentWorkspace.id : true
+  );
 
   // Helper function to ensure resource has required array properties
   const sanitizeResource = (resource: any): Resource => {
@@ -56,6 +63,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...resource,
       skills: Array.isArray(resource.skills) ? resource.skills : [],
       currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : [],
+      workspaceId: resource.workspaceId || currentWorkspace?.id || 'ws-1',
       createdAt: resource.createdAt || new Date().toISOString(),
       updatedAt: resource.updatedAt || new Date().toISOString(),
       lastActive: resource.lastActive || new Date().toISOString()
@@ -67,7 +75,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const savedResources = dataPersistence.getData<Resource[]>('resources');
     if (savedResources) {
       const sanitizedResources = savedResources.map(sanitizeResource);
-      setResources(sanitizedResources);
+      setAllResources(sanitizedResources);
     } else {
       initializeSampleData();
     }
@@ -76,13 +84,14 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Register with context synchronizer
   useEffect(() => {
     const unregister = contextSynchronizer.registerContext('resources', (updatedResources: Resource[]) => {
-      setResources(updatedResources);
+      setAllResources(updatedResources);
     });
 
     return unregister;
   }, []);
 
   const initializeSampleData = () => {
+    const workspaceId = currentWorkspace?.id || 'ws-1';
     const sampleResources: Resource[] = [
       {
         id: 'sarah',
@@ -93,11 +102,12 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         phone: '+1 (555) 123-4567',
         location: 'New York, NY',
         skills: ['React', 'TypeScript', 'CSS', 'UI/UX'],
-        availability: 75,
-        currentProjects: ['Project Alpha'],
+        availability: 80,
+        currentProjects: ['proj-ecommerce-2024'],
         hourlyRate: '$85/hr',
-        utilization: 85,
+        utilization: 75,
         status: 'Available',
+        workspaceId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastActive: new Date().toISOString()
@@ -111,11 +121,12 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         phone: '+1 (555) 234-5678',
         location: 'San Francisco, CA',
         skills: ['Node.js', 'Python', 'PostgreSQL', 'AWS'],
-        availability: 40,
-        currentProjects: ['Project Alpha'],
+        availability: 60,
+        currentProjects: ['proj-ecommerce-2024'],
         hourlyRate: '$90/hr',
-        utilization: 95,
+        utilization: 85,
         status: 'Busy',
+        workspaceId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastActive: new Date().toISOString()
@@ -130,10 +141,11 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         location: 'Austin, TX',
         skills: ['Figma', 'User Research', 'Prototyping', 'Design Systems'],
         availability: 90,
-        currentProjects: ['Project Alpha'],
+        currentProjects: ['proj-ecommerce-2024'],
         hourlyRate: '$75/hr',
-        utilization: 60,
+        utilization: 65,
         status: 'Available',
+        workspaceId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastActive: new Date().toISOString()
@@ -147,51 +159,34 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         phone: '+1 (555) 456-7890',
         location: 'Seattle, WA',
         skills: ['Agile', 'Scrum', 'Risk Management', 'Stakeholder Management'],
-        availability: 60,
-        currentProjects: ['Project Alpha'],
+        availability: 70,
+        currentProjects: ['proj-ecommerce-2024'],
         hourlyRate: '$70/hr',
-        utilization: 80,
+        utilization: 70,
         status: 'Available',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
-      },
-      {
-        id: 'james',
-        name: 'James Wilson',
-        role: 'DevOps Engineer',
-        department: 'Engineering',
-        email: 'james.wilson@company.com',
-        phone: '+1 (555) 678-9012',
-        location: 'Denver, CO',
-        skills: ['Docker', 'Kubernetes', 'AWS', 'CI/CD'],
-        availability: 20,
-        currentProjects: ['Project Alpha'],
-        hourlyRate: '$95/hr',
-        utilization: 100,
-        status: 'Overallocated',
+        workspaceId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastActive: new Date().toISOString()
       }
     ];
-    setResources(sampleResources);
+    setAllResources(sampleResources);
     dataPersistence.persistData('resources', sampleResources, 'resource_context');
   };
 
   // Save resources to persistent storage whenever resources change
   useEffect(() => {
-    if (resources.length > 0) {
-      dataPersistence.persistData('resources', resources, 'resource_context');
+    if (allResources.length > 0) {
+      dataPersistence.persistData('resources', allResources, 'resource_context');
     }
-  }, [resources]);
+  }, [allResources]);
 
   const getResource = (id: string): Resource | null => {
     return resources.find(r => r.id === id) || null;
   };
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
-    setResources(prev => prev.map(r => r.id === id ? sanitizeResource({ 
+    setAllResources(prev => prev.map(r => r.id === id ? sanitizeResource({ 
       ...r, 
       ...updates,
       updatedAt: new Date().toISOString()
@@ -208,9 +203,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addResource = (resource: Omit<Resource, 'id'>) => {
     const newResource: Resource = sanitizeResource({
       ...resource,
-      id: `resource-${Date.now()}`
+      id: `resource-${Date.now()}`,
+      workspaceId: currentWorkspace?.id || 'ws-1'
     });
-    setResources(prev => [...prev, newResource]);
+    setAllResources(prev => [...prev, newResource]);
 
     // Emit creation event
     eventBus.emit('context_updated', {
@@ -220,7 +216,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const assignToProject = (resourceId: string, projectId: string) => {
-    setResources(prev => prev.map(r => 
+    setAllResources(prev => prev.map(r => 
       r.id === resourceId 
         ? { 
           ...r, 
@@ -240,7 +236,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const removeFromProject = (resourceId: string, projectId: string) => {
-    setResources(prev => prev.map(r => 
+    setAllResources(prev => prev.map(r => 
       r.id === resourceId 
         ? { 
           ...r, 
@@ -259,7 +255,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateUtilization = (resourceId: string, utilization: number) => {
-    setResources(prev => prev.map(r => 
+    setAllResources(prev => prev.map(r => 
       r.id === resourceId 
         ? { 
             ...r, 

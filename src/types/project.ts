@@ -1,8 +1,35 @@
 
+export interface ProjectData {
+  id: string;
+  name: string;
+  description: string;
+  status: 'Planning' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  progress: number;
+  health: ProjectHealth;
+  startDate: string;
+  endDate: string;
+  teamSize: number;
+  budget: string;
+  tags: string[];
+  workspaceId: string; // Add workspace association
+  resources: string[];
+  stakeholders: string[];
+  milestones: ProjectMilestone[];
+  tasks: ProjectTask[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProjectHealth {
+  status: 'red' | 'yellow' | 'green';
+  score: number;
+}
+
 export interface ProjectTask {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   startDate: string;
   endDate: string;
   baselineStartDate: string;
@@ -11,41 +38,21 @@ export interface ProjectTask {
   assignedResources: string[];
   assignedStakeholders: string[];
   dependencies: string[];
-  priority: 'High' | 'Medium' | 'Low';
-  status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled';
   milestoneId?: string;
-  parentTaskId?: string;
-  duration: number; // in days
+  duration: number;
 }
 
 export interface ProjectMilestone {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   date: string;
   baselineDate: string;
-  status: 'completed' | 'in-progress' | 'upcoming' | 'delayed';
-  tasks: string[]; // task IDs
+  status: 'upcoming' | 'in-progress' | 'completed' | 'overdue';
+  tasks: string[];
   progress: number;
-}
-
-export interface ProjectData {
-  id: string;
-  name: string;
-  description: string;
-  status: string;
-  priority: string;
-  progress: number;
-  health: { status: 'green' | 'yellow' | 'red'; score: number };
-  startDate: string;
-  endDate: string;
-  teamSize: number;
-  budget: string;
-  tags: string[];
-  milestones: ProjectMilestone[];
-  tasks: ProjectTask[];
-  resources: string[];
-  stakeholders: string[];
 }
 
 export interface RebaselineRequest {
@@ -54,4 +61,19 @@ export interface RebaselineRequest {
   newEndDate: string;
   reason: string;
   affectedTasks: string[];
+}
+
+export interface ProjectNotification {
+  id: string;
+  projectId: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  title: string;
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  category: 'task' | 'milestone' | 'resource' | 'deadline' | 'project';
+  priority: 'low' | 'medium' | 'high';
+  actionRequired?: boolean;
+  relatedTaskId?: string;
+  relatedResourceId?: string;
 }

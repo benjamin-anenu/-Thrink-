@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { dataPersistence } from '@/services/DataPersistence';
 import { contextSynchronizer } from '@/services/ContextSynchronizer';
 import { eventBus } from '@/services/EventBus';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export interface Stakeholder {
   id: string;
@@ -17,6 +17,7 @@ export interface Stakeholder {
   projects: string[];
   lastContact: string;
   status: 'Active' | 'Inactive';
+  workspaceId: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -44,93 +45,95 @@ export const useStakeholders = () => {
 };
 
 export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  const [allStakeholders, setAllStakeholders] = useState<Stakeholder[]>([]);
   const [loading, setLoading] = useState(false);
+  const { currentWorkspace } = useWorkspace();
+
+  // Filter stakeholders by current workspace
+  const stakeholders = allStakeholders.filter(stakeholder => 
+    currentWorkspace ? stakeholder.workspaceId === currentWorkspace.id : true
+  );
 
   // Load stakeholders from localStorage on mount
   useEffect(() => {
     const savedStakeholders = dataPersistence.getData<Stakeholder[]>('stakeholders');
     if (savedStakeholders) {
-      setStakeholders(savedStakeholders);
+      // Ensure workspace association
+      const workspaceAwareStakeholders = savedStakeholders.map(s => ({
+        ...s,
+        workspaceId: s.workspaceId || currentWorkspace?.id || 'ws-1'
+      }));
+      setAllStakeholders(workspaceAwareStakeholders);
     } else {
       // Initialize with sample data
-      const sampleStakeholders: Stakeholder[] = [
-        {
-          id: 'john-doe',
-          name: 'John Doe',
-          role: 'Product Manager',
-          department: 'Product',
-          email: 'john.doe@company.com',
-          phone: '+1 (555) 111-1111',
-          influence: 'High',
-          interest: 'High',
-          communicationPreference: 'Email',
-          projects: ['1'],
-          lastContact: '2024-01-10',
-          status: 'Active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'jane-smith',
-          name: 'Jane Smith',
-          role: 'Design Director',
-          department: 'Design',
-          email: 'jane.smith@company.com',
-          phone: '+1 (555) 222-2222',
-          influence: 'High',
-          interest: 'Medium',
-          communicationPreference: 'Slack',
-          projects: ['1'],
-          lastContact: '2024-01-08',
-          status: 'Active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'mike-wilson',
-          name: 'Mike Wilson',
-          role: 'Engineering Manager',
-          department: 'Engineering',
-          email: 'mike.wilson@company.com',
-          phone: '+1 (555) 333-3333',
-          influence: 'Medium',
-          interest: 'High',
-          communicationPreference: 'Email',
-          projects: ['1'],
-          lastContact: '2024-01-12',
-          status: 'Active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      setStakeholders(sampleStakeholders);
-      dataPersistence.persistData('stakeholders', sampleStakeholders, 'stakeholder_context');
+      initializeSampleData();
     }
   }, []);
 
   // Register with context synchronizer
   useEffect(() => {
     const unregister = contextSynchronizer.registerContext('stakeholders', (updatedStakeholders: Stakeholder[]) => {
-      setStakeholders(updatedStakeholders);
+      setAllStakeholders(updatedStakeholders);
     });
 
     return unregister;
   }, []);
 
+  const initializeSampleData = () => {
+    const workspaceId = currentWorkspace?.id || 'ws-1';
+    const sampleStakeholders: Stakeholder[] = [
+      {
+        id: 'john-doe',
+        name: 'John Doe',
+        role: 'Product Manager',
+        department: 'Product',
+        email: 'john.doe@company.com',
+        phone: '+1 (555) 111-1111',
+        influence: 'High',
+        interest: 'High',
+        communicationPreference: 'Email',
+        projects: ['proj-ecommerce-2024'],
+        lastContact: '2024-07-10',
+        status: 'Active',
+        workspaceId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'jane-smith',
+        name: 'Jane Smith',
+        role: 'Design Director',
+        department: 'Design',
+        email: 'jane.smith@company.com',
+        phone: '+1 (555) 222-2222',
+        influence: 'High',
+        interest: 'Medium',
+        communicationPreference: 'Slack',
+        projects: ['proj-ecommerce-2024'],
+        lastContact: '2024-07-08',
+        status: 'Active',
+        workspaceId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+    setAllStakeholders(sampleStakeholders);
+    dataPersistence.persistData('stakeholders', sampleStakeholders, 'stakeholder_context');
+  };
+
   // Save stakeholders to localStorage whenever stakeholders change
   useEffect(() => {
-    if (stakeholders.length > 0) {
-      dataPersistence.persistData('stakeholders', stakeholders, 'stakeholder_context');
+    if (allStakeholders.length > 0) {
+      dataPersistence.persistData('stakeholders', allStakeholders, 'stakeholder_context');
     }
-  }, [stakeholders]);
+  }, [allStakeholders]);
 
   const getStakeholder = (id: string): Stakeholder | null => {
     return stakeholders.find(s => s.id === id) || null;
   };
 
   const updateStakeholder = (id: string, updates: Partial<Stakeholder>) => {
-    setStakeholders(prev => prev.map(s => s.id === id ? { 
+    setAllStakeholders(prev => prev.map(s => s.id === id ? { 
       ...s, 
       ...updates,
       updatedAt: new Date().toISOString()
@@ -148,10 +151,11 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const newStakeholder: Stakeholder = {
       ...stakeholder,
       id: `stakeholder-${Date.now()}`,
+      workspaceId: currentWorkspace?.id || 'ws-1',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    setStakeholders(prev => [...prev, newStakeholder]);
+    setAllStakeholders(prev => [...prev, newStakeholder]);
 
     // Emit creation event
     eventBus.emit('context_updated', {
@@ -161,7 +165,7 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const assignToProject = (stakeholderId: string, projectId: string) => {
-    setStakeholders(prev => prev.map(s => 
+    setAllStakeholders(prev => prev.map(s => 
       s.id === stakeholderId 
         ? { 
           ...s, 
@@ -180,7 +184,7 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const removeFromProject = (stakeholderId: string, projectId: string) => {
-    setStakeholders(prev => prev.map(s => 
+    setAllStakeholders(prev => prev.map(s => 
       s.id === stakeholderId 
         ? { 
           ...s, 
@@ -204,7 +208,7 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const updateLastContact = (stakeholderId: string) => {
     const today = new Date().toISOString().split('T')[0];
-    setStakeholders(prev => prev.map(s => 
+    setAllStakeholders(prev => prev.map(s => 
       s.id === stakeholderId 
         ? { 
           ...s, 

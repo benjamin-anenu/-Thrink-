@@ -1,16 +1,17 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ProjectData, ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
 import { PerformanceTracker } from '@/services/PerformanceTracker';
 import { EmailReminderService } from '@/services/EmailReminderService';
 import { NotificationIntegrationService } from '@/services/NotificationIntegrationService';
 import { eventBus } from '@/services/EventBus';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface ProjectContextType {
   projects: ProjectData[];
   currentProject: ProjectData | null;
   loading: boolean;
   getProject: (id: string) => ProjectData | null;
+  addProject: (project: Omit<ProjectData, 'id'>) => void;
   updateProject: (id: string, updates: Partial<ProjectData>) => void;
   addTask: (projectId: string, task: Omit<ProjectTask, 'id'>) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<ProjectTask>) => void;
@@ -34,9 +35,15 @@ export const useProject = () => {
 };
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [projects, setProjects] = useState<ProjectData[]>([]);
+  const [allProjects, setAllProjects] = useState<ProjectData[]>([]);
   const [currentProject, setCurrentProjectState] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(false);
+  const { currentWorkspace } = useWorkspace();
+
+  // Filter projects by current workspace
+  const projects = allProjects.filter(project => 
+    currentWorkspace ? project.workspaceId === currentWorkspace.id : true
+  );
 
   // Initialize services
   const performanceTracker = PerformanceTracker.getInstance();
@@ -48,7 +55,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const savedProjects = localStorage.getItem('projects');
     if (savedProjects) {
       const parsedProjects = JSON.parse(savedProjects);
-      setProjects(parsedProjects);
+      setAllProjects(parsedProjects);
       
       // Schedule email reminders for existing tasks
       parsedProjects.forEach((project: ProjectData) => {
@@ -59,221 +66,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       });
     } else {
-      // Initialize with sample data
-      const sampleProject: ProjectData = {
-        id: '1',
-        name: 'E-commerce Platform Redesign',
-        description: 'Complete overhaul of the user interface and user experience for our main e-commerce platform.',
-        status: 'In Progress',
-        priority: 'High',
-        progress: 65,
-        health: { status: 'green', score: 92 },
-        startDate: '2024-01-15',
-        endDate: '2024-04-30',
-        teamSize: 8,
-        budget: '$125,000',
-        tags: ['Frontend', 'UX/UI', 'E-commerce'],
-        resources: ['sarah', 'michael', 'emily', 'david', 'james'],
-        stakeholders: ['john-doe', 'jane-smith', 'mike-wilson'],
-        milestones: [
-          {
-            id: 'milestone-1',
-            name: 'Project Planning & Setup',
-            description: 'Initial project setup and team onboarding',
-            date: '2024-01-25',
-            baselineDate: '2024-01-25',
-            status: 'completed',
-            tasks: ['task-1', 'task-2'],
-            progress: 100
-          },
-          {
-            id: 'milestone-2',
-            name: 'Design Phase Complete',
-            description: 'UI/UX design mockups and prototypes finalized',
-            date: '2024-02-28',
-            baselineDate: '2024-02-25',
-            status: 'completed',
-            tasks: ['task-3', 'task-4'],
-            progress: 100
-          },
-          {
-            id: 'milestone-3',
-            name: 'Development Phase 1',
-            description: 'Core functionality implementation',
-            date: '2024-03-31',
-            baselineDate: '2024-03-31',
-            status: 'in-progress',
-            tasks: ['task-5', 'task-6'],
-            progress: 45
-          },
-          {
-            id: 'milestone-4',
-            name: 'Testing & Deployment',
-            description: 'Final testing and production deployment',
-            date: '2024-04-30',
-            baselineDate: '2024-04-30',
-            status: 'upcoming',
-            tasks: ['task-7', 'task-8'],
-            progress: 0
-          }
-        ],
-        tasks: [
-          {
-            id: 'task-1',
-            name: 'Project Setup & Documentation',
-            description: 'Initialize project structure and create documentation',
-            startDate: '2024-01-15',
-            endDate: '2024-01-20',
-            baselineStartDate: '2024-01-15',
-            baselineEndDate: '2024-01-20',
-            progress: 100,
-            assignedResources: ['david'],
-            assignedStakeholders: ['john-doe'],
-            dependencies: [],
-            priority: 'High',
-            status: 'Completed',
-            milestoneId: 'milestone-1',
-            duration: 5
-          },
-          {
-            id: 'task-2',
-            name: 'Team Onboarding',
-            description: 'Onboard team members and set up development environment',
-            startDate: '2024-01-21',
-            endDate: '2024-01-25',
-            baselineStartDate: '2024-01-21',
-            baselineEndDate: '2024-01-25',
-            progress: 100,
-            assignedResources: ['david', 'sarah'],
-            assignedStakeholders: ['john-doe'],
-            dependencies: ['task-1'],
-            priority: 'High',
-            status: 'Completed',
-            milestoneId: 'milestone-1',
-            duration: 4
-          },
-          {
-            id: 'task-3',
-            name: 'User Research & Analysis',
-            description: 'Conduct user research and analyze current system',
-            startDate: '2024-01-26',
-            endDate: '2024-02-10',
-            baselineStartDate: '2024-01-26',
-            baselineEndDate: '2024-02-08',
-            progress: 100,
-            assignedResources: ['emily'],
-            assignedStakeholders: ['jane-smith'],
-            dependencies: ['task-2'],
-            priority: 'High',
-            status: 'Completed',
-            milestoneId: 'milestone-2',
-            duration: 15
-          },
-          {
-            id: 'task-4',
-            name: 'UI/UX Design & Prototyping',
-            description: 'Create design mockups and interactive prototypes',
-            startDate: '2024-02-11',
-            endDate: '2024-02-28',
-            baselineStartDate: '2024-02-09',
-            baselineEndDate: '2024-02-25',
-            progress: 100,
-            assignedResources: ['emily', 'sarah'],
-            assignedStakeholders: ['jane-smith'],
-            dependencies: ['task-3'],
-            priority: 'High',
-            status: 'Completed',
-            milestoneId: 'milestone-2',
-            duration: 17
-          },
-          {
-            id: 'task-5',
-            name: 'Frontend Development',
-            description: 'Implement frontend components and user interface',
-            startDate: '2024-03-01',
-            endDate: '2024-03-20',
-            baselineStartDate: '2024-03-01',
-            baselineEndDate: '2024-03-20',
-            progress: 65,
-            assignedResources: ['sarah', 'michael'],
-            assignedStakeholders: ['mike-wilson'],
-            dependencies: ['task-4'],
-            priority: 'High',
-            status: 'In Progress',
-            milestoneId: 'milestone-3',
-            duration: 19
-          },
-          {
-            id: 'task-6',
-            name: 'Backend Integration',
-            description: 'Implement backend API and database integration',
-            startDate: '2024-03-10',
-            endDate: '2024-03-31',
-            baselineStartDate: '2024-03-10',
-            baselineEndDate: '2024-03-31',
-            progress: 25,
-            assignedResources: ['michael', 'james'],
-            assignedStakeholders: ['mike-wilson'],
-            dependencies: ['task-4'],
-            priority: 'Medium',
-            status: 'In Progress',
-            milestoneId: 'milestone-3',
-            duration: 21
-          },
-          {
-            id: 'task-7',
-            name: 'Quality Assurance Testing',
-            description: 'Comprehensive testing and bug fixes',
-            startDate: '2024-04-01',
-            endDate: '2024-04-20',
-            baselineStartDate: '2024-04-01',
-            baselineEndDate: '2024-04-20',
-            progress: 0,
-            assignedResources: ['sarah', 'emily'],
-            assignedStakeholders: ['jane-smith'],
-            dependencies: ['task-5', 'task-6'],
-            priority: 'High',
-            status: 'Not Started',
-            milestoneId: 'milestone-4',
-            duration: 19
-          },
-          {
-            id: 'task-8',
-            name: 'Production Deployment',
-            description: 'Deploy to production and monitor system',
-            startDate: '2024-04-21',
-            endDate: '2024-04-30',
-            baselineStartDate: '2024-04-21',
-            baselineEndDate: '2024-04-30',
-            progress: 0,
-            assignedResources: ['james'],
-            assignedStakeholders: ['john-doe', 'mike-wilson'],
-            dependencies: ['task-7'],
-            priority: 'High',
-            status: 'Not Started',
-            milestoneId: 'milestone-4',
-            duration: 9
-          }
-        ]
-      };
-      setProjects([sampleProject]);
-      localStorage.setItem('projects', JSON.stringify([sampleProject]));
-      
-      // Schedule reminders for sample project tasks
-      sampleProject.tasks.forEach(task => {
-        if (task.status !== 'Completed') {
-          scheduleTaskReminders(task, sampleProject);
-        }
-      });
+      // Initialize with realistic single project data
+      initializeRealisticProject();
     }
   }, []);
 
   // Save projects to localStorage whenever projects change
   useEffect(() => {
-    if (projects.length > 0) {
-      localStorage.setItem('projects', JSON.stringify(projects));
+    if (allProjects.length > 0) {
+      localStorage.setItem('projects', JSON.stringify(allProjects));
     }
-  }, [projects]);
+  }, [allProjects]);
 
   // Set up event listeners
   useEffect(() => {
@@ -291,7 +94,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       unsubscribeTaskCompleted();
       unsubscribeDeadlineCheck();
     };
-  }, [projects]);
+  }, [allProjects]);
 
   // Monitor deadlines
   useEffect(() => {
@@ -323,6 +126,219 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => clearInterval(interval);
   }, [projects]);
 
+  const initializeRealisticProject = () => {
+    const workspaceId = currentWorkspace?.id || 'ws-1';
+    const realisticProject: ProjectData = {
+      id: 'proj-ecommerce-2024',
+      name: 'E-commerce Platform Redesign',
+      description: 'Complete overhaul of the user interface and user experience for our main e-commerce platform to improve conversion rates and user satisfaction.',
+      status: 'In Progress',
+      priority: 'High',
+      progress: 45,
+      health: { status: 'green', score: 88 },
+      startDate: '2024-07-01',
+      endDate: '2024-10-31',
+      teamSize: 6,
+      budget: '$185,000',
+      tags: ['Frontend', 'UX/UI', 'E-commerce', 'React'],
+      workspaceId,
+      resources: ['sarah', 'michael', 'emily', 'david'],
+      stakeholders: ['john-doe', 'jane-smith'],
+      milestones: [
+        {
+          id: 'milestone-discovery',
+          name: 'Discovery & Planning',
+          description: 'User research, competitive analysis, and technical planning',
+          date: '2024-07-31',
+          baselineDate: '2024-07-31',
+          status: 'completed',
+          tasks: ['task-research', 'task-analysis'],
+          progress: 100
+        },
+        {
+          id: 'milestone-design',
+          name: 'Design Phase',
+          description: 'UI/UX design, prototyping, and stakeholder approval',
+          date: '2024-08-31',
+          baselineDate: '2024-08-31',
+          status: 'completed',
+          tasks: ['task-wireframes', 'task-prototypes'],
+          progress: 100
+        },
+        {
+          id: 'milestone-development',
+          name: 'Development Sprint 1',
+          description: 'Core components and checkout flow implementation',
+          date: '2024-09-30',
+          baselineDate: '2024-09-30',
+          status: 'in-progress',
+          tasks: ['task-components', 'task-checkout'],
+          progress: 60
+        },
+        {
+          id: 'milestone-testing',
+          name: 'Testing & Launch',
+          description: 'QA testing, performance optimization, and production deployment',
+          date: '2024-10-31',
+          baselineDate: '2024-10-31',
+          status: 'upcoming',
+          tasks: ['task-testing', 'task-deployment'],
+          progress: 0
+        }
+      ],
+      tasks: [
+        {
+          id: 'task-research',
+          name: 'User Research & Analytics Review',
+          description: 'Conduct user interviews and analyze current platform analytics to identify pain points',
+          startDate: '2024-07-01',
+          endDate: '2024-07-15',
+          baselineStartDate: '2024-07-01',
+          baselineEndDate: '2024-07-15',
+          progress: 100,
+          assignedResources: ['emily'],
+          assignedStakeholders: ['jane-smith'],
+          dependencies: [],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-discovery',
+          duration: 14
+        },
+        {
+          id: 'task-analysis',
+          name: 'Technical Architecture Analysis',
+          description: 'Review current tech stack and plan migration strategy',
+          startDate: '2024-07-16',
+          endDate: '2024-07-31',
+          baselineStartDate: '2024-07-16',
+          baselineEndDate: '2024-07-31',
+          progress: 100,
+          assignedResources: ['michael', 'david'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-research'],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-discovery',
+          duration: 15
+        },
+        {
+          id: 'task-wireframes',
+          name: 'Wireframe & User Flow Design',
+          description: 'Create detailed wireframes and user journey maps for new experience',
+          startDate: '2024-08-01',
+          endDate: '2024-08-15',
+          baselineStartDate: '2024-08-01',
+          baselineEndDate: '2024-08-15',
+          progress: 100,
+          assignedResources: ['emily'],
+          assignedStakeholders: ['jane-smith'],
+          dependencies: ['task-analysis'],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-design',
+          duration: 14
+        },
+        {
+          id: 'task-prototypes',
+          name: 'Interactive Prototypes',
+          description: 'Build clickable prototypes for stakeholder review and user testing',
+          startDate: '2024-08-16',
+          endDate: '2024-08-31',
+          baselineStartDate: '2024-08-16',
+          baselineEndDate: '2024-08-31',
+          progress: 100,
+          assignedResources: ['emily', 'sarah'],
+          assignedStakeholders: ['jane-smith', 'john-doe'],
+          dependencies: ['task-wireframes'],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-design',
+          duration: 15
+        },
+        {
+          id: 'task-components',
+          name: 'React Component Library',
+          description: 'Develop reusable React components based on approved designs',
+          startDate: '2024-09-01',
+          endDate: '2024-09-20',
+          baselineStartDate: '2024-09-01',
+          baselineEndDate: '2024-09-20',
+          progress: 75,
+          assignedResources: ['sarah', 'michael'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-prototypes'],
+          priority: 'High',
+          status: 'In Progress',
+          milestoneId: 'milestone-development',
+          duration: 19
+        },
+        {
+          id: 'task-checkout',
+          name: 'Checkout Flow Implementation',
+          description: 'Build and integrate the new streamlined checkout process',
+          startDate: '2024-09-10',
+          endDate: '2024-09-30',
+          baselineStartDate: '2024-09-10',
+          baselineEndDate: '2024-09-30',
+          progress: 35,
+          assignedResources: ['michael'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-components'],
+          priority: 'High',
+          status: 'In Progress',
+          milestoneId: 'milestone-development',
+          duration: 20
+        },
+        {
+          id: 'task-testing',
+          name: 'QA Testing & Bug Fixes',
+          description: 'Comprehensive testing across devices and browsers, performance optimization',
+          startDate: '2024-10-01',
+          endDate: '2024-10-20',
+          baselineStartDate: '2024-10-01',
+          baselineEndDate: '2024-10-20',
+          progress: 0,
+          assignedResources: ['sarah', 'emily'],
+          assignedStakeholders: ['jane-smith'],
+          dependencies: ['task-checkout'],
+          priority: 'High',
+          status: 'Not Started',
+          milestoneId: 'milestone-testing',
+          duration: 19
+        },
+        {
+          id: 'task-deployment',
+          name: 'Production Deployment',
+          description: 'Deploy to production with monitoring and rollback capability',
+          startDate: '2024-10-21',
+          endDate: '2024-10-31',
+          baselineStartDate: '2024-10-21',
+          baselineEndDate: '2024-10-31',
+          progress: 0,
+          assignedResources: ['michael', 'david'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-testing'],
+          priority: 'High',
+          status: 'Not Started',
+          milestoneId: 'milestone-testing',
+          duration: 10
+        }
+      ]
+    };
+    
+    setAllProjects([realisticProject]);
+    localStorage.setItem('projects', JSON.stringify([realisticProject]));
+    
+    // Schedule reminders for active tasks
+    realisticProject.tasks.forEach(task => {
+      if (task.status !== 'Completed') {
+        scheduleTaskReminders(task, realisticProject);
+      }
+    });
+
+    console.log('[ProjectContext] Initialized with realistic project data');
+  };
+
   const scheduleTaskReminders = (task: ProjectTask, project: ProjectData) => {
     // Get resource info for email scheduling
     const resource = { 
@@ -339,7 +355,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleTaskCompletionEffects = (projectId: string, taskId: string, resourceId: string) => {
-    const project = projects.find(p => p.id === projectId);
+    const project = allProjects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (project && task) {
@@ -380,7 +396,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleDeadlineAlert = (projectId: string, taskId: string, daysRemaining: number) => {
-    const project = projects.find(p => p.id === projectId);
+    const project = allProjects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (project && task) {
@@ -397,8 +413,29 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentProjectState(project);
   };
 
+  const addProject = (project: Omit<ProjectData, 'id'>) => {
+    const newProject: ProjectData = {
+      ...project,
+      id: `proj-${Date.now()}`,
+      workspaceId: currentWorkspace?.id || 'ws-1',
+      createdAt: new Date().toISOString()
+    };
+    
+    setAllProjects(prev => [...prev, newProject]);
+
+    // Schedule email reminders for new project tasks
+    newProject.tasks?.forEach(task => {
+      if (task.status !== 'Completed') {
+        scheduleTaskReminders(task, newProject);
+      }
+    });
+
+    eventBus.emit('project_created', { projectId: newProject.id, project: newProject }, 'ProjectContext');
+    console.log('[ProjectContext] New project created:', newProject.name);
+  };
+
   const updateProject = (id: string, updates: Partial<ProjectData>) => {
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setAllProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
     eventBus.emit('project_updated', { projectId: id, updates }, 'ProjectContext');
   };
 
@@ -408,7 +445,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `task-${Date.now()}`
     };
     
-    setProjects(prev => prev.map(p => 
+    setAllProjects(prev => prev.map(p => 
       p.id === projectId 
         ? { ...p, tasks: [...p.tasks, newTask] }
         : p
@@ -424,7 +461,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateTask = (projectId: string, taskId: string, updates: Partial<ProjectTask>) => {
-    setProjects(prev => prev.map(p => 
+    setAllProjects(prev => prev.map(p => 
       p.id === projectId
         ? {
             ...p,
@@ -437,7 +474,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const deleteTask = (projectId: string, taskId: string) => {
-    setProjects(prev => prev.map(p => 
+    setAllProjects(prev => prev.map(p => 
       p.id === projectId
         ? {
             ...p,
@@ -448,7 +485,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const completeTask = (projectId: string, taskId: string) => {
-    const project = projects.find(p => p.id === projectId);
+    const project = allProjects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (task && task.assignedResources.length > 0) {
@@ -464,7 +501,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const assignTaskToResource = (projectId: string, taskId: string, resourceId: string) => {
-    const project = projects.find(p => p.id === projectId);
+    const project = allProjects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (project && task) {
@@ -488,7 +525,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `milestone-${Date.now()}`
     };
     
-    setProjects(prev => prev.map(p => 
+    setAllProjects(prev => prev.map(p => 
       p.id === projectId 
         ? { ...p, milestones: [...p.milestones, newMilestone] }
         : p
@@ -496,7 +533,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateMilestone = (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => {
-    setProjects(prev => prev.map(p => 
+    setAllProjects(prev => prev.map(p => 
       p.id === projectId
         ? {
             ...p,
@@ -509,7 +546,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const rebaselineTasks = (projectId: string, request: RebaselineRequest) => {
-    setProjects(prev => prev.map(p => {
+    setAllProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
       
       const updatedTasks = p.tasks.map(task => {
@@ -552,6 +589,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentProject,
       loading,
       getProject,
+      addProject,
       updateProject,
       addTask,
       updateTask,
