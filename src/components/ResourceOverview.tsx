@@ -5,22 +5,7 @@ import { Search } from 'lucide-react';
 import ResourceStats from '@/components/ResourceStats';
 import ResourceGrid from '@/components/ResourceGrid';
 import ResourceFilters from '@/components/ResourceFilters';
-
-interface Resource {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  availability: number;
-  currentProjects: string[];
-  hourlyRate: string;
-  utilization: number;
-  status: string;
-}
+import { Resource } from '@/contexts/ResourceContext';
 
 interface ResourceOverviewProps {
   resources: Resource[];

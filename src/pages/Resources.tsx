@@ -8,26 +8,10 @@ import AssignmentModal from '@/components/AssignmentModal';
 import ResourceOverview from '@/components/ResourceOverview';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
-import { useResources } from '@/contexts/ResourceContext';
+import { useResources, Resource } from '@/contexts/ResourceContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
-
-interface Resource {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  availability: number;
-  currentProjects: string[];
-  hourlyRate: string;
-  utilization: number;
-  status: string;
-}
 
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);

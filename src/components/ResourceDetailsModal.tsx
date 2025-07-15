@@ -27,22 +27,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
-
-interface Resource {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  availability: number;
-  currentProjects: string[];
-  hourlyRate: string;
-  utilization: number;
-  status: string;
-}
+import { Resource } from '@/contexts/ResourceContext';
 
 interface ResourceDetailsModalProps {
   isOpen: boolean;
