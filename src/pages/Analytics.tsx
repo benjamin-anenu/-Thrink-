@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AnalyticsHeader from '@/components/analytics/AnalyticsHeader';
 import AnalyticsMetrics from '@/components/analytics/AnalyticsMetrics';
@@ -10,6 +10,24 @@ import SettingsTab from '@/components/analytics/SettingsTab';
 import TinkAssistant from '@/components/TinkAssistant';
 
 const Analytics = () => {
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+  const [scheduleSettings, setScheduleSettings] = useState({
+    frequency: 'weekly' as const,
+    dayOfWeek: 1,
+    time: '09:00'
+  });
+  const [reportType, setReportType] = useState('summary');
+  const [events, setEvents] = useState([]);
+
+  const handleCreateEvent = (event: any) => {
+    setEvents(prev => [...prev, event]);
+  };
+
+  const handleEventClick = (event: any) => {
+    console.log('Event clicked:', event);
+  };
+
   return (
     <div className="space-y-6">
       <AnalyticsHeader />
@@ -28,11 +46,24 @@ const Analytics = () => {
         </TabsContent>
         
         <TabsContent value="reports" className="space-y-4">
-          <ReportsTab />
+          <ReportsTab 
+            selectedProject={selectedProject}
+            onProjectChange={setSelectedProject}
+            selectedRecipients={selectedRecipients}
+            onRecipientsChange={setSelectedRecipients}
+            scheduleSettings={scheduleSettings}
+            onScheduleChange={setScheduleSettings}
+            reportType={reportType}
+            onReportTypeChange={setReportType}
+          />
         </TabsContent>
         
         <TabsContent value="calendar" className="space-y-4">
-          <CalendarTab />
+          <CalendarTab 
+            events={events}
+            onCreateEvent={handleCreateEvent}
+            onEventClick={handleEventClick}
+          />
         </TabsContent>
         
         <TabsContent value="settings" className="space-y-4">

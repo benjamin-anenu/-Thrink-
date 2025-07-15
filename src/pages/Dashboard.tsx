@@ -1,6 +1,7 @@
+
 import React, { useContext, useEffect, useState } from 'react';
-import { ProjectContext } from '@/contexts/ProjectContext';
-import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useProject } from '@/contexts/ProjectContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
@@ -9,8 +10,8 @@ import TinkAssistant from '@/components/TinkAssistant';
 import { useRealTimeEvents } from '@/hooks/useRealTimeEvents';
 
 const Dashboard = () => {
-  const { projects } = useContext(ProjectContext);
-  const { currentWorkspace } = useContext(WorkspaceContext);
+  const { projects } = useProject();
+  const { currentWorkspace } = useWorkspace();
   const [activeProject, setActiveProject] = useState(0);
 
   // Enable real-time event processing
@@ -52,7 +53,7 @@ const Dashboard = () => {
           <ProjectDisplay 
             projects={projectsForDisplay} 
             activeProject={activeProject} 
-            setActiveProject={setActiveProject}
+            onProjectChange={setActiveProject}
           />
         </div>
         <div>

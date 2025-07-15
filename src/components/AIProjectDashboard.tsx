@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -10,15 +10,15 @@ import {
   BarChart3, PieChart, Activity, Sparkles
 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart as RechartsPieChart, Cell, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ProjectContext } from '@/contexts/ProjectContext';
-import { ResourceContext } from '@/contexts/ResourceContext';
-import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useProject } from '@/contexts/ProjectContext';
+import { useResources } from '@/contexts/ResourceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { PerformanceTracker } from '@/services/PerformanceTracker';
 
 const AIProjectDashboard = () => {
-  const { projects } = useContext(ProjectContext);
-  const { resources } = useContext(ResourceContext);
-  const { currentWorkspace } = useContext(WorkspaceContext);
+  const { projects } = useProject();
+  const { resources } = useResources();
+  const { currentWorkspace } = useWorkspace();
   const [activeInsight, setActiveInsight] = useState(0);
   const [realTimeData, setRealTimeData] = useState({
     projectsInProgress: 0,
@@ -32,7 +32,7 @@ const AIProjectDashboard = () => {
     if (!currentWorkspace) return;
 
     const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-    const activeProjects = workspaceProjects.filter(p => p.status === 'active' || p.status === 'in-progress');
+    const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress' || p.status === 'active');
     const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
     
     // Get performance data
@@ -65,7 +65,7 @@ const AIProjectDashboard = () => {
   }, [projects, resources, currentWorkspace]);
 
   // Generate performance data based on real projects
-  const performanceData = React.useMemo(() => {
+  const performanceData = useMemo(() => {
     if (!currentWorkspace) return [];
     
     const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
@@ -86,7 +86,7 @@ const AIProjectDashboard = () => {
   }, [projects, currentWorkspace]);
 
   // Generate resource data based on actual resources
-  const resourceData = React.useMemo(() => {
+  const resourceData = useMemo(() => {
     if (!currentWorkspace) return [];
     
     const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
@@ -100,13 +100,13 @@ const AIProjectDashboard = () => {
     
     return Object.entries(roleGroups).map(([role, count], index) => ({
       name: role,
-      value: Math.round((count / workspaceResources.length) * 100),
+      value: workspaceResources.length > 0 ? Math.round((count / workspaceResources.length) * 100) : 0,
       color: colors[index % colors.length]
     }));
   }, [resources, currentWorkspace]);
 
   // Generate AI insights based on real data
-  const aiInsights = React.useMemo(() => {
+  const aiInsights = useMemo(() => {
     const performanceTracker = PerformanceTracker.getInstance();
     const profiles = performanceTracker.getAllProfiles();
     const workspaceProjects = currentWorkspace ? projects.filter(p => p.workspaceId === currentWorkspace.id) : [];
@@ -115,8 +115,8 @@ const AIProjectDashboard = () => {
     
     // Project delivery forecast
     const overdueProjects = workspaceProjects.filter(p => {
-      const dueDate = new Date(p.dueDate);
-      return dueDate < new Date() && p.progress < 100;
+      const dueDate = new Date(p.endDate || p.dueDate || '');
+      return dueDate < new Date() && (p.progress || 0) < 100;
     });
     
     if (overdueProjects.length > 0) {

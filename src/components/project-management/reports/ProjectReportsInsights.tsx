@@ -1,9 +1,9 @@
 
-import React, { useContext, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ProjectContext } from '@/contexts/ProjectContext';
-import { ResourceContext } from '@/contexts/ResourceContext';
-import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useProject } from '@/contexts/ProjectContext';
+import { useResources } from '@/contexts/ResourceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { PerformanceTracker } from '@/services/PerformanceTracker';
 
 interface ProjectReportsInsightsProps {
@@ -11,9 +11,9 @@ interface ProjectReportsInsightsProps {
 }
 
 const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ projectId }) => {
-  const { projects } = useContext(ProjectContext);
-  const { resources } = useContext(ResourceContext);
-  const { currentWorkspace } = useContext(WorkspaceContext);
+  const { projects } = useProject();
+  const { resources } = useResources();
+  const { currentWorkspace } = useWorkspace();
 
   const insights = useMemo(() => {
     if (!currentWorkspace) return [];
@@ -32,7 +32,7 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
     // Project progress insight
     if (projectSpecific && currentProject) {
       const progress = currentProject.progress || 0;
-      const dueDate = new Date(currentProject.dueDate);
+      const dueDate = new Date(currentProject.endDate || currentProject.dueDate || '');
       const today = new Date();
       const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
@@ -53,7 +53,7 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
       }
     } else {
       // Workspace-wide insight
-      const activeProjects = workspaceProjects.filter(p => p.status === 'active' || p.status === 'in-progress');
+      const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress' || p.status === 'active');
       const onTrackProjects = activeProjects.filter(p => (p.progress || 0) >= 70);
       
       if (onTrackProjects.length === activeProjects.length && activeProjects.length > 0) {
@@ -63,7 +63,7 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
           message: `${activeProjects.length} active projects are progressing well. Team velocity is consistent across the workspace.`,
           color: 'green'
         });
-      } else if (onTrackProjects.length < activeProjects.length * 0.7) {
+      } else if (activeProjects.length > 0 && onTrackProjects.length < activeProjects.length * 0.7) {
         insights.push({
           type: 'warning',
           title: 'Project timeline concerns',
@@ -97,7 +97,7 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
     // Milestone dependency insight
     if (projectSpecific && currentProject) {
       const projectResources = workspaceResources.filter(r => 
-        currentProject.assignees?.includes(r.id) || 
+        currentProject.resources?.includes(r.id) || 
         r.skills?.some(skill => currentProject.description?.toLowerCase().includes(skill.toLowerCase()))
       );
       
