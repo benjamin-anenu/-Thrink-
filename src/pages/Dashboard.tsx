@@ -7,6 +7,7 @@ import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
 import { useProject } from '@/contexts/ProjectContext';
+import { useResources } from '@/contexts/ResourceContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,9 @@ import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'luci
 const Dashboard = () => {
   const [activeProject, setActiveProject] = useState(0);
   const { projects } = useProject();
+  const { resources } = useResources();
 
-  // Transform projects data for display
+  // Transform real projects data for display
   const projectsForDisplay = projects.map(project => ({
     name: project.name,
     status: project.status,
@@ -90,6 +92,21 @@ const Dashboard = () => {
       }))
   ).slice(0, 4);
 
+  // Calculate real metrics from context data
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
+  const completedProjects = projects.filter(p => p.status === 'Completed').length;
+  const totalResources = resources.length;
+  const availableResources = resources.filter(r => r.status === 'Available').length;
+  const avgProjectProgress = projects.length > 0 
+    ? Math.round(projects.reduce((acc, project) => {
+        const projectProgress = project.tasks.length > 0 
+          ? project.tasks.reduce((taskAcc, task) => taskAcc + task.progress, 0) / project.tasks.length
+          : 0;
+        return acc + projectProgress;
+      }, 0) / projects.length)
+    : 0;
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
@@ -101,7 +118,7 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-green-100 text-green-700">
-              All Systems Operational
+              {totalProjects > 0 ? `${activeProjects} Active Projects` : 'No Active Projects'}
             </Badge>
             <Button variant="outline" size="sm">
               <Calendar className="h-4 w-4 mr-2" />
@@ -131,7 +148,33 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <DashboardMetrics />
+            {/* Real Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold">{totalProjects}</div>
+                  <p className="text-xs text-muted-foreground">Total Projects</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-blue-500">{activeProjects}</div>
+                  <p className="text-xs text-muted-foreground">Active Projects</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-green-500">{availableResources}</div>
+                  <p className="text-xs text-muted-foreground">Available Resources</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-purple-500">{avgProjectProgress}%</div>
+                  <p className="text-xs text-muted-foreground">Avg Progress</p>
+                </CardContent>
+              </Card>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Upcoming Deadlines */}

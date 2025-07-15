@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useResources } from '@/contexts/ResourceContext';
+import { useProject } from '@/contexts/ProjectContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -13,12 +14,18 @@ interface ProjectResourcesProps {
 
 const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   const { getResourcesByProject, resources } = useResources();
+  const { getProject } = useProject();
   
-  // Get resources assigned to this project
+  // Get real project data
+  const project = getProject(projectId);
+  
+  // Get resources assigned to this project from real data
   const projectResources = getResourcesByProject(projectId);
 
-  // If no resources assigned, show all resources as potential candidates
-  const displayResources = projectResources.length > 0 ? projectResources : resources.slice(0, 4);
+  // If no resources assigned, show resources from the project's resource list
+  const displayResources = projectResources.length > 0 
+    ? projectResources 
+    : project?.resources?.map(resourceId => resources.find(r => r.id === resourceId)).filter(Boolean) || [];
 
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
@@ -35,6 +42,14 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
     return 'text-green-600';
   };
 
+  // Calculate real metrics
+  const totalResources = displayResources.length;
+  const availableResources = displayResources.filter(r => r.status === 'Available').length;
+  const avgUtilization = totalResources > 0 
+    ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / totalResources)
+    : 0;
+  const totalHours = displayResources.reduce((acc, r) => acc + (r.utilization * 40 / 100), 0);
+
   return (
     <div className="space-y-6">
       {/* Resource Overview */}
@@ -45,7 +60,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <Users className="h-8 w-8 text-blue-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Resources</p>
-                <p className="font-semibold">{displayResources.length}</p>
+                <p className="font-semibold">{totalResources}</p>
               </div>
             </div>
           </CardContent>
@@ -57,9 +72,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <Target className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Available</p>
-                <p className="font-semibold">
-                  {displayResources.filter(r => r.status === 'Available').length}
-                </p>
+                <p className="font-semibold">{availableResources}</p>
               </div>
             </div>
           </CardContent>
@@ -71,11 +84,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <Clock className="h-8 w-8 text-yellow-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Avg Utilization</p>
-                <p className="font-semibold">
-                  {displayResources.length > 0 
-                    ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / displayResources.length)
-                    : 0}%
-                </p>
+                <p className="font-semibold">{avgUtilization}%</p>
               </div>
             </div>
           </CardContent>
@@ -87,9 +96,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <TrendingUp className="h-8 w-8 text-purple-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Hours</p>
-                <p className="font-semibold">
-                  {displayResources.reduce((acc, r) => acc + (r.utilization * 40 / 100), 0).toFixed(0)}h
-                </p>
+                <p className="font-semibold">{totalHours.toFixed(0)}h</p>
               </div>
             </div>
           </CardContent>
@@ -105,7 +112,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {displayResources.map((resource) => (
+            {displayResources.length > 0 ? displayResources.map((resource) => (
               <div key={resource.id} className="border border-border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -175,7 +182,12 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                   )}
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No resources assigned to this project</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
