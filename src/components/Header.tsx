@@ -53,7 +53,16 @@ const Header = () => {
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
 
-  // Show buttons condition: on landing page, not loading, and no user
+  // Debug authentication state
+  console.log('Header Debug:', { 
+    user: !!user, 
+    loading, 
+    isLandingPage, 
+    path: location.pathname,
+    shouldShow: isLandingPage && !loading && !user 
+  });
+
+  // Show buttons when: on landing page, not loading, and no authenticated user
   const shouldShowAuthButtons = isLandingPage && !loading && !user;
 
   return (
