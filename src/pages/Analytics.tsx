@@ -19,6 +19,8 @@ import AIInsightsCard from '@/components/analytics/AIInsightsCard';
 import ReportsTab from '@/components/analytics/ReportsTab';
 import CalendarTab from '@/components/analytics/CalendarTab';
 import SettingsTab from '@/components/analytics/SettingsTab';
+import ReportsExport from '@/components/analytics/ReportsExport';
+import SystemHealthDashboard from '@/components/analytics/SystemHealthDashboard';
 
 interface CalendarEvent {
   id: string;
@@ -129,12 +131,13 @@ const Analytics = () => {
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="export">Export</TabsTrigger>
+            <TabsTrigger value="health">System</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -159,16 +162,20 @@ const Analytics = () => {
             />
           </TabsContent>
 
+          <TabsContent value="export" className="space-y-6">
+            <ReportsExport />
+          </TabsContent>
+
+          <TabsContent value="health" className="space-y-6">
+            <SystemHealthDashboard />
+          </TabsContent>
+
           <TabsContent value="calendar" className="space-y-6">
             <CalendarTab
               events={mockEvents}
               onCreateEvent={handleCreateEvent}
               onEventClick={handleEventClick}
             />
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-6">
-            <NotificationCenter />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

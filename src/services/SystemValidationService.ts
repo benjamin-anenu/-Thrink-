@@ -477,3 +477,21 @@ export class SystemValidationService {
 }
 
 export const systemValidationService = SystemValidationService.getInstance();
+
+export const SystemValidationServiceStatic = {
+  validateSystem: async () => {
+    const instance = SystemValidationService.getInstance();
+    const result = await instance.performSystemValidation();
+    return {
+      overall: result.isHealthy ? 'healthy' : result.overallScore > 50 ? 'warning' : 'critical',
+      timestamp: new Date().toISOString(),
+      validationResults: result.metrics,
+      issues: result.metrics.filter(m => m.status !== 'healthy').map(m => ({
+        component: m.component,
+        message: m.message,
+        severity: m.status,
+        timestamp: m.timestamp.toISOString()
+      }))
+    };
+  },
+};
