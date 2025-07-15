@@ -16,31 +16,30 @@ export const useAccessibility = () => {
     screenReader: false
   });
 
-  // Initialize preferences and set up listeners
-  useEffect(() => {
-    // Check for reduced motion preference
+  // Stabilize the updatePreferences function to prevent infinite re-renders
+  const updatePreferences = useCallback(() => {
     const mediaQueryReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    
-    // Check for high contrast preference
     const mediaQueryHighContrast = window.matchMedia('(prefers-contrast: high)');
-    
-    // Check for large fonts preference
     const mediaQueryLargeFonts = window.matchMedia('(min-resolution: 120dpi)');
-
-    // Detect screen reader usage
+    
     const hasScreenReader = 'speechSynthesis' in window || 
                            navigator.userAgent.includes('NVDA') ||
                            navigator.userAgent.includes('JAWS') ||
                            navigator.userAgent.includes('VoiceOver');
 
-    const updatePreferences = () => {
-      setPreferences({
-        reduceMotion: mediaQueryReduceMotion.matches,
-        highContrast: mediaQueryHighContrast.matches,
-        largeFonts: mediaQueryLargeFonts.matches,
-        screenReader: hasScreenReader
-      });
-    };
+    setPreferences({
+      reduceMotion: mediaQueryReduceMotion.matches,
+      highContrast: mediaQueryHighContrast.matches,
+      largeFonts: mediaQueryLargeFonts.matches,
+      screenReader: hasScreenReader
+    });
+  }, []);
+
+  // Initialize preferences and set up listeners - only run once
+  useEffect(() => {
+    const mediaQueryReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mediaQueryHighContrast = window.matchMedia('(prefers-contrast: high)');
+    const mediaQueryLargeFonts = window.matchMedia('(min-resolution: 120dpi)');
 
     // Initial check
     updatePreferences();
@@ -56,7 +55,7 @@ export const useAccessibility = () => {
       mediaQueryHighContrast.removeEventListener('change', updatePreferences);
       mediaQueryLargeFonts.removeEventListener('change', updatePreferences);
     };
-  }, []); // Empty dependency array - only run once
+  }, [updatePreferences]);
 
   // Apply accessibility classes when preferences change
   useEffect(() => {
@@ -85,9 +84,9 @@ export const useAccessibility = () => {
     } else {
       root.classList.remove('screen-reader');
     }
-  }, [preferences]); // Only depend on preferences
+  }, [preferences]);
 
-  // Keyboard navigation helpers - only run once
+  // Keyboard navigation helpers and skip link - only run once
   useEffect(() => {
     // Focus visible indicator
     const style = document.createElement('style');
@@ -134,12 +133,14 @@ export const useAccessibility = () => {
 
     // Cleanup function
     return () => {
-      document.head.removeChild(style);
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
       if (document.body.contains(skipLink)) {
         document.body.removeChild(skipLink);
       }
     };
-  }, []); // Empty dependency array - only run once
+  }, []);
 
   return {
     preferences,
