@@ -1,8 +1,9 @@
+
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ResourceProvider } from '@/contexts/ResourceContext';
@@ -11,6 +12,7 @@ import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { initializeNotificationIntegration } from '@/services/NotificationIntegrationService';
 import { startEmailReminderService } from '@/services/EmailReminderService';
 import { initializePerformanceTracking } from '@/services/PerformanceTracker';
+import Header from '@/components/Header';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -39,6 +41,25 @@ initializeNotificationIntegration();
 startEmailReminderService();
 initializePerformanceTracking();
 
+// Layout wrapper component for app pages
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
+  const isLoginPage = location.pathname === '/login';
+  
+  // Show header on all pages except landing and login
+  const showHeader = !isLandingPage && !isLoginPage;
+
+  return (
+    <div className="min-h-screen bg-background font-sans antialiased">
+      {showHeader && <Header />}
+      <main className={showHeader ? "pt-4" : ""}>
+        {children}
+      </main>
+    </div>
+  );
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -49,7 +70,7 @@ function App() {
               <StakeholderProvider>
                 <ProjectProvider>
                   <BrowserRouter>
-                    <div className="min-h-screen bg-background font-sans antialiased">
+                    <AppLayout>
                       <Suspense fallback={
                         <div className="flex items-center justify-center h-screen">
                           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -70,7 +91,7 @@ function App() {
                         </Routes>
                       </Suspense>
                       <Toaster />
-                    </div>
+                    </AppLayout>
                   </BrowserRouter>
                 </ProjectProvider>
               </StakeholderProvider>

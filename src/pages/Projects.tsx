@@ -5,7 +5,7 @@ import TinkAssistant from '@/components/TinkAssistant';
 
 const Projects = () => {
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
@@ -36,7 +36,7 @@ const Projects = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foregreen">
               +4 from last month
             </p>
           </CardContent>
