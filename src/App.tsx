@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ResourceProvider } from '@/contexts/ResourceContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
@@ -100,17 +101,19 @@ function App() {
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>
-                <EnterpriseProvider>
-                  <ResourceProvider>
-                    <StakeholderProvider>
-                      <ProjectProvider>
-                        <BrowserRouter>
-                          <AppContent />
-                        </BrowserRouter>
-                      </ProjectProvider>
-                    </StakeholderProvider>
-                  </ResourceProvider>
-                </EnterpriseProvider>
+                <WorkspaceProvider>
+                  <EnterpriseProvider>
+                    <ResourceProvider>
+                      <StakeholderProvider>
+                        <ProjectProvider>
+                          <BrowserRouter>
+                            <AppContent />
+                          </BrowserRouter>
+                        </ProjectProvider>
+                      </StakeholderProvider>
+                    </ResourceProvider>
+                  </EnterpriseProvider>
+                </WorkspaceProvider>
               </AuthProvider>
             </GlobalErrorHandler>
           </TooltipProvider>
