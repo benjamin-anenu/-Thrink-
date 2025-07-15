@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
@@ -20,29 +20,27 @@ const Dashboard = () => {
   const { projects } = useProject();
   const { resources } = useResources();
 
-  console.log('[Dashboard] Rendering with projects:', projects.length);
-
-  // Transform real projects data for display
-  const projectsForDisplay = projects.map(project => ({
-    name: project.name,
-    status: project.status,
-    progress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length) || 0,
-    risk: project.health.status === 'green' ? 'Low' : project.health.status === 'yellow' ? 'Medium' : 'High',
-    team: project.teamSize,
-    deadline: (() => {
-      const endDate = new Date(project.endDate);
-      const today = new Date();
-      const diffTime = endDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays > 0 ? `${diffDays} days` : 'Overdue';
-    })(),
-    aiInsight: `Project is ${project.health.score}% healthy. Current status: ${project.status}. ${project.tasks.filter(t => t.status === 'Completed').length}/${project.tasks.length} tasks completed.`,
-    color: project.priority === 'High' ? 'from-red-500 to-orange-500' : 
-           project.priority === 'Medium' ? 'from-blue-500 to-cyan-500' : 'from-green-500 to-emerald-500',
-    priority: project.priority
-  }));
-
-  console.log('[Dashboard] Projects for display:', projectsForDisplay.length);
+  // Transform real projects data for display - memoized to prevent recreation
+  const projectsForDisplay = useMemo(() => {
+    return projects.map(project => ({
+      name: project.name,
+      status: project.status,
+      progress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length) || 0,
+      risk: project.health.status === 'green' ? 'Low' : project.health.status === 'yellow' ? 'Medium' : 'High',
+      team: project.teamSize,
+      deadline: (() => {
+        const endDate = new Date(project.endDate);
+        const today = new Date();
+        const diffTime = endDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? `${diffDays} days` : 'Overdue';
+      })(),
+      aiInsight: `Project is ${project.health.score}% healthy. Current status: ${project.status}. ${project.tasks.filter(t => t.status === 'Completed').length}/${project.tasks.length} tasks completed.`,
+      color: project.priority === 'High' ? 'from-red-500 to-orange-500' : 
+             project.priority === 'Medium' ? 'from-blue-500 to-cyan-500' : 'from-green-500 to-emerald-500',
+      priority: project.priority
+    }));
+  }, [projects]);
 
   // Reset activeProject when projects array changes or becomes empty
   useEffect(() => {
@@ -59,7 +57,6 @@ const Dashboard = () => {
       const interval = setInterval(() => {
         setActiveProject((prev) => {
           const next = (prev + 1) % projectsForDisplay.length;
-          console.log('[Dashboard] Cycling to project:', next);
           return next;
         });
       }, 5000);
@@ -67,63 +64,77 @@ const Dashboard = () => {
     }
   }, [projectsForDisplay.length]);
 
-  // Generate upcoming deadlines from real project data
-  const upcomingDeadlines = projects.flatMap(project => 
-    [...project.tasks, ...project.milestones.map(m => ({
-      ...m,
-      name: m.name,
-      endDate: m.date,
-      status: m.status === 'completed' ? 'Completed' : 'Pending',
-      priority: 'Medium' as const
-    }))]
-      .filter(item => {
-        const itemDate = new Date(item.endDate);
-        const today = new Date();
-        const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return diffDays >= 0 && diffDays <= 14 && item.status !== 'Completed';
-      })
-      .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
-      .slice(0, 3)
-      .map(item => ({
-        project: project.name,
-        task: item.name,
-        date: new Date(item.endDate).toLocaleDateString(),
-        priority: item.priority || 'Medium'
-      }))
-  );
+  const upcomingDeadlines = useMemo(() => {
+    return projects.flatMap(project => 
+      [...project.tasks, ...project.milestones.map(m => ({
+        ...m,
+        name: m.name,
+        endDate: m.date,
+        status: m.status === 'completed' ? 'Completed' : 'Pending',
+        priority: 'Medium' as const
+      }))]
+        .filter(item => {
+          const itemDate = new Date(item.endDate);
+          const today = new Date();
+          const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          return diffDays >= 0 && diffDays <= 14 && item.status !== 'Completed';
+        })
+        .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
+        .slice(0, 3)
+        .map(item => ({
+          project: project.name,
+          task: item.name,
+          date: new Date(item.endDate).toLocaleDateString(),
+          priority: item.priority || 'Medium'
+        }))
+    );
+  }, [projects]);
 
-  // Generate recent activity from real project data
-  const recentActivity = projects.flatMap(project => 
-    project.tasks
-      .filter(task => task.status === 'Completed' || task.progress > 80)
-      .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
-      .slice(0, 2)
-      .map(task => ({
-        action: task.status === 'Completed' ? 'Task completed' : `Task ${task.progress}% complete`,
-        project: project.name,
-        time: (() => {
-          const taskDate = new Date(task.endDate);
-          const now = new Date();
-          const diffHours = Math.floor((now.getTime() - taskDate.getTime()) / (1000 * 60 * 60));
-          return diffHours < 24 ? `${diffHours} hours ago` : `${Math.floor(diffHours / 24)} days ago`;
-        })()
-      }))
-  ).slice(0, 4);
+  // Generate recent activity from real project data - memoized
+  const recentActivity = useMemo(() => {
+    return projects.flatMap(project => 
+      project.tasks
+        .filter(task => task.status === 'Completed' || task.progress > 80)
+        .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
+        .slice(0, 2)
+        .map(task => ({
+          action: task.status === 'Completed' ? 'Task completed' : `Task ${task.progress}% complete`,
+          project: project.name,
+          time: (() => {
+            const taskDate = new Date(task.endDate);
+            const now = new Date();
+            const diffHours = Math.floor((now.getTime() - taskDate.getTime()) / (1000 * 60 * 60));
+            return diffHours < 24 ? `${diffHours} hours ago` : `${Math.floor(diffHours / 24)} days ago`;
+          })()
+        }))
+    ).slice(0, 4);
+  }, [projects]);
 
-  // Calculate real metrics from context data
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
-  const completedProjects = projects.filter(p => p.status === 'Completed').length;
-  const totalResources = resources.length;
-  const availableResources = resources.filter(r => r.status === 'Available').length;
-  const avgProjectProgress = projects.length > 0 
-    ? Math.round(projects.reduce((acc, project) => {
-        const projectProgress = project.tasks.length > 0 
-          ? project.tasks.reduce((taskAcc, task) => taskAcc + task.progress, 0) / project.tasks.length
-          : 0;
-        return acc + projectProgress;
-      }, 0) / projects.length)
-    : 0;
+  // Calculate real metrics from context data - memoized
+  const metrics = useMemo(() => {
+    const totalProjects = projects.length;
+    const activeProjects = projects.filter(p => p.status === 'In Progress').length;
+    const completedProjects = projects.filter(p => p.status === 'Completed').length;
+    const totalResources = resources.length;
+    const availableResources = resources.filter(r => r.status === 'Available').length;
+    const avgProjectProgress = projects.length > 0 
+      ? Math.round(projects.reduce((acc, project) => {
+          const projectProgress = project.tasks.length > 0 
+            ? project.tasks.reduce((taskAcc, task) => taskAcc + task.progress, 0) / project.tasks.length
+            : 0;
+          return acc + projectProgress;
+        }, 0) / projects.length)
+      : 0;
+
+    return {
+      totalProjects,
+      activeProjects,
+      completedProjects,
+      totalResources,
+      availableResources,
+      avgProjectProgress
+    };
+  }, [projects, resources]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -136,7 +147,7 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-green-100 text-green-700">
-              {totalProjects > 0 ? `${activeProjects} Active Projects` : 'No Active Projects'}
+              {metrics.totalProjects > 0 ? `${metrics.activeProjects} Active Projects` : 'No Active Projects'}
             </Badge>
             <Button variant="outline" size="sm">
               <Calendar className="h-4 w-4 mr-2" />
@@ -169,25 +180,25 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold">{totalProjects}</div>
+                  <div className="text-2xl font-bold">{metrics.totalProjects}</div>
                   <p className="text-xs text-muted-foreground">Total Projects</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-blue-500">{activeProjects}</div>
+                  <div className="text-2xl font-bold text-blue-500">{metrics.activeProjects}</div>
                   <p className="text-xs text-muted-foreground">Active Projects</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-green-500">{availableResources}</div>
+                  <div className="text-2xl font-bold text-green-500">{metrics.availableResources}</div>
                   <p className="text-xs text-muted-foreground">Available Resources</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-purple-500">{avgProjectProgress}%</div>
+                  <div className="text-2xl font-bold text-purple-500">{metrics.avgProjectProgress}%</div>
                   <p className="text-xs text-muted-foreground">Avg Progress</p>
                 </CardContent>
               </Card>
