@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 interface AccessibilityPreferences {
   reduceMotion: boolean;
@@ -16,30 +15,30 @@ export const useAccessibility = () => {
     screenReader: false
   });
 
-  // Stabilize the updatePreferences function to prevent infinite re-renders
-  const updatePreferences = useCallback(() => {
+  useEffect(() => {
+    // Check for reduced motion preference
     const mediaQueryReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const mediaQueryHighContrast = window.matchMedia('(prefers-contrast: high)');
-    const mediaQueryLargeFonts = window.matchMedia('(min-resolution: 120dpi)');
     
+    // Check for high contrast preference
+    const mediaQueryHighContrast = window.matchMedia('(prefers-contrast: high)');
+    
+    // Check for large fonts preference
+    const mediaQueryLargeFonts = window.matchMedia('(min-resolution: 120dpi)');
+
+    // Detect screen reader usage
     const hasScreenReader = 'speechSynthesis' in window || 
                            navigator.userAgent.includes('NVDA') ||
                            navigator.userAgent.includes('JAWS') ||
                            navigator.userAgent.includes('VoiceOver');
 
-    setPreferences({
-      reduceMotion: mediaQueryReduceMotion.matches,
-      highContrast: mediaQueryHighContrast.matches,
-      largeFonts: mediaQueryLargeFonts.matches,
-      screenReader: hasScreenReader
-    });
-  }, []);
-
-  // Initialize preferences and set up listeners - only run once
-  useEffect(() => {
-    const mediaQueryReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const mediaQueryHighContrast = window.matchMedia('(prefers-contrast: high)');
-    const mediaQueryLargeFonts = window.matchMedia('(min-resolution: 120dpi)');
+    const updatePreferences = () => {
+      setPreferences({
+        reduceMotion: mediaQueryReduceMotion.matches,
+        highContrast: mediaQueryHighContrast.matches,
+        largeFonts: mediaQueryLargeFonts.matches,
+        screenReader: hasScreenReader
+      });
+    };
 
     // Initial check
     updatePreferences();
@@ -49,45 +48,47 @@ export const useAccessibility = () => {
     mediaQueryHighContrast.addEventListener('change', updatePreferences);
     mediaQueryLargeFonts.addEventListener('change', updatePreferences);
 
+    // Apply accessibility classes to document
+    const applyAccessibilityClasses = () => {
+      const root = document.documentElement;
+      
+      if (preferences.reduceMotion) {
+        root.classList.add('reduce-motion');
+      } else {
+        root.classList.remove('reduce-motion');
+      }
+
+      if (preferences.highContrast) {
+        root.classList.add('high-contrast');
+      } else {
+        root.classList.remove('high-contrast');
+      }
+
+      if (preferences.largeFonts) {
+        root.classList.add('large-fonts');
+      } else {
+        root.classList.remove('large-fonts');
+      }
+
+      if (preferences.screenReader) {
+        root.classList.add('screen-reader');
+      } else {
+        root.classList.remove('screen-reader');
+      }
+    };
+
+    applyAccessibilityClasses();
+
     // Cleanup
     return () => {
       mediaQueryReduceMotion.removeEventListener('change', updatePreferences);
       mediaQueryHighContrast.removeEventListener('change', updatePreferences);
       mediaQueryLargeFonts.removeEventListener('change', updatePreferences);
     };
-  }, [updatePreferences]);
-
-  // Apply accessibility classes when preferences change
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    if (preferences.reduceMotion) {
-      root.classList.add('reduce-motion');
-    } else {
-      root.classList.remove('reduce-motion');
-    }
-
-    if (preferences.highContrast) {
-      root.classList.add('high-contrast');
-    } else {
-      root.classList.remove('high-contrast');
-    }
-
-    if (preferences.largeFonts) {
-      root.classList.add('large-fonts');
-    } else {
-      root.classList.remove('large-fonts');
-    }
-
-    if (preferences.screenReader) {
-      root.classList.add('screen-reader');
-    } else {
-      root.classList.remove('screen-reader');
-    }
   }, [preferences]);
 
-  // Keyboard navigation helpers and skip link - only run once
-  useEffect(() => {
+  // Keyboard navigation helpers
+  const enhanceKeyboardNavigation = () => {
     // Focus visible indicator
     const style = document.createElement('style');
     style.innerHTML = `
@@ -123,23 +124,23 @@ export const useAccessibility = () => {
       }
     `;
     document.head.appendChild(style);
+  };
 
-    // Skip link functionality
+  useEffect(() => {
+    enhanceKeyboardNavigation();
+  }, []);
+
+  // Skip link functionality
+  const addSkipLink = () => {
     const skipLink = document.createElement('a');
     skipLink.href = '#main-content';
     skipLink.textContent = 'Skip to main content';
     skipLink.className = 'sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-primary focus:text-primary-foreground focus:p-2 focus:z-50';
     document.body.insertBefore(skipLink, document.body.firstChild);
+  };
 
-    // Cleanup function
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
-      if (document.body.contains(skipLink)) {
-        document.body.removeChild(skipLink);
-      }
-    };
+  useEffect(() => {
+    addSkipLink();
   }, []);
 
   return {

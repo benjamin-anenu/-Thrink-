@@ -1,45 +1,59 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
-export interface OfflineState {
-  isOnline: boolean
-  isOffline: boolean
-  wasOffline: boolean
-  lastOnline?: Date
+interface OfflineStatus {
+  isOnline: boolean;
+  isOffline: boolean;
+  hasBeenOffline: boolean;
 }
 
-export function useOfflineStatus() {
-  const [state, setState] = useState<OfflineState>({
+export const useOfflineStatus = () => {
+  const [status, setStatus] = useState<OfflineStatus>({
     isOnline: navigator.onLine,
     isOffline: !navigator.onLine,
-    wasOffline: false,
-  })
+    hasBeenOffline: false
+  });
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleOnline = () => {
-      setState(prev => ({
+      setStatus(prev => ({
         isOnline: true,
         isOffline: false,
-        wasOffline: prev.wasOffline || !prev.isOnline,
-        lastOnline: new Date(),
-      }))
-    }
+        hasBeenOffline: prev.hasBeenOffline
+      }));
+
+      if (status.hasBeenOffline) {
+        toast({
+          title: "Connection Restored",
+          description: "You're back online! All features are available.",
+          variant: "default",
+        });
+      }
+    };
 
     const handleOffline = () => {
-      setState(prev => ({
-        ...prev,
+      setStatus({
         isOnline: false,
         isOffline: true,
-      }))
-    }
+        hasBeenOffline: true
+      });
 
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+      toast({
+        title: "Connection Lost",
+        description: "You're offline. Some features may not work until you reconnect.",
+        variant: "destructive",
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [status.hasBeenOffline, toast]);
 
-  return state
-}
+  return status;
+};

@@ -1,41 +1,23 @@
-
 import { useAuth } from '@/contexts/AuthContext'
+import { AppRole } from '@/types/auth'
 
-export interface PermissionHook {
-  hasRole: (requiredRole: string) => boolean
-  hasPermission: (action: string, resource?: string) => boolean
-  canAccess: (resource: string, action?: string) => boolean
-  isOwner: boolean
-  isAdmin: boolean
-  isManager: boolean
-  isMember: boolean
-  isViewer: boolean
-}
-
-export function usePermissions(): PermissionHook {
-  const { user } = useAuth()
-
-  // Simplified permissions - for now, all authenticated users have basic access
-  const hasRole = (requiredRole: string): boolean => {
-    return !!user // All authenticated users have access for now
-  }
-
-  const hasPermission = (action: string, resource?: string): boolean => {
-    return !!user // All authenticated users have permission for now
-  }
-
-  const canAccess = (resource: string, action: string = 'read'): boolean => {
-    return !!user
-  }
+export function usePermissions() {
+  const { role, hasRole, hasPermission } = useAuth()
 
   return {
+    role,
     hasRole,
     hasPermission,
-    canAccess,
-    isOwner: !!user,
-    isAdmin: !!user,
-    isManager: !!user,
-    isMember: !!user,
-    isViewer: !!user,
+    canRead: (resource: string) => hasPermission('read', resource),
+    canWrite: (resource: string) => hasPermission('write', resource),
+    canDelete: (resource: string) => hasPermission('delete', resource),
+    canManageUsers: () => hasRole('admin') || hasRole('owner'),
+    canManageSettings: () => hasRole('admin') || hasRole('owner'),
+    canViewAuditLogs: () => hasRole('admin') || hasRole('owner'),
+    isOwner: () => role === 'owner',
+    isAdmin: () => hasRole('admin'),
+    isManager: () => hasRole('manager'),
+    isMember: () => role === 'member',
+    isViewer: () => role === 'viewer',
   }
 }

@@ -1,19 +1,20 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Play } from 'lucide-react';
 import HeroDashboard from './hero/HeroDashboard';
 
 const HeroSection = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate('/register');
-  };
-
-  const handleSignIn = () => {
-    navigate('/login');
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth?tab=signup');
+    }
   };
 
   return (
@@ -32,7 +33,7 @@ const HeroSection = () => {
             onClick={handleGetStarted}
             className="group bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
           >
-            Get Started Free
+            {user ? 'Go to Dashboard' : 'Get Started Free'}
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Button>
           <Button
@@ -45,16 +46,18 @@ const HeroSection = () => {
             Watch Demo
           </Button>
         </div>
-        {/* Sign In link for existing users */}
-        <div className="mt-4 text-center">
-          <span className="text-muted-foreground">Already have an account? </span>
-          <button
-            onClick={handleSignIn}
-            className="text-primary font-medium hover:underline ml-1"
-          >
-            Sign In
-          </button>
-        </div>
+        {/* Add Sign In link for unauthenticated users */}
+        {!user && (
+          <div className="mt-4 text-center">
+            <span className="text-muted-foreground">Already have an account? </span>
+            <a
+              href="/auth?tab=signin"
+              className="text-primary font-medium hover:underline ml-1"
+            >
+              Sign In
+            </a>
+          </div>
+        )}
       </div>
       {/* Illustration / Dashboard Screenshot */}
       <div className="mt-12 flex justify-center">
