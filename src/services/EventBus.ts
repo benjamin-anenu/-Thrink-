@@ -1,4 +1,3 @@
-
 export type EventType = 
   | 'task_completed'
   | 'task_created'
@@ -15,9 +14,13 @@ export type EventType =
   | 'context_updated'
   | 'data_sync'
   | 'performance_alert'
+  | 'performance_updated'
   | 'system_heartbeat'
   | 'email_reminder_sent'
-  | 'rebaseline_requested';
+  | 'rebaseline_requested'
+  | 'ai_insights_updated'
+  | 'ai_insights_requested'
+  | 'risk_event';
 
 export interface Event {
   id: string;

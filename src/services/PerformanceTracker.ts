@@ -112,6 +112,11 @@ export class PerformanceTracker {
     });
     
     console.log(`[AI Performance Tracker] Positive activity tracked for ${resourceId}: ${description}`);
+    
+    // Trigger AI analysis if project context is available
+    if (projectId) {
+      this.triggerAIInsightsUpdate(projectId);
+    }
   }
 
   // Track negative performance indicators
@@ -129,6 +134,11 @@ export class PerformanceTracker {
     });
     
     console.log(`[AI Performance Tracker] Negative activity tracked for ${resourceId}: ${description}`);
+    
+    // Trigger AI risk analysis if project context is available
+    if (projectId) {
+      this.triggerAIRiskUpdate(projectId);
+    }
   }
 
   private addMetric(resourceId: string, metric: PerformanceMetric) {
@@ -372,48 +382,6 @@ export class PerformanceTracker {
       riskType: 'deadline_missed',
       timestamp: new Date()
     }, 'performance_tracker');
-  }
-
-  public trackPositiveActivity(resourceId: string, type: PerformanceMetric['type'], value: number, description: string, projectId?: string, taskId?: string) {
-    this.addMetric(resourceId, {
-      id: Date.now().toString(),
-      resourceId,
-      type,
-      value,
-      weight: this.getMetricWeight(type),
-      timestamp: new Date(),
-      projectId,
-      taskId,
-      description
-    });
-    
-    console.log(`[AI Performance Tracker] Positive activity tracked for ${resourceId}: ${description}`);
-    
-    // Trigger AI analysis if project context is available
-    if (projectId) {
-      this.triggerAIInsightsUpdate(projectId);
-    }
-  }
-
-  public trackNegativeActivity(resourceId: string, type: PerformanceMetric['type'], value: number, description: string, projectId?: string, taskId?: string) {
-    this.addMetric(resourceId, {
-      id: Date.now().toString(),
-      resourceId,
-      type,
-      value: -Math.abs(value), // Ensure negative
-      weight: this.getMetricWeight(type),
-      timestamp: new Date(),
-      projectId,
-      taskId,
-      description
-    });
-    
-    console.log(`[AI Performance Tracker] Negative activity tracked for ${resourceId}: ${description}`);
-    
-    // Trigger AI risk analysis if project context is available
-    if (projectId) {
-      this.triggerAIRiskUpdate(projectId);
-    }
   }
 
   public getProjectPerformanceInsights(projectId: string): any {

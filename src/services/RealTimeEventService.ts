@@ -299,7 +299,7 @@ export class RealTimeEventService {
           title: `AI Insight: ${insight.title}`,
           message: insight.description,
           type: insight.type === 'risk' ? 'warning' : 'info',
-          category: 'ai_insight',
+          category: 'system',
           priority: 'high',
           projectId,
           actionRequired: insight.type === 'risk'
@@ -313,7 +313,7 @@ export class RealTimeEventService {
         title: 'Critical Risk Alert',
         message: `Project risk level has escalated to critical. Immediate attention required.`,
         type: 'error',
-        category: 'risk',
+        category: 'system',
         priority: 'critical',
         projectId,
         actionRequired: true
@@ -339,7 +339,7 @@ export class RealTimeEventService {
       title: 'Risk Event Detected',
       message: `${riskType} risk detected in project`,
       type: 'warning',
-      category: 'risk',
+      category: 'system',
       priority: 'high',
       projectId,
       actionRequired: true
