@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingState } from '@/components/ui/loading-state'
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator'
 import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Github } from 'lucide-react'
 import { z } from 'zod'
 
@@ -38,7 +40,8 @@ const resetPasswordSchema = z.object({
 })
 
 export default function Auth() {
-  const { user, loading, signIn, signUp, resetPassword } = useAuth()
+  const { signIn, signUp, resetPassword } = useAuth()
+  const { user, loading } = useAuthRedirect() // This handles redirect logic
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'signin')
@@ -46,6 +49,7 @@ export default function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [rememberMe, setRememberMe] = useState(false)
 
   // Form states
   const [signInForm, setSignInForm] = useState({ email: '', password: '' })
@@ -58,13 +62,7 @@ export default function Auth() {
   })
   const [resetForm, setResetForm] = useState({ email: '' })
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user && !loading) {
-      const returnTo = searchParams.get('returnTo') || '/dashboard'
-      navigate(returnTo)
-    }
-  }, [user, loading, navigate, searchParams])
+  // Remove the redirect useEffect since useAuthRedirect handles it
 
   if (loading) {
     return <LoadingState />
@@ -94,6 +92,14 @@ export default function Auth() {
     if (!validateForm(signInSchema, signInForm)) return
 
     setIsSubmitting(true)
+    
+    // Store remember me preference
+    if (rememberMe) {
+      localStorage.setItem('rememberMe', 'true')
+    } else {
+      localStorage.removeItem('rememberMe')
+    }
+    
     const { error } = await signIn(signInForm.email, signInForm.password)
     setIsSubmitting(false)
 
@@ -221,6 +227,28 @@ export default function Auth() {
                     )}
                   </div>
 
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="remember-me"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(!!checked)}
+                      />
+                      <Label htmlFor="remember-me" className="text-sm">
+                        Remember me
+                      </Label>
+                    </div>
+                    
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setActiveTab('reset')}
+                      className="px-0"
+                    >
+                      Forgot password?
+                    </Button>
+                  </div>
+
                   <Button 
                     type="submit" 
                     className="w-full" 
@@ -307,6 +335,8 @@ export default function Auth() {
                         <AlertDescription>{errors.password}</AlertDescription>
                       </Alert>
                     )}
+                    
+                    <PasswordStrengthIndicator password={signUpForm.password} />
                   </div>
 
                   <div className="space-y-2">

@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { SignOutConfirmDialog } from './SignOutConfirmDialog'
 import { 
   User, 
   Settings, 
@@ -26,6 +27,7 @@ export function UserButton() {
   const { user, profile, role, signOut } = useAuth()
   const navigate = useNavigate()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
 
   if (!user || !profile) return null
 
@@ -35,9 +37,16 @@ export function UserButton() {
     
     if (!error) {
       // Clear any cached data or local storage if needed
+      localStorage.removeItem('workspace-preferences')
+      sessionStorage.clear()
+      setShowSignOutDialog(false)
       navigate('/')
     }
     setIsSigningOut(false)
+  }
+
+  const handleSignOutClick = () => {
+    setShowSignOutDialog(true)
   }
 
   const getInitials = (name?: string) => {
@@ -155,13 +164,20 @@ export function UserButton() {
         
         <DropdownMenuItem 
           className="cursor-pointer text-destructive focus:text-destructive"
-          onClick={handleSignOut}
+          onClick={handleSignOutClick}
           disabled={isSigningOut}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          <span>{isSigningOut ? 'Signing out...' : 'Sign out'}</span>
+          <span>Sign out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      
+      <SignOutConfirmDialog
+        open={showSignOutDialog}
+        onOpenChange={setShowSignOutDialog}
+        onConfirm={handleSignOut}
+        isLoading={isSigningOut}
+      />
     </DropdownMenu>
   )
 }
