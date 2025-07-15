@@ -8,7 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ResourceProvider } from '@/contexts/ResourceContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
-import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
+import { EnterpriseProvider } from '@/contexts/EnterpriseContext';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useMultiTabSync } from '@/hooks/useMultiTabSync';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -34,6 +34,7 @@ const Resources = lazy(() => import('@/pages/Resources'));
 const Stakeholders = lazy(() => import('@/pages/Stakeholders'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
+const Enterprise = lazy(() => import('@/pages/Enterprise'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // Create a client
@@ -76,9 +77,10 @@ function AppContent() {
           <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
           <Route path="/project/:id" element={<AuthGuard><ProjectManagement /></AuthGuard>} />
           <Route path="/resources" element={<AuthGuard><Resources /></AuthGuard>} />
-          <Route path="/stakeholders" element={<AuthGuard><Stakeholders /></AuthGuard>} />
-          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/workspaces" element={<AuthGuard><Workspaces /></AuthGuard>} />
+                      <Route path="/stakeholders" element={<AuthGuard><Stakeholders /></AuthGuard>} />
+                      <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
+                      <Route path="/workspaces" element={<AuthGuard><Workspaces /></AuthGuard>} />
+                      <Route path="/enterprise" element={<AuthGuard><Enterprise /></AuthGuard>} />
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
@@ -98,7 +100,7 @@ function App() {
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>
-                <WorkspaceProvider>
+                <EnterpriseProvider>
                   <ResourceProvider>
                     <StakeholderProvider>
                       <ProjectProvider>
@@ -108,7 +110,7 @@ function App() {
                       </ProjectProvider>
                     </StakeholderProvider>
                   </ResourceProvider>
-                </WorkspaceProvider>
+                </EnterpriseProvider>
               </AuthProvider>
             </GlobalErrorHandler>
           </TooltipProvider>
