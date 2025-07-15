@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { EventBus, EventType, EventData } from '@/services/EventBus';
+import { EventBus, EventType, Event } from '@/services/EventBus';
 import { RealTimeEventService } from '@/services/RealTimeEventService';
 
 export interface RealTimeStatus {
@@ -18,10 +18,10 @@ export const useRealTimeEvents = (eventTypes?: EventType[]) => {
     connectionStatus: 'disconnected',
     queuedEvents: 0
   });
-  const [lastEvent, setLastEvent] = useState<EventData | null>(null);
+  const [lastEvent, setLastEvent] = useState<Event | null>(null);
 
   // Subscribe to specific event types
-  const subscribe = useCallback((eventType: EventType, callback: (data: EventData) => void) => {
+  const subscribe = useCallback((eventType: EventType, callback: (data: Event) => void) => {
     return eventBus.subscribe(eventType, callback);
   }, [eventBus]);
 
