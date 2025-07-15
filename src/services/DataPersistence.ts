@@ -63,8 +63,8 @@ export class DataPersistenceService {
         source: 'storage_sync'
       };
 
-      // Emit data sync event
-      this.eventBus.emit('data_sync', changeEvent, 'data_persistence', false); // Don't propagate to avoid loops
+      // Emit data sync event - fix: remove the extra 4th argument
+      this.eventBus.emit('data_sync', changeEvent, 'data_persistence');
 
       console.log(`[Data Persistence] Storage changed for ${event.key}`);
     } catch (error) {

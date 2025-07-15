@@ -1,4 +1,3 @@
-
 import { EventBus } from './EventBus';
 import { PerformanceTracker } from './PerformanceTracker';
 import { EmailReminderService } from './EmailReminderService';
@@ -182,7 +181,7 @@ export class RealTimeEventService {
   }
 
   private handleProjectUpdate(payload: any): void {
-    const { projectId, updates, timestamp } = payload;
+    const { projectId, updates } = payload;
     
     // Send update notification
     this.notificationService.addNotification({
@@ -191,8 +190,7 @@ export class RealTimeEventService {
       type: 'info',
       category: 'project',
       priority: 'medium',
-      projectId,
-      timestamp: new Date(timestamp)
+      projectId
     });
   }
 
