@@ -59,6 +59,7 @@ const Projects = () => {
       teamSize: projectData.resources?.teamMembers?.length || 1,
       budget: projectData.resources?.budget || '$0',
       tags: projectData.tags || ['New'],
+      workspaceId: currentWorkspace?.id || 'ws-1',
       resources: projectData.resources?.teamMembers?.map((m: any) => m.id) || [],
       stakeholders: projectData.stakeholders?.map((s: any) => s.id) || [],
       milestones: projectData.milestones || [],

@@ -274,7 +274,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                                 className={`ml-1 ${
                                   group.milestone.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
                                   group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
-                                  group.milestone.status === 'delayed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
+                                  group.milestone.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
                                   'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                                 }`}
                               >
