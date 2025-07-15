@@ -1,5 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { dataPersistence } from '@/services/DataPersistence';
+import { contextSynchronizer } from '@/services/ContextSynchronizer';
+import { eventBus } from '@/services/EventBus';
 
 export interface Resource {
   id: string;
@@ -15,6 +18,9 @@ export interface Resource {
   hourlyRate: string;
   utilization: number;
   status: 'Available' | 'Busy' | 'Overallocated';
+  createdAt?: string;
+  updatedAt?: string;
+  lastActive?: string;
 }
 
 interface ResourceContextType {
@@ -49,28 +55,31 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return {
       ...resource,
       skills: Array.isArray(resource.skills) ? resource.skills : [],
-      currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : []
+      currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : [],
+      createdAt: resource.createdAt || new Date().toISOString(),
+      updatedAt: resource.updatedAt || new Date().toISOString(),
+      lastActive: resource.lastActive || new Date().toISOString()
     };
   };
 
-  // Load resources from localStorage on mount
+  // Load resources from persistent storage on mount
   useEffect(() => {
-    const savedResources = localStorage.getItem('resources');
+    const savedResources = dataPersistence.getData<Resource[]>('resources');
     if (savedResources) {
-      try {
-        const parsedResources = JSON.parse(savedResources);
-        // Sanitize loaded resources to ensure arrays exist
-        const sanitizedResources = parsedResources.map(sanitizeResource);
-        setResources(sanitizedResources);
-      } catch (error) {
-        console.error('Error parsing saved resources:', error);
-        // Fall back to sample data if localStorage is corrupted
-        initializeSampleData();
-      }
+      const sanitizedResources = savedResources.map(sanitizeResource);
+      setResources(sanitizedResources);
     } else {
-      // Initialize with sample data
       initializeSampleData();
     }
+  }, []);
+
+  // Register with context synchronizer
+  useEffect(() => {
+    const unregister = contextSynchronizer.registerContext('resources', (updatedResources: Resource[]) => {
+      setResources(updatedResources);
+    });
+
+    return unregister;
   }, []);
 
   const initializeSampleData = () => {
@@ -88,7 +97,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentProjects: ['Project Alpha'],
         hourlyRate: '$85/hr',
         utilization: 85,
-        status: 'Available'
+        status: 'Available',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString()
       },
       {
         id: 'michael',
@@ -103,7 +115,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentProjects: ['Project Alpha'],
         hourlyRate: '$90/hr',
         utilization: 95,
-        status: 'Busy'
+        status: 'Busy',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString()
       },
       {
         id: 'emily',
@@ -118,7 +133,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentProjects: ['Project Alpha'],
         hourlyRate: '$75/hr',
         utilization: 60,
-        status: 'Available'
+        status: 'Available',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString()
       },
       {
         id: 'david',
@@ -133,7 +151,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentProjects: ['Project Alpha'],
         hourlyRate: '$70/hr',
         utilization: 80,
-        status: 'Available'
+        status: 'Available',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString()
       },
       {
         id: 'james',
@@ -148,17 +169,20 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentProjects: ['Project Alpha'],
         hourlyRate: '$95/hr',
         utilization: 100,
-        status: 'Overallocated'
+        status: 'Overallocated',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString()
       }
     ];
     setResources(sampleResources);
-    localStorage.setItem('resources', JSON.stringify(sampleResources));
+    dataPersistence.persistData('resources', sampleResources, 'resource_context');
   };
 
-  // Save resources to localStorage whenever resources change
+  // Save resources to persistent storage whenever resources change
   useEffect(() => {
     if (resources.length > 0) {
-      localStorage.setItem('resources', JSON.stringify(resources));
+      dataPersistence.persistData('resources', resources, 'resource_context');
     }
   }, [resources]);
 
@@ -167,7 +191,18 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
-    setResources(prev => prev.map(r => r.id === id ? sanitizeResource({ ...r, ...updates }) : r));
+    setResources(prev => prev.map(r => r.id === id ? sanitizeResource({ 
+      ...r, 
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }) : r));
+
+    // Emit update event
+    eventBus.emit('resource_availability_changed', {
+      type: 'resource_updated',
+      resourceId: id,
+      updates
+    }, 'resource_context');
   };
 
   const addResource = (resource: Omit<Resource, 'id'>) => {
@@ -176,22 +211,51 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: `resource-${Date.now()}`
     });
     setResources(prev => [...prev, newResource]);
+
+    // Emit creation event
+    eventBus.emit('context_updated', {
+      type: 'resource_created',
+      resource: newResource
+    }, 'resource_context');
   };
 
   const assignToProject = (resourceId: string, projectId: string) => {
     setResources(prev => prev.map(r => 
       r.id === resourceId 
-        ? { ...r, currentProjects: [...r.currentProjects, projectId] }
+        ? { 
+          ...r, 
+          currentProjects: [...r.currentProjects, projectId],
+          lastActive: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
         : r
     ));
+
+    // Emit assignment event
+    eventBus.emit('resource_assigned', {
+      resourceId,
+      projectId,
+      timestamp: new Date()
+    }, 'resource_context');
   };
 
   const removeFromProject = (resourceId: string, projectId: string) => {
     setResources(prev => prev.map(r => 
       r.id === resourceId 
-        ? { ...r, currentProjects: r.currentProjects.filter(p => p !== projectId) }
+        ? { 
+          ...r, 
+          currentProjects: r.currentProjects.filter(p => p !== projectId),
+          updatedAt: new Date().toISOString()
+        }
         : r
     ));
+
+    // Emit removal event
+    eventBus.emit('context_updated', {
+      type: 'resource_unassigned',
+      resourceId,
+      projectId
+    }, 'resource_context');
   };
 
   const updateUtilization = (resourceId: string, utilization: number) => {
@@ -200,10 +264,19 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ? { 
             ...r, 
             utilization,
-            status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available'
+            status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available',
+            lastActive: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           }
         : r
     ));
+
+    // Emit utilization update event
+    eventBus.emit('resource_availability_changed', {
+      resourceId,
+      utilization,
+      status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available'
+    }, 'resource_context');
   };
 
   const getAvailableResources = (): Resource[] => {
