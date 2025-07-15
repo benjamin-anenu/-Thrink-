@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import Logo from './Logo';
 import WorkspaceSelector from './WorkspaceSelector';
+import { UserButton } from './auth/UserButton';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +14,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -49,7 +52,7 @@ const Header = () => {
   };
 
   const isLandingPage = location.pathname === '/';
-  const isLoginPage = location.pathname === '/login';
+  const isAuthPage = location.pathname === '/auth';
 
   return (
     <div className="sticky top-0 z-50 pt-8 px-4">
@@ -61,7 +64,7 @@ const Header = () => {
         </div>
         
         {/* Show current workspace prominently on dashboard */}
-        {!isLandingPage && !isLoginPage && currentWorkspace && (
+        {!isLandingPage && !isAuthPage && user && currentWorkspace && (
           <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full">
             <span className="text-sm text-muted-foreground">Workspace:</span>
             <span className="font-semibold text-foreground">{currentWorkspace.name}</span>
@@ -103,7 +106,7 @@ const Header = () => {
                     <DollarSign size={16} className="inline-block mr-1.5" /> Pricing
                   </ToggleGroupItem>
                 </>
-              ) : (
+              ) : user && (
                 <>
                   <ToggleGroupItem 
                     value="dashboard"
@@ -176,7 +179,7 @@ const Header = () => {
           <div className="md:hidden absolute top-20 left-4 right-4 bg-background/95 backdrop-blur-md py-4 px-6 border border-border rounded-2xl shadow-lg z-50">
             <div className="flex flex-col gap-4">
               {/* Add workspace selector for mobile */}
-              {!isLandingPage && !isLoginPage && (
+              {!isLandingPage && !isAuthPage && user && (
                 <div className="pb-2 border-b border-border">
                   <WorkspaceSelector />
                 </div>
@@ -203,7 +206,7 @@ const Header = () => {
                     <DollarSign size={16} className="inline-block mr-1.5" /> Pricing
                   </a>
                 </>
-              ) : (
+              ) : user && (
                 <>
                   <Link 
                     to="/dashboard" 
@@ -253,6 +256,22 @@ const Header = () => {
                 </>
               )}
               
+              {/* Auth buttons for mobile landing page */}
+              {isLandingPage && !user && (
+                <div className="flex flex-col gap-2 pt-4 border-t border-border">
+                  <Link to="/auth?tab=signin">
+                    <Button variant="ghost" className="w-full justify-start">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/auth?tab=signup">
+                    <Button className="w-full">
+                      Get Started
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              
               {/* Add theme toggle for mobile */}
               <div className="flex items-center justify-between px-3 py-2 pt-4 border-t border-border">
                 <span className="text-sm text-muted-foreground">Theme</span>
@@ -263,25 +282,29 @@ const Header = () => {
         )}
         
         <div className="hidden md:flex items-center gap-4">
-          {/* Add workspace selector for desktop (only when not on landing page) */}
-          {!isLandingPage && !isLoginPage && <WorkspaceSelector />}
+          {/* Add workspace selector for desktop (only when authenticated) */}
+          {!isLandingPage && !isAuthPage && user && <WorkspaceSelector />}
+          
+          {/* Auth buttons or user menu */}
+          {isLandingPage && !user && (
+            <div className="rounded-2xl flex gap-2">
+              <Link to="/auth?tab=signin">
+                <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/auth?tab=signup">
+                <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
+          )}
+          
+          {user && <UserButton />}
           
           {/* Theme toggle for desktop */}
           <ThemeToggle />
-          
-          {/* Show login buttons only on landing page and login page */}
-          {(isLandingPage || isLoginPage) && (
-            <div className="rounded-2xl flex gap-2">
-              <Link to="/login">
-                <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                  Log in
-                </Button>
-              </Link>
-              <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
-                Get Started
-              </Button>
-            </div>
-          )}
         </div>
       </header>
     </div>

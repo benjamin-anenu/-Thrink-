@@ -1,19 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, Play } from 'lucide-react';
 import TinkAssistant from './TinkAssistant';
 import AIBackgroundEffects from './hero/AIBackgroundEffects';
 import HeroBadge from './hero/HeroBadge';
 import HeroHeading from './hero/HeroHeading';
-import HeroCTAButtons from './hero/HeroCTAButtons';
 import HeroFeaturePills from './hero/HeroFeaturePills';
 import HeroTrustIndicators from './hero/HeroTrustIndicators';
 import HeroDashboard from './hero/HeroDashboard';
 
 const HeroSection = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
+
+  const handleGetStarted = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth?tab=signup');
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -64,10 +77,28 @@ const HeroSection = () => {
                 <HeroHeading />
                 
                 {/* Premium CTA Buttons */}
-                <HeroCTAButtons 
-                  hoveredElement={hoveredElement}
-                  setHoveredElement={setHoveredElement}
-                />
+                <div className="flex flex-col sm:flex-row gap-4 justify-center sm:justify-start">
+                  <Button 
+                    size="lg" 
+                    onClick={handleGetStarted} 
+                    className="group bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                    onMouseEnter={() => setHoveredElement('cta-primary')}
+                    onMouseLeave={() => setHoveredElement(null)}
+                  >
+                    {user ? 'Go to Dashboard' : 'Get Started Free'}
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="group"
+                    onMouseEnter={() => setHoveredElement('cta-demo')}
+                    onMouseLeave={() => setHoveredElement(null)}
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Watch Demo
+                  </Button>
+                </div>
                 
                 {/* Premium Feature Pills */}
                 <HeroFeaturePills />
