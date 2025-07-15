@@ -1,63 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationHeader } from './NotificationHeader';
 import { NotificationFilters } from './NotificationFilters';
 import { NotificationList } from './NotificationList';
 import { NotificationSettings } from './NotificationSettings';
 import BlackoutPeriodsManager from './BlackoutPeriodsManager';
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  category: 'project' | 'deadline' | 'team' | 'system';
-  timestamp: Date;
-  read: boolean;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  projectId?: string;
-  projectName?: string;
-}
+import { NotificationIntegrationService, ProjectNotification } from '@/services/NotificationIntegrationService';
 
 const NotificationCenter: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Project Deadline Approaching',
-      message: 'E-commerce Platform project deadline is in 3 days',
-      type: 'warning',
-      category: 'deadline',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      read: false,
-      priority: 'high',
-      projectId: 'proj-1',
-      projectName: 'E-commerce Platform'
-    },
-    {
-      id: '2',
-      title: 'New Team Member Added',
-      message: 'Sarah Johnson has been added to the Marketing team',
-      type: 'info',
-      category: 'team',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      read: false,
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      title: 'Task Completed',
-      message: 'UI Design Review has been marked as completed',
-      type: 'success',
-      category: 'project',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-      read: true,
-      priority: 'low',
-      projectId: 'proj-2',
-      projectName: 'Mobile App Redesign'
-    }
-  ]);
-
+  const [notifications, setNotifications] = useState<ProjectNotification[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [notificationSettings, setNotificationSettings] = useState({
@@ -70,22 +22,30 @@ const NotificationCenter: React.FC = () => {
     systemAlerts: false
   });
 
+  const notificationService = NotificationIntegrationService.getInstance();
+
+  useEffect(() => {
+    // Load initial notifications
+    setNotifications(notificationService.getNotifications());
+
+    // Subscribe to notification updates
+    const unsubscribe = notificationService.subscribe((updatedNotifications) => {
+      setNotifications(updatedNotifications);
+    });
+
+    return unsubscribe;
+  }, []);
+
   const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
+    notificationService.markAsRead(id);
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+    notificationService.markAllAsRead();
   };
 
   const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
+    notificationService.deleteNotification(id);
   };
 
   const handleSettingChange = (key: keyof typeof notificationSettings, value: boolean) => {
@@ -105,6 +65,20 @@ const NotificationCenter: React.FC = () => {
   });
 
   const unreadCount = notifications.filter(notif => !notif.read).length;
+
+  // Convert ProjectNotification to the expected interface for NotificationList
+  const convertedNotifications = filteredNotifications.map(notif => ({
+    id: notif.id,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type,
+    category: notif.category,
+    timestamp: notif.timestamp,
+    read: notif.read,
+    priority: notif.priority,
+    projectId: notif.projectId,
+    projectName: notif.projectName
+  }));
 
   return (
     <div className="space-y-6">
@@ -128,7 +102,7 @@ const NotificationCenter: React.FC = () => {
           />
 
           <NotificationList
-            notifications={filteredNotifications}
+            notifications={convertedNotifications}
             onMarkAsRead={markAsRead}
             onDelete={deleteNotification}
           />

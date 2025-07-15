@@ -1,6 +1,10 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ProjectData, ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
+import { PerformanceTracker } from '@/services/PerformanceTracker';
+import { EmailReminderService } from '@/services/EmailReminderService';
+import { NotificationIntegrationService } from '@/services/NotificationIntegrationService';
+import { eventBus } from '@/services/EventBus';
 
 interface ProjectContextType {
   projects: ProjectData[];
@@ -15,6 +19,8 @@ interface ProjectContextType {
   updateMilestone: (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => void;
   rebaselineTasks: (projectId: string, request: RebaselineRequest) => void;
   setCurrentProject: (projectId: string) => void;
+  completeTask: (projectId: string, taskId: string) => void;
+  assignTaskToResource: (projectId: string, taskId: string, resourceId: string) => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -32,12 +38,26 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentProject, setCurrentProjectState] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Initialize services
+  const performanceTracker = PerformanceTracker.getInstance();
+  const emailService = EmailReminderService.getInstance();
+  const notificationService = NotificationIntegrationService.getInstance();
+
   // Load projects from localStorage on mount
   useEffect(() => {
     const savedProjects = localStorage.getItem('projects');
     if (savedProjects) {
       const parsedProjects = JSON.parse(savedProjects);
       setProjects(parsedProjects);
+      
+      // Schedule email reminders for existing tasks
+      parsedProjects.forEach((project: ProjectData) => {
+        project.tasks.forEach(task => {
+          if (task.status !== 'Completed') {
+            scheduleTaskReminders(task, project);
+          }
+        });
+      });
     } else {
       // Initialize with sample data
       const sampleProject: ProjectData = {
@@ -238,6 +258,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
       setProjects([sampleProject]);
       localStorage.setItem('projects', JSON.stringify([sampleProject]));
+      
+      // Schedule reminders for sample project tasks
+      sampleProject.tasks.forEach(task => {
+        if (task.status !== 'Completed') {
+          scheduleTaskReminders(task, sampleProject);
+        }
+      });
     }
   }, []);
 
@@ -247,6 +274,119 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       localStorage.setItem('projects', JSON.stringify(projects));
     }
   }, [projects]);
+
+  // Set up event listeners
+  useEffect(() => {
+    const unsubscribeTaskCompleted = eventBus.subscribe('task_completed', (event) => {
+      const { taskId, projectId, resourceId } = event.payload;
+      handleTaskCompletionEffects(projectId, taskId, resourceId);
+    });
+
+    const unsubscribeDeadlineCheck = eventBus.subscribe('deadline_approaching', (event) => {
+      const { taskId, projectId, daysRemaining } = event.payload;
+      handleDeadlineAlert(projectId, taskId, daysRemaining);
+    });
+
+    return () => {
+      unsubscribeTaskCompleted();
+      unsubscribeDeadlineCheck();
+    };
+  }, [projects]);
+
+  // Monitor deadlines
+  useEffect(() => {
+    const checkDeadlines = () => {
+      const now = new Date();
+      projects.forEach(project => {
+        project.tasks.forEach(task => {
+          if (task.status !== 'Completed' && task.status !== 'Not Started') {
+            const deadline = new Date(task.endDate);
+            const daysRemaining = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysRemaining <= 7 && daysRemaining >= 0) {
+              eventBus.emit('deadline_approaching', {
+                taskId: task.id,
+                taskName: task.name,
+                projectId: project.id,
+                projectName: project.name,
+                daysRemaining
+              }, 'ProjectContext');
+            }
+          }
+        });
+      });
+    };
+
+    const interval = setInterval(checkDeadlines, 60000); // Check every minute
+    checkDeadlines(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [projects]);
+
+  const scheduleTaskReminders = (task: ProjectTask, project: ProjectData) => {
+    // Get resource info for email scheduling
+    const resource = { 
+      id: task.assignedResources[0] || 'unknown',
+      name: task.assignedResources[0] || 'Unknown',
+      email: `${task.assignedResources[0] || 'unknown'}@company.com`
+    };
+    
+    emailService.scheduleTaskReminders(
+      { ...task, deadline: task.endDate, dueDate: task.endDate },
+      resource,
+      project
+    );
+  };
+
+  const handleTaskCompletionEffects = (projectId: string, taskId: string, resourceId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (project && task) {
+      // Track performance
+      performanceTracker.trackPositiveActivity(
+        resourceId,
+        'task_completion',
+        8,
+        `Completed task: ${task.name}`,
+        projectId,
+        taskId
+      );
+
+      // Send notification
+      notificationService.onTaskCompleted(
+        taskId,
+        task.name,
+        projectId,
+        project.name,
+        resourceId,
+        resourceId // This would be resolved to actual resource name
+      );
+
+      // Check if milestone is complete
+      const milestone = project.milestones.find(m => m.tasks.includes(taskId));
+      if (milestone) {
+        const milestoneComplete = milestone.tasks.every(tId => {
+          const t = project.tasks.find(task => task.id === tId);
+          return t?.status === 'Completed';
+        });
+
+        if (milestoneComplete && milestone.status !== 'completed') {
+          updateMilestone(projectId, milestone.id, { status: 'completed', progress: 100 });
+          notificationService.onProjectMilestone(milestone.id, milestone.name, projectId, project.name, true);
+        }
+      }
+    }
+  };
+
+  const handleDeadlineAlert = (projectId: string, taskId: string, daysRemaining: number) => {
+    const project = projects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (project && task) {
+      notificationService.onDeadlineApproaching(taskId, task.name, projectId, project.name, daysRemaining);
+    }
+  };
 
   const getProject = (id: string): ProjectData | null => {
     return projects.find(p => p.id === id) || null;
@@ -259,6 +399,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateProject = (id: string, updates: Partial<ProjectData>) => {
     setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    eventBus.emit('project_updated', { projectId: id, updates }, 'ProjectContext');
   };
 
   const addTask = (projectId: string, task: Omit<ProjectTask, 'id'>) => {
@@ -272,6 +413,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ? { ...p, tasks: [...p.tasks, newTask] }
         : p
     ));
+
+    // Schedule email reminders for new task
+    const project = getProject(projectId);
+    if (project) {
+      scheduleTaskReminders(newTask, project);
+    }
+
+    eventBus.emit('task_created', { taskId: newTask.id, projectId, task: newTask }, 'ProjectContext');
   };
 
   const updateTask = (projectId: string, taskId: string, updates: Partial<ProjectTask>) => {
@@ -283,6 +432,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         : p
     ));
+
+    eventBus.emit('task_updated', { taskId, projectId, updates }, 'ProjectContext');
   };
 
   const deleteTask = (projectId: string, taskId: string) => {
@@ -294,6 +445,41 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         : p
     ));
+  };
+
+  const completeTask = (projectId: string, taskId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (task && task.assignedResources.length > 0) {
+      updateTask(projectId, taskId, { status: 'Completed', progress: 100 });
+      
+      // Emit completion event
+      eventBus.emit('task_completed', {
+        taskId,
+        projectId,
+        resourceId: task.assignedResources[0]
+      }, 'ProjectContext');
+    }
+  };
+
+  const assignTaskToResource = (projectId: string, taskId: string, resourceId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (project && task) {
+      updateTask(projectId, taskId, { 
+        assignedResources: [...task.assignedResources, resourceId] 
+      });
+
+      notificationService.onResourceAssigned(resourceId, resourceId, projectId, project.name, task.name);
+      
+      eventBus.emit('resource_assigned', {
+        resourceId,
+        taskId,
+        projectId
+      }, 'ProjectContext');
+    }
   };
 
   const addMilestone = (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => {
@@ -318,6 +504,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         : p
     ));
+
+    eventBus.emit('milestone_reached', { milestoneId, projectId, updates }, 'ProjectContext');
   };
 
   const rebaselineTasks = (projectId: string, request: RebaselineRequest) => {
@@ -371,7 +559,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addMilestone,
       updateMilestone,
       rebaselineTasks,
-      setCurrentProject
+      setCurrentProject,
+      completeTask,
+      assignTaskToResource
     }}>
       {children}
     </ProjectContext.Provider>
