@@ -34,6 +34,7 @@ const Resources = lazy(() => import('@/pages/Resources'));
 const Stakeholders = lazy(() => import('@/pages/Stakeholders'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
+const ThrinkDashboard = lazy(() => import('@/pages/ThrinkDashboard'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // Create a client
@@ -79,6 +80,7 @@ function AppContent() {
           <Route path="/stakeholders" element={<AuthGuard><Stakeholders /></AuthGuard>} />
           <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
           <Route path="/workspaces" element={<AuthGuard><Workspaces /></AuthGuard>} />
+          <Route path="/thrink" element={<ThrinkDashboard />} />
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
