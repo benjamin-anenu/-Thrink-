@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from './Logo';
@@ -18,6 +18,15 @@ const Header = () => {
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Memoize route-based state calculations to prevent unnecessary re-renders
+  const routeState = useMemo(() => {
+    const isLandingPage = location.pathname === '/';
+    const isAuthPage = location.pathname === '/auth';
+    const shouldShowAuthButtons = isLandingPage && !loading && !user;
+    
+    return { isLandingPage, isAuthPage, shouldShowAuthButtons };
+  }, [location.pathname, loading, user]);
+  
   useEffect(() => {
     // Set active page based on current route
     const path = location.pathname;
@@ -32,7 +41,7 @@ const Header = () => {
     } else {
       setActivePage('features');
     }
-  }, [location]);
+  }, [location.pathname, location.hash]);
   
   const handleNavClick = (page: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,20 +59,7 @@ const Header = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const isLandingPage = location.pathname === '/';
-  const isAuthPage = location.pathname === '/auth';
-
-  // Debug authentication state
-  console.log('Header Debug:', { 
-    user: !!user, 
-    loading, 
-    isLandingPage, 
-    path: location.pathname,
-    shouldShow: isLandingPage && !loading && !user 
-  });
-
-  // Show buttons when: on landing page, not loading, and no authenticated user
-  const shouldShowAuthButtons = isLandingPage && !loading && !user;
+  const { isLandingPage, isAuthPage, shouldShowAuthButtons } = routeState;
 
   return (
     <div className="sticky top-0 z-50 pt-8 px-4">
@@ -240,7 +236,7 @@ const Header = () => {
                   <Link 
                     to="/resources" 
                     className={`px-3 py-2 text-sm rounded-md transition-colors ${
-                      activePage === 'resources' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted'
+                      activePage === 'resources' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
