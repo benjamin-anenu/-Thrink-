@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -10,168 +11,80 @@ import {
   BarChart3, PieChart, Activity, Sparkles
 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart as RechartsPieChart, Cell, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useProject } from '@/contexts/ProjectContext';
-import { useResources } from '@/contexts/ResourceContext';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { PerformanceTracker } from '@/services/PerformanceTracker';
 
 const AIProjectDashboard = () => {
-  const { projects } = useProject();
-  const { resources } = useResources();
-  const { currentWorkspace } = useWorkspace();
   const [activeInsight, setActiveInsight] = useState(0);
   const [realTimeData, setRealTimeData] = useState({
-    projectsInProgress: 0,
-    resourceUtilization: 0,
-    budgetHealth: 0,
-    riskScore: 0
+    projectsInProgress: 12,
+    resourceUtilization: 78,
+    budgetHealth: 92,
+    riskScore: 23
   });
 
-  // Calculate real metrics from contexts
+  // Simulate real-time updates
   useEffect(() => {
-    if (!currentWorkspace) return;
+    const interval = setInterval(() => {
+      setRealTimeData(prev => ({
+        ...prev,
+        resourceUtilization: Math.max(60, Math.min(95, prev.resourceUtilization + (Math.random() - 0.5) * 4)),
+        budgetHealth: Math.max(80, Math.min(100, prev.budgetHealth + (Math.random() - 0.5) * 2)),
+        riskScore: Math.max(10, Math.min(40, prev.riskScore + (Math.random() - 0.5) * 3))
+      }));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-    const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress');
-    const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
-    
-    // Get performance data
-    const performanceTracker = PerformanceTracker.getInstance();
-    const performanceProfiles = performanceTracker.getAllProfiles();
-    
-    // Calculate resource utilization
-    const totalCapacity = workspaceResources.length * 100;
-    const utilizedCapacity = workspaceResources.reduce((sum, resource) => {
-      const profile = performanceProfiles.find(p => p.resourceName === resource.name);
-      return sum + (profile ? profile.currentScore : 75); // Default 75% if no profile
-    }, 0);
-    const utilization = totalCapacity > 0 ? (utilizedCapacity / totalCapacity) * 100 : 0;
+  const performanceData = [
+    { name: 'Jan', completed: 8, planned: 10, budget: 95 },
+    { name: 'Feb', completed: 12, planned: 14, budget: 88 },
+    { name: 'Mar', completed: 15, planned: 16, budget: 92 },
+    { name: 'Apr', completed: 18, planned: 20, budget: 85 },
+    { name: 'May', completed: 22, planned: 24, budget: 90 },
+    { name: 'Jun', completed: 25, planned: 26, budget: 93 }
+  ];
 
-    // Calculate budget health (mock calculation based on project progress)
-    const budgetHealth = workspaceProjects.length > 0 
-      ? workspaceProjects.reduce((sum, project) => sum + (project.progress || 0), 0) / workspaceProjects.length 
-      : 90;
+  const resourceData = [
+    { name: 'Developers', value: 35, color: 'hsl(var(--primary))' },
+    { name: 'Designers', value: 15, color: 'hsl(var(--success))' },
+    { name: 'Managers', value: 20, color: 'hsl(var(--warning))' },
+    { name: 'QA', value: 12, color: 'hsl(var(--error))' },
+    { name: 'DevOps', value: 18, color: 'hsl(var(--info))' }
+  ];
 
-    // Calculate risk score based on performance data
-    const highRiskProfiles = performanceProfiles.filter(p => p.riskLevel === 'high' || p.riskLevel === 'critical');
-    const riskScore = Math.min(40, (highRiskProfiles.length / Math.max(performanceProfiles.length, 1)) * 100);
-
-    setRealTimeData({
-      projectsInProgress: activeProjects.length,
-      resourceUtilization: Math.round(utilization),
-      budgetHealth: Math.round(budgetHealth),
-      riskScore: Math.round(riskScore)
-    });
-  }, [projects, resources, currentWorkspace]);
-
-  // Generate performance data based on real projects
-  const performanceData = useMemo(() => {
-    if (!currentWorkspace) return [];
-    
-    const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    
-    return months.map((month, index) => {
-      const completed = Math.floor(workspaceProjects.length * (index + 1) / 6 * 0.8);
-      const planned = Math.floor(workspaceProjects.length * (index + 1) / 6);
-      const budget = 95 - (index * 2) + Math.random() * 5;
-      
-      return {
-        name: month,
-        completed,
-        planned,
-        budget: Math.round(budget)
-      };
-    });
-  }, [projects, currentWorkspace]);
-
-  // Generate resource data based on actual resources
-  const resourceData = useMemo(() => {
-    if (!currentWorkspace) return [];
-    
-    const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
-    const roleGroups = workspaceResources.reduce((acc, resource) => {
-      const role = resource.role || 'Other';
-      acc[role] = (acc[role] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const colors = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--error))', 'hsl(var(--info))'];
-    
-    return Object.entries(roleGroups).map(([role, count], index) => ({
-      name: role,
-      value: workspaceResources.length > 0 ? Math.round((count / workspaceResources.length) * 100) : 0,
-      color: colors[index % colors.length]
-    }));
-  }, [resources, currentWorkspace]);
-
-  // Generate AI insights based on real data
-  const aiInsights = useMemo(() => {
-    const performanceTracker = PerformanceTracker.getInstance();
-    const profiles = performanceTracker.getAllProfiles();
-    const workspaceProjects = currentWorkspace ? projects.filter(p => p.workspaceId === currentWorkspace.id) : [];
-    
-    const insights = [];
-    
-    // Project delivery forecast
-    const overdueProjects = workspaceProjects.filter(p => {
-      const dueDate = new Date(p.endDate);
-      return dueDate < new Date() && (p.progress || 0) < 100;
-    });
-    
-    if (overdueProjects.length > 0) {
-      insights.push({
-        type: 'prediction',
-        title: 'Project Delivery Forecast',
-        message: `${overdueProjects.length} projects may exceed deadlines. Consider resource reallocation or timeline adjustment.`,
-        confidence: 87,
-        impact: 'medium',
-        icon: TrendingUp
-      });
+  const aiInsights = [
+    {
+      type: 'prediction',
+      title: 'Project Delivery Forecast',
+      message: 'Based on current velocity, 3 projects may exceed deadlines by 5-7 days. Consider resource reallocation.',
+      confidence: 87,
+      impact: 'medium',
+      icon: TrendingUp
+    },
+    {
+      type: 'optimization',
+      title: 'Resource Optimization',
+      message: 'Moving 2 developers from Project Alpha to Project Beta could improve overall delivery by 12%.',
+      confidence: 92,
+      impact: 'high',
+      icon: Users
+    },
+    {
+      type: 'risk',
+      title: 'Budget Risk Alert',
+      message: 'E-commerce Platform project showing 15% budget variance. Review required.',
+      confidence: 78,
+      impact: 'high',
+      icon: AlertTriangle
+    },
+    {
+      type: 'opportunity',
+      title: 'Efficiency Opportunity',
+      message: 'Implementing automated testing could reduce QA time by 30% across all projects.',
+      confidence: 85,
+      impact: 'medium',
+      icon: Sparkles
     }
-
-    // Resource optimization
-    const highPerformers = profiles.filter(p => p.currentScore > 85);
-    const lowPerformers = profiles.filter(p => p.currentScore < 60);
-    
-    if (highPerformers.length > 0 && lowPerformers.length > 0) {
-      insights.push({
-        type: 'optimization',
-        title: 'Resource Optimization',
-        message: `${highPerformers.length} high performers could mentor ${lowPerformers.length} team members to improve overall efficiency.`,
-        confidence: 92,
-        impact: 'high',
-        icon: Users
-      });
-    }
-
-    // Budget risk
-    const lowProgressProjects = workspaceProjects.filter(p => (p.progress || 0) < 30);
-    if (lowProgressProjects.length > 0) {
-      insights.push({
-        type: 'risk',
-        title: 'Budget Risk Alert',
-        message: `${lowProgressProjects.length} projects showing slow progress. Budget variance risk detected.`,
-        confidence: 78,
-        impact: 'high',
-        icon: AlertTriangle
-      });
-    }
-
-    // Default insight if no specific insights
-    if (insights.length === 0) {
-      insights.push({
-        type: 'opportunity',
-        title: 'Performance Opportunity',
-        message: 'Team performance is stable. Consider implementing advanced analytics for deeper insights.',
-        confidence: 85,
-        impact: 'medium',
-        icon: Sparkles
-      });
-    }
-
-    return insights;
-  }, [projects, currentWorkspace]);
+  ];
 
   const getImpactBadgeVariant = (impact: string): 'success' | 'warning' | 'error' | 'default' => {
     switch (impact) {
@@ -197,19 +110,9 @@ const AIProjectDashboard = () => {
   };
 
   useEffect(() => {
-    if (aiInsights.length > 1) {
-      const timer = setInterval(cycleInsights, 4000);
-      return () => clearInterval(timer);
-    }
-  }, [aiInsights.length]);
-
-  if (!currentWorkspace) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Please select a workspace to view AI insights</p>
-      </div>
-    );
-  }
+    const timer = setInterval(cycleInsights, 4000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -222,9 +125,7 @@ const AIProjectDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{realTimeData.projectsInProgress}</div>
-            <p className="text-xs text-success-muted-foreground">
-              {currentWorkspace.name} workspace
-            </p>
+            <p className="text-xs text-success-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
 
@@ -234,7 +135,7 @@ const AIProjectDashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{realTimeData.resourceUtilization}%</div>
+            <div className="text-2xl font-bold">{Math.round(realTimeData.resourceUtilization)}%</div>
             <Progress value={realTimeData.resourceUtilization} className="mt-2 h-2" />
           </CardContent>
         </Card>
@@ -245,7 +146,7 @@ const AIProjectDashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{realTimeData.budgetHealth}%</div>
+            <div className="text-2xl font-bold text-success">{Math.round(realTimeData.budgetHealth)}%</div>
             <p className="text-xs text-muted-foreground">Within targets</p>
           </CardContent>
         </Card>
@@ -256,21 +157,19 @@ const AIProjectDashboard = () => {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">{realTimeData.riskScore}</div>
-            <p className="text-xs text-muted-foreground">
-              {realTimeData.riskScore < 20 ? 'Low risk' : realTimeData.riskScore < 40 ? 'Medium risk' : 'High risk'}
-            </p>
+            <div className="text-2xl font-bold text-warning">{Math.round(realTimeData.riskScore)}</div>
+            <p className="text-xs text-muted-foreground">Low risk range</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* AI Insights Panel - Updated with real data */}
+      {/* AI Insights Panel - Updated with theme-aware styling */}
       <Card className="bg-surface border-border shadow-elevated">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Tink AI Insights</CardTitle>
+              <CardTitle className="text-lg">AI Insights</CardTitle>
             </div>
             <StatusBadge variant="info">
               Live Analysis
@@ -387,36 +286,30 @@ const AIProjectDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {resourceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RechartsPieChart>
-                      <Pie
-                        data={resourceData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {resourceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px'
-                        }}
-                      />
-                      <Legend />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    No resource data available
-                  </div>
-                )}
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsPieChart>
+                    <Pie
+                      data={resourceData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {resourceData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px'
+                      }}
+                    />
+                    <Legend />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
 
@@ -425,21 +318,15 @@ const AIProjectDashboard = () => {
                 <CardTitle>Team Utilization</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {resourceData.length > 0 ? (
-                  resourceData.map((resource, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{resource.name}</span>
-                        <span>{resource.value}%</span>
-                      </div>
-                      <Progress value={resource.value} className="h-2" />
+                {resourceData.map((resource, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{resource.name}</span>
+                      <span>{resource.value}%</span>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground">
-                    No team data available
+                    <Progress value={resource.value} className="h-2" />
                   </div>
-                )}
+                ))}
               </CardContent>
             </Card>
           </div>
@@ -455,28 +342,20 @@ const AIProjectDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold mb-2">
-                  {realTimeData.riskScore < 20 ? '98%' : realTimeData.riskScore < 40 ? '85%' : '72%'}
-                </div>
+                <div className="text-2xl font-bold mb-2">95%</div>
                 <p className="text-sm text-muted-foreground mb-4">On-time delivery probability</p>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>This Month</span>
-                    <span className="text-success">
-                      {realTimeData.riskScore < 20 ? '98%' : '85%'}
-                    </span>
+                    <span className="text-success">98%</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Next Month</span>
-                    <span className="text-warning">
-                      {realTimeData.riskScore < 20 ? '95%' : '78%'}
-                    </span>
+                    <span className="text-warning">92%</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Q4</span>
-                    <span className="text-error">
-                      {realTimeData.riskScore < 20 ? '90%' : '70%'}
-                    </span>
+                    <span className="text-error">87%</span>
                   </div>
                 </div>
               </CardContent>
@@ -490,12 +369,10 @@ const AIProjectDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold mb-2">
-                  ${((realTimeData.projectsInProgress * 50000) / 1000).toFixed(1)}K
-                </div>
+                <div className="text-2xl font-bold mb-2">$2.1M</div>
                 <p className="text-sm text-muted-foreground mb-4">Projected spend this quarter</p>
-                <StatusBadge variant={realTimeData.budgetHealth > 90 ? "success" : "warning"}>
-                  {realTimeData.budgetHealth > 90 ? "On track" : "Monitor closely"}
+                <StatusBadge variant="success">
+                  8% under budget
                 </StatusBadge>
               </CardContent>
             </Card>
@@ -511,21 +388,15 @@ const AIProjectDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Schedule Risk</span>
-                    <StatusBadge variant={realTimeData.riskScore < 20 ? "success" : realTimeData.riskScore < 40 ? "warning" : "error"}>
-                      {realTimeData.riskScore < 20 ? "Low" : realTimeData.riskScore < 40 ? "Medium" : "High"}
-                    </StatusBadge>
+                    <StatusBadge variant="warning">Medium</StatusBadge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Budget Risk</span>
-                    <StatusBadge variant={realTimeData.budgetHealth > 90 ? "success" : "warning"}>
-                      {realTimeData.budgetHealth > 90 ? "Low" : "Medium"}
-                    </StatusBadge>
+                    <StatusBadge variant="success">Low</StatusBadge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Resource Risk</span>
-                    <StatusBadge variant={realTimeData.resourceUtilization < 80 ? "success" : "error"}>
-                      {realTimeData.resourceUtilization < 80 ? "Low" : "High"}
-                    </StatusBadge>
+                    <StatusBadge variant="error">High</StatusBadge>
                   </div>
                 </div>
               </CardContent>
