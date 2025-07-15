@@ -20,7 +20,49 @@ interface ProjectDisplayProps {
 }
 
 const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject }) => {
-  const currentProject = projects[activeProject];
+  console.log('[ProjectDisplay] Rendering with:', { projectsLength: projects.length, activeProject });
+
+  // Safety checks for empty or invalid data
+  if (!projects || projects.length === 0) {
+    return (
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h4 className="text-xl font-bold text-foreground flex items-center gap-3">
+            <Activity className="h-5 w-5 text-primary" />
+            Live Project Analysis
+          </h4>
+        </div>
+        <div className="p-8 rounded-3xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border">
+          <div className="text-center py-12">
+            <Activity className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h5 className="text-xl font-semibold text-foreground mb-2">No Projects Available</h5>
+            <p className="text-muted-foreground">Create your first project to see live analysis here.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure activeProject index is valid
+  const safeActiveProject = Math.max(0, Math.min(activeProject, projects.length - 1));
+  const currentProject = projects[safeActiveProject];
+
+  if (!currentProject) {
+    console.warn('[ProjectDisplay] No current project found, using fallback');
+    return (
+      <div className="mb-8">
+        <div className="p-8 rounded-3xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border">
+          <div className="text-center py-12">
+            <Activity className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h5 className="text-xl font-semibold text-foreground mb-2">Loading Project Data</h5>
+            <p className="text-muted-foreground">Please wait while we load your project information.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('[ProjectDisplay] Current project:', currentProject.name);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -52,14 +94,14 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject
             <div 
               key={i} 
               className={`h-3 w-12 rounded-full transition-all duration-700 ${
-                i === activeProject ? 'bg-gradient-to-r from-primary to-purple-500 shadow-glow' : 'bg-border/40'
+                i === safeActiveProject ? 'bg-gradient-to-r from-primary to-purple-500 shadow-glow' : 'bg-border/40'
               }`}
             />
           ))}
         </div>
       </div>
 
-      <div className={`p-8 rounded-3xl bg-gradient-to-br ${currentProject.color}/10 border border-white/10 transform transition-all duration-1000 hover:scale-[1.02] shadow-premium`}>
+      <div className={`p-8 rounded-3xl bg-gradient-to-br ${currentProject.color || 'from-primary/10 to-purple-500/10'} border border-white/10 transform transition-all duration-1000 hover:scale-[1.02] shadow-premium`}>
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -97,7 +139,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject
           </div>
           <div className="h-3 bg-border/30 rounded-full overflow-hidden shadow-inner">
             <div 
-              className={`h-full bg-gradient-to-r ${currentProject.color} transition-all duration-1200 ease-out shadow-glow`}
+              className={`h-full bg-gradient-to-r ${currentProject.color || 'from-primary to-purple-500'} transition-all duration-1200 ease-out shadow-glow`}
               style={{ width: `${currentProject.progress}%` }}
             />
           </div>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import MiloAssistant from '@/components/MiloAssistant';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
@@ -18,6 +18,8 @@ const Dashboard = () => {
   const [activeProject, setActiveProject] = useState(0);
   const { projects } = useProject();
   const { resources } = useResources();
+
+  console.log('[Dashboard] Rendering with projects:', projects.length);
 
   // Transform real projects data for display
   const projectsForDisplay = projects.map(project => ({
@@ -39,11 +41,26 @@ const Dashboard = () => {
     priority: project.priority
   }));
 
-  // Cycle through projects every 5 seconds
-  React.useEffect(() => {
-    if (projectsForDisplay.length > 0) {
+  console.log('[Dashboard] Projects for display:', projectsForDisplay.length);
+
+  // Reset activeProject when projects array changes or becomes empty
+  useEffect(() => {
+    if (projectsForDisplay.length === 0) {
+      setActiveProject(0);
+    } else if (activeProject >= projectsForDisplay.length) {
+      setActiveProject(0);
+    }
+  }, [projectsForDisplay.length, activeProject]);
+
+  // Cycle through projects every 5 seconds, but only if we have projects
+  useEffect(() => {
+    if (projectsForDisplay.length > 1) {
       const interval = setInterval(() => {
-        setActiveProject((prev) => (prev + 1) % projectsForDisplay.length);
+        setActiveProject((prev) => {
+          const next = (prev + 1) % projectsForDisplay.length;
+          console.log('[Dashboard] Cycling to project:', next);
+          return next;
+        });
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -218,7 +235,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Recent Activity */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
