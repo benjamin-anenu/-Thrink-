@@ -5,6 +5,7 @@ import MiloAssistant from '@/components/MiloAssistant';
 import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
 import EscalationMatrix from '@/components/EscalationMatrix';
+import { useStakeholders } from '@/contexts/StakeholderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Search, Filter, UserCheck, AlertTriangle, MessageSquare } from 'lucide-react';
 
-interface Stakeholder {
+// Interface to match the component expectations
+interface StakeholderCardProps {
   id: string;
   name: string;
   role: string;
@@ -21,120 +23,74 @@ interface Stakeholder {
   email: string;
   phone: string;
   avatar?: string;
-  communicationPreference: 'email' | 'phone' | 'slack' | 'teams';
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
   escalationLevel: number;
-  influence: 'high' | 'medium' | 'low';
-  interest: 'high' | 'medium' | 'low';
+  influence: 'Low' | 'Medium' | 'High';
+  interest: 'Low' | 'Medium' | 'High';
   projects: string[];
   notes?: string;
 }
 
-const mockStakeholders: Stakeholder[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    role: 'Project Manager',
-    department: 'Engineering',
-    email: 'sarah.johnson@company.com',
-    phone: '+1 (555) 123-4567',
-    communicationPreference: 'email',
-    escalationLevel: 1,
-    influence: 'high',
-    interest: 'high',
-    projects: ['E-commerce Redesign', 'Mobile App', 'API Integration'],
-    notes: 'Primary PM for web projects. Prefers detailed status updates.'
-  },
-  {
-    id: '2',
-    name: 'David Wilson',
-    role: 'Engineering Manager',
-    department: 'Engineering',
-    email: 'david.wilson@company.com',
-    phone: '+1 (555) 234-5678',
-    communicationPreference: 'slack',
-    escalationLevel: 2,
-    influence: 'high',
-    interest: 'medium',
-    projects: ['Mobile App', 'Infrastructure'],
-    notes: 'Technical escalation point. Available on Slack during business hours.'
-  },
-  {
-    id: '3',
-    name: 'Lisa Park',
-    role: 'Product Manager',
-    department: 'Product',
-    email: 'lisa.park@company.com',
-    phone: '+1 (555) 345-6789',
-    communicationPreference: 'teams',
-    escalationLevel: 2,
-    influence: 'high',
-    interest: 'high',
-    projects: ['E-commerce Redesign', 'Customer Portal'],
-    notes: 'Focuses on user experience and product strategy.'
-  },
-  {
-    id: '4',
-    name: 'Mike Chen',
-    role: 'Tech Lead',
-    department: 'Engineering',
-    email: 'mike.chen@company.com',
-    phone: '+1 (555) 456-7890',
-    communicationPreference: 'email',
-    escalationLevel: 1,
-    influence: 'medium',
-    interest: 'high',
-    projects: ['API Integration', 'Security Audit'],
-    notes: 'Subject matter expert for backend systems.'
-  },
-  {
-    id: '5',
-    name: 'Anna Kim',
-    role: 'Director of Product',
-    department: 'Product',
-    email: 'anna.kim@company.com',
-    phone: '+1 (555) 567-8901',
-    communicationPreference: 'phone',
-    escalationLevel: 3,
-    influence: 'high',
-    interest: 'medium',
-    projects: ['Strategic Initiative', 'Market Research'],
-    notes: 'High-level strategic decisions. Prefers concise updates.'
-  }
-];
-
 const Stakeholders = () => {
-  const [stakeholders, setStakeholders] = useState<Stakeholder[]>(mockStakeholders);
+  const { stakeholders, addStakeholder, updateStakeholder, loading } = useStakeholders();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState<Stakeholder | undefined>();
+  const [editingStakeholder, setEditingStakeholder] = useState<any>();
 
-  const filteredStakeholders = stakeholders.filter(stakeholder => {
+  // Transform context stakeholders to match component interface
+  const transformedStakeholders: StakeholderCardProps[] = stakeholders.map(stakeholder => ({
+    ...stakeholder,
+    communicationPreference: stakeholder.communicationPreference as 'Email' | 'Phone' | 'Slack' | 'In-person',
+    escalationLevel: 1, // Default escalation level since it's not in context
+    influence: stakeholder.influence as 'Low' | 'Medium' | 'High',
+    interest: stakeholder.interest as 'Low' | 'Medium' | 'High'
+  }));
+
+  const filteredStakeholders = transformedStakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stakeholder.department.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = filterDepartment === 'all' || stakeholder.department === filterDepartment;
-    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence === filterInfluence;
+    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence.toLowerCase() === filterInfluence;
     
     return matchesSearch && matchesDepartment && matchesInfluence;
   });
 
-  const handleSaveStakeholder = (stakeholder: Stakeholder) => {
+  const handleSaveStakeholder = (stakeholder: any) => {
     if (editingStakeholder) {
-      setStakeholders(prev => prev.map(s => s.id === stakeholder.id ? stakeholder : s));
+      updateStakeholder(stakeholder.id, stakeholder);
     } else {
-      setStakeholders(prev => [...prev, stakeholder]);
+      const { id, ...stakeholderData } = stakeholder;
+      addStakeholder(stakeholderData);
     }
     setEditingStakeholder(undefined);
+    setShowForm(false);
   };
 
-  const handleEditStakeholder = (stakeholder: Stakeholder) => {
+  const handleEditStakeholder = (stakeholder: StakeholderCardProps) => {
     setEditingStakeholder(stakeholder);
     setShowForm(true);
   };
 
   const departments = [...new Set(stakeholders.map(s => s.department))];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background text-foreground">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading stakeholders...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -227,7 +183,7 @@ const Stakeholders = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">High Influence</p>
-                      <p className="text-2xl font-bold">{stakeholders.filter(s => s.influence === 'high').length}</p>
+                      <p className="text-2xl font-bold">{stakeholders.filter(s => s.influence === 'High').length}</p>
                     </div>
                     <AlertTriangle className="h-8 w-8 text-red-500" />
                   </div>
@@ -302,7 +258,7 @@ const Stakeholders = () => {
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'email').length}
+                          {stakeholders.filter(s => s.communicationPreference === 'Email').length}
                         </div>
                         <div className="text-sm text-muted-foreground">Prefer Email</div>
                       </CardContent>
@@ -310,7 +266,7 @@ const Stakeholders = () => {
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'slack').length}
+                          {stakeholders.filter(s => s.communicationPreference === 'Slack').length}
                         </div>
                         <div className="text-sm text-muted-foreground">Prefer Slack</div>
                       </CardContent>
@@ -318,15 +274,15 @@ const Stakeholders = () => {
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'teams').length}
+                          {stakeholders.filter(s => s.communicationPreference === 'In-person').length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Prefer Teams</div>
+                        <div className="text-sm text-muted-foreground">Prefer In-person</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'phone').length}
+                          {stakeholders.filter(s => s.communicationPreference === 'Phone').length}
                         </div>
                         <div className="text-sm text-muted-foreground">Prefer Phone</div>
                       </CardContent>

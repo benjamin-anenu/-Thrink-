@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,19 +10,19 @@ import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 
 interface Stakeholder {
-  id: string;
+  id?: string;
   name: string;
   role: string;
   department: string;
   email: string;
   phone: string;
   avatar?: string;
-  communicationPreference: 'email' | 'phone' | 'slack' | 'teams';
-  escalationLevel: number;
-  influence: 'high' | 'medium' | 'low';
-  interest: 'high' | 'medium' | 'low';
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  influence: 'High' | 'Medium' | 'Low';
+  interest: 'High' | 'Medium' | 'Low';
   projects: string[];
-  notes?: string;
+  status: 'Active' | 'Inactive';
+  lastContact: string;
 }
 
 interface StakeholderFormProps {
@@ -33,33 +33,45 @@ interface StakeholderFormProps {
 }
 
 const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderFormProps) => {
-  const [formData, setFormData] = useState<Stakeholder>(
-    stakeholder || {
-      id: '',
-      name: '',
-      role: '',
-      department: '',
-      email: '',
-      phone: '',
-      communicationPreference: 'email',
-      escalationLevel: 1,
-      influence: 'medium',
-      interest: 'medium',
-      projects: [],
-      notes: ''
-    }
-  );
+  const [formData, setFormData] = useState<Stakeholder>({
+    name: '',
+    role: '',
+    department: '',
+    email: '',
+    phone: '',
+    communicationPreference: 'Email',
+    influence: 'Medium',
+    interest: 'Medium',
+    projects: [],
+    status: 'Active',
+    lastContact: new Date().toISOString().split('T')[0]
+  });
 
   const [newProject, setNewProject] = useState('');
 
+  useEffect(() => {
+    if (stakeholder) {
+      setFormData(stakeholder);
+    } else {
+      setFormData({
+        name: '',
+        role: '',
+        department: '',
+        email: '',
+        phone: '',
+        communicationPreference: 'Email',
+        influence: 'Medium',
+        interest: 'Medium',
+        projects: [],
+        status: 'Active',
+        lastContact: new Date().toISOString().split('T')[0]
+      });
+    }
+  }, [stakeholder, open]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const stakeholderToSave = {
-      ...formData,
-      id: formData.id || Date.now().toString()
-    };
-    onSave(stakeholderToSave);
-    onClose();
+    onSave(formData);
   };
 
   const addProject = () => {
@@ -119,19 +131,17 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="escalationLevel">Escalation Level</Label>
+              <Label htmlFor="status">Status</Label>
               <Select
-                value={formData.escalationLevel.toString()}
-                onValueChange={(value) => setFormData({ ...formData, escalationLevel: parseInt(value) })}
+                value={formData.status}
+                onValueChange={(value: 'Active' | 'Inactive') => setFormData({ ...formData, status: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Level 1 - Team Lead</SelectItem>
-                  <SelectItem value="2">Level 2 - Manager</SelectItem>
-                  <SelectItem value="3">Level 3 - Director</SelectItem>
-                  <SelectItem value="4">Level 4 - Executive</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -163,16 +173,17 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Label>Communication Preference</Label>
               <Select
                 value={formData.communicationPreference}
-                onValueChange={(value: any) => setFormData({ ...formData, communicationPreference: value })}
+                onValueChange={(value: 'Email' | 'Phone' | 'Slack' | 'In-person') => 
+                  setFormData({ ...formData, communicationPreference: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="phone">Phone</SelectItem>
-                  <SelectItem value="slack">Slack</SelectItem>
-                  <SelectItem value="teams">Teams</SelectItem>
+                  <SelectItem value="Email">Email</SelectItem>
+                  <SelectItem value="Phone">Phone</SelectItem>
+                  <SelectItem value="Slack">Slack</SelectItem>
+                  <SelectItem value="In-person">In-person</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -180,15 +191,16 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Label>Influence Level</Label>
               <Select
                 value={formData.influence}
-                onValueChange={(value: any) => setFormData({ ...formData, influence: value })}
+                onValueChange={(value: 'High' | 'Medium' | 'Low') => 
+                  setFormData({ ...formData, influence: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -196,15 +208,16 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Label>Interest Level</Label>
               <Select
                 value={formData.interest}
-                onValueChange={(value: any) => setFormData({ ...formData, interest: value })}
+                onValueChange={(value: 'High' | 'Medium' | 'Low') => 
+                  setFormData({ ...formData, interest: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -232,13 +245,12 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes about this stakeholder..."
-              rows={3}
+            <Label htmlFor="lastContact">Last Contact</Label>
+            <Input
+              id="lastContact"
+              type="date"
+              value={formData.lastContact}
+              onChange={(e) => setFormData({ ...formData, lastContact: e.target.value })}
             />
           </div>
 

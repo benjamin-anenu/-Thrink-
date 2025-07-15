@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Phone, MessageSquare, Edit, AlertTriangle } from 'lucide-react';
+import { Mail, Phone, MessageSquare, Edit, AlertTriangle, Users } from 'lucide-react';
 
 interface Stakeholder {
   id: string;
@@ -14,10 +14,10 @@ interface Stakeholder {
   email: string;
   phone: string;
   avatar?: string;
-  communicationPreference: 'email' | 'phone' | 'slack' | 'teams';
-  escalationLevel: number;
-  influence: 'high' | 'medium' | 'low';
-  interest: 'high' | 'medium' | 'low';
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  escalationLevel?: number;
+  influence: 'High' | 'Medium' | 'Low';
+  interest: 'High' | 'Medium' | 'Low';
   projects: string[];
 }
 
@@ -28,7 +28,7 @@ interface StakeholderCardProps {
 
 const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
   const getInfluenceColor = (influence: string) => {
-    switch (influence) {
+    switch (influence.toLowerCase()) {
       case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
       case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
       case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
@@ -37,9 +37,11 @@ const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
   };
 
   const getCommIcon = (preference: string) => {
-    switch (preference) {
+    switch (preference.toLowerCase()) {
       case 'email': return <Mail className="h-4 w-4" />;
       case 'phone': return <Phone className="h-4 w-4" />;
+      case 'slack': return <MessageSquare className="h-4 w-4" />;
+      case 'in-person': return <Users className="h-4 w-4" />;
       default: return <MessageSquare className="h-4 w-4" />;
     }
   };
@@ -87,17 +89,19 @@ const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
           <span className="text-sm text-muted-foreground">Preferred Contact</span>
           <div className="flex items-center space-x-1">
             {getCommIcon(stakeholder.communicationPreference)}
-            <span className="text-sm capitalize">{stakeholder.communicationPreference}</span>
+            <span className="text-sm">{stakeholder.communicationPreference}</span>
           </div>
         </div>
         
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Escalation Level</span>
-          <div className="flex items-center space-x-1">
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-            <span className="text-sm">Level {stakeholder.escalationLevel}</span>
+        {stakeholder.escalationLevel && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Escalation Level</span>
+            <div className="flex items-center space-x-1">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <span className="text-sm">Level {stakeholder.escalationLevel}</span>
+            </div>
           </div>
-        </div>
+        )}
         
         <div className="pt-2">
           <span className="text-sm text-muted-foreground">Projects ({stakeholder.projects.length})</span>

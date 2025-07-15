@@ -45,6 +45,16 @@ export class ContextSynchronizer {
     this.eventBus.subscribe('project_updated', (event) => {
       this.syncStakeholderContext(event.payload);
     });
+
+    // Listen for stakeholder updates to sync project context
+    this.eventBus.subscribe('stakeholder_updated', (event) => {
+      this.syncStakeholderToProject(event.payload);
+    });
+
+    // Listen for resource updates to sync project context
+    this.eventBus.subscribe('resource_updated', (event) => {
+      this.syncResourceToProject(event.payload);
+    });
   }
 
   public registerContext(contextName: string, updateCallback: (data: any) => void): () => void {
@@ -120,6 +130,11 @@ export class ContextSynchronizer {
       case 'stakeholders':
         // When stakeholders change, update project stakeholders
         this.updateProjectStakeholders(data);
+        break;
+
+      case 'workspaces':
+        // When workspaces change, update member contexts
+        this.updateWorkspaceMemberContexts(data);
         break;
     }
   }
@@ -200,6 +215,70 @@ export class ContextSynchronizer {
     }
   }
 
+  private syncStakeholderToProject(payload: any) {
+    const { stakeholderId, updates } = payload;
+    
+    // If stakeholder projects changed, update project stakeholders
+    if (updates.projects) {
+      const projects = dataPersistence.getData<any[]>('projects');
+      if (!projects || !Array.isArray(projects)) return;
+      
+      let updated = false;
+      
+      projects.forEach((project: any) => {
+        const shouldInclude = updates.projects.includes(project.id);
+        const currentlyIncluded = project.stakeholders?.includes(stakeholderId) || false;
+        
+        if (shouldInclude && !currentlyIncluded) {
+          if (!project.stakeholders) project.stakeholders = [];
+          project.stakeholders.push(stakeholderId);
+          project.updatedAt = new Date().toISOString();
+          updated = true;
+        } else if (!shouldInclude && currentlyIncluded) {
+          project.stakeholders = project.stakeholders.filter((id: string) => id !== stakeholderId);
+          project.updatedAt = new Date().toISOString();
+          updated = true;
+        }
+      });
+      
+      if (updated) {
+        dataPersistence.persistData('projects', projects, 'stakeholder_sync');
+      }
+    }
+  }
+
+  private syncResourceToProject(payload: any) {
+    const { resourceId, updates } = payload;
+    
+    // If resource projects changed, update project resources
+    if (updates.projects) {
+      const projects = dataPersistence.getData<any[]>('projects');
+      if (!projects || !Array.isArray(projects)) return;
+      
+      let updated = false;
+      
+      projects.forEach((project: any) => {
+        const shouldInclude = updates.projects.includes(project.id);
+        const currentlyIncluded = project.resources?.includes(resourceId) || false;
+        
+        if (shouldInclude && !currentlyIncluded) {
+          if (!project.resources) project.resources = [];
+          project.resources.push(resourceId);
+          project.updatedAt = new Date().toISOString();
+          updated = true;
+        } else if (!shouldInclude && currentlyIncluded) {
+          project.resources = project.resources.filter((id: string) => id !== resourceId);
+          project.updatedAt = new Date().toISOString();
+          updated = true;
+        }
+      });
+      
+      if (updated) {
+        dataPersistence.persistData('projects', projects, 'resource_sync');
+      }
+    }
+  }
+
   private updateResourceAssignments(projects: any[]) {
     const resources = dataPersistence.getData<any[]>('resources');
     if (!resources || !Array.isArray(resources)) return;
@@ -210,7 +289,7 @@ export class ContextSynchronizer {
     resources.forEach((resource: any) => {
       const assignedProjects = projects
         .filter(project => 
-          project.tasks?.some((task: any) => task.assignedTo === resource.id) ||
+          project.tasks?.some((task: any) => task.assignedResources?.includes(resource.id)) ||
           project.resources?.includes(resource.id)
         )
         .map(project => project.id);
@@ -237,8 +316,8 @@ export class ContextSynchronizer {
     stakeholders.forEach((stakeholder: any) => {
       const relevantProjects = projects
         .filter(project => 
-          stakeholder.projects?.includes(project.id) ||
-          stakeholder.department === project.department
+          project.stakeholders?.includes(stakeholder.id) ||
+          project.tasks?.some((task: any) => task.assignedStakeholders?.includes(stakeholder.id))
         )
         .map(project => project.id);
       
@@ -299,6 +378,49 @@ export class ContextSynchronizer {
     
     if (updated) {
       dataPersistence.persistData('projects', projects, 'stakeholder_sync');
+    }
+  }
+
+  private updateWorkspaceMemberContexts(workspaces: any[]) {
+    // Update resource and stakeholder contexts when workspace members change
+    const resources = dataPersistence.getData<any[]>('resources');
+    const stakeholders = dataPersistence.getData<any[]>('stakeholders');
+    
+    if (!resources || !stakeholders) return;
+    
+    let resourcesUpdated = false;
+    let stakeholdersUpdated = false;
+    
+    workspaces.forEach((workspace: any) => {
+      if (workspace.members) {
+        workspace.members.forEach((member: any) => {
+          // Update resource workspace assignment
+          const resource = resources.find((r: any) => r.email === member.email);
+          if (resource && !resource.workspaces?.includes(workspace.id)) {
+            if (!resource.workspaces) resource.workspaces = [];
+            resource.workspaces.push(workspace.id);
+            resource.updatedAt = new Date().toISOString();
+            resourcesUpdated = true;
+          }
+          
+          // Update stakeholder workspace assignment  
+          const stakeholder = stakeholders.find((s: any) => s.email === member.email);
+          if (stakeholder && !stakeholder.workspaces?.includes(workspace.id)) {
+            if (!stakeholder.workspaces) stakeholder.workspaces = [];
+            stakeholder.workspaces.push(workspace.id);
+            stakeholder.updatedAt = new Date().toISOString();
+            stakeholdersUpdated = true;
+          }
+        });
+      }
+    });
+    
+    if (resourcesUpdated) {
+      dataPersistence.persistData('resources', resources, 'workspace_sync');
+    }
+    
+    if (stakeholdersUpdated) {
+      dataPersistence.persistData('stakeholders', stakeholders, 'workspace_sync');
     }
   }
 
