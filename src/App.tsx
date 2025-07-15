@@ -18,6 +18,7 @@ import PerformanceMonitor from '@/components/PerformanceMonitor';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { useAccessibility } from '@/hooks/useAccessibility';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { SessionTimeoutProvider } from '@/components/auth/SessionTimeoutProvider';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -31,6 +32,7 @@ const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const Unauthorized = lazy(() => import('@/pages/Unauthorized'));
+const Settings = lazy(() => import('@/pages/Settings'));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -63,6 +65,11 @@ function AppContent() {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
           <Route path="/404" element={<NotFound />} />
           
           {/* Protected routes */}
@@ -120,17 +127,19 @@ function App() {
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>
-                <WorkspaceProvider>
-                  <ResourceProvider>
-                    <StakeholderProvider>
-                      <ProjectProvider>
-                        <BrowserRouter>
-                          <AppContent />
-                        </BrowserRouter>
-                      </ProjectProvider>
-                    </StakeholderProvider>
-                  </ResourceProvider>
-                </WorkspaceProvider>
+                <SessionTimeoutProvider>
+                  <WorkspaceProvider>
+                    <ResourceProvider>
+                      <StakeholderProvider>
+                        <ProjectProvider>
+                          <BrowserRouter>
+                            <AppContent />
+                          </BrowserRouter>
+                        </ProjectProvider>
+                      </StakeholderProvider>
+                    </ResourceProvider>
+                  </WorkspaceProvider>
+                </SessionTimeoutProvider>
               </AuthProvider>
             </GlobalErrorHandler>
           </TooltipProvider>
