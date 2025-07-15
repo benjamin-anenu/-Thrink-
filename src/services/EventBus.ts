@@ -3,31 +3,42 @@ export type EventType =
   | 'task_completed'
   | 'task_created'
   | 'task_updated'
-  | 'task_assigned'
+  | 'project_updated'
+  | 'project_created'
+  | 'resource_assigned'
+  | 'resource_updated'
+  | 'resource_availability_changed'
+  | 'stakeholder_updated'
+  | 'stakeholder_created'
   | 'deadline_approaching'
   | 'milestone_reached'
-  | 'resource_assigned'
-  | 'resource_availability_changed'
-  | 'project_updated'
+  | 'context_updated'
+  | 'data_sync'
   | 'performance_alert'
   | 'system_heartbeat'
-  | 'data_sync'
-  | 'context_updated'
-  | 'storage_changed';
+  | 'email_reminder_sent'
+  | 'rebaseline_requested';
 
-export interface EventData {
+export interface Event {
+  id: string;
   type: EventType;
   payload: any;
   timestamp: Date;
   source: string;
-  propagate?: boolean;
+}
+
+export interface EventListener {
+  id: string;
+  type: EventType;
+  callback: (event: Event) => void;
+  source?: string;
 }
 
 export class EventBus {
   private static instance: EventBus;
-  private listeners: Map<EventType, ((data: EventData) => void)[]> = new Map();
-  private eventHistory: EventData[] = [];
-  private maxHistorySize = 100;
+  private listeners: Map<EventType, EventListener[]> = new Map();
+  private eventHistory: Event[] = [];
+  private maxHistorySize = 1000;
 
   public static getInstance(): EventBus {
     if (!EventBus.instance) {
@@ -37,143 +48,89 @@ export class EventBus {
   }
 
   private constructor() {
-    this.setupCrossTabCommunication();
-    this.startHeartbeat();
+    // Initialize event bus
+    console.log('[Event Bus] Initialized');
   }
 
-  private setupCrossTabCommunication() {
-    // Listen for cross-tab communication via localStorage
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'event-bus-message' && event.newValue) {
-        try {
-          const eventData: EventData = JSON.parse(event.newValue);
-          eventData.timestamp = new Date(eventData.timestamp);
-          
-          // Only process events from other tabs
-          if (eventData.source !== `tab-${window.name}`) {
-            this.processEvent(eventData, false); // Don't propagate again
-          }
-        } catch (error) {
-          console.error('[Event Bus] Error processing cross-tab event:', error);
-        }
-      }
-    });
+  public subscribe(type: EventType, callback: (event: Event) => void, source?: string): () => void {
+    const listener: EventListener = {
+      id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      callback,
+      source
+    };
 
-    // Assign unique tab identifier
-    if (!window.name) {
-      window.name = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, []);
     }
-  }
 
-  private startHeartbeat() {
-    // Send heartbeat every 30 seconds for connection monitoring
-    setInterval(() => {
-      this.emit('system_heartbeat', {
-        tabId: window.name,
-        timestamp: new Date(),
-        activeListeners: this.getActiveListenerCount()
-      }, 'event_bus');
-    }, 30000);
-  }
+    this.listeners.get(type)!.push(listener);
 
-  public subscribe(eventType: EventType, callback: (data: EventData) => void): () => void {
-    if (!this.listeners.has(eventType)) {
-      this.listeners.set(eventType, []);
-    }
-    
-    this.listeners.get(eventType)!.push(callback);
-    
-    console.log(`[Event Bus] Subscribed to ${eventType}, total listeners: ${this.getActiveListenerCount()}`);
-    
+    console.log(`[Event Bus] Subscribed to ${type} (${this.listeners.get(type)!.length} listeners)`);
+
     // Return unsubscribe function
     return () => {
-      const callbacks = this.listeners.get(eventType);
-      if (callbacks) {
-        const index = callbacks.indexOf(callback);
+      const typeListeners = this.listeners.get(type);
+      if (typeListeners) {
+        const index = typeListeners.findIndex(l => l.id === listener.id);
         if (index > -1) {
-          callbacks.splice(index, 1);
+          typeListeners.splice(index, 1);
+          console.log(`[Event Bus] Unsubscribed from ${type}`);
         }
       }
     };
   }
 
-  public emit(eventType: EventType, payload: any, source: string = 'unknown', propagate: boolean = true) {
-    const eventData: EventData = {
-      type: eventType,
+  public emit(type: EventType, payload: any, source: string = 'unknown'): void {
+    const event: Event = {
+      id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type,
       payload,
       timestamp: new Date(),
-      source: source.includes('tab-') ? source : `${source}-${window.name}`,
-      propagate
+      source
     };
 
-    this.processEvent(eventData, propagate);
-  }
-
-  private processEvent(eventData: EventData, shouldPropagate: boolean = true) {
     // Add to history
-    this.eventHistory.push(eventData);
+    this.eventHistory.unshift(event);
     if (this.eventHistory.length > this.maxHistorySize) {
-      this.eventHistory.shift();
+      this.eventHistory = this.eventHistory.slice(0, this.maxHistorySize);
     }
 
-    // Process local listeners
-    const callbacks = this.listeners.get(eventData.type);
-    if (callbacks) {
-      callbacks.forEach(callback => {
+    // Notify listeners
+    const typeListeners = this.listeners.get(type);
+    if (typeListeners) {
+      typeListeners.forEach(listener => {
         try {
-          callback(eventData);
+          listener.callback(event);
         } catch (error) {
-          console.error(`Error in event listener for ${eventData.type}:`, error);
+          console.error(`[Event Bus] Error in listener for ${type}:`, error);
         }
       });
     }
 
-    // Propagate to other tabs if needed
-    if (shouldPropagate && eventData.propagate !== false) {
-      try {
-        localStorage.setItem('event-bus-message', JSON.stringify(eventData));
-        // Clear immediately to allow for subsequent events
-        setTimeout(() => localStorage.removeItem('event-bus-message'), 100);
-      } catch (error) {
-        console.error('[Event Bus] Error propagating event:', error);
-      }
-    }
-
-    console.log(`[Event Bus] Processed ${eventData.type} from ${eventData.source}:`, eventData.payload);
+    console.log(`[Event Bus] Emitted ${type} event (${typeListeners?.length || 0} listeners notified)`);
   }
 
-  public getEventHistory(eventType?: EventType, limit?: number): EventData[] {
-    let history = eventType 
-      ? this.eventHistory.filter(e => e.type === eventType)
+  public getEventHistory(type?: EventType, limit?: number): Event[] {
+    let events = type 
+      ? this.eventHistory.filter(e => e.type === type)
       : this.eventHistory;
-    
-    if (limit) {
-      history = history.slice(-limit);
-    }
-    
-    return history;
+
+    return limit ? events.slice(0, limit) : events;
   }
 
-  public getActiveListenerCount(): number {
-    return Array.from(this.listeners.values()).reduce((total, callbacks) => total + callbacks.length, 0);
-  }
-
-  public removeAllListeners(eventType?: EventType) {
-    if (eventType) {
-      this.listeners.delete(eventType);
-    } else {
-      this.listeners.clear();
-    }
-  }
-
-  public getListenerStats(): Record<EventType, number> {
+  public getListenerStats(): Record<string, number> {
     const stats: Record<string, number> = {};
-    this.listeners.forEach((callbacks, eventType) => {
-      stats[eventType] = callbacks.length;
+    this.listeners.forEach((listeners, type) => {
+      stats[type] = listeners.length;
     });
-    return stats as Record<EventType, number>;
+    return stats;
+  }
+
+  public clearHistory(): void {
+    this.eventHistory = [];
+    console.log('[Event Bus] Event history cleared');
   }
 }
 
-// Initialize event bus
 export const eventBus = EventBus.getInstance();

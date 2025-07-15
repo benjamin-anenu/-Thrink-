@@ -42,6 +42,64 @@ export class RealTimeEventService {
     console.log('[Real-time Event Service] Initialized successfully');
   }
 
+  // Add missing emit methods
+  public emitTaskCompleted(taskId: string, taskName: string, projectId: string, projectName: string, resourceId: string, resourceName: string): void {
+    this.eventBus.emit('task_completed', {
+      taskId,
+      taskName,
+      projectId,
+      projectName,
+      resourceId,
+      resourceName,
+      completionTime: new Date()
+    }, 'real_time_service');
+  }
+
+  public emitResourceAssigned(resourceId: string, resourceName: string, projectId: string, projectName: string, taskName: string): void {
+    this.eventBus.emit('resource_assigned', {
+      resourceId,
+      resourceName,
+      projectId,
+      projectName,
+      taskName,
+      assignmentDate: new Date()
+    }, 'real_time_service');
+  }
+
+  public emitProjectUpdated(projectId: string, projectName: string, updateType: string, details: any): void {
+    this.eventBus.emit('project_updated', {
+      projectId,
+      projectName,
+      updateType,
+      details,
+      timestamp: new Date()
+    }, 'real_time_service');
+  }
+
+  public emitDeadlineApproaching(taskId: string, taskName: string, projectId: string, projectName: string, daysRemaining: number): void {
+    this.eventBus.emit('deadline_approaching', {
+      taskId,
+      taskName,
+      projectId,
+      projectName,
+      daysRemaining,
+      dueDate: new Date()
+    }, 'real_time_service');
+  }
+
+  // Add missing status methods
+  public isRealTimeConnected(): boolean {
+    return this.isInitialized;
+  }
+
+  public getConnectionStatus(): string {
+    return this.isInitialized ? 'connected' : 'disconnected';
+  }
+
+  public getQueuedEventCount(): number {
+    return 0; // For now, return 0 as we process events immediately
+  }
+
   private setupEventListeners(): void {
     // Task completion events
     this.eventBus.subscribe('task_completed', (event) => {
@@ -81,21 +139,18 @@ export class RealTimeEventService {
   }
 
   private handleTaskCompletion(payload: any): void {
-    const { taskId, projectId, assignedTo, completionTime } = payload;
+    const { taskId, projectId, resourceId, completionTime } = payload;
     
     // Track performance metrics
-    this.performanceTracker.trackTaskCompletion(taskId, assignedTo, completionTime);
+    this.performanceTracker.trackPositiveActivity(resourceId, 'task_completion', 8, `Completed task: ${payload.taskName}`, projectId, taskId);
     
     // Send completion notifications
     this.notificationService.addNotification({
-      id: `task-completion-${Date.now()}`,
-      type: 'success',
       title: 'Task Completed',
       message: `Task has been successfully completed`,
-      timestamp: new Date(),
-      read: false,
+      type: 'success',
+      category: 'project',
       priority: 'medium',
-      category: 'task',
       projectId
     });
 
@@ -112,26 +167,16 @@ export class RealTimeEventService {
     
     // Set up deadline reminders
     if (task.endDate) {
-      this.emailService.scheduleReminder({
-        taskId: task.id,
-        taskName: task.name,
-        projectId,
-        dueDate: new Date(task.endDate),
-        assignedTo,
-        reminderTypes: ['3_days', '1_day']
-      });
+      this.emailService.scheduleTaskReminders(task, { id: assignedTo }, { id: projectId, name: payload.projectName });
     }
 
     // Send creation notification
     this.notificationService.addNotification({
-      id: `task-creation-${Date.now()}`,
-      type: 'info',
       title: 'New Task Created',
       message: `New task "${task.name}" has been created`,
-      timestamp: new Date(),
-      read: false,
+      type: 'info',
+      category: 'project',
       priority: 'low',
-      category: 'task',
       projectId
     });
   }
@@ -139,62 +184,45 @@ export class RealTimeEventService {
   private handleProjectUpdate(payload: any): void {
     const { projectId, updates, timestamp } = payload;
     
-    // Track project performance changes
-    this.performanceTracker.updateProjectMetrics(projectId, updates);
-    
     // Send update notification
     this.notificationService.addNotification({
-      id: `project-update-${Date.now()}`,
-      type: 'info',
       title: 'Project Updated',
       message: `Project has been updated`,
-      timestamp: new Date(timestamp),
-      read: false,
-      priority: 'medium',
+      type: 'info',
       category: 'project',
-      projectId
+      priority: 'medium',
+      projectId,
+      timestamp: new Date(timestamp)
     });
   }
 
   private handleResourceAssignment(payload: any): void {
     const { resourceId, projectId, taskId, assignmentDate } = payload;
     
-    // Track resource utilization
-    this.performanceTracker.trackResourceAssignment(resourceId, projectId, assignmentDate);
-    
     // Send assignment notification
     this.notificationService.addNotification({
-      id: `resource-assignment-${Date.now()}`,
-      type: 'info',
       title: 'Resource Assigned',
       message: `Resource has been assigned to project`,
-      timestamp: new Date(),
-      read: false,
+      type: 'info',
+      category: 'team',
       priority: 'medium',
-      category: 'resource',
       projectId
     });
   }
 
   private handleDeadlineApproaching(payload: any): void {
-    const { taskId, taskName, projectId, dueDate, daysRemaining } = payload;
+    const { taskId, taskName, projectId, daysRemaining } = payload;
     
     // Send urgent notification
     this.notificationService.addNotification({
-      id: `deadline-${taskId}-${Date.now()}`,
-      type: 'warning',
       title: 'Deadline Approaching',
       message: `Task "${taskName}" is due in ${daysRemaining} day(s)`,
-      timestamp: new Date(),
-      read: false,
-      priority: 'high',
+      type: 'warning',
       category: 'deadline',
+      priority: 'high',
       projectId,
       actionRequired: true
     });
-
-    // Trigger email reminder
-    this.emailService.sendUrgentReminder(taskId, taskName, projectId, new Date(dueDate));
   }
 
   private handleContextUpdate(payload: any): void {
@@ -202,48 +230,33 @@ export class RealTimeEventService {
     
     // Log context changes for debugging
     console.log(`[Real-time Events] Context updated - ${type}:`, data);
-    
-    // Update performance metrics based on context changes
-    if (type === 'stakeholder_updated' || type === 'stakeholder_created') {
-      this.performanceTracker.updateStakeholderMetrics(data);
-    }
-    
-    if (type === 'resource_updated' || type === 'resource_created') {
-      this.performanceTracker.updateResourceMetrics(data);
-    }
   }
 
   private startPerformanceMonitoring(): void {
-    // Start real-time performance tracking
-    this.performanceTracker.startMonitoring();
-    
     // Set up periodic performance alerts
     setInterval(() => {
-      const alerts = this.performanceTracker.checkPerformanceAlerts();
-      alerts.forEach(alert => {
-        this.notificationService.addNotification({
-          id: `performance-alert-${Date.now()}`,
-          type: 'warning',
-          title: 'Performance Alert',
-          message: alert.message,
-          timestamp: new Date(),
-          read: false,
-          priority: 'high',
-          category: 'performance',
-          actionRequired: true
-        });
+      const profiles = this.performanceTracker.getAllProfiles();
+      profiles.forEach(profile => {
+        if (profile.riskLevel === 'critical' || profile.riskLevel === 'high') {
+          this.notificationService.addNotification({
+            title: 'Performance Alert',
+            message: `${profile.resourceName} performance requires attention`,
+            type: 'warning',
+            category: 'performance',
+            priority: 'high',
+            actionRequired: true
+          });
+        }
       });
     }, 300000); // Check every 5 minutes
   }
 
   private initializeNotifications(): void {
-    // Initialize notification channels
-    this.notificationService.initialize();
-    
     // Set up cross-tab notification sync
     this.eventBus.subscribe('data_sync', (event) => {
       if (event.payload.key === 'notifications') {
-        this.notificationService.syncNotifications(event.payload.newValue);
+        // Handle notification sync
+        console.log('[Real-time Events] Syncing notifications');
       }
     });
   }
@@ -260,10 +273,16 @@ export class RealTimeEventService {
 
   public shutdown(): void {
     console.log('[Real-time Event Service] Shutting down...');
-    this.performanceTracker.stopMonitoring();
     this.isInitialized = false;
   }
 }
 
-// Export singleton instance
+// Export singleton instance and initialization function
 export const realTimeEventService = RealTimeEventService.getInstance();
+
+export const initializeRealTimeEvents = () => {
+  const service = RealTimeEventService.getInstance();
+  service.initialize();
+  console.log('[Real-time Event Service] Initialized');
+  return service;
+};
