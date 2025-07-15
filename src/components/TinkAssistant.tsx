@@ -1,24 +1,23 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, X, Send, TrendingUp, AlertTriangle } from 'lucide-react';
 import { PerformanceTracker } from '@/services/PerformanceTracker';
 import { EmailReminderService } from '@/services/EmailReminderService';
 
-interface MiloMessage {
+interface TinkMessage {
   id: string;
-  type: 'user' | 'milo';
+  type: 'user' | 'tink';
   content: string;
   timestamp: Date;
 }
 
-const MiloAssistant = () => {
+const TinkAssistant = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<MiloMessage[]>([
+  const [messages, setMessages] = useState<TinkMessage[]>([
     {
       id: '1',
-      type: 'milo',
-      content: "Hey! I'm Milo, your AI project assistant. I'm now tracking team performance and sending smart deadline reminders. I noticed Sarah completed her UI task ahead of schedule - great work! 🎯 Want me to show you the latest team insights?",
+      type: 'tink',
+      content: "Hey! I'm Tink, your AI project assistant. I'm now tracking team performance and sending smart deadline reminders. I noticed Sarah completed her UI task ahead of schedule - great work! 🎯 Want me to show you the latest team insights?",
       timestamp: new Date()
     }
   ]);
@@ -27,7 +26,7 @@ const MiloAssistant = () => {
   const sendMessage = () => {
     if (!inputValue.trim()) return;
 
-    const userMessage: MiloMessage = {
+    const userMessage: TinkMessage = {
       id: Date.now().toString(),
       type: 'user',
       content: inputValue,
@@ -36,21 +35,21 @@ const MiloAssistant = () => {
 
     setMessages(prev => [...prev, userMessage]);
 
-    // Enhanced Milo responses with performance awareness
+    // Enhanced Tink responses with performance awareness
     setTimeout(() => {
-      const miloResponse: MiloMessage = {
+      const tinkResponse: TinkMessage = {
         id: (Date.now() + 1).toString(),
-        type: 'milo',
-        content: getMiloResponse(inputValue),
+        type: 'tink',
+        content: getTinkResponse(inputValue),
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, miloResponse]);
+      setMessages(prev => [...prev, tinkResponse]);
     }, 1000);
 
     setInputValue('');
   };
 
-  const getMiloResponse = (userInput: string): string => {
+  const getTinkResponse = (userInput: string): string => {
     const lowerInput = userInput.toLowerCase();
     
     // Performance-related queries
@@ -159,11 +158,11 @@ The system sends reminders at 7 days, 3 days, 1 day before, day of, and overdue.
           <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center relative">
-                <span className="text-primary-foreground font-medium text-sm">M</span>
+                <span className="text-primary-foreground font-medium text-sm">T</span>
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-card"></div>
               </div>
               <div>
-                <h3 className="font-medium text-foreground">Milo AI</h3>
+                <h3 className="font-medium text-foreground">Tink AI</h3>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
                   Performance Tracking Active
@@ -250,4 +249,4 @@ The system sends reminders at 7 days, 3 days, 1 day before, day of, and overdue.
   );
 };
 
-export default MiloAssistant;
+export default TinkAssistant;
