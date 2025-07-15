@@ -394,22 +394,65 @@ export class AIInsightsService {
     return Array.from(strategies);
   }
 
+  private analysisQueue: Set<string> = new Set();
+  private analysisTimer: NodeJS.Timeout | null = null;
+
   private scheduleAIAnalysis(projectId: string): void {
-    // Schedule analysis for next tick to avoid overwhelming the system
-    setTimeout(() => {
+    // Add to queue and batch process to reduce system load
+    this.analysisQueue.add(projectId);
+    
+    if (this.analysisTimer) {
+      clearTimeout(this.analysisTimer);
+    }
+    
+    this.analysisTimer = setTimeout(() => {
+      this.processBatchedAnalysis();
+    }, 2000); // Batch analyses every 2 seconds
+  }
+
+  private processBatchedAnalysis(): void {
+    const projectIds = Array.from(this.analysisQueue);
+    this.analysisQueue.clear();
+    
+    console.log(`[AI Insights Service] Processing batched analysis for ${projectIds.length} projects`);
+    
+    projectIds.forEach(projectId => {
       this.updateProjectInsights(projectId);
-    }, 1000);
+    });
   }
 
   private updateProjectInsights(projectId: string): void {
-    // This would typically fetch fresh project data
-    console.log(`[AI Insights Service] Updating insights for project ${projectId}`);
+    // Validate projectId
+    if (!projectId || projectId === 'undefined') {
+      console.warn('[AI Insights Service] Invalid projectId provided for insights update');
+      return;
+    }
     
-    // Emit event to notify components of updated insights
-    this.eventBus.emit('ai_insights_updated', {
-      projectId,
-      timestamp: new Date()
-    }, 'ai_insights_service');
+    try {
+      console.log(`[AI Insights Service] Updating insights for project ${projectId}`);
+      
+      // Get current insights and check if update is needed
+      const currentInsights = this.insights.get(projectId) || [];
+      const lastUpdate = currentInsights.length > 0 
+        ? Math.max(...currentInsights.map(i => i.createdAt.getTime()))
+        : 0;
+      
+      // Only update if last update was more than 5 minutes ago
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+      if (lastUpdate > fiveMinutesAgo) {
+        console.debug(`[AI Insights Service] Skipping recent update for project ${projectId}`);
+        return;
+      }
+      
+      // Emit event to notify components of updated insights
+      this.eventBus.emit('ai_insights_updated', {
+        projectId,
+        timestamp: new Date()
+      }, 'ai_insights_service');
+      
+    } catch (error) {
+      console.error(`[AI Insights Service] Error updating insights for project ${projectId}:`, error);
+    }
   }
 
   private updateRiskProfile(projectId: string): void {

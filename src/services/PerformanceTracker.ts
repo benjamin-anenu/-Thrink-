@@ -364,23 +364,34 @@ export class PerformanceTracker {
     return insights;
   }
 
+  private updateQueue: Map<string, NodeJS.Timeout> = new Map();
+
   private triggerAIInsightsUpdate(projectId: string): void {
-    // Notify AI insights service of performance changes
-    setTimeout(() => {
+    // Debounce multiple updates for the same project
+    const existingTimer = this.updateQueue.get(projectId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    
+    const timer = setTimeout(() => {
       this.eventBus.emit('performance_updated', {
         projectId,
         timestamp: new Date(),
         trigger: 'task_completion'
       }, 'performance_tracker');
-    }, 500);
+      this.updateQueue.delete(projectId);
+    }, 1000); // Debounce for 1 second
+    
+    this.updateQueue.set(projectId, timer);
   }
 
   private triggerAIRiskUpdate(projectId: string): void {
-    // Notify AI insights service of risk changes
+    // Immediate risk updates (no debouncing for critical events)
     this.eventBus.emit('risk_event', {
       projectId,
       riskType: 'deadline_missed',
-      timestamp: new Date()
+      timestamp: new Date(),
+      severity: 'high'
     }, 'performance_tracker');
   }
 

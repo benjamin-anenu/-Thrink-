@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart as RechartsPieChart, Cell, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAIDashboardData } from '@/hooks/useAIDashboardData';
+import { LoadingOverlay, SkeletonText } from '@/components/ui/loading-state';
 
 const AIProjectDashboard = () => {
   const [activeInsight, setActiveInsight] = useState(0);
@@ -19,7 +20,9 @@ const AIProjectDashboard = () => {
     realTimeData,
     performanceData,
     resourceData,
-    aiInsights
+    aiInsights,
+    isLoading,
+    lastUpdate
   } = useAIDashboardData();
 
   // Simulate real-time updates for demonstration (can be removed if not needed)
@@ -69,14 +72,31 @@ const AIProjectDashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Real-time Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="relative overflow-hidden bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground animate-pulse" />
-          </CardHeader>
+    <LoadingOverlay isLoading={isLoading} loadingText="Loading AI insights...">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              AI Project Insights
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Real-time intelligence for your projects
+              {lastUpdate && (
+                <span className="text-xs ml-2">
+                  • Updated {lastUpdate.toLocaleTimeString()}
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+        
+        {/* Real-time Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="relative overflow-hidden bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground animate-pulse" />
+            </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{realTimeData.projectsInProgress}</div>
             <p className="text-xs text-success-muted-foreground">From workspace data</p>
@@ -375,7 +395,8 @@ const AIProjectDashboard = () => {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </LoadingOverlay>
   );
 };
 

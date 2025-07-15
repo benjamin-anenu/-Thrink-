@@ -1,9 +1,10 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { PerformanceTracker } from '@/services/PerformanceTracker';
+import { EventBus } from '@/services/EventBus';
 
 interface AIInsight {
   type: 'prediction' | 'optimization' | 'risk' | 'opportunity';
@@ -19,6 +20,38 @@ export const useAIDashboardData = () => {
   const { resources } = useResources();
   const { currentWorkspace } = useWorkspace();
   const performanceTracker = PerformanceTracker.getInstance();
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Listen for real-time updates
+  useEffect(() => {
+    const eventBus = EventBus.getInstance();
+    
+    const handleDataUpdate = () => {
+      setLastUpdate(new Date());
+    };
+
+    const unsubscribers = [
+      eventBus.subscribe('project_updated', handleDataUpdate),
+      eventBus.subscribe('resource_updated', handleDataUpdate),
+      eventBus.subscribe('performance_updated', handleDataUpdate),
+      eventBus.subscribe('ai_insights_updated', handleDataUpdate)
+    ];
+
+    // Mark as loaded after initial data processing
+    const timer = setTimeout(() => setIsLoading(false), 500);
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Memoize expensive calculations with cache invalidation
+  const cacheKey = useMemo(() => 
+    `${projects.length}-${resources.length}-${currentWorkspace?.id || 'none'}-${lastUpdate.getTime()}`,
+    [projects.length, resources.length, currentWorkspace?.id, lastUpdate]
+  );
 
   // Filter data by current workspace
   const workspaceProjects = useMemo(() => 
@@ -174,14 +207,20 @@ export const useAIDashboardData = () => {
     }
 
     return insights;
-  }, [workspaceProjects, workspaceResources]);
+  }, [workspaceProjects, workspaceResources, cacheKey]);
 
-  return {
+  // Performance optimizations
+  const optimizedData = useMemo(() => ({
     realTimeData,
     performanceData,
     resourceData,
     aiInsights,
     workspaceProjects,
-    workspaceResources
-  };
+    workspaceResources,
+    isLoading,
+    lastUpdate,
+    cacheKey
+  }), [realTimeData, performanceData, resourceData, aiInsights, workspaceProjects, workspaceResources, isLoading, lastUpdate, cacheKey]);
+
+  return optimizedData;
 };
