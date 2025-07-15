@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +14,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,9 +53,6 @@ const Header = () => {
 
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
-
-  // Debug authentication state
-  console.log('Header Debug:', { user: !!user, loading, isLandingPage, isAuthPage });
 
   return (
     <div className="sticky top-0 z-50 pt-8 px-4">
@@ -258,8 +256,8 @@ const Header = () => {
                 </>
               )}
               
-              {/* Auth buttons for mobile landing page - Show when not authenticated */}
-              {isLandingPage && !user && !loading && (
+              {/* Auth buttons for mobile landing page */}
+              {isLandingPage && !user && (
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
                   <Link to="/auth?tab=signin">
                     <Button variant="ghost" className="w-full justify-start">
@@ -287,8 +285,8 @@ const Header = () => {
           {/* Add workspace selector for desktop (only when authenticated) */}
           {!isLandingPage && !isAuthPage && user && <WorkspaceSelector />}
           
-          {/* Auth buttons or user menu - Show buttons when on landing page and not authenticated */}
-          {isLandingPage && !user && !loading && (
+          {/* Auth buttons or user menu */}
+          {isLandingPage && !user && (
             <div className="rounded-2xl flex gap-2">
               <Link to="/auth?tab=signin">
                 <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">

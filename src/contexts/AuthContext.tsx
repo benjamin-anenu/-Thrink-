@@ -188,84 +188,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signOut = async (options: { everywhere?: boolean; reason?: string } = {}) => {
+  const signOut = async () => {
     try {
       setLoading(true)
-      const currentUser = user
-      
-      // Immediate state cleanup for security
-      setUser(null)
-      setProfile(null)
-      setRole(null)
-      setSession(null)
-      
-      // Clear sensitive data from localStorage
-      const keysToRemove = Object.keys(localStorage).filter(key => 
-        key.includes('supabase') || key.includes('auth') || key.includes('session')
-      )
-      keysToRemove.forEach(key => localStorage.removeItem(key))
-      
-      // Log the sign out attempt with enhanced metadata
-      if (currentUser) {
-        try {
-          await supabase.from('audit_logs').insert({
-            user_id: currentUser.id,
-            action: options.everywhere ? 'sign_out_everywhere' : 'sign_out',
-            metadata: {
-              timestamp: new Date().toISOString(),
-              user_agent: navigator.userAgent,
-              reason: options.reason || 'user_initiated',
-              device_info: {
-                platform: navigator.platform,
-                language: navigator.language,
-                screen: `${screen.width}x${screen.height}`,
-              }
-            }
-          })
-        } catch (auditError) {
-          // Don't block signout on audit log failure
-          console.warn('Failed to log signout:', auditError)
-        }
-        
-        // Broadcast signout to other tabs
-        if (window.BroadcastChannel) {
-          const channel = new BroadcastChannel(`auth_${currentUser.id}`)
-          channel.postMessage({ 
-            type: 'FORCE_SIGNOUT', 
-            reason: options.reason || 'user_initiated',
-            everywhere: options.everywhere 
-          })
-          channel.close()
-        }
-        
-        // Also use Supabase realtime for cross-device signout
-        const realtimeChannel = supabase.channel(`user_signout_${currentUser.id}`)
-        realtimeChannel.send({
-          type: 'broadcast',
-          event: 'force_signout',
-          payload: { 
-            userId: currentUser.id, 
-            reason: options.reason || 'user_initiated',
-            everywhere: options.everywhere 
-          }
-        })
-      }
-
-      // Perform the actual signout
       const { error } = await supabase.auth.signOut()
       
       if (error) {
-        // Restore state if signout failed
-        setUser(currentUser)
         toast({
           title: "Sign Out Failed",
           description: error.message,
           variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Signed Out Successfully",
-          description: options.everywhere ? "Signed out from all devices" : "You have been signed out",
         })
       }
 
@@ -273,17 +205,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       toast({
         title: "Sign Out Error",
-        description: "An unexpected error occurred but you have been signed out locally.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
       return { error }
     } finally {
       setLoading(false)
     }
-  }
-
-  const forceSignOut = async (reason: string = 'security_violation') => {
-    return signOut({ everywhere: true, reason })
   }
 
   const resetPassword = async (email: string) => {
@@ -382,7 +310,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
-    forceSignOut,
     resetPassword,
     updateProfile,
     hasRole,
