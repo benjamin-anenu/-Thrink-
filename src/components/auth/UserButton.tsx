@@ -31,9 +31,13 @@ export function UserButton() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true)
-    await signOut()
+    const { error } = await signOut()
+    
+    if (!error) {
+      // Clear any cached data or local storage if needed
+      navigate('/')
+    }
     setIsSigningOut(false)
-    navigate('/')
   }
 
   const getInitials = (name?: string) => {

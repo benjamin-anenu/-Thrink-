@@ -301,6 +301,15 @@ const Header = () => {
             </div>
           )}
           
+          {/* Show dashboard link for authenticated users on landing page */}
+          {isLandingPage && user && (
+            <Link to="/dashboard">
+              <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
+                Go to Dashboard
+              </Button>
+            </Link>
+          )}
+          
           {user && <UserButton />}
           
           {/* Theme toggle for desktop */}

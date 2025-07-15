@@ -17,6 +17,7 @@ import GlobalErrorHandler from '@/components/GlobalErrorHandler';
 import PerformanceMonitor from '@/components/PerformanceMonitor';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { useAccessibility } from '@/hooks/useAccessibility';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -29,6 +30,7 @@ const Stakeholders = lazy(() => import('@/pages/Stakeholders'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const Unauthorized = lazy(() => import('@/pages/Unauthorized'));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -57,16 +59,50 @@ function AppContent() {
         </div>
       }>
         <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/project/:id" element={<ProjectManagement />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/stakeholders" element={<Stakeholders />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/workspaces" element={<Workspaces />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/404" element={<NotFound />} />
+          
+          {/* Protected routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/projects" element={
+            <ProtectedRoute>
+              <Projects />
+            </ProtectedRoute>
+          } />
+          <Route path="/project/:id" element={
+            <ProtectedRoute>
+              <ProjectManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/resources" element={
+            <ProtectedRoute>
+              <Resources />
+            </ProtectedRoute>
+          } />
+          <Route path="/stakeholders" element={
+            <ProtectedRoute>
+              <Stakeholders />
+            </ProtectedRoute>
+          } />
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          } />
+          <Route path="/workspaces" element={
+            <ProtectedRoute requiredRole="admin">
+              <Workspaces />
+            </ProtectedRoute>
+          } />
+          
+          {/* Catch all */}
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
       </Suspense>

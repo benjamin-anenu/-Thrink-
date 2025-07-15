@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [fetchUserData])
+  }, []) // Removed fetchUserData dependency to prevent infinite loops
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -191,6 +191,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true)
+      
+      // Clear all local state immediately
+      setUser(null)
+      setSession(null)
+      setProfile(null)
+      setRole(null)
+      
       const { error } = await supabase.auth.signOut()
       
       if (error) {
@@ -198,6 +205,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: "Sign Out Failed",
           description: error.message,
           variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Signed Out Successfully",
+          description: "You have been signed out of your account.",
         })
       }
 
