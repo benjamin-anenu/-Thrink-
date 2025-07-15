@@ -49,7 +49,7 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Load stakeholders from localStorage on mount
   useEffect(() => {
-    const savedStakeholders = dataPersistence.getData('stakeholders');
+    const savedStakeholders = dataPersistence.getData<Stakeholder[]>('stakeholders');
     if (savedStakeholders) {
       setStakeholders(savedStakeholders);
     } else {
@@ -111,7 +111,7 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Register with context synchronizer
   useEffect(() => {
-    const unregister = contextSynchronizer.registerContext('stakeholders', (updatedStakeholders) => {
+    const unregister = contextSynchronizer.registerContext('stakeholders', (updatedStakeholders: Stakeholder[]) => {
       setStakeholders(updatedStakeholders);
     });
 

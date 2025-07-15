@@ -128,7 +128,9 @@ export class ContextSynchronizer {
     const { projectId, taskId } = payload;
     
     // Update project with task completion
-    const projects = dataPersistence.getData('projects') || [];
+    const projects = dataPersistence.getData<any[]>('projects');
+    if (!projects || !Array.isArray(projects)) return;
+    
     const projectIndex = projects.findIndex((p: any) => p.id === projectId);
     
     if (projectIndex !== -1) {
@@ -154,7 +156,9 @@ export class ContextSynchronizer {
     const { resourceId, projectId, taskName } = payload;
     
     // Update resource with new assignment
-    const resources = dataPersistence.getData('resources') || [];
+    const resources = dataPersistence.getData<any[]>('resources');
+    if (!resources || !Array.isArray(resources)) return;
+    
     const resourceIndex = resources.findIndex((r: any) => r.id === resourceId);
     
     if (resourceIndex !== -1) {
@@ -178,7 +182,9 @@ export class ContextSynchronizer {
     const { projectId, projectName } = payload;
     
     // Update stakeholders associated with the project
-    const stakeholders = dataPersistence.getData('stakeholders') || [];
+    const stakeholders = dataPersistence.getData<any[]>('stakeholders');
+    if (!stakeholders || !Array.isArray(stakeholders)) return;
+    
     let updated = false;
     
     stakeholders.forEach((stakeholder: any) => {
@@ -195,7 +201,9 @@ export class ContextSynchronizer {
   }
 
   private updateResourceAssignments(projects: any[]) {
-    const resources = dataPersistence.getData('resources') || [];
+    const resources = dataPersistence.getData<any[]>('resources');
+    if (!resources || !Array.isArray(resources)) return;
+    
     let updated = false;
     
     // Update resource project assignments based on project data
@@ -220,7 +228,9 @@ export class ContextSynchronizer {
   }
 
   private updateStakeholderProjects(projects: any[]) {
-    const stakeholders = dataPersistence.getData('stakeholders') || [];
+    const stakeholders = dataPersistence.getData<any[]>('stakeholders');
+    if (!stakeholders || !Array.isArray(stakeholders)) return;
+    
     let updated = false;
     
     // Update stakeholder project assignments
@@ -245,7 +255,9 @@ export class ContextSynchronizer {
   }
 
   private updateProjectResources(resources: any[]) {
-    const projects = dataPersistence.getData('projects') || [];
+    const projects = dataPersistence.getData<any[]>('projects');
+    if (!projects || !Array.isArray(projects)) return;
+    
     let updated = false;
     
     // Update project resource assignments
@@ -267,7 +279,9 @@ export class ContextSynchronizer {
   }
 
   private updateProjectStakeholders(stakeholders: any[]) {
-    const projects = dataPersistence.getData('projects') || [];
+    const projects = dataPersistence.getData<any[]>('projects');
+    if (!projects || !Array.isArray(projects)) return;
+    
     let updated = false;
     
     // Update project stakeholder assignments
