@@ -1,4 +1,3 @@
-
 export type EventType = 
   | 'task_completed'
   | 'task_created'
@@ -21,7 +20,8 @@ export type EventType =
   | 'rebaseline_requested'
   | 'ai_insights_updated'
   | 'ai_insights_requested'
-  | 'risk_event';
+  | 'risk_event'
+  | 'system_error';
 
 export interface Event {
   id: string;
@@ -215,8 +215,8 @@ export class EventBus {
           failureCount++;
           console.error(`[Event Bus] Error in listener ${listener.id} for ${type}:`, error);
           
-          // Emit a system error event for monitoring
-          if (type !== 'system_error') { // Prevent infinite loops
+          // Emit a system error event for monitoring (avoid infinite loops)
+          if (type !== 'system_error') {
             setTimeout(() => {
               this.emit('system_error', {
                 originalEvent: type,
