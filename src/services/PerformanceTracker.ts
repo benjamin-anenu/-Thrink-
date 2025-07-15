@@ -1,15 +1,93 @@
-
 import { PerformanceProfile, PerformanceMetric, MonthlyPerformanceReport } from '@/types/performance';
+import { EventBus } from './EventBus';
 
 export class PerformanceTracker {
   private static instance: PerformanceTracker;
   private performanceProfiles: Map<string, PerformanceProfile> = new Map();
+  private eventBus: EventBus;
 
   public static getInstance(): PerformanceTracker {
     if (!PerformanceTracker.instance) {
       PerformanceTracker.instance = new PerformanceTracker();
     }
     return PerformanceTracker.instance;
+  }
+
+  private constructor() {
+    this.eventBus = EventBus.getInstance();
+    this.setupEventListeners();
+    this.loadPerformanceData();
+  }
+
+  private setupEventListeners() {
+    // Listen for real task completion events
+    this.eventBus.subscribe('task_completed', (event) => {
+      const { taskId, taskName, projectId, projectName, resourceId, resourceName } = event.payload;
+      this.trackPositiveActivity(
+        resourceId, 
+        'task_completion', 
+        8, 
+        `Completed task: ${taskName}`, 
+        projectId, 
+        taskId
+      );
+    });
+
+    // Listen for deadline adherence events
+    this.eventBus.subscribe('deadline_approaching', (event) => {
+      const { taskId, taskName, projectId, resourceId, daysRemaining } = event.payload;
+      if (daysRemaining < 0) {
+        // Task is overdue
+        this.trackNegativeActivity(
+          resourceId,
+          'deadline_adherence',
+          -5,
+          `Missed deadline for: ${taskName}`,
+          projectId,
+          taskId
+        );
+      }
+    });
+
+    // Listen for resource assignment events
+    this.eventBus.subscribe('resource_assigned', (event) => {
+      const { resourceId, resourceName } = event.payload;
+      this.trackPositiveActivity(
+        resourceId,
+        'collaboration',
+        3,
+        'New project assignment',
+        event.payload.projectId
+      );
+    });
+
+    console.log('[Performance Tracker] Event listeners established');
+  }
+
+  private loadPerformanceData() {
+    const saved = localStorage.getItem('performance-profiles');
+    if (saved) {
+      try {
+        const profiles = JSON.parse(saved);
+        profiles.forEach((profile: any) => {
+          this.performanceProfiles.set(profile.resourceId, {
+            ...profile,
+            lastUpdated: new Date(profile.lastUpdated),
+            metrics: profile.metrics.map((m: any) => ({
+              ...m,
+              timestamp: new Date(m.timestamp)
+            }))
+          });
+        });
+      } catch (error) {
+        console.error('[Performance Tracker] Error loading saved data:', error);
+      }
+    }
+  }
+
+  private savePerformanceData() {
+    const profiles = Array.from(this.performanceProfiles.values());
+    localStorage.setItem('performance-profiles', JSON.stringify(profiles));
   }
 
   // Track positive performance indicators
@@ -59,12 +137,37 @@ export class PerformanceTracker {
     this.updateProfileTrend(profile);
     this.assessRiskLevel(profile);
     profile.lastUpdated = new Date();
+    
+    this.savePerformanceData();
+    
+    // Emit performance alerts if needed
+    if (profile.riskLevel === 'critical' || profile.riskLevel === 'high') {
+      this.eventBus.emit('performance_alert', {
+        resourceId,
+        resourceName: profile.resourceName,
+        riskLevel: profile.riskLevel,
+        currentScore: profile.currentScore,
+        trend: profile.trend
+      }, 'performance_tracker');
+    }
   }
 
   private createNewProfile(resourceId: string): PerformanceProfile {
+    // Try to get resource name from localStorage
+    let resourceName = `Resource ${resourceId}`;
+    try {
+      const resources = JSON.parse(localStorage.getItem('resources') || '[]');
+      const resource = resources.find((r: any) => r.id === resourceId);
+      if (resource) {
+        resourceName = resource.name;
+      }
+    } catch (error) {
+      console.warn('[Performance Tracker] Could not load resource name');
+    }
+
     return {
       resourceId,
-      resourceName: `Resource ${resourceId}`, // This would be populated from actual resource data
+      resourceName,
       currentScore: 75, // Starting neutral score
       monthlyScore: 75,
       trend: 'stable',
@@ -245,15 +348,9 @@ export class PerformanceTracker {
   }
 }
 
-// Simulate AI activity monitoring
-export const simulateAIMonitoring = () => {
+// Initialize performance tracking with real data monitoring
+export const initializePerformanceTracking = () => {
   const tracker = PerformanceTracker.getInstance();
-  
-  // Simulate various activities
-  setTimeout(() => {
-    tracker.trackPositiveActivity('1', 'task_completion', 8, 'Completed UI design task ahead of schedule', 'proj-1', 'task-1');
-    tracker.trackPositiveActivity('2', 'deadline_adherence', 9, 'Delivered backend API on time', 'proj-2', 'task-2');
-    tracker.trackNegativeActivity('3', 'deadline_adherence', -5, 'Missed milestone deadline by 2 days', 'proj-3', 'task-3');
-    tracker.trackPositiveActivity('1', 'collaboration', 7, 'Provided excellent code review feedback', 'proj-1');
-  }, 1000);
+  console.log('[Performance Tracker] Initialized with real-time event monitoring');
+  return tracker;
 };

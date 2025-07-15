@@ -1,10 +1,12 @@
-
 import { TaskDeadlineReminder, RebaselineRequest } from '@/types/performance';
+import { EventBus } from './EventBus';
 
 export class EmailReminderService {
   private static instance: EmailReminderService;
   private reminders: TaskDeadlineReminder[] = [];
   private rebaselineRequests: RebaselineRequest[] = [];
+  private eventBus: EventBus;
+  private monitoringInterval: NodeJS.Timeout | null = null;
 
   public static getInstance(): EmailReminderService {
     if (!EmailReminderService.instance) {
@@ -13,8 +15,122 @@ export class EmailReminderService {
     return EmailReminderService.instance;
   }
 
-  public scheduleTaskReminders(task: any, resource: any, project: any) {
-    const deadline = new Date(task.deadline || task.dueDate);
+  private constructor() {
+    this.eventBus = EventBus.getInstance();
+    this.loadReminders();
+    this.setupRealDataMonitoring();
+  }
+
+  private loadReminders() {
+    const savedReminders = localStorage.getItem('email-reminders');
+    const savedRebaselines = localStorage.getItem('rebaseline-requests');
+    
+    if (savedReminders) {
+      try {
+        this.reminders = JSON.parse(savedReminders).map((r: any) => ({
+          ...r,
+          deadline: new Date(r.deadline),
+          sentAt: r.sentAt ? new Date(r.sentAt) : undefined
+        }));
+      } catch (error) {
+        console.error('[Email Reminder Service] Error loading reminders:', error);
+      }
+    }
+
+    if (savedRebaselines) {
+      try {
+        this.rebaselineRequests = JSON.parse(savedRebaselines).map((r: any) => ({
+          ...r,
+          originalDeadline: new Date(r.originalDeadline),
+          proposedDeadline: new Date(r.proposedDeadline),
+          submittedAt: new Date(r.submittedAt),
+          reviewedAt: r.reviewedAt ? new Date(r.reviewedAt) : undefined
+        }));
+      } catch (error) {
+        console.error('[Email Reminder Service] Error loading rebaseline requests:', error);
+      }
+    }
+  }
+
+  private saveReminders() {
+    localStorage.setItem('email-reminders', JSON.stringify(this.reminders));
+    localStorage.setItem('rebaseline-requests', JSON.stringify(this.rebaselineRequests));
+  }
+
+  private setupRealDataMonitoring() {
+    // Monitor real project data for tasks with deadlines
+    this.monitoringInterval = setInterval(() => {
+      this.scanProjectsForDeadlines();
+    }, 60000); // Check every minute
+
+    // Listen for task updates
+    this.eventBus.subscribe('task_updated', (event) => {
+      const { task, project } = event.payload;
+      if (task.endDate || task.dueDate) {
+        this.scheduleTaskRemindersFromRealData(task, project);
+      }
+    });
+
+    // Listen for resource assignments
+    this.eventBus.subscribe('resource_assigned', (event) => {
+      const { taskId, resourceId, projectId } = event.payload;
+      this.updateTaskReminderForResource(taskId, resourceId, projectId);
+    });
+
+    console.log('[Email Reminder Service] Real data monitoring established');
+  }
+
+  private scanProjectsForDeadlines() {
+    try {
+      const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+      const resources = JSON.parse(localStorage.getItem('resources') || '[]');
+
+      projects.forEach((project: any) => {
+        if (project.tasks) {
+          project.tasks.forEach((task: any) => {
+            if ((task.endDate || task.dueDate) && task.assignedTo) {
+              const resource = resources.find((r: any) => r.id === task.assignedTo);
+              if (resource && !this.hasExistingReminder(task.id)) {
+                this.scheduleTaskRemindersFromRealData(task, project, resource);
+              }
+            }
+          });
+        }
+
+        // Check milestones
+        if (project.milestones) {
+          project.milestones.forEach((milestone: any) => {
+            if (milestone.date && milestone.assignedTo) {
+              const resource = resources.find((r: any) => r.id === milestone.assignedTo);
+              if (resource && !this.hasExistingReminder(milestone.id)) {
+                this.scheduleTaskRemindersFromRealData(milestone, project, resource);
+              }
+            }
+          });
+        }
+      });
+    } catch (error) {
+      console.error('[Email Reminder Service] Error scanning projects:', error);
+    }
+  }
+
+  private hasExistingReminder(taskId: string): boolean {
+    return this.reminders.some(r => r.taskId === taskId);
+  }
+
+  private scheduleTaskRemindersFromRealData(task: any, project: any, resource?: any) {
+    if (!resource) {
+      // Try to find resource if not provided
+      try {
+        const resources = JSON.parse(localStorage.getItem('resources') || '[]');
+        resource = resources.find((r: any) => r.id === task.assignedTo);
+      } catch (error) {
+        console.warn('[Email Reminder Service] Could not find resource for task');
+        return;
+      }
+    }
+
+    const deadline = new Date(task.endDate || task.dueDate || task.date);
     const now = new Date();
 
     // Calculate reminder dates
@@ -43,11 +159,37 @@ export class EmailReminderService {
           responseRequired: type === 'three_days' || type === 'day_before',
         };
 
+        // Remove existing reminder of same type
+        this.reminders = this.reminders.filter(r => r.id !== reminder.id);
         this.reminders.push(reminder);
       }
     });
 
-    console.log(`[Email Reminder Service] Scheduled ${reminderDates.length} reminders for task ${task.id}`);
+    this.saveReminders();
+    console.log(`[Email Reminder Service] Scheduled reminders for task ${task.title || task.name}`);
+  }
+
+  private updateTaskReminderForResource(taskId: string, resourceId: string, projectId: string) {
+    try {
+      const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+      const resources = JSON.parse(localStorage.getItem('resources') || '[]');
+      
+      const project = projects.find((p: any) => p.id === projectId);
+      const resource = resources.find((r: any) => r.id === resourceId);
+      const task = project?.tasks?.find((t: any) => t.id === taskId);
+
+      if (task && resource && project) {
+        // Remove old reminders for this task
+        this.reminders = this.reminders.filter(r => r.taskId !== taskId);
+        this.scheduleTaskRemindersFromRealData(task, project, resource);
+      }
+    } catch (error) {
+      console.error('[Email Reminder Service] Error updating task reminder:', error);
+    }
+  }
+
+  public scheduleTaskReminders(task: any, resource: any, project: any) {
+    this.scheduleTaskRemindersFromRealData(task, project, resource);
   }
 
   public processReminders() {
@@ -61,6 +203,7 @@ export class EmailReminderService {
     });
 
     if (pendingReminders.length > 0) {
+      this.saveReminders();
       console.log(`[Email Reminder Service] Sent ${pendingReminders.length} reminder emails`);
     }
   }
@@ -75,9 +218,16 @@ export class EmailReminderService {
     console.log(`Subject: ${emailContent.subject}`);
     console.log(`Body: ${emailContent.body}`);
     
-    // Simulate email tracking
+    // Emit email sent event
+    this.eventBus.emit('task_updated', {
+      type: 'email_reminder_sent',
+      taskId: reminder.taskId,
+      resourceId: reminder.resourceId,
+      reminderType: reminder.reminderType
+    }, 'email_service');
+    
+    // Simulate some responses for demo purposes
     if (reminder.responseRequired) {
-      // Simulate some responses for demo purposes
       setTimeout(() => {
         this.simulateEmailResponse(reminder);
       }, Math.random() * 5000 + 2000); // Random delay between 2-7 seconds
@@ -173,50 +323,14 @@ This email was sent automatically by our AI system. If you have any questions, p
   }
 
   private getActionItems(type: TaskDeadlineReminder['reminderType']): string {
-    switch (type) {
-      case 'week_before':
-        return `
-📝 **Recommended Actions:**
-- Review task requirements and dependencies
-- Plan your work schedule for the coming week
-- Identify any potential blockers early
-- Communicate with team members if collaboration is needed`;
-
-      case 'three_days':
-        return `
-📝 **Immediate Actions Required:**
-- Assess current progress and remaining work
-- Update task status in project management system
-- Flag any risks or delays to your project manager
-- Prepare for final sprint to completion`;
-
-      case 'day_before':
-        return `
-🚨 **URGENT Actions:**
-- Complete all remaining work items
-- Test and review your deliverables
-- Prepare for submission tomorrow
-- Contact PM immediately if extension needed`;
-
-      case 'day_of':
-        return `
-🔥 **TODAY's Actions:**
-- Submit completed work immediately
-- Update all project documentation
-- Notify team of completion status
-- Schedule any required follow-up meetings`;
-
-      case 'overdue':
-        return `
-❌ **CRITICAL Actions:**
-- Contact your project manager IMMEDIATELY
-- Provide updated completion estimate
-- Submit partial work if available
-- Document reasons for delay for project records`;
-
-      default:
-        return 'Please review your task and take appropriate action.';
-    }
+    const actionItems = {
+      'week_before': `📝 **Recommended Actions:**\n- Review task requirements and dependencies\n- Plan your work schedule for the coming week\n- Identify any potential blockers early\n- Communicate with team members if collaboration is needed`,
+      'three_days': `📝 **Immediate Actions Required:**\n- Assess current progress and remaining work\n- Update task status in project management system\n- Flag any risks or delays to your project manager\n- Prepare for final sprint to completion`,
+      'day_before': `🚨 **URGENT Actions:**\n- Complete all remaining work items\n- Test and review your deliverables\n- Prepare for submission tomorrow\n- Contact PM immediately if extension needed`,
+      'day_of': `🔥 **TODAY's Actions:**\n- Submit completed work immediately\n- Update all project documentation\n- Notify team of completion status\n- Schedule any required follow-up meetings`,
+      'overdue': `❌ **CRITICAL Actions:**\n- Contact your project manager IMMEDIATELY\n- Provide updated completion estimate\n- Submit partial work if available\n- Document reasons for delay for project records`
+    };
+    return actionItems[type] || 'Please review your task and take appropriate action.';
   }
 
   private generateResponseLink(reminderId: string): string {
@@ -241,6 +355,7 @@ This email was sent automatically by our AI system. If you have any questions, p
       this.createRebaselineRequest(reminder, response);
     }
 
+    this.saveReminders();
     console.log(`[EMAIL RESPONSE] Received response for ${reminder.taskName}: On track: ${response.onTrack}, Confidence: ${response.confidence}`);
   }
 
@@ -261,6 +376,17 @@ This email was sent automatically by our AI system. If you have any questions, p
     };
 
     this.rebaselineRequests.push(request);
+    this.saveReminders();
+    
+    // Emit rebaseline request event
+    this.eventBus.emit('task_updated', {
+      type: 'rebaseline_requested',
+      taskId: request.taskId,
+      resourceId: request.resourceId,
+      originalDeadline: request.originalDeadline,
+      proposedDeadline: request.proposedDeadline
+    }, 'email_service');
+    
     console.log(`[REBASELINE REQUEST] Created request for task ${reminder.taskName}: ${reminder.deadline.toDateString()} → ${newDeadline.toDateString()}`);
   }
 
@@ -279,6 +405,7 @@ This email was sent automatically by our AI system. If you have any questions, p
       request.reviewedAt = new Date();
       request.reviewedBy = reviewedBy;
       request.reviewNotes = notes;
+      this.saveReminders();
       console.log(`[REBASELINE APPROVED] Request ${requestId} approved by ${reviewedBy}`);
     }
   }
@@ -290,12 +417,20 @@ This email was sent automatically by our AI system. If you have any questions, p
       request.reviewedAt = new Date();
       request.reviewedBy = reviewedBy;
       request.reviewNotes = notes;
+      this.saveReminders();
       console.log(`[REBASELINE REJECTED] Request ${requestId} rejected by ${reviewedBy}`);
+    }
+  }
+
+  public destroy() {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
     }
   }
 }
 
-// Initialize and start the reminder processing
+// Initialize and start the reminder processing with real data
 export const startEmailReminderService = () => {
   const service = EmailReminderService.getInstance();
   
@@ -304,5 +439,6 @@ export const startEmailReminderService = () => {
     service.processReminders();
   }, 60000);
   
-  console.log('[Email Reminder Service] Started monitoring for task deadlines');
+  console.log('[Email Reminder Service] Started with real project data monitoring');
+  return service;
 };

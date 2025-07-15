@@ -1,6 +1,6 @@
-
 import { PerformanceTracker } from './PerformanceTracker';
 import { EmailReminderService } from './EmailReminderService';
+import { EventBus } from './EventBus';
 
 export interface ProjectNotification {
   id: string;
@@ -22,6 +22,7 @@ export class NotificationIntegrationService {
   private static instance: NotificationIntegrationService;
   private notifications: ProjectNotification[] = [];
   private listeners: ((notifications: ProjectNotification[]) => void)[] = [];
+  private eventBus: EventBus;
 
   public static getInstance(): NotificationIntegrationService {
     if (!NotificationIntegrationService.instance) {
@@ -31,18 +32,77 @@ export class NotificationIntegrationService {
   }
 
   private constructor() {
+    this.eventBus = EventBus.getInstance();
     this.initializeServices();
     this.loadNotifications();
   }
 
   private initializeServices() {
+    // Connect to real-time events
+    this.setupRealTimeEventListeners();
+    
     // Connect to performance tracker events
     this.monitorPerformanceEvents();
     
     // Connect to email reminder events
     this.monitorEmailEvents();
     
-    console.log('[Notification Integration] Service initialized and monitoring events');
+    console.log('[Notification Integration] Service initialized and monitoring real events');
+  }
+
+  private setupRealTimeEventListeners() {
+    // Listen for task completion events
+    this.eventBus.subscribe('task_completed', (event) => {
+      const { taskId, taskName, projectId, projectName, resourceId, resourceName } = event.payload;
+      this.onTaskCompleted(taskId, taskName, projectId, projectName, resourceId, resourceName);
+    });
+
+    // Listen for deadline approaching events
+    this.eventBus.subscribe('deadline_approaching', (event) => {
+      const { taskId, taskName, projectId, projectName, daysRemaining } = event.payload;
+      this.onDeadlineApproaching(taskId, taskName, projectId, projectName, daysRemaining);
+    });
+
+    // Listen for resource assignment events
+    this.eventBus.subscribe('resource_assigned', (event) => {
+      const { resourceId, resourceName, projectId, projectName, taskName } = event.payload;
+      this.onResourceAssigned(resourceId, resourceName, projectId, projectName, taskName);
+    });
+
+    // Listen for project updates
+    this.eventBus.subscribe('project_updated', (event) => {
+      const { projectId, projectName, updateType, details } = event.payload;
+      this.addNotification({
+        title: 'Project Updated',
+        message: `${projectName} has been updated`,
+        type: 'info',
+        category: 'project',
+        priority: 'medium',
+        projectId,
+        projectName
+      });
+    });
+
+    // Listen for performance alerts
+    this.eventBus.subscribe('performance_alert', (event) => {
+      const { resourceId, resourceName, riskLevel, currentScore } = event.payload;
+      this.addNotification({
+        title: `Performance Alert: ${riskLevel} Risk`,
+        message: `${resourceName} performance requires attention (Score: ${Math.round(currentScore)})`,
+        type: riskLevel === 'critical' ? 'error' : 'warning',
+        category: 'performance',
+        priority: riskLevel === 'critical' ? 'critical' : 'high',
+        resourceId,
+        resourceName,
+        actionRequired: true
+      });
+    });
+
+    // Listen for system heartbeat
+    this.eventBus.subscribe('system_heartbeat', (event) => {
+      // Update system status notifications if needed
+      console.log('[Notification Integration] System heartbeat received');
+    });
   }
 
   private loadNotifications() {
@@ -60,7 +120,7 @@ export class NotificationIntegrationService {
   }
 
   private monitorPerformanceEvents() {
-    // Simulate performance-based notifications
+    // Check performance profiles every 30 seconds
     setInterval(() => {
       const performanceTracker = PerformanceTracker.getInstance();
       const profiles = performanceTracker.getAllProfiles();
@@ -94,7 +154,7 @@ export class NotificationIntegrationService {
   }
 
   private monitorEmailEvents() {
-    // Monitor email reminder service
+    // Monitor email reminder service every minute
     setInterval(() => {
       const emailService = EmailReminderService.getInstance();
       const rebaselineRequests = emailService.getRebaselineRequests();
@@ -132,6 +192,12 @@ export class NotificationIntegrationService {
     };
 
     this.notifications.unshift(newNotification);
+    
+    // Keep only the last 100 notifications
+    if (this.notifications.length > 100) {
+      this.notifications = this.notifications.slice(0, 100);
+    }
+    
     this.saveNotifications();
     this.notifyListeners();
     
@@ -238,6 +304,6 @@ export class NotificationIntegrationService {
 // Initialize the service
 export const initializeNotificationIntegration = () => {
   const service = NotificationIntegrationService.getInstance();
-  console.log('[Notification Integration] Initialized');
+  console.log('[Notification Integration] Initialized with real-time event monitoring');
   return service;
 };
