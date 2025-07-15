@@ -2,6 +2,7 @@
 import React from 'react';
 import { Brain, Sparkles, Building2 } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import RealTimeStatus from './RealTimeStatus';
 
 interface DashboardHeaderProps {
   aiConfidence: number;
@@ -44,11 +45,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ aiConfidence }) => {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="h-3 w-3 bg-emerald-400 rounded-full animate-pulse shadow-glow"></div>
-          <span className="text-sm text-emerald-400 font-bold">AI Processing</span>
-          <div className="px-3 py-1 bg-primary/20 text-primary rounded-lg text-xs font-bold border border-primary/30">
-            {aiConfidence}% Confidence
+        <div className="flex items-center gap-4">
+          <RealTimeStatus />
+          
+          <div className="flex items-center gap-3">
+            <div className="h-3 w-3 bg-emerald-400 rounded-full animate-pulse shadow-glow"></div>
+            <span className="text-sm text-emerald-400 font-bold">AI Processing</span>
+            <div className="px-3 py-1 bg-primary/20 text-primary rounded-lg text-xs font-bold border border-primary/30">
+              {aiConfidence}% Confidence
+            </div>
           </div>
         </div>
       </div>
