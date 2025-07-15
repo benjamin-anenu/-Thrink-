@@ -48,7 +48,7 @@ export class ComplianceService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return data as ComplianceLog[];
   }
 
   static async searchComplianceLogs(
@@ -72,7 +72,7 @@ export class ComplianceService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return data as ComplianceLog[];
   }
 
   static async createDataProcessingActivity(

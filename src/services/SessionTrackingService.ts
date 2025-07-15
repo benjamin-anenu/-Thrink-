@@ -4,7 +4,7 @@ import { UserSession, SessionTrackingData } from '@/types/enterprise';
 export class SessionTrackingService {
   private static currentSessionId: string | null = null;
 
-  static async trackSession(data: SessionTrackingData): Promise<UserSession> {
+  static async trackSession(data: SessionTrackingData): Promise<string> {
     const { data: result, error } = await supabase.rpc('track_user_session', {
       session_id_param: data.sessionId,
       workspace_id_param: data.workspaceId || null,
@@ -50,7 +50,7 @@ export class SessionTrackingService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return data as UserSession[];
   }
 
   static async getWorkspaceSessions(workspaceId: string): Promise<UserSession[]> {
@@ -67,7 +67,7 @@ export class SessionTrackingService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return data as UserSession[];
   }
 
   static async updateActivity(): Promise<void> {

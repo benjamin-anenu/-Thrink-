@@ -70,7 +70,7 @@ export class WorkspaceService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return data as WorkspaceMember[];
   }
 
   static async inviteMember(workspaceId: string, invitation: InvitationFormData): Promise<WorkspaceInvitation> {
@@ -92,7 +92,7 @@ export class WorkspaceService {
     await this.logComplianceEvent(workspaceId, 'member_invited', 'user_management', 
       `Member invited: ${invitation.email} with role ${invitation.role}`);
 
-    return data;
+    return data as WorkspaceInvitation;
   }
 
   static async getWorkspaceInvitations(workspaceId: string): Promise<WorkspaceInvitation[]> {
@@ -103,7 +103,7 @@ export class WorkspaceService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return data as WorkspaceInvitation[];
   }
 
   static async acceptInvitation(token: string): Promise<boolean> {

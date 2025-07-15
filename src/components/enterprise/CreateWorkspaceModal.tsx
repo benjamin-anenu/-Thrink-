@@ -54,9 +54,14 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
   });
 
   const onSubmit = async (data: WorkspaceFormData) => {
+    if (!data.name) return;
+    
     try {
       setIsLoading(true);
-      await createWorkspace(data);
+      await createWorkspace({
+        name: data.name,
+        description: data.description
+      });
       form.reset();
       onOpenChange(false);
     } catch (error) {

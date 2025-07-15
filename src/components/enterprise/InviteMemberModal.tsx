@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useEnterprise } from '@/contexts/EnterpriseContext';
 import { WorkspaceService } from '@/services/WorkspaceService';
+import { InvitationFormData } from '@/types/enterprise';
 import { toast } from 'sonner';
 
 const invitationSchema = z.object({
@@ -37,8 +38,6 @@ const invitationSchema = z.object({
   role: z.enum(['admin', 'member', 'viewer']),
   message: z.string().max(500, 'Message must be 500 characters or less').optional(),
 });
-
-type InvitationFormData = z.infer<typeof invitationSchema>;
 
 interface InviteMemberModalProps {
   open: boolean;
