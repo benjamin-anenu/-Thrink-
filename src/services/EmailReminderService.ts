@@ -57,27 +57,38 @@ export class EmailReminderService {
     localStorage.setItem('rebaseline-requests', JSON.stringify(this.rebaselineRequests));
   }
 
+  private emailQueue: Array<{reminder: TaskDeadlineReminder, retryCount: number}> = [];
+  private isProcessing = false;
+  private maxRetries = 3;
+  private backoffDelay = 5000; // 5 seconds
+
   private setupRealDataMonitoring() {
     // Monitor real project data for tasks with deadlines
     this.monitoringInterval = setInterval(() => {
       this.scanProjectsForDeadlines();
-    }, 60000); // Check every minute
+    }, 300000); // Check every 5 minutes instead of every minute
 
-    // Listen for task updates
+    // Listen for task updates with debouncing
+    let taskUpdateTimer: NodeJS.Timeout;
     this.eventBus.subscribe('task_updated', (event) => {
-      const { task, project } = event.payload;
-      if (task.endDate || task.dueDate) {
-        this.scheduleTaskRemindersFromRealData(task, project);
+      clearTimeout(taskUpdateTimer);
+      taskUpdateTimer = setTimeout(() => {
+        const { task, project } = event.payload;
+        if (task.endDate || task.dueDate) {
+          this.scheduleTaskRemindersFromRealData(task, project);
+        }
+      }, 2000); // Debounce task updates by 2 seconds
+    });
+
+    // Listen for resource assignments with validation
+    this.eventBus.subscribe('resource_assigned', (event) => {
+      const { taskId, resourceId, projectId } = event.payload;
+      if (taskId && resourceId && projectId) {
+        this.updateTaskReminderForResource(taskId, resourceId, projectId);
       }
     });
 
-    // Listen for resource assignments
-    this.eventBus.subscribe('resource_assigned', (event) => {
-      const { taskId, resourceId, projectId } = event.payload;
-      this.updateTaskReminderForResource(taskId, resourceId, projectId);
-    });
-
-    console.log('[Email Reminder Service] Real data monitoring established');
+    console.log('[Email Reminder Service] Enhanced real data monitoring established');
   }
 
   private scanProjectsForDeadlines() {
@@ -192,45 +203,110 @@ export class EmailReminderService {
     this.scheduleTaskRemindersFromRealData(task, project, resource);
   }
 
-  public processReminders() {
-    const now = new Date();
-    const pendingReminders = this.reminders.filter(r => !r.sent && new Date(r.deadline) <= now);
+  public async processReminders() {
+    if (this.isProcessing) {
+      console.debug('[Email Reminder Service] Already processing reminders, skipping');
+      return;
+    }
 
-    pendingReminders.forEach(reminder => {
-      this.sendReminderEmail(reminder);
-      reminder.sent = true;
-      reminder.sentAt = now;
-    });
+    this.isProcessing = true;
+    
+    try {
+      const now = new Date();
+      const pendingReminders = this.reminders.filter(r => !r.sent && new Date(r.deadline) <= now);
 
-    if (pendingReminders.length > 0) {
-      this.saveReminders();
-      console.log(`[Email Reminder Service] Sent ${pendingReminders.length} reminder emails`);
+      // Process reminders in batches to avoid overwhelming the system
+      const batchSize = 5;
+      for (let i = 0; i < pendingReminders.length; i += batchSize) {
+        const batch = pendingReminders.slice(i, i + batchSize);
+        await this.processBatch(batch, now);
+        
+        // Add delay between batches
+        if (i + batchSize < pendingReminders.length) {
+          await this.delay(1000);
+        }
+      }
+
+      if (pendingReminders.length > 0) {
+        this.saveReminders();
+        console.log(`[Email Reminder Service] Processed ${pendingReminders.length} reminder emails`);
+      }
+    } catch (error) {
+      console.error('[Email Reminder Service] Error processing reminders:', error);
+    } finally {
+      this.isProcessing = false;
     }
   }
 
-  private sendReminderEmail(reminder: TaskDeadlineReminder) {
-    // In a real implementation, this would integrate with an email service
-    // For now, we'll simulate the email sending and log the content
+  private async processBatch(reminders: TaskDeadlineReminder[], timestamp: Date) {
+    const promises = reminders.map(async (reminder) => {
+      try {
+        await this.sendReminderEmailWithRetry(reminder);
+        reminder.sent = true;
+        reminder.sentAt = timestamp;
+      } catch (error) {
+        console.error(`[Email Reminder Service] Failed to send reminder for ${reminder.taskName}:`, error);
+        // Mark as failed but don't block other reminders
+        reminder.sent = false;
+      }
+    });
+
+    await Promise.allSettled(promises);
+  }
+
+  private async sendReminderEmailWithRetry(reminder: TaskDeadlineReminder, retryCount = 0): Promise<void> {
+    try {
+      await this.sendReminderEmail(reminder);
+    } catch (error) {
+      if (retryCount < this.maxRetries) {
+        console.warn(`[Email Reminder Service] Retry ${retryCount + 1}/${this.maxRetries} for ${reminder.taskName}`);
+        await this.delay(this.backoffDelay * Math.pow(2, retryCount)); // Exponential backoff
+        return this.sendReminderEmailWithRetry(reminder, retryCount + 1);
+      }
+      throw error;
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async sendReminderEmail(reminder: TaskDeadlineReminder): Promise<void> {
+    // Enhanced email sending with validation and error handling
+    if (!reminder.resourceEmail || !reminder.resourceEmail.includes('@')) {
+      throw new Error(`Invalid email address for ${reminder.resourceName}`);
+    }
     
     const emailContent = this.generateEmailContent(reminder);
     
+    // Simulate network delay and potential failures
+    await this.delay(Math.random() * 1000 + 500); // 0.5-1.5 second delay
+    
+    // Simulate occasional failures for testing resilience
+    if (Math.random() < 0.05) { // 5% failure rate
+      throw new Error(`Network error sending email to ${reminder.resourceEmail}`);
+    }
+    
     console.log(`[EMAIL SENT] To: ${reminder.resourceEmail}`);
     console.log(`Subject: ${emailContent.subject}`);
-    console.log(`Body: ${emailContent.body}`);
+    console.log(`Body Preview: ${emailContent.body.substring(0, 100)}...`);
     
-    // Emit email sent event
-    this.eventBus.emit('task_updated', {
+    // Emit email sent event with enhanced payload
+    this.eventBus.emit('email_reminder_sent', {
       type: 'email_reminder_sent',
       taskId: reminder.taskId,
       resourceId: reminder.resourceId,
-      reminderType: reminder.reminderType
+      reminderType: reminder.reminderType,
+      emailAddress: reminder.resourceEmail,
+      timestamp: new Date(),
+      priority: this.getUrgencyLevel(reminder.reminderType)
     }, 'email_service');
     
-    // Simulate some responses for demo purposes
+    // Simulate responses for demo purposes with better logic
     if (reminder.responseRequired) {
       setTimeout(() => {
         this.simulateEmailResponse(reminder);
-      }, Math.random() * 5000 + 2000); // Random delay between 2-7 seconds
+      }, Math.random() * 10000 + 5000); // Random delay between 5-15 seconds
     }
   }
 

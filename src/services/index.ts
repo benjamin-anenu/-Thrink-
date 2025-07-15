@@ -133,6 +133,15 @@ export {
   eventBus
 };
 
+// Export service initializers
+export { initializeRealTimeEvents } from './RealTimeEventService';
+export { initializeRealTimeDataSync } from './RealTimeDataSync';
+export { initializeNotificationIntegration } from './NotificationIntegrationService';
+export { initializePerformanceTracking } from './PerformanceTracker';
+export { startEmailReminderService } from './EmailReminderService';
+export { aiInsightsService } from './AIInsightsService';
+export { systemValidationService } from './SystemValidationService';
+
 // Export service status checker
 export const getSystemStatus = () => {
   try {
