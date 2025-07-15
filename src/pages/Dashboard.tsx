@@ -6,6 +6,7 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
+import { useProject } from '@/contexts/ProjectContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,63 +15,79 @@ import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'luci
 
 const Dashboard = () => {
   const [activeProject, setActiveProject] = useState(0);
+  const { projects } = useProject();
 
-  const projects = [
-    {
-      name: 'E-commerce Platform Redesign',
-      status: 'In Progress',
-      progress: 85,
-      risk: 'Low',
-      team: 8,
-      deadline: '2 weeks',
-      aiInsight: 'Project is 12% ahead of schedule. Team velocity has increased by 23% this sprint. Recommend maintaining current resource allocation.',
-      color: 'from-blue-500 to-cyan-500',
-      priority: 'High'
-    },
-    {
-      name: 'Mobile App Development',
-      status: 'In Progress',
-      progress: 60,
-      risk: 'Medium',
-      team: 6,
-      deadline: '6 weeks',
-      aiInsight: 'Backend integration phase showing delays. Consider adding 1 senior developer to maintain timeline. 78% probability of on-time delivery.',
-      color: 'from-purple-500 to-pink-500',
-      priority: 'High'
-    },
-    {
-      name: 'Marketing Campaign Q2',
-      status: 'Planning',
-      progress: 30,
-      risk: 'Low',
-      team: 4,
-      deadline: '8 weeks',
-      aiInsight: 'Early planning phase progressing well. Budget allocation is optimal. Recommend stakeholder review in 2 weeks.',
-      color: 'from-green-500 to-emerald-500',
-      priority: 'Medium'
-    }
-  ];
+  // Transform projects data for display
+  const projectsForDisplay = projects.map(project => ({
+    name: project.name,
+    status: project.status,
+    progress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length) || 0,
+    risk: project.health.status === 'Critical' ? 'High' : project.health.status === 'At Risk' ? 'Medium' : 'Low',
+    team: project.teamSize,
+    deadline: (() => {
+      const endDate = new Date(project.endDate);
+      const today = new Date();
+      const diffTime = endDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? `${diffDays} days` : 'Overdue';
+    })(),
+    aiInsight: `Project is ${project.health.score}% healthy. Current status: ${project.status}. ${project.tasks.filter(t => t.status === 'Completed').length}/${project.tasks.length} tasks completed.`,
+    color: project.priority === 'High' ? 'from-red-500 to-orange-500' : 
+           project.priority === 'Medium' ? 'from-blue-500 to-cyan-500' : 'from-green-500 to-emerald-500',
+    priority: project.priority
+  }));
 
   // Cycle through projects every 5 seconds
   React.useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveProject((prev) => (prev + 1) % projects.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [projects.length]);
+    if (projectsForDisplay.length > 0) {
+      const interval = setInterval(() => {
+        setActiveProject((prev) => (prev + 1) % projectsForDisplay.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [projectsForDisplay.length]);
 
-  const upcomingDeadlines = [
-    { project: 'E-commerce Platform', task: 'Final Testing', date: '2024-01-20', priority: 'High' },
-    { project: 'Mobile App', task: 'Beta Release', date: '2024-01-25', priority: 'Medium' },
-    { project: 'Marketing Campaign', task: 'Content Review', date: '2024-02-01', priority: 'Low' }
-  ];
+  // Generate upcoming deadlines from real project data
+  const upcomingDeadlines = projects.flatMap(project => 
+    [...project.tasks, ...project.milestones.map(m => ({
+      ...m,
+      name: m.name,
+      endDate: m.date,
+      status: m.status === 'completed' ? 'Completed' : 'Pending'
+    }))]
+      .filter(item => {
+        const itemDate = new Date(item.endDate || item.date);
+        const today = new Date();
+        const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 14 && item.status !== 'Completed';
+      })
+      .sort((a, b) => new Date(a.endDate || a.date).getTime() - new Date(b.endDate || b.date).getTime())
+      .slice(0, 3)
+      .map(item => ({
+        project: project.name,
+        task: item.name,
+        date: new Date(item.endDate || item.date).toLocaleDateString(),
+        priority: item.priority === 'Critical' ? 'High' : item.priority || 'Medium'
+      }))
+  );
 
-  const recentActivity = [
-    { action: 'Project milestone completed', project: 'E-commerce Platform', time: '2 hours ago' },
-    { action: 'New team member added', project: 'Mobile App', time: '4 hours ago' },
-    { action: 'Budget approved', project: 'Marketing Campaign', time: '1 day ago' },
-    { action: 'Risk assessment updated', project: 'Infrastructure Upgrade', time: '2 days ago' }
-  ];
+  // Generate recent activity from real project data
+  const recentActivity = projects.flatMap(project => 
+    project.tasks
+      .filter(task => task.status === 'Completed' || task.progress > 80)
+      .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
+      .slice(0, 2)
+      .map(task => ({
+        action: task.status === 'Completed' ? 'Task completed' : `Task ${task.progress}% complete`,
+        project: project.name,
+        time: (() => {
+          const taskDate = new Date(task.endDate);
+          const now = new Date();
+          const diffHours = Math.floor((now.getTime() - taskDate.getTime()) / (1000 * 60 * 60));
+          return diffHours < 24 ? `${diffHours} hours ago` : `${Math.floor(diffHours / 24)} days ago`;
+        })()
+      }))
+  ).slice(0, 4);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -128,7 +145,7 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {upcomingDeadlines.map((deadline, index) => (
+                  {upcomingDeadlines.length > 0 ? upcomingDeadlines.map((deadline, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div>
                         <p className="font-medium">{deadline.task}</p>
@@ -148,7 +165,12 @@ const Dashboard = () => {
                         </Badge>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No upcoming deadlines</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -164,7 +186,7 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {recentActivity.map((activity, index) => (
+                  {recentActivity.length > 0 ? recentActivity.map((activity, index) => (
                     <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
                       <div className="w-2 h-2 bg-primary rounded-full mt-2" />
                       <div className="flex-1">
@@ -172,7 +194,12 @@ const Dashboard = () => {
                         <p className="text-xs text-muted-foreground">{activity.project} • {activity.time}</p>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Zap className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No recent activity</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -187,7 +214,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectDisplay projects={projects} activeProject={activeProject} />
+            <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
           </TabsContent>
         </Tabs>
       </main>

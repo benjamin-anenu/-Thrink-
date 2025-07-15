@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useResources } from '@/contexts/ResourceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,49 +12,13 @@ interface ProjectResourcesProps {
 }
 
 const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
-  // Mock data - in real app, this would be fetched based on projectId
-  const projectResources = [
-    {
-      id: 'sarah',
-      name: 'Sarah Johnson',
-      role: 'Frontend Developer',
-      allocation: 80,
-      utilization: 75,
-      currentTasks: ['UI Implementation', 'Component Library'],
-      hoursThisWeek: 32,
-      availability: 'Available'
-    },
-    {
-      id: 'emily',
-      name: 'Emily Rodriguez',
-      role: 'UX Designer',
-      allocation: 60,
-      utilization: 85,
-      currentTasks: ['Design System', 'User Testing'],
-      hoursThisWeek: 24,
-      availability: 'Busy'
-    },
-    {
-      id: 'michael',
-      name: 'Michael Chen',
-      role: 'Backend Developer',
-      allocation: 90,
-      utilization: 95,
-      currentTasks: ['API Development', 'Database Design'],
-      hoursThisWeek: 36,
-      availability: 'Overallocated'
-    },
-    {
-      id: 'david',
-      name: 'David Kim',
-      role: 'Project Manager',
-      allocation: 50,
-      utilization: 60,
-      currentTasks: ['Project Coordination', 'Stakeholder Management'],
-      hoursThisWeek: 20,
-      availability: 'Available'
-    }
-  ];
+  const { getResourcesByProject, resources } = useResources();
+  
+  // Get resources assigned to this project
+  const projectResources = getResourcesByProject(projectId);
+
+  // If no resources assigned, show all resources as potential candidates
+  const displayResources = projectResources.length > 0 ? projectResources : resources.slice(0, 4);
 
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
@@ -80,7 +45,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <Users className="h-8 w-8 text-blue-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Resources</p>
-                <p className="font-semibold">{projectResources.length}</p>
+                <p className="font-semibold">{displayResources.length}</p>
               </div>
             </div>
           </CardContent>
@@ -93,7 +58,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <div>
                 <p className="text-sm text-muted-foreground">Available</p>
                 <p className="font-semibold">
-                  {projectResources.filter(r => r.availability === 'Available').length}
+                  {displayResources.filter(r => r.status === 'Available').length}
                 </p>
               </div>
             </div>
@@ -107,7 +72,9 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <div>
                 <p className="text-sm text-muted-foreground">Avg Utilization</p>
                 <p className="font-semibold">
-                  {Math.round(projectResources.reduce((acc, r) => acc + r.utilization, 0) / projectResources.length)}%
+                  {displayResources.length > 0 
+                    ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / displayResources.length)
+                    : 0}%
                 </p>
               </div>
             </div>
@@ -121,7 +88,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Hours</p>
                 <p className="font-semibold">
-                  {projectResources.reduce((acc, r) => acc + r.hoursThisWeek, 0)}h
+                  {displayResources.reduce((acc, r) => acc + (r.utilization * 40 / 100), 0).toFixed(0)}h
                 </p>
               </div>
             </div>
@@ -132,11 +99,13 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
       {/* Resource Details */}
       <Card>
         <CardHeader>
-          <CardTitle>Project Team Members</CardTitle>
+          <CardTitle>
+            {projectResources.length > 0 ? 'Project Team Members' : 'Available Resources'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {projectResources.map((resource) => (
+            {displayResources.map((resource) => (
               <div key={resource.id} className="border border-border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -150,17 +119,17 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                       <p className="text-sm text-muted-foreground">{resource.role}</p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className={getAvailabilityColor(resource.availability)}>
-                    {resource.availability}
+                  <Badge variant="secondary" className={getAvailabilityColor(resource.status)}>
+                    {resource.status}
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
-                    <p className="text-sm font-medium mb-2">Project Allocation</p>
+                    <p className="text-sm font-medium mb-2">Availability</p>
                     <div className="flex items-center gap-2">
-                      <Progress value={resource.allocation} className="flex-1" />
-                      <span className="text-sm font-medium">{resource.allocation}%</span>
+                      <Progress value={resource.availability} className="flex-1" />
+                      <span className="text-sm font-medium">{resource.availability}%</span>
                     </div>
                   </div>
                   
@@ -175,20 +144,35 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium mb-2">Hours This Week</p>
-                    <p className="text-lg font-semibold">{resource.hoursThisWeek}h</p>
+                    <p className="text-sm font-medium mb-2">Hourly Rate</p>
+                    <p className="text-lg font-semibold">{resource.hourlyRate}</p>
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium mb-2">Current Tasks</p>
-                  <div className="flex flex-wrap gap-2">
-                    {resource.currentTasks.map((task, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {task}
-                      </Badge>
-                    ))}
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium mb-2">Skills</p>
+                    <div className="flex flex-wrap gap-2">
+                      {resource.skills.map((skill, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
+                  
+                  {resource.currentProjects.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Current Projects</p>
+                      <div className="flex flex-wrap gap-2">
+                        {resource.currentProjects.map((project, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {project}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,8 @@ import {
   Calendar, 
   Users, 
   Settings,
-  Archive
+  Archive,
+  TrendingUp
 } from 'lucide-react';
 
 interface Notification {
@@ -19,7 +19,7 @@ interface Notification {
   title: string;
   message: string;
   type: 'info' | 'warning' | 'success' | 'error';
-  category: 'project' | 'deadline' | 'team' | 'system';
+  category: 'project' | 'deadline' | 'team' | 'system' | 'performance';
   timestamp: Date;
   read: boolean;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -61,6 +61,7 @@ export const NotificationList: React.FC<NotificationListProps> = ({
       case 'deadline': return <Calendar className="h-4 w-4" />;
       case 'team': return <Users className="h-4 w-4" />;
       case 'system': return <Settings className="h-4 w-4" />;
+      case 'performance': return <TrendingUp className="h-4 w-4" />;
       default: return <Info className="h-4 w-4" />;
     }
   };
