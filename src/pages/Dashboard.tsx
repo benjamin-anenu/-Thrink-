@@ -6,6 +6,7 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -264,15 +265,21 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="analytics">
-            <AIProjectDashboard />
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load analytics</div>}>
+              <AIProjectDashboard />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="ai-insights">
-            <AIInsights />
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load AI insights</div>}>
+              <AIInsights />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load projects</div>}>
+              <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
+            </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>
