@@ -59,6 +59,10 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
 }) => {
   if (!resource) return null;
 
+  // Safe defaults for arrays that might be undefined
+  const skills = resource.skills || [];
+  const currentProjects = resource.currentProjects || [];
+
   const getStatusValue = (status: string): 'active' | 'inactive' | 'pending' => {
     if (status.toLowerCase() === 'available') return 'active';
     if (status.toLowerCase() === 'busy') return 'pending';
@@ -141,11 +145,15 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {resource.skills.map((skill, index) => (
-                      <Badge key={index} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))}
+                    {skills.length > 0 ? (
+                      skills.map((skill, index) => (
+                        <Badge key={index} variant="secondary">
+                          {skill}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No skills listed</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -164,11 +172,15 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {resource.currentProjects.map((project, index) => (
-                    <Badge key={index} variant="outline">
-                      {project}
-                    </Badge>
-                  ))}
+                  {currentProjects.length > 0 ? (
+                    currentProjects.map((project, index) => (
+                      <Badge key={index} variant="outline">
+                        {project}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No current projects</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -201,15 +213,19 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {resource.currentProjects.map((project, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div>
-                        <p className="font-medium">{project}</p>
-                        <p className="text-sm text-muted-foreground">Active Project</p>
+                  {currentProjects.length > 0 ? (
+                    currentProjects.map((project, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div>
+                          <p className="font-medium">{project}</p>
+                          <p className="text-sm text-muted-foreground">Active Project</p>
+                        </div>
+                        <Badge variant="secondary">Ongoing</Badge>
                       </div>
-                      <Badge variant="secondary">Ongoing</Badge>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No project history available</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

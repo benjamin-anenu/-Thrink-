@@ -44,94 +44,116 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Helper function to ensure resource has required array properties
+  const sanitizeResource = (resource: any): Resource => {
+    return {
+      ...resource,
+      skills: Array.isArray(resource.skills) ? resource.skills : [],
+      currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : []
+    };
+  };
+
   // Load resources from localStorage on mount
   useEffect(() => {
     const savedResources = localStorage.getItem('resources');
     if (savedResources) {
-      setResources(JSON.parse(savedResources));
+      try {
+        const parsedResources = JSON.parse(savedResources);
+        // Sanitize loaded resources to ensure arrays exist
+        const sanitizedResources = parsedResources.map(sanitizeResource);
+        setResources(sanitizedResources);
+      } catch (error) {
+        console.error('Error parsing saved resources:', error);
+        // Fall back to sample data if localStorage is corrupted
+        initializeSampleData();
+      }
     } else {
       // Initialize with sample data
-      const sampleResources: Resource[] = [
-        {
-          id: 'sarah',
-          name: 'Sarah Johnson',
-          role: 'Senior Frontend Developer',
-          department: 'Engineering',
-          email: 'sarah.johnson@company.com',
-          phone: '+1 (555) 123-4567',
-          location: 'New York, NY',
-          skills: ['React', 'TypeScript', 'CSS', 'UI/UX'],
-          availability: 75,
-          currentProjects: ['1'],
-          hourlyRate: '$85/hr',
-          utilization: 85,
-          status: 'Available'
-        },
-        {
-          id: 'michael',
-          name: 'Michael Chen',
-          role: 'Backend Developer',
-          department: 'Engineering',
-          email: 'michael.chen@company.com',
-          phone: '+1 (555) 234-5678',
-          location: 'San Francisco, CA',
-          skills: ['Node.js', 'Python', 'PostgreSQL', 'AWS'],
-          availability: 40,
-          currentProjects: ['1'],
-          hourlyRate: '$90/hr',
-          utilization: 95,
-          status: 'Busy'
-        },
-        {
-          id: 'emily',
-          name: 'Emily Rodriguez',
-          role: 'UX Designer',
-          department: 'Design',
-          email: 'emily.rodriguez@company.com',
-          phone: '+1 (555) 345-6789',
-          location: 'Austin, TX',
-          skills: ['Figma', 'User Research', 'Prototyping', 'Design Systems'],
-          availability: 90,
-          currentProjects: ['1'],
-          hourlyRate: '$75/hr',
-          utilization: 60,
-          status: 'Available'
-        },
-        {
-          id: 'david',
-          name: 'David Kim',
-          role: 'Project Manager',
-          department: 'Operations',
-          email: 'david.kim@company.com',
-          phone: '+1 (555) 456-7890',
-          location: 'Seattle, WA',
-          skills: ['Agile', 'Scrum', 'Risk Management', 'Stakeholder Management'],
-          availability: 60,
-          currentProjects: ['1'],
-          hourlyRate: '$70/hr',
-          utilization: 80,
-          status: 'Available'
-        },
-        {
-          id: 'james',
-          name: 'James Wilson',
-          role: 'DevOps Engineer',
-          department: 'Engineering',
-          email: 'james.wilson@company.com',
-          phone: '+1 (555) 678-9012',
-          location: 'Denver, CO',
-          skills: ['Docker', 'Kubernetes', 'AWS', 'CI/CD'],
-          availability: 20,
-          currentProjects: ['1'],
-          hourlyRate: '$95/hr',
-          utilization: 100,
-          status: 'Overallocated'
-        }
-      ];
-      setResources(sampleResources);
-      localStorage.setItem('resources', JSON.stringify(sampleResources));
+      initializeSampleData();
     }
   }, []);
+
+  const initializeSampleData = () => {
+    const sampleResources: Resource[] = [
+      {
+        id: 'sarah',
+        name: 'Sarah Johnson',
+        role: 'Senior Frontend Developer',
+        department: 'Engineering',
+        email: 'sarah.johnson@company.com',
+        phone: '+1 (555) 123-4567',
+        location: 'New York, NY',
+        skills: ['React', 'TypeScript', 'CSS', 'UI/UX'],
+        availability: 75,
+        currentProjects: ['Project Alpha'],
+        hourlyRate: '$85/hr',
+        utilization: 85,
+        status: 'Available'
+      },
+      {
+        id: 'michael',
+        name: 'Michael Chen',
+        role: 'Backend Developer',
+        department: 'Engineering',
+        email: 'michael.chen@company.com',
+        phone: '+1 (555) 234-5678',
+        location: 'San Francisco, CA',
+        skills: ['Node.js', 'Python', 'PostgreSQL', 'AWS'],
+        availability: 40,
+        currentProjects: ['Project Alpha'],
+        hourlyRate: '$90/hr',
+        utilization: 95,
+        status: 'Busy'
+      },
+      {
+        id: 'emily',
+        name: 'Emily Rodriguez',
+        role: 'UX Designer',
+        department: 'Design',
+        email: 'emily.rodriguez@company.com',
+        phone: '+1 (555) 345-6789',
+        location: 'Austin, TX',
+        skills: ['Figma', 'User Research', 'Prototyping', 'Design Systems'],
+        availability: 90,
+        currentProjects: ['Project Alpha'],
+        hourlyRate: '$75/hr',
+        utilization: 60,
+        status: 'Available'
+      },
+      {
+        id: 'david',
+        name: 'David Kim',
+        role: 'Project Manager',
+        department: 'Operations',
+        email: 'david.kim@company.com',
+        phone: '+1 (555) 456-7890',
+        location: 'Seattle, WA',
+        skills: ['Agile', 'Scrum', 'Risk Management', 'Stakeholder Management'],
+        availability: 60,
+        currentProjects: ['Project Alpha'],
+        hourlyRate: '$70/hr',
+        utilization: 80,
+        status: 'Available'
+      },
+      {
+        id: 'james',
+        name: 'James Wilson',
+        role: 'DevOps Engineer',
+        department: 'Engineering',
+        email: 'james.wilson@company.com',
+        phone: '+1 (555) 678-9012',
+        location: 'Denver, CO',
+        skills: ['Docker', 'Kubernetes', 'AWS', 'CI/CD'],
+        availability: 20,
+        currentProjects: ['Project Alpha'],
+        hourlyRate: '$95/hr',
+        utilization: 100,
+        status: 'Overallocated'
+      }
+    ];
+    setResources(sampleResources);
+    localStorage.setItem('resources', JSON.stringify(sampleResources));
+  };
 
   // Save resources to localStorage whenever resources change
   useEffect(() => {
@@ -145,14 +167,14 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
-    setResources(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    setResources(prev => prev.map(r => r.id === id ? sanitizeResource({ ...r, ...updates }) : r));
   };
 
   const addResource = (resource: Omit<Resource, 'id'>) => {
-    const newResource: Resource = {
+    const newResource: Resource = sanitizeResource({
       ...resource,
       id: `resource-${Date.now()}`
-    };
+    });
     setResources(prev => [...prev, newResource]);
   };
 
