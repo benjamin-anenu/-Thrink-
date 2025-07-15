@@ -17,9 +17,10 @@ interface Project {
 interface ProjectDisplayProps {
   projects: Project[];
   activeProject: number;
+  onProjectChange: (index: number) => void;
 }
 
-const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject }) => {
+const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject, onProjectChange }) => {
   console.log('[ProjectDisplay] Rendering with:', { projectsLength: projects.length, activeProject });
 
   // Safety checks for empty or invalid data
@@ -93,9 +94,10 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject
           {projects.map((_, i) => (
             <div 
               key={i} 
-              className={`h-3 w-12 rounded-full transition-all duration-700 ${
+              className={`h-3 w-12 rounded-full transition-all duration-700 cursor-pointer ${
                 i === safeActiveProject ? 'bg-gradient-to-r from-primary to-purple-500 shadow-glow' : 'bg-border/40'
               }`}
+              onClick={() => onProjectChange(i)}
             />
           ))}
         </div>
