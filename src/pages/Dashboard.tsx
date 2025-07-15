@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
@@ -274,12 +273,12 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
+            <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} onProjectChange={setActiveProject} />
           </TabsContent>
         </Tabs>
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };

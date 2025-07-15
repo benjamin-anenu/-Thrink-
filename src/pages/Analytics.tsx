@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import PerformanceDashboard from '@/components/performance/PerformanceDashboard';
@@ -153,7 +153,7 @@ const Analytics = () => {
         </Tabs>
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };
