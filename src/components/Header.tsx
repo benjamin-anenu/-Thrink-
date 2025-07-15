@@ -53,11 +53,29 @@ const Header = () => {
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
 
-  // Debug authentication state
-  console.log('Header Debug:', { user: !!user, loading, isLandingPage, isAuthPage });
+  // Enhanced debug authentication state with visible indicator
+  console.log('Header Authentication Debug:', { 
+    user: !!user, 
+    loading, 
+    isLandingPage, 
+    isAuthPage,
+    shouldShowButtons: isLandingPage && !user && !loading,
+    userObject: user ? 'exists' : 'null',
+    locationPath: location.pathname
+  });
+
+  // Show buttons condition
+  const shouldShowAuthButtons = isLandingPage && !user && !loading;
 
   return (
     <div className="sticky top-0 z-50 pt-8 px-4">
+      {/* Temporary debug indicator - remove after fixing */}
+      {isLandingPage && (
+        <div className="fixed top-0 left-0 bg-red-500 text-white p-2 text-xs z-[100]">
+          Debug: user={user ? 'yes' : 'no'} loading={loading ? 'yes' : 'no'} show={shouldShowAuthButtons ? 'yes' : 'no'}
+        </div>
+      )}
+      
       <header className="w-full max-w-7xl mx-auto py-3 px-6 md:px-8 flex items-center justify-between">
         <div className="p-3">
           <Link to="/">
@@ -231,7 +249,7 @@ const Header = () => {
                   <Link 
                     to="/resources" 
                     className={`px-3 py-2 text-sm rounded-md transition-colors ${
-                      activePage === 'resources' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      activePage === 'resources' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted'
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -258,8 +276,8 @@ const Header = () => {
                 </>
               )}
               
-              {/* Auth buttons for mobile landing page - Show when not authenticated */}
-              {isLandingPage && !user && !loading && (
+              {/* Auth buttons for mobile landing page - Enhanced visibility */}
+              {shouldShowAuthButtons && (
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
                   <Link to="/auth?tab=signin">
                     <Button variant="ghost" className="w-full justify-start">
@@ -269,6 +287,23 @@ const Header = () => {
                   <Link to="/auth?tab=signup">
                     <Button className="w-full">
                       Get Started
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              
+              {/* Fallback buttons - always show on landing page if auth state is unclear */}
+              {isLandingPage && !shouldShowAuthButtons && (
+                <div className="flex flex-col gap-2 pt-4 border-t border-red-500">
+                  <div className="text-xs text-red-500 mb-2">Fallback buttons (debug)</div>
+                  <Link to="/auth?tab=signin">
+                    <Button variant="ghost" className="w-full justify-start">
+                      Sign In (Fallback)
+                    </Button>
+                  </Link>
+                  <Link to="/auth?tab=signup">
+                    <Button className="w-full">
+                      Get Started (Fallback)
                     </Button>
                   </Link>
                 </div>
@@ -287,8 +322,8 @@ const Header = () => {
           {/* Add workspace selector for desktop (only when authenticated) */}
           {!isLandingPage && !isAuthPage && user && <WorkspaceSelector />}
           
-          {/* Auth buttons or user menu - Show buttons when on landing page and not authenticated */}
-          {isLandingPage && !user && !loading && (
+          {/* Auth buttons - Enhanced visibility and fallback */}
+          {shouldShowAuthButtons && (
             <div className="rounded-2xl flex gap-2">
               <Link to="/auth?tab=signin">
                 <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
@@ -298,6 +333,22 @@ const Header = () => {
               <Link to="/auth?tab=signup">
                 <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
                   Get Started
+                </Button>
+              </Link>
+            </div>
+          )}
+          
+          {/* Fallback buttons for desktop - always show on landing page if auth state is unclear */}
+          {isLandingPage && !shouldShowAuthButtons && (
+            <div className="rounded-2xl flex gap-2 border-2 border-red-500 p-1">
+              <Link to="/auth?tab=signin">
+                <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
+                  Sign In (FB)
+                </Button>
+              </Link>
+              <Link to="/auth?tab=signup">
+                <Button className="bg-gradient-to-r from-red-500 to-red-400 text-white">
+                  Get Started (FB)
                 </Button>
               </Link>
             </div>
