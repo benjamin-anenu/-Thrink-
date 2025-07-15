@@ -48,41 +48,43 @@ export const useAccessibility = () => {
     mediaQueryHighContrast.addEventListener('change', updatePreferences);
     mediaQueryLargeFonts.addEventListener('change', updatePreferences);
 
+    // Apply accessibility classes to document
+    const applyAccessibilityClasses = () => {
+      const root = document.documentElement;
+      
+      if (preferences.reduceMotion) {
+        root.classList.add('reduce-motion');
+      } else {
+        root.classList.remove('reduce-motion');
+      }
+
+      if (preferences.highContrast) {
+        root.classList.add('high-contrast');
+      } else {
+        root.classList.remove('high-contrast');
+      }
+
+      if (preferences.largeFonts) {
+        root.classList.add('large-fonts');
+      } else {
+        root.classList.remove('large-fonts');
+      }
+
+      if (preferences.screenReader) {
+        root.classList.add('screen-reader');
+      } else {
+        root.classList.remove('screen-reader');
+      }
+    };
+
+    applyAccessibilityClasses();
+
     // Cleanup
     return () => {
       mediaQueryReduceMotion.removeEventListener('change', updatePreferences);
       mediaQueryHighContrast.removeEventListener('change', updatePreferences);
       mediaQueryLargeFonts.removeEventListener('change', updatePreferences);
     };
-  }, []); // Remove preferences dependency to prevent infinite loop
-
-  // Separate effect for applying accessibility classes
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    if (preferences.reduceMotion) {
-      root.classList.add('reduce-motion');
-    } else {
-      root.classList.remove('reduce-motion');
-    }
-
-    if (preferences.highContrast) {
-      root.classList.add('high-contrast');
-    } else {
-      root.classList.remove('high-contrast');
-    }
-
-    if (preferences.largeFonts) {
-      root.classList.add('large-fonts');
-    } else {
-      root.classList.remove('large-fonts');
-    }
-
-    if (preferences.screenReader) {
-      root.classList.add('screen-reader');
-    } else {
-      root.classList.remove('screen-reader');
-    }
   }, [preferences]);
 
   // Keyboard navigation helpers
