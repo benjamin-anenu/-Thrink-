@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 
 interface AccessibilityPreferences {
   reduceMotion: boolean;
@@ -15,6 +16,7 @@ export const useAccessibility = () => {
     screenReader: false
   });
 
+  // Initialize preferences and set up listeners
   useEffect(() => {
     // Check for reduced motion preference
     const mediaQueryReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -48,47 +50,45 @@ export const useAccessibility = () => {
     mediaQueryHighContrast.addEventListener('change', updatePreferences);
     mediaQueryLargeFonts.addEventListener('change', updatePreferences);
 
-    // Apply accessibility classes to document
-    const applyAccessibilityClasses = () => {
-      const root = document.documentElement;
-      
-      if (preferences.reduceMotion) {
-        root.classList.add('reduce-motion');
-      } else {
-        root.classList.remove('reduce-motion');
-      }
-
-      if (preferences.highContrast) {
-        root.classList.add('high-contrast');
-      } else {
-        root.classList.remove('high-contrast');
-      }
-
-      if (preferences.largeFonts) {
-        root.classList.add('large-fonts');
-      } else {
-        root.classList.remove('large-fonts');
-      }
-
-      if (preferences.screenReader) {
-        root.classList.add('screen-reader');
-      } else {
-        root.classList.remove('screen-reader');
-      }
-    };
-
-    applyAccessibilityClasses();
-
     // Cleanup
     return () => {
       mediaQueryReduceMotion.removeEventListener('change', updatePreferences);
       mediaQueryHighContrast.removeEventListener('change', updatePreferences);
       mediaQueryLargeFonts.removeEventListener('change', updatePreferences);
     };
-  }, [preferences]);
+  }, []); // Empty dependency array - only run once
 
-  // Keyboard navigation helpers
-  const enhanceKeyboardNavigation = () => {
+  // Apply accessibility classes when preferences change
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    if (preferences.reduceMotion) {
+      root.classList.add('reduce-motion');
+    } else {
+      root.classList.remove('reduce-motion');
+    }
+
+    if (preferences.highContrast) {
+      root.classList.add('high-contrast');
+    } else {
+      root.classList.remove('high-contrast');
+    }
+
+    if (preferences.largeFonts) {
+      root.classList.add('large-fonts');
+    } else {
+      root.classList.remove('large-fonts');
+    }
+
+    if (preferences.screenReader) {
+      root.classList.add('screen-reader');
+    } else {
+      root.classList.remove('screen-reader');
+    }
+  }, [preferences]); // Only depend on preferences
+
+  // Keyboard navigation helpers - only run once
+  useEffect(() => {
     // Focus visible indicator
     const style = document.createElement('style');
     style.innerHTML = `
@@ -124,24 +124,22 @@ export const useAccessibility = () => {
       }
     `;
     document.head.appendChild(style);
-  };
 
-  useEffect(() => {
-    enhanceKeyboardNavigation();
-  }, []);
-
-  // Skip link functionality
-  const addSkipLink = () => {
+    // Skip link functionality
     const skipLink = document.createElement('a');
     skipLink.href = '#main-content';
     skipLink.textContent = 'Skip to main content';
     skipLink.className = 'sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-primary focus:text-primary-foreground focus:p-2 focus:z-50';
     document.body.insertBefore(skipLink, document.body.firstChild);
-  };
 
-  useEffect(() => {
-    addSkipLink();
-  }, []);
+    // Cleanup function
+    return () => {
+      document.head.removeChild(style);
+      if (document.body.contains(skipLink)) {
+        document.body.removeChild(skipLink);
+      }
+    };
+  }, []); // Empty dependency array - only run once
 
   return {
     preferences,
