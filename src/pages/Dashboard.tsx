@@ -273,7 +273,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectDisplay projects={projectsForDisplay} />
+            <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
           </TabsContent>
         </Tabs>
       </main>
