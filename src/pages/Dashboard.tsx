@@ -8,6 +8,19 @@ import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
 import RealTimeStatus from '@/components/dashboard/RealTimeStatus';
 import TinkAssistant from '@/components/TinkAssistant';
 import { useRealTimeEvents } from '@/hooks/useRealTimeEvents';
+import { ProjectData } from '@/types/project';
+
+interface Project {
+  name: string;
+  status: string;
+  progress: number;
+  risk: string;
+  team: number;
+  deadline: string;
+  aiInsight: string;
+  color: string;
+  priority: string;
+}
 
 const Dashboard = () => {
   const { projects } = useProject();
@@ -17,10 +30,30 @@ const Dashboard = () => {
   // Enable real-time event processing
   useRealTimeEvents();
 
+  // Transform ProjectData to Project interface for ProjectDisplay
+  const transformProjectData = (projectData: ProjectData[]): Project[] => {
+    return projectData.map(project => ({
+      name: project.name,
+      status: project.status,
+      progress: project.progress || 0,
+      risk: project.health?.status === 'red' ? 'High' : project.health?.status === 'yellow' ? 'Medium' : 'Low',
+      team: project.teamSize || 0,
+      deadline: project.endDate ? new Date(project.endDate).toLocaleDateString() : 'No deadline',
+      aiInsight: `Project ${project.name} is ${project.status.toLowerCase()} with ${project.progress || 0}% completion. Current health status shows ${project.health?.status || 'unknown'} indicators.`,
+      color: project.priority === 'Critical' ? 'from-red-500/20 to-orange-500/20' : 
+             project.priority === 'High' ? 'from-orange-500/20 to-yellow-500/20' :
+             project.priority === 'Medium' ? 'from-blue-500/20 to-cyan-500/20' :
+             'from-green-500/20 to-emerald-500/20',
+      priority: project.priority
+    }));
+  };
+
   // Filter projects for current workspace
-  const projectsForDisplay = currentWorkspace 
+  const workspaceProjects = currentWorkspace 
     ? projects.filter(project => project.workspaceId === currentWorkspace.id)
     : [];
+
+  const projectsForDisplay = transformProjectData(workspaceProjects);
 
   // Reset activeProject when projects change or become empty
   useEffect(() => {
@@ -46,7 +79,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader />
+      <DashboardHeader aiConfidence={85} />
       <DashboardMetrics />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

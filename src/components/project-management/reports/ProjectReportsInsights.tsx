@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProject } from '@/contexts/ProjectContext';
@@ -32,7 +31,7 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
     // Project progress insight
     if (projectSpecific && currentProject) {
       const progress = currentProject.progress || 0;
-      const dueDate = new Date(currentProject.endDate || currentProject.dueDate || '');
+      const dueDate = new Date(currentProject.endDate);
       const today = new Date();
       const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
@@ -53,7 +52,7 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
       }
     } else {
       // Workspace-wide insight
-      const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress' || p.status === 'active');
+      const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress');
       const onTrackProjects = activeProjects.filter(p => (p.progress || 0) >= 70);
       
       if (onTrackProjects.length === activeProjects.length && activeProjects.length > 0) {

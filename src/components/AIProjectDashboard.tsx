@@ -32,7 +32,7 @@ const AIProjectDashboard = () => {
     if (!currentWorkspace) return;
 
     const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-    const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress' || p.status === 'active');
+    const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress');
     const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
     
     // Get performance data
@@ -115,7 +115,7 @@ const AIProjectDashboard = () => {
     
     // Project delivery forecast
     const overdueProjects = workspaceProjects.filter(p => {
-      const dueDate = new Date(p.endDate || p.dueDate || '');
+      const dueDate = new Date(p.endDate);
       return dueDate < new Date() && (p.progress || 0) < 100;
     });
     

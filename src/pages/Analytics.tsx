@@ -12,11 +12,6 @@ import TinkAssistant from '@/components/TinkAssistant';
 const Analytics = () => {
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
-  const [scheduleSettings, setScheduleSettings] = useState({
-    frequency: 'weekly' as const,
-    dayOfWeek: 1,
-    time: '09:00'
-  });
   const [reportType, setReportType] = useState('summary');
   const [events, setEvents] = useState([]);
 
@@ -26,6 +21,18 @@ const Analytics = () => {
 
   const handleEventClick = (event: any) => {
     console.log('Event clicked:', event);
+  };
+
+  const handleScheduleReport = (config: any) => {
+    console.log('Schedule report:', config);
+  };
+
+  const handleDownloadReport = (type: string, dateRange: any) => {
+    console.log('Download report:', type, dateRange);
+  };
+
+  const handleSendReport = (type: string, dateRange: any) => {
+    console.log('Send report:', type, dateRange);
   };
 
   return (
@@ -51,10 +58,9 @@ const Analytics = () => {
             onProjectChange={setSelectedProject}
             selectedRecipients={selectedRecipients}
             onRecipientsChange={setSelectedRecipients}
-            scheduleSettings={scheduleSettings}
-            onScheduleChange={setScheduleSettings}
-            reportType={reportType}
-            onReportTypeChange={setReportType}
+            onScheduleReport={handleScheduleReport}
+            onDownloadReport={handleDownloadReport}
+            onSendReport={handleSendReport}
           />
         </TabsContent>
         
