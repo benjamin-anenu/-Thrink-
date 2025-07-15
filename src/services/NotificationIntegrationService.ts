@@ -23,6 +23,10 @@ export class NotificationIntegrationService {
   private notifications: ProjectNotification[] = [];
   private listeners: ((notifications: ProjectNotification[]) => void)[] = [];
   private eventBus: EventBus;
+  private notificationQueue: ProjectNotification[] = [];
+  private isProcessingQueue = false;
+  private performanceMonitorTimer: NodeJS.Timeout | null = null;
+  private emailMonitorTimer: NodeJS.Timeout | null = null;
 
   public static getInstance(): NotificationIntegrationService {
     if (!NotificationIntegrationService.instance) {
@@ -35,6 +39,7 @@ export class NotificationIntegrationService {
     this.eventBus = EventBus.getInstance();
     this.initializeServices();
     this.loadNotifications();
+    this.startQueueProcessor();
   }
 
   private initializeServices() {
@@ -119,59 +124,108 @@ export class NotificationIntegrationService {
     localStorage.setItem('project-notifications', JSON.stringify(this.notifications));
   }
 
-  private monitorPerformanceEvents() {
-    // Check performance profiles every 30 seconds
+  private startQueueProcessor() {
+    // Process notification queue every 2 seconds
     setInterval(() => {
-      const performanceTracker = PerformanceTracker.getInstance();
-      const profiles = performanceTracker.getAllProfiles();
+      this.processNotificationQueue();
+    }, 2000);
+  }
+
+  private async processNotificationQueue() {
+    if (this.isProcessingQueue || this.notificationQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    
+    try {
+      const batchSize = 10;
+      const batch = this.notificationQueue.splice(0, batchSize);
       
-      profiles.forEach(profile => {
-        if (profile.riskLevel === 'critical' && !this.hasRecentNotification(profile.resourceId, 'performance')) {
-          this.addNotification({
-            title: 'Performance Alert: Critical Risk Detected',
-            message: `${profile.resourceName} shows critical performance indicators. Immediate attention required.`,
-            type: 'error',
-            category: 'performance',
-            priority: 'critical',
-            resourceId: profile.resourceId,
-            resourceName: profile.resourceName,
-            actionRequired: true
-          });
-        } else if (profile.riskLevel === 'high' && !this.hasRecentNotification(profile.resourceId, 'performance')) {
-          this.addNotification({
-            title: 'Performance Warning',
-            message: `${profile.resourceName} performance metrics require attention.`,
-            type: 'warning',
-            category: 'performance',
-            priority: 'high',
-            resourceId: profile.resourceId,
-            resourceName: profile.resourceName,
-            actionRequired: true
-          });
-        }
+      batch.forEach(notification => {
+        this.notifications.unshift(notification);
       });
-    }, 30000); // Check every 30 seconds
+
+      // Keep only the last 200 notifications for better performance
+      if (this.notifications.length > 200) {
+        this.notifications = this.notifications.slice(0, 200);
+      }
+      
+      this.saveNotifications();
+      this.notifyListeners();
+      
+      if (batch.length > 0) {
+        console.log(`[Notification Integration] Processed ${batch.length} notifications`);
+      }
+    } catch (error) {
+      console.error('[Notification Integration] Error processing queue:', error);
+    } finally {
+      this.isProcessingQueue = false;
+    }
+  }
+
+  private monitorPerformanceEvents() {
+    // Optimized performance monitoring with less frequent checks
+    this.performanceMonitorTimer = setInterval(() => {
+      try {
+        const performanceTracker = PerformanceTracker.getInstance();
+        const profiles = performanceTracker.getAllProfiles();
+        
+        profiles.forEach(profile => {
+          const recentNotificationKey = `${profile.resourceId}-performance`;
+          if (profile.riskLevel === 'critical' && !this.hasRecentNotification(profile.resourceId, 'performance')) {
+            this.queueNotification({
+              title: 'Performance Alert: Critical Risk Detected',
+              message: `${profile.resourceName} shows critical performance indicators. Immediate attention required.`,
+              type: 'error',
+              category: 'performance',
+              priority: 'critical',
+              resourceId: profile.resourceId,
+              resourceName: profile.resourceName,
+              actionRequired: true
+            });
+          } else if (profile.riskLevel === 'high' && !this.hasRecentNotification(profile.resourceId, 'performance')) {
+            this.queueNotification({
+              title: 'Performance Warning',
+              message: `${profile.resourceName} performance metrics require attention.`,
+              type: 'warning',
+              category: 'performance',
+              priority: 'high',
+              resourceId: profile.resourceId,
+              resourceName: profile.resourceName,
+              actionRequired: true
+            });
+          }
+        });
+      } catch (error) {
+        console.error('[Notification Integration] Error in performance monitoring:', error);
+      }
+    }, 120000); // Check every 2 minutes instead of 30 seconds
   }
 
   private monitorEmailEvents() {
-    // Monitor email reminder service every minute
-    setInterval(() => {
-      const emailService = EmailReminderService.getInstance();
-      const rebaselineRequests = emailService.getRebaselineRequests();
-      
-      rebaselineRequests.forEach(request => {
-        if (request.status === 'pending' && !this.hasRecentNotification(request.taskId, 'deadline')) {
-          this.addNotification({
-            title: 'Rebaseline Request Pending',
-            message: `Task deadline extension requested: ${request.originalDeadline.toDateString()} → ${request.proposedDeadline.toDateString()}`,
-            type: 'warning',
-            category: 'deadline',
-            priority: 'high',
-            actionRequired: true
-          });
-        }
-      });
-    }, 60000); // Check every minute
+    // Enhanced email monitoring with error handling
+    this.emailMonitorTimer = setInterval(() => {
+      try {
+        const emailService = EmailReminderService.getInstance();
+        const rebaselineRequests = emailService.getRebaselineRequests();
+        
+        rebaselineRequests.forEach(request => {
+          if (request.status === 'pending' && !this.hasRecentNotification(request.taskId, 'deadline')) {
+            this.queueNotification({
+              title: 'Rebaseline Request Pending',
+              message: `Task deadline extension requested: ${request.originalDeadline.toDateString()} → ${request.proposedDeadline.toDateString()}`,
+              type: 'warning',
+              category: 'deadline',
+              priority: 'high',
+              actionRequired: true
+            });
+          }
+        });
+      } catch (error) {
+        console.error('[Notification Integration] Error in email monitoring:', error);
+      }
+    }, 300000); // Check every 5 minutes
   }
 
   private hasRecentNotification(entityId: string, category: string): boolean {
@@ -183,7 +237,7 @@ export class NotificationIntegrationService {
     );
   }
 
-  public addNotification(notification: Omit<ProjectNotification, 'id' | 'timestamp' | 'read'>) {
+  private queueNotification(notification: Omit<ProjectNotification, 'id' | 'timestamp' | 'read'>) {
     const newNotification: ProjectNotification = {
       ...notification,
       id: `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -191,17 +245,13 @@ export class NotificationIntegrationService {
       read: false
     };
 
-    this.notifications.unshift(newNotification);
-    
-    // Keep only the last 100 notifications
-    if (this.notifications.length > 100) {
-      this.notifications = this.notifications.slice(0, 100);
-    }
-    
-    this.saveNotifications();
-    this.notifyListeners();
-    
-    console.log(`[Notification Integration] Added notification: ${newNotification.title}`);
+    this.notificationQueue.push(newNotification);
+    console.log(`[Notification Integration] Queued notification: ${newNotification.title}`);
+  }
+
+  public addNotification(notification: Omit<ProjectNotification, 'id' | 'timestamp' | 'read'>) {
+    // For immediate notifications (backwards compatibility)
+    this.queueNotification(notification);
   }
 
   public markAsRead(id: string) {
@@ -241,7 +291,7 @@ export class NotificationIntegrationService {
 
   // Project event handlers
   public onTaskCompleted(taskId: string, taskName: string, projectId: string, projectName: string, resourceId: string, resourceName: string) {
-    this.addNotification({
+    this.queueNotification({
       title: 'Task Completed',
       message: `${taskName} has been completed by ${resourceName}`,
       type: 'success',
@@ -253,16 +303,20 @@ export class NotificationIntegrationService {
       resourceName
     });
 
-    // Track performance
-    const performanceTracker = PerformanceTracker.getInstance();
-    performanceTracker.trackPositiveActivity(resourceId, 'task_completion', 8, `Completed task: ${taskName}`, projectId, taskId);
+    // Track performance with error handling
+    try {
+      const performanceTracker = PerformanceTracker.getInstance();
+      performanceTracker.trackPositiveActivity(resourceId, 'task_completion', 8, `Completed task: ${taskName}`, projectId, taskId);
+    } catch (error) {
+      console.error('[Notification Integration] Error tracking performance:', error);
+    }
   }
 
   public onDeadlineApproaching(taskId: string, taskName: string, projectId: string, projectName: string, daysRemaining: number) {
     const priority = daysRemaining <= 1 ? 'critical' : daysRemaining <= 3 ? 'high' : 'medium';
     const type = daysRemaining <= 1 ? 'error' : 'warning';
 
-    this.addNotification({
+    this.queueNotification({
       title: `Deadline ${daysRemaining <= 1 ? 'Today' : `in ${daysRemaining} days`}`,
       message: `${taskName} deadline is ${daysRemaining <= 1 ? 'today' : `approaching in ${daysRemaining} days`}`,
       type,
@@ -275,7 +329,7 @@ export class NotificationIntegrationService {
   }
 
   public onResourceAssigned(resourceId: string, resourceName: string, projectId: string, projectName: string, taskName: string) {
-    this.addNotification({
+    this.queueNotification({
       title: 'New Assignment',
       message: `${resourceName} has been assigned to ${taskName}`,
       type: 'info',
@@ -289,7 +343,7 @@ export class NotificationIntegrationService {
   }
 
   public onProjectMilestone(milestoneId: string, milestoneName: string, projectId: string, projectName: string, completed: boolean) {
-    this.addNotification({
+    this.queueNotification({
       title: completed ? 'Milestone Completed' : 'Milestone Due',
       message: `${milestoneName} ${completed ? 'has been completed' : 'is due'}`,
       type: completed ? 'success' : 'warning',
@@ -298,6 +352,15 @@ export class NotificationIntegrationService {
       projectId,
       projectName
     });
+  }
+
+  public destroy() {
+    if (this.performanceMonitorTimer) {
+      clearInterval(this.performanceMonitorTimer);
+    }
+    if (this.emailMonitorTimer) {
+      clearInterval(this.emailMonitorTimer);
+    }
   }
 }
 

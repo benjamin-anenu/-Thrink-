@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import ResourceForm from '@/components/ResourceForm';
 import SkillsMatrix from '@/components/SkillsMatrix';
 import AssignmentModal from '@/components/AssignmentModal';
@@ -105,7 +104,7 @@ const Resources = () => {
         resourceName={selectedResource?.name}
       />
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };

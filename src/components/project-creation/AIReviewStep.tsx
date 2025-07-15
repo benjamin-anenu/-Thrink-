@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Brain, AlertTriangle, CheckCircle, Zap, FileText, Download } from 'lucide-react';
+import { aiInsightsService } from '@/services/AIInsightsService';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface AIReviewStepProps {
   data: any;
@@ -15,6 +17,7 @@ interface AIReviewStepProps {
 const AIReviewStep: React.FC<AIReviewStepProps> = ({ data, onDataChange }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const { addProject } = useProject();
 
   const generateAIAnalysis = async () => {
     setIsGenerating(true);
@@ -93,6 +96,34 @@ Based on the requirements and resource analysis, this project has a high probabi
     };
 
     onDataChange({ aiGenerated });
+
+    // If we have enough project data, generate initial AI insights
+    if (data.name && data.startDate && data.endDate) {
+      const projectData = {
+        id: data.id || `temp-${Date.now()}`,
+        name: data.name,
+        description: data.description || '',
+        status: 'Planning' as const,
+        priority: data.priority || 'Medium' as const,
+        progress: 0,
+        health: { status: 'green' as const, score: 85 },
+        startDate: data.startDate,
+        endDate: data.endDate,
+        teamSize: data.teamSize || 1,
+        budget: data.budget || '0',
+        tags: data.tags || [],
+        workspaceId: data.workspaceId || '',
+        resources: data.resources || [],
+        stakeholders: data.stakeholders || [],
+        milestones: data.milestones || [],
+        tasks: data.tasks || [],
+        aiGenerated
+      };
+
+      // Generate initial AI insights, risk profile, and recommendations
+      aiInsightsService.generateInitialInsights(projectData);
+    }
+
     setIsGenerating(false);
   };
 
@@ -117,7 +148,7 @@ Based on the requirements and resource analysis, this project has a high probabi
         <div>
           <h3 className="text-lg font-semibold mb-2">AI Review & Project Planning</h3>
           <p className="text-muted-foreground">
-            Let AI analyze your project and generate comprehensive planning documents.
+            Let AI analyze your project and generate comprehensive planning documents with ongoing insights.
           </p>
         </div>
         <Button 
@@ -141,6 +172,9 @@ Based on the requirements and resource analysis, this project has a high probabi
                   <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
                 </div>
                 <Progress value={progress} className="w-full" />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Setting up ongoing project monitoring and AI insights...
+                </p>
               </div>
             </div>
           </CardContent>
@@ -156,7 +190,7 @@ Based on the requirements and resource analysis, this project has a high probabi
                   <FileText className="h-5 w-5" />
                   AI-Generated Project Plan
                 </CardTitle>
-                <CardDescription>Comprehensive project execution plan</CardDescription>
+                <CardDescription>Comprehensive project execution plan with ongoing monitoring</CardDescription>
               </CardHeader>
               <CardContent>
                 <Textarea
@@ -179,7 +213,7 @@ Based on the requirements and resource analysis, this project has a high probabi
                   <AlertTriangle className="h-5 w-5" />
                   Risk Assessment
                 </CardTitle>
-                <CardDescription>Identified risks and mitigation strategies</CardDescription>
+                <CardDescription>Identified risks with continuous monitoring</CardDescription>
               </CardHeader>
               <CardContent>
                 <Textarea
@@ -203,7 +237,7 @@ Based on the requirements and resource analysis, this project has a high probabi
                 <CheckCircle className="h-5 w-5" />
                 AI Recommendations
               </CardTitle>
-              <CardDescription>Best practices and suggestions for success</CardDescription>
+              <CardDescription>Best practices and suggestions with ongoing optimization</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -213,6 +247,16 @@ Based on the requirements and resource analysis, this project has a high probabi
                     <span className="text-sm">{recommendation}</span>
                   </div>
                 ))}
+              </div>
+              
+              <div className="mt-4 p-3 bg-info/10 border border-info/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Brain className="h-4 w-4 text-info" />
+                  <span className="text-sm font-medium text-info">Ongoing AI Monitoring</span>
+                </div>
+                <p className="text-xs text-info/80">
+                  AI insights will continue analyzing your project throughout its lifecycle, providing updated recommendations based on actual progress and performance.
+                </p>
               </div>
             </CardContent>
           </Card>

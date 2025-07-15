@@ -1,12 +1,17 @@
 
 import React, { useState } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import PerformanceDashboard from '@/components/performance/PerformanceDashboard';
-import { initializePerformanceTracking } from '@/services/PerformanceTracker';
-import { startEmailReminderService } from '@/services/EmailReminderService';
+import { 
+  initializePerformanceTracking, 
+  startEmailReminderService, 
+  initializeNotificationIntegration,
+  initializeRealTimeDataSync,
+  systemValidationService
+} from '@/services';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import AnalyticsHeader from '@/components/analytics/AnalyticsHeader';
 import AnalyticsMetrics from '@/components/analytics/AnalyticsMetrics';
@@ -14,6 +19,8 @@ import AIInsightsCard from '@/components/analytics/AIInsightsCard';
 import ReportsTab from '@/components/analytics/ReportsTab';
 import CalendarTab from '@/components/analytics/CalendarTab';
 import SettingsTab from '@/components/analytics/SettingsTab';
+import ReportsExport from '@/components/analytics/ReportsExport';
+import SystemHealthDashboard from '@/components/analytics/SystemHealthDashboard';
 
 interface CalendarEvent {
   id: string;
@@ -32,11 +39,30 @@ const Analytics = () => {
   const [selectedProject, setSelectedProject] = useState('all');
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [systemHealth, setSystemHealth] = useState<any>(null);
 
-  // Initialize AI services
+  // Initialize AI services and monitoring
   React.useEffect(() => {
-    initializePerformanceTracking();
-    startEmailReminderService();
+    const initializeServices = async () => {
+      try {
+        // Initialize core services
+        initializePerformanceTracking();
+        startEmailReminderService();
+        initializeNotificationIntegration();
+        initializeRealTimeDataSync();
+        
+        // Run initial system validation
+        const healthResult = await systemValidationService.performSystemValidation();
+        setSystemHealth(healthResult);
+        
+        console.log('[Analytics] All services initialized successfully');
+      } catch (error) {
+        console.error('[Analytics] Error initializing services:', error);
+        toast.error('Some services failed to initialize');
+      }
+    };
+
+    initializeServices();
   }, []);
 
   const mockEvents: CalendarEvent[] = [
@@ -102,15 +128,16 @@ const Analytics = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <AnalyticsHeader />
+        <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="export">Export</TabsTrigger>
+            <TabsTrigger value="health">System</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -135,6 +162,14 @@ const Analytics = () => {
             />
           </TabsContent>
 
+          <TabsContent value="export" className="space-y-6">
+            <ReportsExport />
+          </TabsContent>
+
+          <TabsContent value="health" className="space-y-6">
+            <SystemHealthDashboard />
+          </TabsContent>
+
           <TabsContent value="calendar" className="space-y-6">
             <CalendarTab
               events={mockEvents}
@@ -143,17 +178,13 @@ const Analytics = () => {
             />
           </TabsContent>
 
-          <TabsContent value="notifications" className="space-y-6">
-            <NotificationCenter />
-          </TabsContent>
-
           <TabsContent value="settings" className="space-y-6">
             <SettingsTab />
           </TabsContent>
         </Tabs>
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };

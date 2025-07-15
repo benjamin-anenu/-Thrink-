@@ -64,11 +64,61 @@ export class RealTimeDataSync {
     });
   }
 
+  private lastSyncTimestamp: number = 0;
+  private syncThrottle: number = 5000; // Minimum 5 seconds between syncs
+
   private startPeriodicSync() {
-    // Sync every 10 seconds
+    // Intelligent sync - only sync when there are changes
     this.syncInterval = setInterval(() => {
+      const now = Date.now();
+      if (now - this.lastSyncTimestamp > this.syncThrottle) {
+        this.performIntelligentSync();
+        this.lastSyncTimestamp = now;
+      }
+    }, 3000); // Check every 3 seconds but throttle actual syncing
+  }
+
+  private performIntelligentSync() {
+    // Check for actual changes before syncing
+    const hasProjectChanges = this.hasStorageChanges('projects');
+    const hasResourceChanges = this.hasStorageChanges('resources');
+    
+    if (hasProjectChanges || hasResourceChanges) {
+      console.log('[Real-time Data Sync] Changes detected, performing sync');
       this.performFullSync();
-    }, 10000);
+    }
+  }
+
+  private storageHashes: Map<string, string> = new Map();
+
+  private hasStorageChanges(key: string): boolean {
+    try {
+      const data = localStorage.getItem(key);
+      if (!data) return false;
+      
+      const hash = this.generateHash(data);
+      const lastHash = this.storageHashes.get(key);
+      
+      if (lastHash !== hash) {
+        this.storageHashes.set(key, hash);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error(`[Real-time Data Sync] Error checking changes for ${key}:`, error);
+      return false;
+    }
+  }
+
+  private generateHash(data: string): string {
+    // Simple hash function for change detection
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString();
   }
 
   private handleProjectsUpdate(projects: any[]) {

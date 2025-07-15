@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
 import ProjectOverview from '@/components/project-management/ProjectOverview';
 import ProjectResources from '@/components/project-management/ProjectResources';
@@ -112,7 +111,7 @@ const ProjectManagement = () => {
         </Tabs>
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };

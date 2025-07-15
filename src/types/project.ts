@@ -12,13 +12,23 @@ export interface ProjectData {
   teamSize: number;
   budget: string;
   tags: string[];
-  workspaceId: string; // Add workspace association
+  workspaceId: string;
   resources: string[];
   stakeholders: string[];
   milestones: ProjectMilestone[];
   tasks: ProjectTask[];
   createdAt?: string;
   updatedAt?: string;
+  // Enhanced AI metadata
+  aiGenerated?: {
+    projectPlan?: string;
+    riskAssessment?: string;
+    recommendations?: string[];
+  };
+  aiInsights?: AIProjectInsight[];
+  riskProfile?: RiskProfile;
+  aiRecommendations?: AIRecommendation[];
+  lastAIAnalysis?: string;
 }
 
 export interface ProjectHealth {
@@ -76,4 +86,64 @@ export interface ProjectNotification {
   actionRequired?: boolean;
   relatedTaskId?: string;
   relatedResourceId?: string;
+}
+
+// New AI-related interfaces
+export interface AIProjectInsight {
+  id: string;
+  projectId: string;
+  type: 'prediction' | 'optimization' | 'risk' | 'opportunity';
+  title: string;
+  description: string;
+  confidence: number;
+  impact: 'low' | 'medium' | 'high';
+  category: 'timeline' | 'budget' | 'resources' | 'quality' | 'scope';
+  recommendations: string[];
+  createdAt: Date;
+  expiresAt?: Date;
+  status: 'active' | 'resolved' | 'dismissed';
+  metadata?: Record<string, any>;
+}
+
+export interface RiskProfile {
+  projectId: string;
+  overallRiskScore: number;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskFactors: RiskFactor[];
+  mitigationStrategies: string[];
+  lastUpdated: Date;
+  trends: RiskTrend[];
+}
+
+export interface RiskFactor {
+  id: string;
+  category: 'schedule' | 'budget' | 'resource' | 'technical' | 'external';
+  description: string;
+  probability: number;
+  impact: number;
+  riskScore: number;
+  status: 'identified' | 'monitoring' | 'mitigating' | 'resolved';
+  mitigationActions: string[];
+}
+
+export interface RiskTrend {
+  date: Date;
+  riskScore: number;
+  changeReason: string;
+}
+
+export interface AIRecommendation {
+  id: string;
+  projectId: string;
+  type: 'task_prioritization' | 'resource_allocation' | 'timeline_adjustment' | 'budget_optimization' | 'quality_improvement';
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  expectedImpact: string;
+  implementationEffort: 'low' | 'medium' | 'high';
+  status: 'pending' | 'in_progress' | 'implemented' | 'dismissed';
+  createdAt: Date;
+  implementedAt?: Date;
+  results?: string;
+  relatedInsightId?: string;
 }

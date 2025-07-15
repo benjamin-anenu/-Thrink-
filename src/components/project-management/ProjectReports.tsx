@@ -29,7 +29,7 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
       <ProjectReportsPerformance reportData={reportData} />
       <ProjectReportsCharts />
       <ProjectReportsExport />
-      <ProjectReportsInsights />
+      <ProjectReportsInsights projectId={projectId} />
     </div>
   );
 };

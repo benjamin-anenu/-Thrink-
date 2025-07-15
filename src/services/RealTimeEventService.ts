@@ -1,7 +1,9 @@
+
 import { EventBus } from './EventBus';
 import { PerformanceTracker } from './PerformanceTracker';
 import { EmailReminderService } from './EmailReminderService';
 import { NotificationIntegrationService } from './NotificationIntegrationService';
+import { aiInsightsService } from './AIInsightsService';
 
 export class RealTimeEventService {
   private static instance: RealTimeEventService;
@@ -31,17 +33,43 @@ export class RealTimeEventService {
       return;
     }
 
-    console.log('[Real-time Event Service] Initializing...');
+    console.log('[Real-time Event Service] Initializing with AI integration...');
     
     this.setupEventListeners();
+    this.setupAIEventListeners();
     this.startPerformanceMonitoring();
     this.initializeNotifications();
     
     this.isInitialized = true;
-    console.log('[Real-time Event Service] Initialized successfully');
+    console.log('[Real-time Event Service] Initialized successfully with AI insights integration');
   }
 
-  // Add missing emit methods
+  // Helper method to validate event payloads
+  private validatePayload(payload: any, requiredFields: string[]): boolean {
+    if (!payload || typeof payload !== 'object') {
+      console.warn('[Real-time Events] Invalid payload: not an object');
+      return false;
+    }
+
+    for (const field of requiredFields) {
+      if (!(field in payload) || payload[field] === undefined || payload[field] === null) {
+        console.warn(`[Real-time Events] Missing required field: ${field}`);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Helper method to safely get nested properties
+  private safeGet(obj: any, path: string, defaultValue: any = null): any {
+    try {
+      return path.split('.').reduce((current, key) => current && current[key], obj) || defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  }
+
   public emitTaskCompleted(taskId: string, taskName: string, projectId: string, projectName: string, resourceId: string, resourceName: string): void {
     this.eventBus.emit('task_completed', {
       taskId,
@@ -86,7 +114,6 @@ export class RealTimeEventService {
     }, 'real_time_service');
   }
 
-  // Add missing status methods
   public isRealTimeConnected(): boolean {
     return this.isInitialized;
   }
@@ -97,6 +124,26 @@ export class RealTimeEventService {
 
   public getQueuedEventCount(): number {
     return 0; // For now, return 0 as we process events immediately
+  }
+
+  private setupAIEventListeners(): void {
+    // Listen for AI insights updates
+    this.eventBus.subscribe('ai_insights_updated', (event) => {
+      console.log('[Real-time Events] AI insights updated:', event.payload);
+      this.handleAIInsightsUpdate(event.payload);
+    });
+
+    // Listen for performance updates that should trigger AI analysis
+    this.eventBus.subscribe('performance_updated', (event) => {
+      console.log('[Real-time Events] Performance updated, triggering AI analysis:', event.payload);
+      this.handlePerformanceBasedAIUpdate(event.payload);
+    });
+
+    // Listen for risk events
+    this.eventBus.subscribe('risk_event', (event) => {
+      console.log('[Real-time Events] Risk event detected:', event.payload);
+      this.handleRiskEvent(event.payload);
+    });
   }
 
   private setupEventListeners(): void {
@@ -138,15 +185,21 @@ export class RealTimeEventService {
   }
 
   private handleTaskCompletion(payload: any): void {
+    if (!this.validatePayload(payload, ['taskId', 'projectId', 'resourceId'])) {
+      console.error('[Real-time Events] Invalid task completion payload:', payload);
+      return;
+    }
+
     const { taskId, projectId, resourceId, completionTime } = payload;
+    const taskName = this.safeGet(payload, 'taskName', 'Unknown Task');
     
     // Track performance metrics
-    this.performanceTracker.trackPositiveActivity(resourceId, 'task_completion', 8, `Completed task: ${payload.taskName}`, projectId, taskId);
+    this.performanceTracker.trackPositiveActivity(resourceId, 'task_completion', 8, `Completed task: ${taskName}`, projectId, taskId);
     
     // Send completion notifications
     this.notificationService.addNotification({
       title: 'Task Completed',
-      message: `Task has been successfully completed`,
+      message: `Task "${taskName}" has been successfully completed`,
       type: 'success',
       category: 'project',
       priority: 'medium',
@@ -159,42 +212,84 @@ export class RealTimeEventService {
       taskId,
       timestamp: new Date()
     }, 'real_time_service');
+
+    // Trigger AI insights update for project progress analysis
+    setTimeout(() => {
+      this.eventBus.emit('ai_insights_requested', {
+        projectId,
+        trigger: 'task_completion',
+        context: { taskId, resourceId }
+      }, 'real_time_service');
+    }, 1000);
   }
 
   private handleTaskCreation(payload: any): void {
+    if (!this.validatePayload(payload, ['task', 'projectId'])) {
+      console.error('[Real-time Events] Invalid task creation payload:', payload);
+      return;
+    }
+
     const { task, projectId, assignedTo } = payload;
+    const projectName = this.safeGet(payload, 'projectName', 'Unknown Project');
     
     // Set up deadline reminders
-    if (task.endDate) {
-      this.emailService.scheduleTaskReminders(task, { id: assignedTo }, { id: projectId, name: payload.projectName });
+    if (task && task.endDate) {
+      this.emailService.scheduleTaskReminders(task, { id: assignedTo }, { id: projectId, name: projectName });
     }
 
     // Send creation notification
     this.notificationService.addNotification({
       title: 'New Task Created',
-      message: `New task "${task.name}" has been created`,
+      message: `New task "${this.safeGet(task, 'name', 'Unknown Task')}" has been created`,
       type: 'info',
       category: 'project',
       priority: 'low',
       projectId
     });
+
+    // Trigger AI workload analysis
+    this.eventBus.emit('ai_insights_requested', {
+      projectId,
+      trigger: 'task_creation',
+      context: { taskId: this.safeGet(task, 'id'), assignedTo }
+    }, 'real_time_service');
   }
 
   private handleProjectUpdate(payload: any): void {
-    const { projectId, updates } = payload;
+    if (!this.validatePayload(payload, ['projectId'])) {
+      console.error('[Real-time Events] Invalid project update payload:', payload);
+      return;
+    }
+
+    const { projectId, updates = {}, projectName } = payload;
     
     // Send update notification
     this.notificationService.addNotification({
       title: 'Project Updated',
-      message: `Project has been updated`,
+      message: `Project "${projectName || 'Unknown Project'}" has been updated`,
       type: 'info',
       category: 'project',
       priority: 'medium',
       projectId
     });
+
+    // Trigger comprehensive AI re-analysis for significant updates
+    const hasSignificantUpdate = updates.status || updates.endDate || updates.resources;
+    if (hasSignificantUpdate) {
+      this.eventBus.emit('ai_insights_requested', {
+        projectId,
+        trigger: 'project_update',
+        context: { updates }
+      }, 'real_time_service');
+    }
   }
 
   private handleResourceAssignment(payload: any): void {
+    if (!this.validatePayload(payload, ['resourceId', 'projectId'])) {
+      console.error('[Real-time Events] Invalid resource assignment payload:', payload);
+      return;
+    }
+
     const { resourceId, projectId, taskId, assignmentDate } = payload;
     
     // Send assignment notification
@@ -206,9 +301,21 @@ export class RealTimeEventService {
       priority: 'medium',
       projectId
     });
+
+    // Trigger AI resource optimization analysis
+    this.eventBus.emit('ai_insights_requested', {
+      projectId,
+      trigger: 'resource_assignment',
+      context: { resourceId, taskId }
+    }, 'real_time_service');
   }
 
   private handleDeadlineApproaching(payload: any): void {
+    if (!this.validatePayload(payload, ['taskId', 'taskName', 'projectId', 'daysRemaining'])) {
+      console.error('[Real-time Events] Invalid deadline approaching payload:', payload);
+      return;
+    }
+
     const { taskId, taskName, projectId, daysRemaining } = payload;
     
     // Send urgent notification
@@ -221,38 +328,135 @@ export class RealTimeEventService {
       projectId,
       actionRequired: true
     });
+
+    // Trigger AI risk assessment update
+    this.eventBus.emit('ai_insights_requested', {
+      projectId,
+      trigger: 'deadline_approaching',
+      context: { taskId, daysRemaining }
+    }, 'real_time_service');
   }
 
   private handleContextUpdate(payload: any): void {
-    const { type, data } = payload;
+    const { type, data } = payload || {};
     
     // Log context changes for debugging
-    console.log(`[Real-time Events] Context updated - ${type}:`, data);
+    console.log(`[Real-time Events] Context updated - ${type || 'unknown'}:`, data);
+  }
+
+  private handleAIInsightsUpdate(payload: any): void {
+    if (!payload) {
+      console.warn('[Real-time Events] AI insights update with empty payload');
+      return;
+    }
+
+    const { projectId, insights, recommendations, riskProfile } = payload;
+    
+    // Send notifications for high-priority AI insights
+    if (insights && Array.isArray(insights)) {
+      insights.filter((insight: any) => insight && insight.impact === 'high').forEach((insight: any) => {
+        this.notificationService.addNotification({
+          title: `AI Insight: ${insight.title || 'Important Update'}`,
+          message: insight.description || 'AI has detected an important project insight',
+          type: insight.type === 'risk' ? 'warning' : 'info',
+          category: 'system',
+          priority: 'high',
+          projectId,
+          actionRequired: insight.type === 'risk'
+        });
+      });
+    }
+
+    // Handle critical risk profile updates
+    if (riskProfile && riskProfile.riskLevel === 'critical') {
+      this.notificationService.addNotification({
+        title: 'Critical Risk Alert',
+        message: `Project risk level has escalated to critical. Immediate attention required.`,
+        type: 'error',
+        category: 'system',
+        priority: 'critical',
+        projectId,
+        actionRequired: true
+      });
+    }
+  }
+
+  private handlePerformanceBasedAIUpdate(payload: any): void {
+    const { projectId, trigger } = payload || {};
+    
+    if (!projectId) {
+      console.warn('[Real-time Events] Performance-based AI update without projectId');
+      return;
+    }
+    
+    // Schedule AI analysis based on performance changes
+    setTimeout(() => {
+      console.log(`[Real-time Events] Triggering AI analysis for project ${projectId} due to ${trigger || 'performance update'}`);
+      // This would trigger the AI service to re-analyze the project
+    }, 2000);
+  }
+
+  private handleRiskEvent(payload: any): void {
+    const { projectId, riskType } = payload || {};
+    
+    if (!projectId || !riskType) {
+      console.warn('[Real-time Events] Risk event with incomplete data:', payload);
+      return;
+    }
+    
+    // Send immediate risk notification
+    this.notificationService.addNotification({
+      title: 'Risk Event Detected',
+      message: `${riskType} risk detected in project`,
+      type: 'warning',
+      category: 'system',
+      priority: 'high',
+      projectId,
+      actionRequired: true
+    });
   }
 
   private startPerformanceMonitoring(): void {
-    // Set up periodic performance alerts
+    // Set up periodic performance alerts with AI integration
     setInterval(() => {
-      const profiles = this.performanceTracker.getAllProfiles();
-      profiles.forEach(profile => {
-        if (profile.riskLevel === 'critical' || profile.riskLevel === 'high') {
-          this.notificationService.addNotification({
-            title: 'Performance Alert',
-            message: `${profile.resourceName} performance requires attention`,
-            type: 'warning',
-            category: 'performance',
-            priority: 'high',
-            actionRequired: true
-          });
-        }
-      });
+      try {
+        const profiles = this.performanceTracker.getAllProfiles();
+        profiles.forEach(profile => {
+          if (profile.riskLevel === 'critical' || profile.riskLevel === 'high') {
+            this.notificationService.addNotification({
+              title: 'Performance Alert',
+              message: `${profile.resourceName} performance requires attention`,
+              type: 'warning',
+              category: 'performance',
+              priority: 'high',
+              actionRequired: true
+            });
+
+            // Trigger AI analysis for projects involving this resource
+            const recentMetrics = profile.metrics.filter(m => 
+              m.projectId && Date.now() - m.timestamp.getTime() < 7 * 24 * 60 * 60 * 1000
+            );
+            
+            const affectedProjects = [...new Set(recentMetrics.map(m => m.projectId).filter(Boolean))];
+            affectedProjects.forEach(projectId => {
+              this.eventBus.emit('ai_insights_requested', {
+                projectId,
+                trigger: 'performance_alert',
+                context: { resourceId: profile.resourceId, riskLevel: profile.riskLevel }
+              }, 'real_time_service');
+            });
+          }
+        });
+      } catch (error) {
+        console.error('[Real-time Events] Error in performance monitoring:', error);
+      }
     }, 300000); // Check every 5 minutes
   }
 
   private initializeNotifications(): void {
     // Set up cross-tab notification sync
     this.eventBus.subscribe('data_sync', (event) => {
-      if (event.payload.key === 'notifications') {
+      if (event.payload && event.payload.key === 'notifications') {
         // Handle notification sync
         console.log('[Real-time Events] Syncing notifications');
       }
@@ -265,6 +469,7 @@ export class RealTimeEventService {
       performanceTracker: !!this.performanceTracker,
       emailService: !!this.emailService,
       notificationService: !!this.notificationService,
+      aiInsightsService: !!aiInsightsService,
       initialized: this.isInitialized
     };
   }
@@ -281,6 +486,6 @@ export const realTimeEventService = RealTimeEventService.getInstance();
 export const initializeRealTimeEvents = () => {
   const service = RealTimeEventService.getInstance();
   service.initialize();
-  console.log('[Real-time Event Service] Initialized');
+  console.log('[Real-time Event Service] Initialized with AI integration');
   return service;
 };

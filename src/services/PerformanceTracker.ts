@@ -1,5 +1,6 @@
 import { PerformanceProfile, PerformanceMetric, MonthlyPerformanceReport } from '@/types/performance';
 import { EventBus } from './EventBus';
+import { aiInsightsService } from './AIInsightsService';
 
 export class PerformanceTracker {
   private static instance: PerformanceTracker;
@@ -31,6 +32,9 @@ export class PerformanceTracker {
         projectId, 
         taskId
       );
+      
+      // Trigger AI insights update for the project
+      this.triggerAIInsightsUpdate(projectId);
     });
 
     // Listen for deadline adherence events
@@ -46,6 +50,9 @@ export class PerformanceTracker {
           projectId,
           taskId
         );
+        
+        // Trigger AI risk profile update
+        this.triggerAIRiskUpdate(projectId);
       }
     });
 
@@ -61,7 +68,7 @@ export class PerformanceTracker {
       );
     });
 
-    console.log('[Performance Tracker] Event listeners established');
+    console.log('[Performance Tracker] Event listeners established with AI integration');
   }
 
   private loadPerformanceData() {
@@ -105,6 +112,11 @@ export class PerformanceTracker {
     });
     
     console.log(`[AI Performance Tracker] Positive activity tracked for ${resourceId}: ${description}`);
+    
+    // Trigger AI analysis if project context is available
+    if (projectId) {
+      this.triggerAIInsightsUpdate(projectId);
+    }
   }
 
   // Track negative performance indicators
@@ -122,6 +134,11 @@ export class PerformanceTracker {
     });
     
     console.log(`[AI Performance Tracker] Negative activity tracked for ${resourceId}: ${description}`);
+    
+    // Trigger AI risk analysis if project context is available
+    if (projectId) {
+      this.triggerAIRiskUpdate(projectId);
+    }
   }
 
   private addMetric(resourceId: string, metric: PerformanceMetric) {
@@ -346,11 +363,93 @@ export class PerformanceTracker {
     
     return insights;
   }
+
+  private updateQueue: Map<string, NodeJS.Timeout> = new Map();
+
+  private triggerAIInsightsUpdate(projectId: string): void {
+    // Debounce multiple updates for the same project
+    const existingTimer = this.updateQueue.get(projectId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    
+    const timer = setTimeout(() => {
+      this.eventBus.emit('performance_updated', {
+        projectId,
+        timestamp: new Date(),
+        trigger: 'task_completion'
+      }, 'performance_tracker');
+      this.updateQueue.delete(projectId);
+    }, 1000); // Debounce for 1 second
+    
+    this.updateQueue.set(projectId, timer);
+  }
+
+  private triggerAIRiskUpdate(projectId: string): void {
+    // Immediate risk updates (no debouncing for critical events)
+    this.eventBus.emit('risk_event', {
+      projectId,
+      riskType: 'deadline_missed',
+      timestamp: new Date(),
+      severity: 'high'
+    }, 'performance_tracker');
+  }
+
+  public getProjectPerformanceInsights(projectId: string): any {
+    const projectProfiles = Array.from(this.performanceProfiles.values())
+      .filter(profile => profile.metrics.some(metric => metric.projectId === projectId));
+
+    const insights = {
+      averagePerformance: 0,
+      riskFactors: [] as string[],
+      recommendations: [] as string[],
+      trends: 'stable' as 'improving' | 'stable' | 'declining'
+    };
+
+    if (projectProfiles.length > 0) {
+      insights.averagePerformance = projectProfiles.reduce(
+        (sum, profile) => sum + profile.currentScore, 0
+      ) / projectProfiles.length;
+
+      // Identify risk factors
+      const lowPerformers = projectProfiles.filter(p => p.currentScore < 60);
+      if (lowPerformers.length > 0) {
+        insights.riskFactors.push(`${lowPerformers.length} team members performing below expectations`);
+      }
+
+      const decliningPerformers = projectProfiles.filter(p => p.trend === 'declining');
+      if (decliningPerformers.length > 0) {
+        insights.riskFactors.push(`${decliningPerformers.length} team members showing declining performance`);
+      }
+
+      // Generate recommendations
+      if (insights.averagePerformance < 70) {
+        insights.recommendations.push('Review workload distribution and provide additional support');
+        insights.recommendations.push('Consider additional training or mentoring');
+      }
+
+      if (lowPerformers.length > projectProfiles.length * 0.3) {
+        insights.recommendations.push('Evaluate project scope and timeline expectations');
+      }
+
+      // Determine overall trend
+      const improvingCount = projectProfiles.filter(p => p.trend === 'improving').length;
+      const decliningCount = projectProfiles.filter(p => p.trend === 'declining').length;
+      
+      if (improvingCount > decliningCount) {
+        insights.trends = 'improving';
+      } else if (decliningCount > improvingCount) {
+        insights.trends = 'declining';
+      }
+    }
+
+    return insights;
+  }
 }
 
-// Initialize performance tracking with real data monitoring
+// Initialize performance tracking with real data monitoring and AI integration
 export const initializePerformanceTracking = () => {
   const tracker = PerformanceTracker.getInstance();
-  console.log('[Performance Tracker] Initialized with real-time event monitoring');
+  console.log('[Performance Tracker] Initialized with real-time event monitoring and AI integration');
   return tracker;
 };

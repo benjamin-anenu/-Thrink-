@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import MiloAssistant from '@/components/MiloAssistant';
+import TinkAssistant from '@/components/TinkAssistant';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -165,7 +166,6 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Real Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="pt-6">
@@ -194,7 +194,6 @@ const Dashboard = () => {
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Upcoming Deadlines */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -266,20 +265,26 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="analytics">
-            <AIProjectDashboard />
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load analytics</div>}>
+              <AIProjectDashboard />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="ai-insights">
-            <AIInsights />
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load AI insights</div>}>
+              <AIInsights />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load projects</div>}>
+              <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
+            </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>
 
-      <MiloAssistant />
+      <TinkAssistant />
     </div>
   );
 };
