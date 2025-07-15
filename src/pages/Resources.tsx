@@ -7,15 +7,34 @@ import SkillsMatrix from '@/components/SkillsMatrix';
 import AssignmentModal from '@/components/AssignmentModal';
 import ResourceOverview from '@/components/ResourceOverview';
 import AssignmentsTab from '@/components/AssignmentsTab';
+import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import { useResources } from '@/contexts/ResourceContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
 
+interface Resource {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  location: string;
+  skills: string[];
+  availability: number;
+  currentProjects: string[];
+  hourlyRate: string;
+  utilization: number;
+  status: string;
+}
+
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showResourceDetailsModal, setShowResourceDetailsModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState<{ id: string; name: string } | null>(null);
+  const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<Resource | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
   const { resources, addResource } = useResources();
@@ -29,6 +48,16 @@ const Resources = () => {
   const handleAssignTask = (resourceId: string, resourceName: string) => {
     setSelectedResource({ id: resourceId, name: resourceName });
     setShowAssignmentModal(true);
+  };
+
+  const handleViewDetails = (resource: Resource) => {
+    setSelectedResourceForDetails(resource);
+    setShowResourceDetailsModal(true);
+  };
+
+  const handleAssignTaskFromDetails = (resourceId: string, resourceName: string) => {
+    setShowResourceDetailsModal(false);
+    handleAssignTask(resourceId, resourceName);
   };
 
   return (
@@ -56,7 +85,7 @@ const Resources = () => {
           <TabsContent value="overview">
             <ResourceOverview
               resources={resources}
-              onAssignTask={handleAssignTask}
+              onViewDetails={handleViewDetails}
               onShowResourceForm={() => setShowResourceForm(true)}
             />
           </TabsContent>
@@ -76,6 +105,13 @@ const Resources = () => {
         isOpen={showResourceForm}
         onClose={() => setShowResourceForm(false)}
         onSave={handleResourceSave}
+      />
+
+      <ResourceDetailsModal
+        isOpen={showResourceDetailsModal}
+        onClose={() => setShowResourceDetailsModal(false)}
+        resource={selectedResourceForDetails}
+        onAssignTask={handleAssignTaskFromDetails}
       />
 
       <AssignmentModal

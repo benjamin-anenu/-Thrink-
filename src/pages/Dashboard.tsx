@@ -22,7 +22,7 @@ const Dashboard = () => {
     name: project.name,
     status: project.status,
     progress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length) || 0,
-    risk: project.health.status === 'Critical' ? 'High' : project.health.status === 'At Risk' ? 'Medium' : 'Low',
+    risk: project.health.status === 'green' ? 'Low' : project.health.status === 'yellow' ? 'Medium' : 'High',
     team: project.teamSize,
     deadline: (() => {
       const endDate = new Date(project.endDate);
@@ -53,21 +53,22 @@ const Dashboard = () => {
       ...m,
       name: m.name,
       endDate: m.date,
-      status: m.status === 'completed' ? 'Completed' : 'Pending'
+      status: m.status === 'completed' ? 'Completed' : 'Pending',
+      priority: 'Medium' as const
     }))]
       .filter(item => {
-        const itemDate = new Date(item.endDate || item.date);
+        const itemDate = new Date(item.endDate);
         const today = new Date();
         const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays >= 0 && diffDays <= 14 && item.status !== 'Completed';
       })
-      .sort((a, b) => new Date(a.endDate || a.date).getTime() - new Date(b.endDate || b.date).getTime())
+      .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
       .slice(0, 3)
       .map(item => ({
         project: project.name,
         task: item.name,
-        date: new Date(item.endDate || item.date).toLocaleDateString(),
-        priority: item.priority === 'Critical' ? 'High' : item.priority || 'Medium'
+        date: new Date(item.endDate).toLocaleDateString(),
+        priority: item.priority || 'Medium'
       }))
   );
 

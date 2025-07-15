@@ -21,11 +21,11 @@ interface Resource {
 
 interface ResourceGridProps {
   resources: Resource[];
-  onAssignTask: (resourceId: string, resourceName: string) => void;
+  onViewDetails: (resource: Resource) => void;
   onShowResourceForm: () => void;
 }
 
-const ResourceGrid = ({ resources, onAssignTask, onShowResourceForm }: ResourceGridProps) => {
+const ResourceGrid = ({ resources, onViewDetails, onShowResourceForm }: ResourceGridProps) => {
   if (resources.length === 0) {
     return (
       <div className="text-center py-12">
@@ -41,7 +41,7 @@ const ResourceGrid = ({ resources, onAssignTask, onShowResourceForm }: ResourceG
         <ResourceCard
           key={resource.id}
           resource={resource}
-          onAssignTask={onAssignTask}
+          onViewDetails={onViewDetails}
         />
       ))}
     </div>

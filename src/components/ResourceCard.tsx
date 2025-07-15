@@ -15,7 +15,8 @@ import {
   TrendingUp, 
   TrendingDown,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Eye
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 
@@ -37,10 +38,10 @@ interface Resource {
 
 interface ResourceCardProps {
   resource: Resource;
-  onAssignTask: (resourceId: string, resourceName: string) => void;
+  onViewDetails: (resource: Resource) => void;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onAssignTask }) => {
+const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails }) => {
   const {
     id,
     name,
@@ -153,11 +154,13 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onAssignTask }) =
         </div>
 
         <Button 
-          onClick={() => onAssignTask(id, name)} 
+          onClick={() => onViewDetails(resource)} 
           className="w-full"
           size="sm"
+          variant="outline"
         >
-          Assign Task
+          <Eye className="h-4 w-4 mr-2" />
+          View More Details
         </Button>
       </CardContent>
     </Card>

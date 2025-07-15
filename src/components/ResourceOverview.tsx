@@ -24,11 +24,11 @@ interface Resource {
 
 interface ResourceOverviewProps {
   resources: Resource[];
-  onAssignTask: (resourceId: string, resourceName: string) => void;
+  onViewDetails: (resource: Resource) => void;
   onShowResourceForm: () => void;
 }
 
-const ResourceOverview = ({ resources, onAssignTask, onShowResourceForm }: ResourceOverviewProps) => {
+const ResourceOverview = ({ resources, onViewDetails, onShowResourceForm }: ResourceOverviewProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -77,7 +77,7 @@ const ResourceOverview = ({ resources, onAssignTask, onShowResourceForm }: Resou
       {/* Resources Grid */}
       <ResourceGrid
         resources={filteredResources}
-        onAssignTask={onAssignTask}
+        onViewDetails={onViewDetails}
         onShowResourceForm={onShowResourceForm}
       />
     </div>
