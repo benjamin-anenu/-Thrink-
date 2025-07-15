@@ -24,9 +24,6 @@ import { useAccessibility } from '@/hooks/useAccessibility';
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
 const Auth = lazy(() => import('@/pages/Auth'));
-const Profile = lazy(() => import('@/pages/Profile'));
-const EmailVerification = lazy(() => import('@/pages/EmailVerification'));
-const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Projects = lazy(() => import('@/pages/Projects'));
 const ProjectManagement = lazy(() => import('@/pages/ProjectManagement'));
@@ -69,9 +66,6 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
-          <Route path="/verify-email" element={<EmailVerification />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
           <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
           <Route path="/project/:id" element={<AuthGuard><ProjectManagement /></AuthGuard>} />

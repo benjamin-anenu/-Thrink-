@@ -10,10 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingState } from '@/components/ui/loading-state'
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Github, CheckCircle, AlertCircle } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Github } from 'lucide-react'
 import { z } from 'zod'
-import { supabase } from '@/integrations/supabase/client'
-import { useToast } from '@/hooks/use-toast'
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -42,14 +40,12 @@ const resetPasswordSchema = z.object({
 export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth()
   const navigate = useNavigate()
-  const { toast } = useToast()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'signin')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [successMessage, setSuccessMessage] = useState('')
 
   // Form states
   const [signInForm, setSignInForm] = useState({ email: '', password: '' })
@@ -116,11 +112,6 @@ export default function Auth() {
     setIsSubmitting(false)
 
     if (!error) {
-      setSuccessMessage('Check your email to verify your account before signing in.')
-      toast({
-        title: "Account created successfully!",
-        description: "Please check your email to verify your account.",
-      })
       setActiveTab('signin')
       setSignInForm({ email: signUpForm.email, password: '' })
     }
@@ -131,37 +122,13 @@ export default function Auth() {
     if (!validateForm(resetPasswordSchema, resetForm)) return
 
     setIsSubmitting(true)
-    const { error } = await resetPassword(resetForm.email)
+    await resetPassword(resetForm.email)
     setIsSubmitting(false)
-
-    if (!error) {
-      setSuccessMessage('Password reset email sent! Check your inbox.')
-      toast({
-        title: "Reset email sent!",
-        description: "Check your email for password reset instructions.",
-      })
-    }
   }
 
   const handleSocialAuth = async (provider: 'google' | 'github') => {
-    setIsSubmitting(true)
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`
-        }
-      })
-      
-      if (error) {
-        setErrors({ general: error.message })
-      }
-    } catch (error) {
-      console.error(`${provider} auth error:`, error)
-      setErrors({ general: `Failed to sign in with ${provider}` })
-    } finally {
-      setIsSubmitting(false)
-    }
+    // Placeholder for social auth implementation
+    console.log(`${provider} auth not yet implemented`)
   }
 
   return (
@@ -182,26 +149,12 @@ export default function Auth() {
           </p>
         </div>
 
-        <Card className="border-border/50 backdrop-blur-xl bg-card/95 shadow-2xl">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-center bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-              Authentication
-            </CardTitle>
+            <CardTitle className="text-center">Authentication</CardTitle>
             <CardDescription className="text-center">
               Choose your preferred sign-in method
             </CardDescription>
-            {successMessage && (
-              <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>{successMessage}</AlertDescription>
-              </Alert>
-            )}
-            {errors.general && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errors.general}</AlertDescription>
-              </Alert>
-            )}
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -464,9 +417,9 @@ export default function Auth() {
               <div className="space-y-2">
                 <Button
                   variant="outline"
-                  className="w-full border-border/50 bg-background/50 backdrop-blur-sm hover:bg-accent/50"
+                  className="w-full"
                   onClick={() => handleSocialAuth('google')}
-                  disabled={isSubmitting}
+                  disabled
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path
@@ -486,16 +439,16 @@ export default function Auth() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  {isSubmitting ? 'Connecting...' : 'Continue with Google'}
+                  Continue with Google (Coming Soon)
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full border-border/50 bg-background/50 backdrop-blur-sm hover:bg-accent/50"
+                  className="w-full"
                   onClick={() => handleSocialAuth('github')}
-                  disabled={isSubmitting}
+                  disabled
                 >
                   <Github className="mr-2 h-4 w-4" />
-                  {isSubmitting ? 'Connecting...' : 'Continue with GitHub'}
+                  Continue with GitHub (Coming Soon)
                 </Button>
               </div>
             </div>
