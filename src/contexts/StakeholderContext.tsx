@@ -1,5 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { dataPersistence } from '@/services/DataPersistence';
+import { contextSynchronizer } from '@/services/ContextSynchronizer';
+import { eventBus } from '@/services/EventBus';
 
 export interface Stakeholder {
   id: string;
@@ -14,6 +17,8 @@ export interface Stakeholder {
   projects: string[];
   lastContact: string;
   status: 'Active' | 'Inactive';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface StakeholderContextType {
@@ -44,9 +49,9 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Load stakeholders from localStorage on mount
   useEffect(() => {
-    const savedStakeholders = localStorage.getItem('stakeholders');
+    const savedStakeholders = dataPersistence.getData('stakeholders');
     if (savedStakeholders) {
-      setStakeholders(JSON.parse(savedStakeholders));
+      setStakeholders(savedStakeholders);
     } else {
       // Initialize with sample data
       const sampleStakeholders: Stakeholder[] = [
@@ -62,7 +67,9 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
           communicationPreference: 'Email',
           projects: ['1'],
           lastContact: '2024-01-10',
-          status: 'Active'
+          status: 'Active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         },
         {
           id: 'jane-smith',
@@ -76,7 +83,9 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
           communicationPreference: 'Slack',
           projects: ['1'],
           lastContact: '2024-01-08',
-          status: 'Active'
+          status: 'Active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         },
         {
           id: 'mike-wilson',
@@ -90,18 +99,29 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
           communicationPreference: 'Email',
           projects: ['1'],
           lastContact: '2024-01-12',
-          status: 'Active'
+          status: 'Active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }
       ];
       setStakeholders(sampleStakeholders);
-      localStorage.setItem('stakeholders', JSON.stringify(sampleStakeholders));
+      dataPersistence.persistData('stakeholders', sampleStakeholders, 'stakeholder_context');
     }
+  }, []);
+
+  // Register with context synchronizer
+  useEffect(() => {
+    const unregister = contextSynchronizer.registerContext('stakeholders', (updatedStakeholders) => {
+      setStakeholders(updatedStakeholders);
+    });
+
+    return unregister;
   }, []);
 
   // Save stakeholders to localStorage whenever stakeholders change
   useEffect(() => {
     if (stakeholders.length > 0) {
-      localStorage.setItem('stakeholders', JSON.stringify(stakeholders));
+      dataPersistence.persistData('stakeholders', stakeholders, 'stakeholder_context');
     }
   }, [stakeholders]);
 
@@ -110,31 +130,72 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateStakeholder = (id: string, updates: Partial<Stakeholder>) => {
-    setStakeholders(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    setStakeholders(prev => prev.map(s => s.id === id ? { 
+      ...s, 
+      ...updates,
+      updatedAt: new Date().toISOString()
+    } : s));
+
+    // Emit update event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_updated',
+      stakeholderId: id,
+      updates
+    }, 'stakeholder_context');
   };
 
   const addStakeholder = (stakeholder: Omit<Stakeholder, 'id'>) => {
     const newStakeholder: Stakeholder = {
       ...stakeholder,
-      id: `stakeholder-${Date.now()}`
+      id: `stakeholder-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     setStakeholders(prev => [...prev, newStakeholder]);
+
+    // Emit creation event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_created',
+      stakeholder: newStakeholder
+    }, 'stakeholder_context');
   };
 
   const assignToProject = (stakeholderId: string, projectId: string) => {
     setStakeholders(prev => prev.map(s => 
       s.id === stakeholderId 
-        ? { ...s, projects: [...s.projects, projectId] }
+        ? { 
+          ...s, 
+          projects: [...s.projects, projectId],
+          updatedAt: new Date().toISOString()
+        }
         : s
     ));
+
+    // Emit assignment event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_assigned',
+      stakeholderId,
+      projectId
+    }, 'stakeholder_context');
   };
 
   const removeFromProject = (stakeholderId: string, projectId: string) => {
     setStakeholders(prev => prev.map(s => 
       s.id === stakeholderId 
-        ? { ...s, projects: s.projects.filter(p => p !== projectId) }
+        ? { 
+          ...s, 
+          projects: s.projects.filter(p => p !== projectId),
+          updatedAt: new Date().toISOString()
+        }
         : s
     ));
+
+    // Emit removal event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_unassigned',
+      stakeholderId,
+      projectId
+    }, 'stakeholder_context');
   };
 
   const getStakeholdersByProject = (projectId: string): Stakeholder[] => {
@@ -145,9 +206,20 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const today = new Date().toISOString().split('T')[0];
     setStakeholders(prev => prev.map(s => 
       s.id === stakeholderId 
-        ? { ...s, lastContact: today }
+        ? { 
+          ...s, 
+          lastContact: today,
+          updatedAt: new Date().toISOString()
+        }
         : s
     ));
+
+    // Emit contact update event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_contact_updated',
+      stakeholderId,
+      lastContact: today
+    }, 'stakeholder_context');
   };
 
   return (
