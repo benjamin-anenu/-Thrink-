@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -5,6 +6,7 @@ import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
 import EscalationMatrix from '@/components/EscalationMatrix';
 import { useStakeholders } from '@/contexts/StakeholderContext';
+import type { Stakeholder } from '@/contexts/StakeholderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,41 +15,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Search, Filter, UserCheck, AlertTriangle, MessageSquare } from 'lucide-react';
 
-// Interface to match the component expectations
-interface StakeholderCardProps {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  avatar?: string;
-  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
-  escalationLevel: number;
-  influence: 'Low' | 'Medium' | 'High';
-  interest: 'Low' | 'Medium' | 'High';
-  projects: string[];
-  notes?: string;
-}
-
 const Stakeholders = () => {
   const { stakeholders, addStakeholder, updateStakeholder, loading } = useStakeholders();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState<any>();
+  const [editingStakeholder, setEditingStakeholder] = useState<Stakeholder | undefined>();
 
-  // Transform context stakeholders to match component interface
-  const transformedStakeholders: StakeholderCardProps[] = stakeholders.map(stakeholder => ({
-    ...stakeholder,
-    communicationPreference: stakeholder.communicationPreference as 'Email' | 'Phone' | 'Slack' | 'In-person',
-    escalationLevel: 1, // Default escalation level since it's not in context
-    influence: stakeholder.influence as 'Low' | 'Medium' | 'High',
-    interest: stakeholder.interest as 'Low' | 'Medium' | 'High'
-  }));
-
-  const filteredStakeholders = transformedStakeholders.filter(stakeholder => {
+  const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stakeholder.department.toLowerCase().includes(searchTerm.toLowerCase());
@@ -68,7 +44,7 @@ const Stakeholders = () => {
     setShowForm(false);
   };
 
-  const handleEditStakeholder = (stakeholder: StakeholderCardProps) => {
+  const handleEditStakeholder = (stakeholder: Stakeholder) => {
     setEditingStakeholder(stakeholder);
     setShowForm(true);
   };
