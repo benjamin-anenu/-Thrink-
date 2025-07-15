@@ -13,10 +13,14 @@ const Header = () => {
   const { user, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Debug auth state
+  console.log('Auth Debug:', { user, loading, pathname: location.pathname });
+
   const routeState = useMemo(() => ({
     isLandingPage: location.pathname === '/',
     isAuthPage: location.pathname === '/auth',
-    shouldShowButtons: location.pathname === '/' && !user && !loading
+    // Show buttons on landing page when no user, or temporarily show on any page for debugging
+    shouldShowButtons: !user && !loading
   }), [location.pathname, user, loading]);
 
   const handleNavClick = (page: string) => (e: React.MouseEvent) => {
