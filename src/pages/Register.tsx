@@ -7,34 +7,44 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 
-export default function Login() {
-  const { signIn } = useAuth()
+export default function Register() {
+  const { signUp } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setSuccess('')
 
-    if (!email || !password) {
+    if (!email || !password || !fullName) {
       setError('Please fill in all fields')
       setIsLoading(false)
       return
     }
 
-    const { error } = await signIn(email, password)
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long')
+      setIsLoading(false)
+      return
+    }
+
+    const { error } = await signUp(email, password, fullName)
     
     if (error) {
       setError(error.message)
     } else {
-      navigate('/dashboard')
+      setSuccess('Account created successfully! Please check your email to verify your account.')
+      setTimeout(() => navigate('/login'), 3000)
     }
     
     setIsLoading(false)
@@ -44,8 +54,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <p className="text-muted-foreground">Sign in to your account</p>
+          <CardTitle className="text-2xl">Create Account</CardTitle>
+          <p className="text-muted-foreground">Sign up to get started</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,6 +64,28 @@ export default function Login() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
+            {success && (
+              <Alert>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -78,7 +110,7 @@ export default function Login() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder="Create a password (8+ characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -97,14 +129,14 @@ export default function Login() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? 'Creating account...' : 'Create Account'}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link to="/register" className="text-primary font-medium hover:underline">
-              Sign up
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link to="/login" className="text-primary font-medium hover:underline">
+              Sign in
             </Link>
           </div>
         </CardContent>

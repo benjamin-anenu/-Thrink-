@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -16,13 +17,13 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import GlobalErrorHandler from '@/components/GlobalErrorHandler';
 import PerformanceMonitor from '@/components/PerformanceMonitor';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
-import { useAccessibility } from '@/hooks/useAccessibility';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { SessionTimeoutProvider } from '@/components/auth/SessionTimeoutProvider';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
-const Auth = lazy(() => import('@/pages/Auth'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Projects = lazy(() => import('@/pages/Projects'));
 const ProjectManagement = lazy(() => import('@/pages/ProjectManagement'));
@@ -31,7 +32,6 @@ const Stakeholders = lazy(() => import('@/pages/Stakeholders'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
-const Unauthorized = lazy(() => import('@/pages/Unauthorized'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
 // Create a client
@@ -51,7 +51,6 @@ initializePerformanceTracking();
 
 function AppContent() {
   const offlineStatus = useOfflineStatus();
-  const { preferences } = useAccessibility();
 
   return (
     <div id="main-content" className="min-h-screen bg-background font-sans antialiased">
@@ -63,13 +62,8 @@ function AppContent() {
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          } />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/404" element={<NotFound />} />
           
           {/* Protected routes */}
@@ -104,8 +98,13 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/workspaces" element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute>
               <Workspaces />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           } />
           

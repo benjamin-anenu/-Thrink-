@@ -116,12 +116,12 @@ const Header = () => {
               
               {/* Auth buttons for mobile */}
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Link to="/auth?tab=signin">
+                <Link to="/login">
                   <Button variant="ghost" className="w-full justify-start">
                     Sign In
                   </Button>
                 </Link>
-                <Link to="/auth?tab=signup">
+                <Link to="/register">
                   <Button className="w-full">
                     Get Started
                   </Button>
@@ -140,12 +140,12 @@ const Header = () => {
         <div className="hidden md:flex items-center gap-4">
           {/* Auth buttons for desktop */}
           <div className="rounded-2xl flex gap-2">
-            <Link to="/auth?tab=signin">
+            <Link to="/login">
               <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
                 Sign In
               </Button>
             </Link>
-            <Link to="/auth?tab=signup">
+            <Link to="/register">
               <Button className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70">
                 Get Started
               </Button>

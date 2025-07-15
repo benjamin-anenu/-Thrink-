@@ -9,11 +9,11 @@ const HeroSection = () => {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate('/auth?tab=signup');
+    navigate('/register');
   };
 
   const handleSignIn = () => {
-    navigate('/auth?tab=signin');
+    navigate('/login');
   };
 
   return (
