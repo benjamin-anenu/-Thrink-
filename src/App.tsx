@@ -80,7 +80,7 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" value={{ dark: "dark" }}>
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>
