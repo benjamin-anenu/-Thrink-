@@ -5,7 +5,7 @@ import MiloAssistant from '@/components/MiloAssistant';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import PerformanceDashboard from '@/components/performance/PerformanceDashboard';
-import { simulateAIMonitoring } from '@/services/PerformanceTracker';
+import { initializePerformanceTracking } from '@/services/PerformanceTracker';
 import { startEmailReminderService } from '@/services/EmailReminderService';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import AnalyticsHeader from '@/components/analytics/AnalyticsHeader';
@@ -35,7 +35,7 @@ const Analytics = () => {
 
   // Initialize AI services
   React.useEffect(() => {
-    simulateAIMonitoring();
+    initializePerformanceTracking();
     startEmailReminderService();
   }, []);
 

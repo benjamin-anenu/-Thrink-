@@ -1,4 +1,3 @@
-
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,7 +10,7 @@ import { StakeholderProvider } from '@/contexts/StakeholderContext';
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { initializeNotificationIntegration } from '@/services/NotificationIntegrationService';
 import { startEmailReminderService } from '@/services/EmailReminderService';
-import { simulateAIMonitoring } from '@/services/PerformanceTracker';
+import { initializePerformanceTracking } from '@/services/PerformanceTracker';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -38,7 +37,7 @@ const queryClient = new QueryClient({
 // Initialize services
 initializeNotificationIntegration();
 startEmailReminderService();
-simulateAIMonitoring();
+initializePerformanceTracking();
 
 function App() {
   return (
