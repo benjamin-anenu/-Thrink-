@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from './Logo';
@@ -13,19 +14,10 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  // Memoize route-based state calculations to prevent unnecessary re-renders
-  const routeState = useMemo(() => {
-    const isLandingPage = location.pathname === '/';
-    const isAuthPage = location.pathname === '/auth';
-    const shouldShowAuthButtons = isLandingPage && !loading && !user;
-    
-    return { isLandingPage, isAuthPage, shouldShowAuthButtons };
-  }, [location.pathname, loading, user]);
   
   useEffect(() => {
     // Set active page based on current route
@@ -41,7 +33,7 @@ const Header = () => {
     } else {
       setActivePage('features');
     }
-  }, [location.pathname, location.hash]);
+  }, [location]);
   
   const handleNavClick = (page: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -59,7 +51,8 @@ const Header = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const { isLandingPage, isAuthPage, shouldShowAuthButtons } = routeState;
+  const isLandingPage = location.pathname === '/';
+  const isAuthPage = location.pathname === '/auth';
 
   return (
     <div className="sticky top-0 z-50 pt-8 px-4">
@@ -264,7 +257,7 @@ const Header = () => {
               )}
               
               {/* Auth buttons for mobile landing page */}
-              {shouldShowAuthButtons && (
+              {isLandingPage && !user && (
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
                   <Link to="/auth?tab=signin">
                     <Button variant="ghost" className="w-full justify-start">
@@ -292,8 +285,8 @@ const Header = () => {
           {/* Add workspace selector for desktop (only when authenticated) */}
           {!isLandingPage && !isAuthPage && user && <WorkspaceSelector />}
           
-          {/* Auth buttons for desktop */}
-          {shouldShowAuthButtons && (
+          {/* Auth buttons or user menu */}
+          {isLandingPage && !user && (
             <div className="rounded-2xl flex gap-2">
               <Link to="/auth?tab=signin">
                 <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
