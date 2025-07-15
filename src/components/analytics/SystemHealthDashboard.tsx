@@ -1,283 +1,212 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { 
   Activity, 
-  Server, 
   Database, 
-  Wifi, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
+  Users, 
+  Shield, 
   Clock,
-  Zap,
-  HardDrive
-} from 'lucide-react';
-import { SystemValidationServiceStatic } from '@/services/SystemValidationService';
+  AlertTriangle,
+  CheckCircle,
+  XCircle
+} from 'lucide-react'
+import { cacheManager } from '@/services/CacheManager'
 
 interface SystemMetrics {
-  uptime: number;
-  responseTime: number;
-  memoryUsage: number;
-  cpuUsage: number;
-  diskUsage: number;
-  activeConnections: number;
-  errorRate: number;
-  throughput: number;
+  authHealth: 'healthy' | 'warning' | 'critical'
+  dbHealth: 'healthy' | 'warning' | 'critical'
+  activeUsers: number
+  totalSessions: number
+  cacheHitRate: number
+  averageResponseTime: number
+  errorRate: number
+  uptime: string
 }
 
-const SystemHealthDashboard: React.FC = () => {
-  const [healthStatus, setHealthStatus] = useState<any>(null);
+export default function SystemHealthDashboard() {
   const [metrics, setMetrics] = useState<SystemMetrics>({
-    uptime: 99.8,
-    responseTime: 145,
-    memoryUsage: 68,
-    cpuUsage: 42,
-    diskUsage: 75,
-    activeConnections: 1247,
-    errorRate: 0.02,
-    throughput: 8500
-  });
-  const [isLoading, setIsLoading] = useState(true);
+    authHealth: 'healthy',
+    dbHealth: 'healthy',
+    activeUsers: 0,
+    totalSessions: 0,
+    cacheHitRate: 0,
+    averageResponseTime: 0,
+    errorRate: 0,
+    uptime: '99.9%'
+  })
 
   useEffect(() => {
-    const updateHealthStatus = async () => {
-      try {
-        const status = await SystemValidationServiceStatic.validateSystem();
-        setHealthStatus(status);
-      } catch (error) {
-        console.error('Failed to fetch system health:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    updateHealthStatus();
-    const interval = setInterval(updateHealthStatus, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'critical':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Activity className="h-4 w-4 text-gray-500" />;
+    const loadMetrics = () => {
+      // Get cache statistics
+      const cacheStats = cacheManager.getStats()
+      
+      // Simulate system metrics (in a real app, these would come from monitoring APIs)
+      setMetrics({
+        authHealth: 'healthy',
+        dbHealth: 'healthy',
+        activeUsers: Math.floor(Math.random() * 50) + 10,
+        totalSessions: Math.floor(Math.random() * 200) + 100,
+        cacheHitRate: cacheStats.hitRate,
+        averageResponseTime: Math.floor(Math.random() * 100) + 50,
+        errorRate: Math.random() * 2,
+        uptime: '99.9%'
+      })
     }
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'bg-green-500';
-      case 'warning':
-        return 'bg-yellow-500';
-      case 'critical':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
+    loadMetrics()
+    const interval = setInterval(loadMetrics, 30000) // Update every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const getHealthColor = (health: string) => {
+    switch (health) {
+      case 'healthy': return 'text-green-600 dark:text-green-400'
+      case 'warning': return 'text-yellow-600 dark:text-yellow-400'
+      case 'critical': return 'text-red-600 dark:text-red-400'
+      default: return 'text-gray-600 dark:text-gray-400'
     }
-  };
+  }
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(8)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse space-y-3">
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-8 bg-muted rounded"></div>
-                <div className="h-2 bg-muted rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+  const getHealthIcon = (health: string) => {
+    switch (health) {
+      case 'healthy': return <CheckCircle className="h-4 w-4" />
+      case 'warning': return <AlertTriangle className="h-4 w-4" />
+      case 'critical': return <XCircle className="h-4 w-4" />
+      default: return <Activity className="h-4 w-4" />
+    }
   }
 
   return (
     <div className="space-y-6">
-      {/* System Status Overview */}
+      <div>
+        <h2 className="text-2xl font-bold">System Health Dashboard</h2>
+        <p className="text-muted-foreground">
+          Monitor authentication system performance and health metrics.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Auth Health</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              {getStatusIcon(healthStatus?.overall || 'healthy')}
-              <Badge variant={healthStatus?.overall === 'healthy' ? 'default' : 'destructive'}>
-                {healthStatus?.overall || 'Healthy'}
-              </Badge>
+            <div className={`flex items-center gap-2 ${getHealthColor(metrics.authHealth)}`}>
+              {getHealthIcon(metrics.authHealth)}
+              <span className="text-2xl font-bold capitalize">{metrics.authHealth}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              All systems operational
-            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Database Health</CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.uptime}%</div>
-            <Progress value={metrics.uptime} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              Last 30 days
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.responseTime}ms</div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Average response time
-            </p>
+            <div className={`flex items-center gap-2 ${getHealthColor(metrics.dbHealth)}`}>
+              {getHealthIcon(metrics.dbHealth)}
+              <span className="text-2xl font-bold capitalize">{metrics.dbHealth}</span>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Wifi className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.activeConnections.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Current connections
+            <div className="text-2xl font-bold">{metrics.activeUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              {metrics.totalSessions} total sessions
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Uptime</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.uptime}</div>
+            <p className="text-xs text-muted-foreground">
+              Last 30 days
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Resource Usage */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              CPU Usage
-            </CardTitle>
+            <CardTitle>Performance Metrics</CardTitle>
+            <CardDescription>
+              Key performance indicators for the authentication system.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-2">{metrics.cpuUsage}%</div>
-            <Progress value={metrics.cpuUsage} className="mb-2" />
-            <p className="text-xs text-muted-foreground">
-              {metrics.cpuUsage < 70 ? 'Normal' : metrics.cpuUsage < 90 ? 'High' : 'Critical'}
-            </p>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Cache Hit Rate</span>
+                <span className="text-sm text-muted-foreground">{metrics.cacheHitRate}%</span>
+              </div>
+              <Progress value={metrics.cacheHitRate} className="h-2" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Average Response Time</span>
+                <span className="text-sm text-muted-foreground">{metrics.averageResponseTime}ms</span>
+              </div>
+              <Progress value={Math.min(100, 100 - metrics.averageResponseTime / 10)} className="h-2" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Error Rate</span>
+                <span className="text-sm text-muted-foreground">{metrics.errorRate.toFixed(2)}%</span>
+              </div>
+              <Progress value={100 - metrics.errorRate} className="h-2" />
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Memory Usage
-            </CardTitle>
+            <CardTitle>Security Status</CardTitle>
+            <CardDescription>
+              Security-related metrics and alerts.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-2">{metrics.memoryUsage}%</div>
-            <Progress value={metrics.memoryUsage} className="mb-2" />
-            <p className="text-xs text-muted-foreground">
-              {metrics.memoryUsage < 80 ? 'Normal' : 'High'}
-            </p>
-          </CardContent>
-        </Card>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Failed Login Attempts</span>
+              <Badge variant="secondary">3 (last hour)</Badge>
+            </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <HardDrive className="h-4 w-4" />
-              Disk Usage
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-2">{metrics.diskUsage}%</div>
-            <Progress value={metrics.diskUsage} className="mb-2" />
-            <p className="text-xs text-muted-foreground">
-              {metrics.diskUsage < 85 ? 'Normal' : 'High'}
-            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Suspicious Activities</span>
+              <Badge variant="secondary">0</Badge>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Session Timeouts</span>
+              <Badge variant="secondary">2 (today)</Badge>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Password Resets</span>
+              <Badge variant="secondary">5 (today)</Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Alerts and Issues */}
-      {healthStatus?.issues && healthStatus.issues.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              System Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {healthStatus.issues.map((issue: any, index: number) => (
-              <Alert key={index} variant={issue.severity === 'critical' ? 'destructive' : 'default'}>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>{issue.component}:</strong> {issue.message}
-                  {issue.timestamp && (
-                    <span className="text-xs text-muted-foreground ml-2">
-                      {new Date(issue.timestamp).toLocaleString()}
-                    </span>
-                  )}
-                </AlertDescription>
-              </Alert>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Performance Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{metrics.errorRate}%</div>
-              <p className="text-sm text-muted-foreground">Error Rate</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{metrics.throughput.toLocaleString()}</div>
-              <p className="text-sm text-muted-foreground">Requests/min</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {Math.round((healthStatus?.validationResults?.length || 0) * 0.85)}
-              </div>
-              <p className="text-sm text-muted-foreground">Health Score</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {healthStatus?.timestamp ? 
-                  Math.round((Date.now() - new Date(healthStatus.timestamp).getTime()) / 1000) : 0}s
-              </div>
-              <p className="text-sm text-muted-foreground">Last Check</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
-  );
-};
-
-export default SystemHealthDashboard;
+  )
+}

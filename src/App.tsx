@@ -115,6 +115,11 @@ function AppContent() {
       </Suspense>
       <Toaster />
       <PerformanceMonitor />
+      {offlineStatus.isOnline === false && (
+        <div className="fixed top-4 right-4 z-50 bg-orange-100 dark:bg-orange-900 border border-orange-300 dark:border-orange-700 rounded-lg p-3">
+          <p className="text-sm text-orange-800 dark:text-orange-200">You are offline</p>
+        </div>
+      )}
     </div>
   );
 }

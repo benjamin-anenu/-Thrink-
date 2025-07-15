@@ -3,6 +3,8 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { AuthContextType, Profile, AppRole, ROLE_HIERARCHY, ROLE_PERMISSIONS } from '@/types/auth'
 import { useToast } from '@/hooks/use-toast'
+import { cacheManager, withCache } from '@/services/CacheManager'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -13,42 +15,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const { isOnline } = useOfflineStatus()
 
-  // Fetch user profile and role
+  // Fetch user profile and role with caching
   const fetchUserData = useCallback(async (userId: string) => {
     try {
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError)
-        return
+      // Try to get from cache first (if online) or local storage (if offline)
+      const cacheKey = `user_data_${userId}`
+      
+      if (!isOnline) {
+        // Try to get from local storage when offline
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const { profile: cachedProfile, role: cachedRole } = JSON.parse(cached)
+          setProfile(cachedProfile)
+          setRole(cachedRole || 'member')
+          return
+        }
       }
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+      // Use cached data if available and online
+      const cachedData = await withCache(
+        cacheKey,
+        async () => {
+          // Fetch profile
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .single()
 
-      if (roleError && roleError.code !== 'PGRST116') {
-        console.error('Error fetching role:', roleError)
-        return
-      }
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error fetching profile:', profileError)
+          }
 
-      setProfile(profileData)
-      setRole(roleData?.role || 'member')
+          // Fetch role
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (roleError && roleError.code !== 'PGRST116') {
+            console.error('Error fetching role:', roleError)
+          }
+
+          return {
+            profile: profileData,
+            role: roleData?.role || 'member'
+          }
+        },
+        5 * 60 * 1000 // 5 minute cache
+      )
+
+      // Store in localStorage for offline access
+      localStorage.setItem(cacheKey, JSON.stringify(cachedData))
+
+      setProfile(cachedData.profile)
+      setRole(cachedData.role)
     } catch (error) {
       console.error('Error in fetchUserData:', error)
+      
+      // If there's an error and we're offline, try local storage
+      if (!isOnline) {
+        const cached = localStorage.getItem(`user_data_${userId}`)
+        if (cached) {
+          const { profile: cachedProfile, role: cachedRole } = JSON.parse(cached)
+          setProfile(cachedProfile)
+          setRole(cachedRole || 'member')
+        }
+      }
     }
-  }, [])
+  }, [isOnline])
 
   // Initialize auth state
   useEffect(() => {

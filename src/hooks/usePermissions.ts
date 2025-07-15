@@ -1,23 +1,32 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { AppRole } from '@/types/auth'
 
-export function usePermissions() {
+export interface PermissionHook {
+  hasRole: (requiredRole: AppRole) => boolean
+  hasPermission: (action: string, resource?: string) => boolean
+  canAccess: (resource: string, action?: string) => boolean
+  isOwner: boolean
+  isAdmin: boolean
+  isManager: boolean
+  isMember: boolean
+  isViewer: boolean
+}
+
+export function usePermissions(): PermissionHook {
   const { role, hasRole, hasPermission } = useAuth()
 
+  const canAccess = (resource: string, action: string = 'read'): boolean => {
+    return hasPermission(action, resource)
+  }
+
   return {
-    role,
     hasRole,
     hasPermission,
-    canRead: (resource: string) => hasPermission('read', resource),
-    canWrite: (resource: string) => hasPermission('write', resource),
-    canDelete: (resource: string) => hasPermission('delete', resource),
-    canManageUsers: () => hasRole('admin') || hasRole('owner'),
-    canManageSettings: () => hasRole('admin') || hasRole('owner'),
-    canViewAuditLogs: () => hasRole('admin') || hasRole('owner'),
-    isOwner: () => role === 'owner',
-    isAdmin: () => hasRole('admin'),
-    isManager: () => hasRole('manager'),
-    isMember: () => role === 'member',
-    isViewer: () => role === 'viewer',
+    canAccess,
+    isOwner: hasRole('owner'),
+    isAdmin: hasRole('admin'),
+    isManager: hasRole('manager'),
+    isMember: hasRole('member'),
+    isViewer: hasRole('viewer'),
   }
 }
