@@ -1,4 +1,3 @@
-
 export type EventType = 
   | 'task_completed'
   | 'task_created'
@@ -9,7 +8,8 @@ export type EventType =
   | 'resource_assigned'
   | 'resource_availability_changed'
   | 'project_updated'
-  | 'performance_alert';
+  | 'performance_alert'
+  | 'system_heartbeat';
 
 export interface EventData {
   type: EventType;

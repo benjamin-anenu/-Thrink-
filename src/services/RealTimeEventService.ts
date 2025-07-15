@@ -1,23 +1,15 @@
-
-import { EventBus, EventType, EventData } from './EventBus';
-import { NotificationIntegrationService } from './NotificationIntegrationService';
-import { PerformanceTracker } from './PerformanceTracker';
-
-export interface RealTimeEvent extends EventData {
-  userId?: string;
-  sessionId?: string;
-  broadcast?: boolean;
-}
+import { EventBus, EventType } from './EventBus';
+import { PerformanceProfile } from '@/types/performance';
 
 export class RealTimeEventService {
   private static instance: RealTimeEventService;
   private eventBus: EventBus;
-  private notificationService: NotificationIntegrationService;
-  private performanceTracker: PerformanceTracker;
   private isConnected: boolean = false;
-  private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
-  private eventQueue: RealTimeEvent[] = [];
+  private connectionStatus: string = 'disconnected';
+  private queuedEvents: any[] = [];
+  private maxQueueSize: number = 100;
+  private retryInterval: number = 5000; // Retry every 5 seconds
+  private retryTimeoutId: NodeJS.Timeout | null = null;
 
   public static getInstance(): RealTimeEventService {
     if (!RealTimeEventService.instance) {
@@ -28,279 +20,31 @@ export class RealTimeEventService {
 
   private constructor() {
     this.eventBus = EventBus.getInstance();
-    this.notificationService = NotificationIntegrationService.getInstance();
-    this.performanceTracker = PerformanceTracker.getInstance();
-    this.initialize();
+    this.connect();
   }
 
-  private initialize() {
-    // Simulate WebSocket connection
-    this.simulateConnection();
-    
-    // Set up event listeners
-    this.setupEventListeners();
-    
-    // Start real-time data sync
-    this.startRealTimeSync();
-    
-    console.log('[Real-time Event Service] Initialized');
-  }
-
-  private simulateConnection() {
-    // Simulate WebSocket connection with periodic reconnection
+  public connect() {
+    // Simulate connection logic
     this.isConnected = true;
-    console.log('[Real-time Event Service] Connected to event stream');
-    
-    // Simulate occasional disconnections for testing
+    this.connectionStatus = 'connected';
+    console.log('[Real-time Service] Connected to real-time event stream');
+
+    // Process any queued events
+    this.processEventQueue();
+
+    // Simulate system heartbeat every 30 seconds
     setInterval(() => {
-      if (Math.random() < 0.05) { // 5% chance of disconnection
-        this.handleDisconnection();
-      }
-    }, 30000);
-  }
-
-  private handleDisconnection() {
-    this.isConnected = false;
-    console.warn('[Real-time Event Service] Connection lost, attempting to reconnect...');
-    
-    setTimeout(() => {
-      this.reconnect();
-    }, 1000 * Math.pow(2, this.reconnectAttempts));
-  }
-
-  private reconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      this.isConnected = true;
-      console.log('[Real-time Event Service] Reconnected successfully');
-      
-      // Process queued events
-      this.processEventQueue();
-    }
-  }
-
-  private processEventQueue() {
-    while (this.eventQueue.length > 0) {
-      const event = this.eventQueue.shift();
-      if (event) {
-        this.broadcastEvent(event);
-      }
-    }
-  }
-
-  private setupEventListeners() {
-    // Listen to all event types and handle real-time broadcasting
-    const eventTypes: EventType[] = [
-      'task_completed',
-      'task_created',
-      'task_updated',
-      'task_assigned',
-      'deadline_approaching',
-      'milestone_reached',
-      'resource_assigned',
-      'resource_availability_changed',
-      'project_updated',
-      'performance_alert'
-    ];
-
-    eventTypes.forEach(eventType => {
-      this.eventBus.subscribe(eventType, (eventData) => {
-        this.handleRealTimeEvent({
-          ...eventData,
-          broadcast: true,
-          sessionId: this.generateSessionId()
-        });
-      });
-    });
-  }
-
-  private startRealTimeSync() {
-    // Sync data every 5 seconds
-    setInterval(() => {
-      this.syncRealTimeData();
-    }, 5000);
-
-    // Emit periodic heartbeat
-    setInterval(() => {
-      this.emitHeartbeat();
-    }, 30000);
-  }
-
-  private syncRealTimeData() {
-    if (!this.isConnected) return;
-
-    // Sync performance data
-    const profiles = this.performanceTracker.getAllProfiles();
-    profiles.forEach(profile => {
-      if (profile.lastUpdated && new Date().getTime() - profile.lastUpdated.getTime() < 10000) {
-        this.broadcastEvent({
-          type: 'performance_alert',
-          payload: {
-            resourceId: profile.resourceId,
-            resourceName: profile.resourceName,
-            riskLevel: profile.riskLevel,
-            score: profile.score
-          },
-          timestamp: new Date(),
-          source: 'performance_tracker',
-          broadcast: true
-        });
-      }
-    });
-
-    // Sync resource utilization
-    this.broadcastResourceUpdate();
-  }
-
-  private broadcastResourceUpdate() {
-    const savedResources = localStorage.getItem('resources');
-    if (savedResources) {
-      try {
-        const resources = JSON.parse(savedResources);
-        this.broadcastEvent({
-          type: 'resource_availability_changed',
-          payload: {
-            resources: resources.map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              status: r.status,
-              utilization: r.utilization
-            }))
-          },
-          timestamp: new Date(),
-          source: 'resource_context',
-          broadcast: true
-        });
-      } catch (error) {
-        console.error('[Real-time Event Service] Error parsing resources:', error);
-      }
-    }
-  }
-
-  private emitHeartbeat() {
-    if (this.isConnected) {
-      this.eventBus.emit('system_heartbeat', {
-        timestamp: new Date(),
-        connectionStatus: 'connected',
-        queuedEvents: this.eventQueue.length
+      this.eventBus.emit('system_heartbeat' as EventType, {
+        status: 'active',
+        timestamp: new Date()
       }, 'realtime_service');
-    }
+    }, 30000);
   }
 
-  private handleRealTimeEvent(event: RealTimeEvent) {
-    if (!this.isConnected) {
-      this.eventQueue.push(event);
-      return;
-    }
-
-    this.broadcastEvent(event);
-    
-    // Handle specific event types
-    switch (event.type) {
-      case 'task_completed':
-        this.handleTaskCompletion(event);
-        break;
-      case 'resource_assigned':
-        this.handleResourceAssignment(event);
-        break;
-      case 'deadline_approaching':
-        this.handleDeadlineAlert(event);
-        break;
-      case 'performance_alert':
-        this.handlePerformanceAlert(event);
-        break;
-    }
-  }
-
-  private handleTaskCompletion(event: RealTimeEvent) {
-    if (event.payload.resourceId && event.payload.taskName) {
-      this.notificationService.onTaskCompleted(
-        event.payload.taskId || 'unknown',
-        event.payload.taskName,
-        event.payload.projectId || 'unknown',
-        event.payload.projectName || 'Unknown Project',
-        event.payload.resourceId,
-        event.payload.resourceName || 'Unknown Resource'
-      );
-    }
-  }
-
-  private handleResourceAssignment(event: RealTimeEvent) {
-    if (event.payload.resourceId && event.payload.resourceName) {
-      this.notificationService.onResourceAssigned(
-        event.payload.resourceId,
-        event.payload.resourceName,
-        event.payload.projectId || 'unknown',
-        event.payload.projectName || 'Unknown Project',
-        event.payload.taskName || 'Unknown Task'
-      );
-    }
-  }
-
-  private handleDeadlineAlert(event: RealTimeEvent) {
-    if (event.payload.taskId && event.payload.daysRemaining !== undefined) {
-      this.notificationService.onDeadlineApproaching(
-        event.payload.taskId,
-        event.payload.taskName || 'Unknown Task',
-        event.payload.projectId || 'unknown',
-        event.payload.projectName || 'Unknown Project',
-        event.payload.daysRemaining
-      );
-    }
-  }
-
-  private handlePerformanceAlert(event: RealTimeEvent) {
-    console.log(`[Real-time Event Service] Performance alert: ${event.payload.resourceName} - ${event.payload.riskLevel} risk`);
-  }
-
-  private broadcastEvent(event: RealTimeEvent) {
-    // Simulate broadcasting to other connected clients
-    console.log(`[Real-time Event Service] Broadcasting ${event.type}:`, event.payload);
-  }
-
-  private generateSessionId(): string {
-    return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // Public methods for components to emit events
-  public emitTaskCompleted(taskId: string, taskName: string, projectId: string, projectName: string, resourceId: string, resourceName: string) {
-    this.eventBus.emit('task_completed', {
-      taskId,
-      taskName,
-      projectId,
-      projectName,
-      resourceId,
-      resourceName
-    }, 'user_action');
-  }
-
-  public emitResourceAssigned(resourceId: string, resourceName: string, projectId: string, projectName: string, taskName: string) {
-    this.eventBus.emit('resource_assigned', {
-      resourceId,
-      resourceName,
-      projectId,
-      projectName,
-      taskName
-    }, 'user_action');
-  }
-
-  public emitProjectUpdated(projectId: string, projectName: string, updateType: string, details: any) {
-    this.eventBus.emit('project_updated', {
-      projectId,
-      projectName,
-      updateType,
-      details
-    }, 'user_action');
-  }
-
-  public emitDeadlineApproaching(taskId: string, taskName: string, projectId: string, projectName: string, daysRemaining: number) {
-    this.eventBus.emit('deadline_approaching', {
-      taskId,
-      taskName,
-      projectId,
-      projectName,
-      daysRemaining
-    }, 'system_check');
+  public disconnect() {
+    this.isConnected = false;
+    this.connectionStatus = 'disconnected';
+    console.log('[Real-time Service] Disconnected from real-time event stream');
   }
 
   public isRealTimeConnected(): boolean {
@@ -308,15 +52,149 @@ export class RealTimeEventService {
   }
 
   public getConnectionStatus(): string {
-    return this.isConnected ? 'connected' : 'disconnected';
+    return this.connectionStatus;
   }
 
   public getQueuedEventCount(): number {
-    return this.eventQueue.length;
+    return this.queuedEvents.length;
+  }
+
+  private queueEvent(eventType: EventType, payload: any, source: string) {
+    if (this.queuedEvents.length >= this.maxQueueSize) {
+      this.queuedEvents.shift(); // Remove the oldest event
+    }
+
+    this.queuedEvents.push({
+      eventType,
+      payload,
+      source
+    });
+
+    console.log(`[Real-time Service] Event ${eventType} queued (Size: ${this.queuedEvents.length})`);
+
+    // Attempt to process the queue immediately
+    this.processEventQueue();
+  }
+
+  private processEventQueue() {
+    if (!this.isConnected) {
+      console.log('[Real-time Service] Not connected. Event queue processing paused.');
+      
+      // Ensure retry mechanism is active
+      if (!this.retryTimeoutId) {
+        this.retryConnection();
+      }
+      return;
+    }
+
+    while (this.queuedEvents.length > 0) {
+      const event = this.queuedEvents.shift();
+      if (event) {
+        this.emitEvent(event.eventType, event.payload, event.source);
+      }
+    }
+
+    console.log('[Real-time Service] Event queue processed.');
+  }
+
+  private retryConnection() {
+    if (this.retryTimeoutId) return;
+
+    this.retryTimeoutId = setTimeout(() => {
+      console.log('[Real-time Service] Attempting to reconnect...');
+      this.connect(); // Attempt to reconnect
+      this.retryTimeoutId = null; // Clear timeout ID
+
+      if (!this.isConnected) {
+        this.retryConnection(); // If still not connected, retry again
+      }
+    }, this.retryInterval);
+  }
+
+  private emitEvent(eventType: EventType, payload: any, source: string) {
+    if (!this.isConnected) {
+      console.warn(`[Real-time Service] Dropped event ${eventType} (not connected)`);
+      return;
+    }
+
+    try {
+      this.eventBus.emit(eventType, payload, source);
+      console.log(`[Real-time Service] Emitted ${eventType} from ${source}:`, payload);
+    } catch (error) {
+      console.error(`[Real-time Service] Error emitting ${eventType}:`, error);
+      this.queueEvent(eventType, payload, source); // Re-queue on failure
+    }
+  }
+
+  // Example event emitters
+  public emitTaskCompleted(taskId: string, taskName: string, projectId: string, projectName: string, resourceId: string, resourceName: string) {
+    const payload = {
+      taskId,
+      taskName,
+      projectId,
+      projectName,
+      resourceId,
+      resourceName,
+      timestamp: new Date()
+    };
+    this.queueEvent('task_completed', payload, 'task_service');
+  }
+
+  public emitResourceAssigned(resourceId: string, resourceName: string, projectId: string, projectName: string, taskName: string) {
+    const payload = {
+      resourceId,
+      resourceName,
+      projectId,
+      projectName,
+      taskName,
+      timestamp: new Date()
+    };
+    this.queueEvent('resource_assigned', payload, 'resource_service');
+  }
+
+  public emitProjectUpdated(projectId: string, projectName: string, updateType: string, details: any) {
+    const payload = {
+      projectId,
+      projectName,
+      updateType,
+      details,
+      timestamp: new Date()
+    };
+    this.queueEvent('project_updated', payload, 'project_service');
+  }
+
+  public emitDeadlineApproaching(taskId: string, taskName: string, projectId: string, projectName: string, daysRemaining: number) {
+    const payload = {
+      taskId,
+      taskName,
+      projectId,
+      projectName,
+      daysRemaining,
+      timestamp: new Date()
+    };
+    this.queueEvent('deadline_approaching', payload, 'deadline_service');
+  }
+
+  public getPerformanceProfile(resourceId: string): PerformanceProfile {
+    // Mock performance profile data
+    const mockData = this.generateMockPerformanceData();
+    return mockData as PerformanceProfile;
+  }
+
+  private generateMockPerformanceData(): any {
+    return {
+      resourceId: '1',
+      resourceName: 'John Doe',
+      currentScore: Math.floor(Math.random() * 40) + 60, // 60-100
+      monthlyScore: Math.floor(Math.random() * 30) + 70, // 70-100
+      trend: ['improving', 'stable', 'declining'][Math.floor(Math.random() * 3)],
+      riskLevel: ['low', 'medium', 'high', 'critical'][Math.floor(Math.random() * 4)],
+      lastUpdated: new Date()
+    };
   }
 }
 
-// Initialize the real-time service
+// Initialize the real-time event service
 export const initializeRealTimeEvents = () => {
   const service = RealTimeEventService.getInstance();
   console.log('[Real-time Event Service] Service initialized');

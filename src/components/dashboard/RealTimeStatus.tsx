@@ -9,7 +9,7 @@ const RealTimeStatus: React.FC = () => {
   const { status, lastEvent } = useRealTimeEvents();
 
   const getStatusColor = () => {
-    return status.isConnected ? 'text-success' : 'text-error';
+    return status.isConnected ? 'text-green-600' : 'text-red-600';
   };
 
   const getStatusIcon = () => {
@@ -40,14 +40,17 @@ const RealTimeStatus: React.FC = () => {
           
           <div className="flex flex-col items-end gap-1">
             <Badge 
-              variant={status.isConnected ? "success" : "error"}
-              className="text-xs"
+              variant={status.isConnected ? "default" : "destructive"}
+              className={status.isConnected ? "bg-green-100 text-green-800 border-green-200" : ""}
             >
               {status.isConnected ? 'Live' : 'Offline'}
             </Badge>
             
             {status.queuedEvents > 0 && (
-              <Badge variant="warning" className="text-xs">
+              <Badge 
+                variant="outline" 
+                className="bg-yellow-100 text-yellow-800 border-yellow-200"
+              >
                 {status.queuedEvents} queued
               </Badge>
             )}
