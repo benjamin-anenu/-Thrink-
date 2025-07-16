@@ -53,20 +53,20 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         name: member.name,
         role: member.role,
         avatar: undefined
-      })) || baseProject.team;
+      })) || baseProject.team || [];
 
       const milestones = milestonesData.data?.map(milestone => ({
         id: milestone.id,
         name: milestone.name,
         date: milestone.due_date,
         completed: milestone.status === 'completed'
-      })) || baseProject.milestones;
+      })) || baseProject.milestones || [];
 
       setExtendedProject({
         ...baseProject,
         team,
         milestones,
-        risks: baseProject.risks // Keep existing risks for now
+        risks: baseProject.risks || [] // Keep existing risks for now
       });
     } catch (error) {
       console.error('Error loading extended project data:', error);
@@ -130,6 +130,11 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
     if (!spent || !budget || budget === 0) return 0;
     return Math.round((spent / budget) * 100);
   };
+
+  // Safe array access helpers
+  const safeTeam = currentProject.team || [];
+  const safeMilestones = currentProject.milestones || [];
+  const safeRisks = currentProject.risks || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -207,7 +212,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                 <div className="text-center py-8">Loading team data...</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentProject.team.length > 0 ? currentProject.team.map(member => (
+                  {safeTeam.length > 0 ? safeTeam.map(member => (
                     <Card key={member.id}>
                       <CardContent className="flex items-center space-x-4 p-4">
                         <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
@@ -234,7 +239,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                 <div className="text-center py-8">Loading milestones...</div>
               ) : (
                 <>
-                  {currentProject.milestones.length > 0 ? currentProject.milestones.map(milestone => (
+                  {safeMilestones.length > 0 ? safeMilestones.map(milestone => (
                     <Card key={milestone.id}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center space-x-3">
@@ -264,7 +269,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
             </TabsContent>
 
             <TabsContent value="risks" className="space-y-4">
-              {currentProject.risks.length > 0 ? currentProject.risks.map(risk => (
+              {safeRisks.length > 0 ? safeRisks.map(risk => (
                 <Card key={risk.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
