@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
+import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
 import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
 import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
 import ResourcePlanningStep from '@/components/project-creation/ResourcePlanningStep';
@@ -74,13 +75,14 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   }, [currentWorkspace]);
 
   const steps = [
-    { number: 1, title: 'Kickoff Session', component: KickoffSessionStep },
-    { number: 2, title: 'Requirements Gathering', component: RequirementsGatheringStep },
-    { number: 3, title: 'Resource Planning', component: ResourcePlanningStep },
-    { number: 4, title: 'Stakeholder Management', component: StakeholderManagementStep },
-    { number: 5, title: 'Milestone Planning', component: MilestonePlanningStep },
-    { number: 6, title: 'AI Review & Planning', component: AIReviewStep },
-    { number: 7, title: 'Project Initiation', component: ProjectInitiationStep }
+    { number: 1, title: 'Project Details', component: ProjectDetailsStep },
+    { number: 2, title: 'Kickoff Session', component: KickoffSessionStep },
+    { number: 3, title: 'Requirements Gathering', component: RequirementsGatheringStep },
+    { number: 4, title: 'Resource Planning', component: ResourcePlanningStep },
+    { number: 5, title: 'Stakeholder Management', component: StakeholderManagementStep },
+    { number: 6, title: 'Milestone Planning', component: MilestonePlanningStep },
+    { number: 7, title: 'AI Review & Planning', component: AIReviewStep },
+    { number: 8, title: 'Project Initiation', component: ProjectInitiationStep }
   ];
 
   const currentStepData = steps[currentStep - 1];
@@ -179,9 +181,12 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
+          <p id="project-creation-description" className="text-muted-foreground">
+            Follow this guided wizard to set up your new project with all necessary details and configurations.
+          </p>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Step {currentStep} of {steps.length}: {currentStepData.title}</span>
