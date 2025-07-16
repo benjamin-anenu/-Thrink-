@@ -1,4 +1,3 @@
-
 export interface ProjectData {
   id: string;
   name: string;
@@ -19,6 +18,7 @@ export interface ProjectData {
   tasks: ProjectTask[];
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: string;
   // Enhanced AI metadata
   aiGenerated?: {
     projectPlan?: string;
@@ -29,6 +29,9 @@ export interface ProjectData {
   riskProfile?: RiskProfile;
   aiRecommendations?: AIRecommendation[];
   lastAIAnalysis?: string;
+  aiProcessingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  aiProcessingStartedAt?: string;
+  aiProcessingCompletedAt?: string;
 }
 
 export interface ProjectHealth {

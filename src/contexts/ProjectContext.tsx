@@ -6,23 +6,26 @@ import { NotificationIntegrationService } from '@/services/NotificationIntegrati
 import { eventBus } from '@/services/EventBus';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ProjectCreationService } from '@/services/ProjectCreationService';
 
 interface ProjectContextType {
   projects: ProjectData[];
   currentProject: ProjectData | null;
   loading: boolean;
   getProject: (id: string) => ProjectData | null;
-  addProject: (project: Omit<ProjectData, 'id'>) => void;
-  updateProject: (id: string, updates: Partial<ProjectData>) => void;
-  addTask: (projectId: string, task: Omit<ProjectTask, 'id'>) => void;
-  updateTask: (projectId: string, taskId: string, updates: Partial<ProjectTask>) => void;
-  deleteTask: (projectId: string, taskId: string) => void;
-  addMilestone: (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => void;
-  updateMilestone: (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => void;
-  rebaselineTasks: (projectId: string, request: RebaselineRequest) => void;
+  addProject: (project: Omit<ProjectData, 'id'>) => Promise<void>;
+  updateProject: (id: string, updates: Partial<ProjectData>) => Promise<void>;
+  addTask: (projectId: string, task: Omit<ProjectTask, 'id'>) => Promise<void>;
+  updateTask: (projectId: string, taskId: string, updates: Partial<ProjectTask>) => Promise<void>;
+  deleteTask: (projectId: string, taskId: string) => Promise<void>;
+  addMilestone: (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => Promise<void>;
+  updateMilestone: (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => Promise<void>;
+  rebaselineTasks: (projectId: string, request: RebaselineRequest) => Promise<void>;
   setCurrentProject: (projectId: string) => void;
-  completeTask: (projectId: string, taskId: string) => void;
-  assignTaskToResource: (projectId: string, taskId: string, resourceId: string) => void;
+  completeTask: (projectId: string, taskId: string) => Promise<void>;
+  assignTaskToResource: (projectId: string, taskId: string, resourceId: string) => Promise<void>;
+  refreshProjects: () => Promise<void>;
+  retryAIProcessing: (projectId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -46,40 +49,79 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     currentWorkspace ? project.workspaceId === currentWorkspace.id : true
   );
 
+  // Set up real-time updates for project changes
+  useEffect(() => {
+    if (!currentWorkspace) return;
+
+    const channel = supabase
+      .channel('project-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        (payload) => {
+          console.log('Project updated:', payload);
+          // Update the project in our state
+          setAllProjects(prev => prev.map(project => 
+            project.id === payload.new.id 
+              ? { ...project, 
+                  aiProcessingStatus: payload.new.ai_processing_status,
+                  aiProcessingStartedAt: payload.new.ai_processing_started_at,
+                  aiProcessingCompletedAt: payload.new.ai_processing_completed_at
+                }
+              : project
+          ));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentWorkspace]);
+
   // Initialize services
   const performanceTracker = PerformanceTracker.getInstance();
   const emailService = EmailReminderService.getInstance();
   const notificationService = NotificationIntegrationService.getInstance();
 
-  // Load projects from Supabase on mount (with localStorage fallback)
+  // Load projects from Supabase when workspace changes
   useEffect(() => {
-    async function fetchProjects() {
-      setLoading(true);
-      const { data, error } = await supabase.from('projects').select('*');
-      if (data) {
-        setAllProjects(data);
-      } else {
-        // fallback to localStorage if Supabase fails
-        const savedProjects = localStorage.getItem('projects');
-        if (savedProjects) {
-          setAllProjects(JSON.parse(savedProjects));
-        } else {
-          initializeRealisticProject();
+    if (currentWorkspace) {
+      refreshProjects();
+    }
+  }, [currentWorkspace]);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!currentWorkspace) return;
+
+    const channel = supabase
+      .channel('project_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        () => {
+          refreshProjects();
         }
-      }
-      setLoading(false);
-    }
-    fetchProjects();
-  }, []);
+      )
+      .subscribe();
 
-  // Save projects to localStorage whenever projects change
-  useEffect(() => {
-    if (allProjects.length > 0) {
-      localStorage.setItem('projects', JSON.stringify(allProjects));
-    }
-  }, [allProjects]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentWorkspace]);
 
-  // Set up event listeners
+  // Set up event listeners for tasks and deadlines
   useEffect(() => {
     const unsubscribeTaskCompleted = eventBus.subscribe('task_completed', (event) => {
       const { taskId, projectId, resourceId } = event.payload;
@@ -127,8 +169,92 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => clearInterval(interval);
   }, [projects]);
 
+  const refreshProjects = async () => {
+    if (!currentWorkspace) return;
+    
+    setLoading(true);
+    try {
+      const { data: projectsData, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          milestones (
+            id,
+            name,
+            description,
+            due_date,
+            baseline_date,
+            status,
+            progress,
+            task_ids
+          ),
+          stakeholders (
+            id,
+            name,
+            email,
+            role,
+            organization,
+            influence_level,
+            contact_info,
+            escalation_level
+          )
+        `)
+        .eq('workspace_id', currentWorkspace.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform the data to match our ProjectData interface
+      const transformedProjects: ProjectData[] = (projectsData || []).map(project => ({
+        id: project.id,
+        name: project.name,
+        description: project.description || '',
+        status: project.status as any,
+        priority: project.priority as any,
+        progress: project.progress || 0,
+        health: {
+          status: project.health_status as any,
+          score: project.health_score || 100
+        },
+        startDate: project.start_date || '',
+        endDate: project.end_date || '',
+        teamSize: project.team_size || 0,
+        budget: project.budget || '',
+        tags: project.tags || [],
+        workspaceId: project.workspace_id,
+        resources: project.resources || [],
+        stakeholders: project.stakeholder_ids || [],
+        milestones: (project.milestones || []).map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          description: m.description || '',
+          date: m.due_date || '',
+          baselineDate: m.baseline_date || '',
+          status: m.status || 'upcoming',
+          tasks: m.task_ids || [],
+          progress: m.progress || 0
+        })),
+        tasks: [], // Tasks will be loaded separately when needed
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        aiProcessingStatus: (project.ai_processing_status as 'pending' | 'processing' | 'completed' | 'failed') || 'pending',
+        aiProcessingStartedAt: project.ai_processing_started_at,
+        aiProcessingCompletedAt: project.ai_processing_completed_at
+      }));
+
+      setAllProjects(transformedProjects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      // Fallback to demo data if there's an error
+      initializeRealisticProject();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const initializeRealisticProject = () => {
-    const workspaceId = currentWorkspace?.id || 'ws-1';
+    if (!currentWorkspace) return;
+    
     const realisticProject: ProjectData = {
       id: 'proj-ecommerce-2024',
       name: 'E-commerce Platform Redesign',
@@ -142,7 +268,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       teamSize: 6,
       budget: '$185,000',
       tags: ['Frontend', 'UX/UI', 'E-commerce', 'React'],
-      workspaceId,
+      workspaceId: currentWorkspace.id,
       resources: ['sarah', 'michael', 'emily', 'david'],
       stakeholders: ['john-doe', 'jane-smith'],
       milestones: [
@@ -328,7 +454,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     
     setAllProjects([realisticProject]);
-    localStorage.setItem('projects', JSON.stringify([realisticProject]));
     
     // Schedule reminders for active tasks
     realisticProject.tasks.forEach(task => {
@@ -360,7 +485,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (project && task) {
-      // Track performance
       performanceTracker.trackPositiveActivity(
         resourceId,
         'task_completion',
@@ -370,17 +494,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         taskId
       );
 
-      // Send notification
       notificationService.onTaskCompleted(
         taskId,
         task.name,
         projectId,
         project.name,
         resourceId,
-        resourceId // This would be resolved to actual resource name
+        resourceId
       );
 
-      // Check if milestone is complete
       const milestone = project.milestones.find(m => m.tasks.includes(taskId));
       if (milestone) {
         const milestoneComplete = milestone.tasks.every(tId => {
@@ -414,29 +536,78 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentProjectState(project);
   };
 
-  const addProject = async (project: Omit<ProjectData, 'id'>) => {
+  const addProject = async (projectData: Omit<ProjectData, 'id'>) => {
+    if (!currentWorkspace) throw new Error('No workspace selected');
+    
     setLoading(true);
-    // You may want to generate a UUID here or let Supabase do it
-    const { data, error } = await supabase.from('projects').insert([project]).select().single();
-    if (data) {
-      setAllProjects(prev => [...prev, data]);
-      // Optionally update localStorage for fallback
-      localStorage.setItem('projects', JSON.stringify([...allProjects, data]));
-    } else {
-      // fallback to local logic if Supabase fails
-      const newProject = { ...project, id: `proj-${Date.now()}` };
-      setAllProjects(prev => [...prev, newProject]);
-      localStorage.setItem('projects', JSON.stringify([...allProjects, newProject]));
+    try {
+      const { data: project, error } = await supabase
+        .from('projects')
+        .insert({
+          name: projectData.name,
+          description: projectData.description,
+          workspace_id: currentWorkspace.id,
+          priority: projectData.priority || 'Medium',
+          start_date: projectData.startDate,
+          end_date: projectData.endDate,
+          budget: projectData.budget,
+          tags: projectData.tags || [],
+          resources: projectData.resources || [],
+          status: projectData.status || 'Planning',
+          progress: projectData.progress || 0,
+          health_status: projectData.health?.status || 'green',
+          health_score: projectData.health?.score || 100,
+          team_size: projectData.teamSize || 0,
+          stakeholder_ids: projectData.stakeholders || [],
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      await refreshProjects();
+    } catch (error) {
+      console.error('Error adding project:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const updateProject = (id: string, updates: Partial<ProjectData>) => {
-    setAllProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-    eventBus.emit('project_updated', { projectId: id, updates }, 'ProjectContext');
+  const updateProject = async (id: string, updates: Partial<ProjectData>) => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          priority: updates.priority,
+          start_date: updates.startDate,
+          end_date: updates.endDate,
+          budget: updates.budget,
+          tags: updates.tags,
+          resources: updates.resources,
+          status: updates.status,
+          progress: updates.progress,
+          health_status: updates.health?.status,
+          health_score: updates.health?.score,
+          team_size: updates.teamSize,
+          stakeholder_ids: updates.stakeholders
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await refreshProjects();
+      eventBus.emit('project_updated', { projectId: id, updates }, 'ProjectContext');
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
   };
 
-  const addTask = (projectId: string, task: Omit<ProjectTask, 'id'>) => {
+  const addTask = async (projectId: string, task: Omit<ProjectTask, 'id'>) => {
     const newTask: ProjectTask = {
       ...task,
       id: `task-${Date.now()}`
@@ -457,7 +628,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     eventBus.emit('task_created', { taskId: newTask.id, projectId, task: newTask }, 'ProjectContext');
   };
 
-  const updateTask = (projectId: string, taskId: string, updates: Partial<ProjectTask>) => {
+  const updateTask = async (projectId: string, taskId: string, updates: Partial<ProjectTask>) => {
     setAllProjects(prev => prev.map(p => 
       p.id === projectId
         ? {
@@ -470,7 +641,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     eventBus.emit('task_updated', { taskId, projectId, updates }, 'ProjectContext');
   };
 
-  const deleteTask = (projectId: string, taskId: string) => {
+  const deleteTask = async (projectId: string, taskId: string) => {
     setAllProjects(prev => prev.map(p => 
       p.id === projectId
         ? {
@@ -481,7 +652,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ));
   };
 
-  const completeTask = (projectId: string, taskId: string) => {
+  const completeTask = async (projectId: string, taskId: string) => {
     const project = allProjects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
@@ -497,7 +668,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const assignTaskToResource = (projectId: string, taskId: string, resourceId: string) => {
+  const assignTaskToResource = async (projectId: string, taskId: string, resourceId: string) => {
     const project = allProjects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
@@ -516,33 +687,55 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const addMilestone = (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => {
-    const newMilestone: ProjectMilestone = {
-      ...milestone,
-      id: `milestone-${Date.now()}`
-    };
-    
-    setAllProjects(prev => prev.map(p => 
-      p.id === projectId 
-        ? { ...p, milestones: [...p.milestones, newMilestone] }
-        : p
-    ));
+  const addMilestone = async (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => {
+    try {
+      const { error } = await supabase
+        .from('milestones')
+        .insert({
+          project_id: projectId,
+          name: milestone.name,
+          description: milestone.description,
+          due_date: milestone.date,
+          baseline_date: milestone.baselineDate,
+          status: milestone.status,
+          task_ids: milestone.tasks,
+          progress: milestone.progress || 0
+        });
+
+      if (error) throw error;
+      await refreshProjects();
+    } catch (error) {
+      console.error('Error adding milestone:', error);
+      throw error;
+    }
   };
 
-  const updateMilestone = (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => {
-    setAllProjects(prev => prev.map(p => 
-      p.id === projectId
-        ? {
-            ...p,
-            milestones: p.milestones.map(m => m.id === milestoneId ? { ...m, ...updates } : m)
-          }
-        : p
-    ));
+  const updateMilestone = async (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => {
+    try {
+      const { error } = await supabase
+        .from('milestones')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          due_date: updates.date,
+          baseline_date: updates.baselineDate,
+          status: updates.status,
+          task_ids: updates.tasks,
+          progress: updates.progress
+        })
+        .eq('id', milestoneId);
 
-    eventBus.emit('milestone_reached', { milestoneId, projectId, updates }, 'ProjectContext');
+      if (error) throw error;
+      
+      await refreshProjects();
+      eventBus.emit('milestone_reached', { milestoneId, projectId, updates }, 'ProjectContext');
+    } catch (error) {
+      console.error('Error updating milestone:', error);
+      throw error;
+    }
   };
 
-  const rebaselineTasks = (projectId: string, request: RebaselineRequest) => {
+  const rebaselineTasks = async (projectId: string, request: RebaselineRequest) => {
     setAllProjects(prev => prev.map(p => {
       if (p.id !== projectId) return p;
       
@@ -580,6 +773,42 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
   };
 
+  // Retry AI processing function
+  const retryAIProcessing = async (projectId: string) => {
+    try {
+      // Update status to processing
+      await supabase
+        .from('projects')
+        .update({ 
+          ai_processing_status: 'processing',
+          ai_processing_started_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+
+      // Trigger background AI processing
+      const { error } = await supabase.functions.invoke('process-project-ai', {
+        body: { projectId }
+      });
+
+      if (error) throw error;
+      
+      await refreshProjects();
+    } catch (error) {
+      console.error('Error retrying AI processing:', error);
+      
+      // Update status to failed
+      await supabase
+        .from('projects')
+        .update({ 
+          ai_processing_status: 'failed',
+          ai_processing_completed_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+        
+      throw error;
+    }
+  };
+
   return (
     <ProjectContext.Provider value={{
       projects,
@@ -596,7 +825,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       rebaselineTasks,
       setCurrentProject,
       completeTask,
-      assignTaskToResource
+      assignTaskToResource,
+      refreshProjects,
+      retryAIProcessing
     }}>
       {children}
     </ProjectContext.Provider>

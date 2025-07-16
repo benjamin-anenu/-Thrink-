@@ -4,6 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
+import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
 import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
 import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
 import ResourcePlanningStep from '@/components/project-creation/ResourcePlanningStep';
@@ -18,53 +22,21 @@ interface ProjectCreationWizardProps {
   onProjectCreated: (project: any) => void;
 }
 
-interface ProjectData {
-  name: string;
-  description: string;
-  kickoffData: {
-    documents: File[];
-    meetingMinutes: string;
-    objectives: string[];
-  };
-  requirements: {
-    functional: string[];
-    nonFunctional: string[];
-    constraints: string[];
-    stakeholderSignoffs: boolean[];
-  };
-  resources: {
-    teamMembers: any[];
-    budget: string;
-    timeline: { start: string; end: string };
-  };
-  stakeholders: any[];
-  escalationMatrix: any[];
-  milestones: any[];
-  aiGenerated: {
-    projectPlan: string;
-    riskAssessment: string;
-    recommendations: string[];
-  };
-  initiation: {
-    document: string;
-    signatures: any[];
-    approved: boolean;
-  };
-}
-
 const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   isOpen,
   onClose,
   onProjectCreated
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [projectData, setProjectData] = useState<ProjectData>({
+  const [isCreating, setIsCreating] = useState(false);
+  const [projectData, setProjectData] = useState<ProjectCreationData>({
     name: '',
     description: '',
+    workspaceId: '',
     kickoffData: {
-      documents: [],
       meetingMinutes: '',
-      objectives: []
+      objectives: [],
+      documents: []
     },
     requirements: {
       functional: [],
@@ -92,14 +64,25 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }
   });
 
+  const { toast } = useToast();
+  const { currentWorkspace } = useWorkspace();
+
+  // Set workspace ID when component mounts or workspace changes
+  React.useEffect(() => {
+    if (currentWorkspace) {
+      setProjectData(prev => ({ ...prev, workspaceId: currentWorkspace.id }));
+    }
+  }, [currentWorkspace]);
+
   const steps = [
-    { number: 1, title: 'Kickoff Session', component: KickoffSessionStep },
-    { number: 2, title: 'Requirements Gathering', component: RequirementsGatheringStep },
-    { number: 3, title: 'Resource Planning', component: ResourcePlanningStep },
-    { number: 4, title: 'Stakeholder Management', component: StakeholderManagementStep },
-    { number: 5, title: 'Milestone Planning', component: MilestonePlanningStep },
-    { number: 6, title: 'AI Review & Planning', component: AIReviewStep },
-    { number: 7, title: 'Project Initiation', component: ProjectInitiationStep }
+    { number: 1, title: 'Project Details', component: ProjectDetailsStep },
+    { number: 2, title: 'Kickoff Session', component: KickoffSessionStep },
+    { number: 3, title: 'Requirements Gathering', component: RequirementsGatheringStep },
+    { number: 4, title: 'Resource Planning', component: ResourcePlanningStep },
+    { number: 5, title: 'Stakeholder Management', component: StakeholderManagementStep },
+    { number: 6, title: 'Milestone Planning', component: MilestonePlanningStep },
+    { number: 7, title: 'AI Review & Planning', component: AIReviewStep },
+    { number: 8, title: 'Project Initiation', component: ProjectInitiationStep }
   ];
 
   const currentStepData = steps[currentStep - 1];
@@ -122,16 +105,88 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     setProjectData(prev => ({ ...prev, ...stepData }));
   };
 
-  const handleFinish = () => {
-    onProjectCreated(projectData);
-    onClose();
+  const handleFinish = async () => {
+    if (!currentWorkspace) {
+      toast({
+        title: "Error",
+        description: "No workspace selected. Please select a workspace first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    
+    try {
+      const project = await ProjectCreationService.createProject({
+        ...projectData,
+        workspaceId: currentWorkspace.id
+      });
+
+      toast({
+        title: "Success!",
+        description: `Project "${project.name}" has been created successfully.`,
+      });
+
+      onProjectCreated(project);
+      onClose();
+      
+      // Reset form
+      setCurrentStep(1);
+      setProjectData({
+        name: '',
+        description: '',
+        workspaceId: currentWorkspace.id,
+        kickoffData: {
+          meetingMinutes: '',
+          objectives: [],
+          documents: []
+        },
+        requirements: {
+          functional: [],
+          nonFunctional: [],
+          constraints: [],
+          stakeholderSignoffs: []
+        },
+        resources: {
+          teamMembers: [],
+          budget: '',
+          timeline: { start: '', end: '' }
+        },
+        stakeholders: [],
+        escalationMatrix: [],
+        milestones: [],
+        aiGenerated: {
+          projectPlan: '',
+          riskAssessment: '',
+          recommendations: []
+        },
+        initiation: {
+          document: '',
+          signatures: [],
+          approved: false
+        }
+      });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create project. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
+          <p id="project-creation-description" className="text-muted-foreground">
+            Follow this guided wizard to set up your new project with all necessary details and configurations.
+          </p>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Step {currentStep} of {steps.length}: {currentStepData.title}</span>
@@ -152,7 +207,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           <Button
             variant="outline"
             onClick={handleBack}
-            disabled={currentStep === 1}
+            disabled={currentStep === 1 || isCreating}
             className="flex items-center gap-2"
           >
             <ArrowLeft size={16} />
@@ -160,17 +215,29 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           </Button>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              disabled={isCreating}
+            >
               Cancel
             </Button>
             {currentStep < steps.length ? (
-              <Button onClick={handleNext} className="flex items-center gap-2">
+              <Button 
+                onClick={handleNext} 
+                className="flex items-center gap-2"
+                disabled={isCreating}
+              >
                 Next
                 <ArrowRight size={16} />
               </Button>
             ) : (
-              <Button onClick={handleFinish} className="bg-primary">
-                Create Project
+              <Button 
+                onClick={handleFinish} 
+                className="bg-primary"
+                disabled={isCreating || !projectData.name}
+              >
+                {isCreating ? 'Creating Project...' : 'Create Project'}
               </Button>
             )}
           </div>

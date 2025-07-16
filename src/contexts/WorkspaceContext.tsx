@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Workspace, WorkspaceMember } from '@/types/workspace';
+import { Workspace, WorkspaceMember, WorkspaceSettings } from '@/types/workspace';
+import { supabase } from '@/integrations/supabase/client';
 import { dataPersistence } from '@/services/DataPersistence';
 import { contextSynchronizer } from '@/services/ContextSynchronizer';
 import { eventBus } from '@/services/EventBus';
@@ -8,6 +9,7 @@ import { eventBus } from '@/services/EventBus';
 interface WorkspaceContextType {
   currentWorkspace: Workspace | null;
   workspaces: Workspace[];
+  loading: boolean;
   setCurrentWorkspace: (workspace: Workspace) => void;
   addWorkspace: (workspace: Workspace) => void;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
@@ -15,6 +17,7 @@ interface WorkspaceContextType {
   inviteMember: (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => void;
   removeMember: (workspaceId: string, memberId: string) => void;
   updateMemberRole: (workspaceId: string, memberId: string, role: 'admin' | 'member' | 'viewer') => void;
+  refreshWorkspaces: () => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -22,16 +25,111 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load workspaces from persistent storage on mount
-  useEffect(() => {
-    const savedWorkspaces = dataPersistence.getData<Workspace[]>('workspaces');
-    if (savedWorkspaces && savedWorkspaces.length > 0) {
-      setWorkspaces(savedWorkspaces);
-      setCurrentWorkspace(savedWorkspaces[0]);
-    } else {
-      initializeDefaultWorkspaces();
+  // Helper function to safely parse workspace settings
+  const parseWorkspaceSettings = (settings: any): WorkspaceSettings => {
+    const defaultSettings: WorkspaceSettings = {
+      allowGuestAccess: false,
+      defaultProjectVisibility: 'private' as const,
+      notificationSettings: {
+        emailNotifications: true,
+        projectUpdates: true,
+        taskAssignments: true,
+        deadlineReminders: true
+      }
+    };
+
+    if (!settings || typeof settings !== 'object') {
+      return defaultSettings;
     }
+
+    return {
+      allowGuestAccess: Boolean(settings.allowGuestAccess),
+      defaultProjectVisibility: settings.defaultProjectVisibility || 'private',
+      notificationSettings: {
+        emailNotifications: Boolean(settings.notificationSettings?.emailNotifications ?? true),
+        projectUpdates: Boolean(settings.notificationSettings?.projectUpdates ?? true),
+        taskAssignments: Boolean(settings.notificationSettings?.taskAssignments ?? true),
+        deadlineReminders: Boolean(settings.notificationSettings?.deadlineReminders ?? true)
+      }
+    };
+  };
+
+  // Fetch workspaces from Supabase
+  const fetchWorkspaces = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch workspaces where user is a member
+      const { data: workspaceData, error } = await supabase
+        .from('workspaces')
+        .select(`
+          *,
+          workspace_members!inner(
+            id,
+            user_id,
+            role,
+            status,
+            joined_at,
+            profiles(email, full_name)
+          )
+        `)
+        .eq('workspace_members.user_id', user.id)
+        .eq('workspace_members.status', 'active');
+
+      if (error) {
+        console.error('Error fetching workspaces:', error);
+        setLoading(false);
+        return;
+      }
+
+      // Transform the data to match our Workspace interface
+      const transformedWorkspaces: Workspace[] = workspaceData?.map(ws => ({
+        id: ws.id,
+        name: ws.name,
+        description: ws.description || '',
+        createdAt: ws.created_at,
+        ownerId: ws.owner_id,
+        members: ws.workspace_members.map((member: any) => ({
+          id: member.id,
+          userId: member.user_id,
+          email: member.profiles?.email || '',
+          name: member.profiles?.full_name || member.profiles?.email || 'Unknown User',
+          role: member.role,
+          joinedAt: member.joined_at,
+          status: member.status
+        })),
+        settings: parseWorkspaceSettings(ws.settings)
+      })) || [];
+
+      setWorkspaces(transformedWorkspaces);
+      if (transformedWorkspaces.length > 0 && !currentWorkspace) {
+        setCurrentWorkspace(transformedWorkspaces[0]);
+      }
+    } catch (error) {
+      console.error('Error in fetchWorkspaces:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load workspaces on mount and when auth state changes
+  useEffect(() => {
+    fetchWorkspaces();
+
+    // Subscribe to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        fetchWorkspaces();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Register with context synchronizer
@@ -49,96 +147,6 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     return unregister;
   }, [currentWorkspace]);
-
-  // Save workspaces to persistent storage whenever workspaces change
-  useEffect(() => {
-    if (workspaces.length > 0) {
-      dataPersistence.persistData('workspaces', workspaces, 'workspace_context');
-    }
-  }, [workspaces]);
-
-  const initializeDefaultWorkspaces = () => {
-    const initialWorkspaces: Workspace[] = [
-      {
-        id: 'ws-1',
-        name: 'Personal Workspace',
-        description: 'Your personal project space',
-        createdAt: '2024-01-01T00:00:00Z',
-        ownerId: 'user-1',
-        members: [
-          {
-            id: 'member-1',
-            userId: 'user-1',
-            email: 'you@company.com',
-            name: 'You',
-            role: 'owner',
-            joinedAt: '2024-01-01T00:00:00Z',
-            status: 'active'
-          }
-        ],
-        settings: {
-          allowGuestAccess: false,
-          defaultProjectVisibility: 'private',
-          notificationSettings: {
-            emailNotifications: true,
-            projectUpdates: true,
-            taskAssignments: true,
-            deadlineReminders: true
-          }
-        }
-      },
-      {
-        id: 'ws-2',
-        name: 'Team Alpha',
-        description: 'Cross-functional product development team',
-        createdAt: '2024-01-15T00:00:00Z',
-        ownerId: 'user-1',
-        members: [
-          {
-            id: 'member-2',
-            userId: 'user-1',
-            email: 'you@company.com',
-            name: 'You',
-            role: 'owner',
-            joinedAt: '2024-01-15T00:00:00Z',
-            status: 'active'
-          },
-          {
-            id: 'member-3',
-            userId: 'user-2',
-            email: 'sarah@company.com',
-            name: 'Sarah Chen',
-            role: 'admin',
-            joinedAt: '2024-01-16T00:00:00Z',
-            status: 'active'
-          },
-          {
-            id: 'member-4',
-            userId: 'user-3',
-            email: 'mike@company.com',
-            name: 'Mike Rodriguez',
-            role: 'member',
-            joinedAt: '2024-01-20T00:00:00Z',
-            status: 'active'
-          }
-        ],
-        settings: {
-          allowGuestAccess: true,
-          defaultProjectVisibility: 'workspace',
-          notificationSettings: {
-            emailNotifications: true,
-            projectUpdates: true,
-            taskAssignments: true,
-            deadlineReminders: false
-          }
-        }
-      }
-    ];
-
-    setWorkspaces(initialWorkspaces);
-    setCurrentWorkspace(initialWorkspaces[0]);
-    dataPersistence.persistData('workspaces', initialWorkspaces, 'workspace_context');
-  };
 
   const addWorkspace = (workspace: Workspace) => {
     const newWorkspace = {
@@ -250,13 +258,15 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <WorkspaceContext.Provider value={{
       currentWorkspace,
       workspaces,
+      loading,
       setCurrentWorkspace,
       addWorkspace,
       updateWorkspace,
       removeWorkspace,
       inviteMember,
       removeMember,
-      updateMemberRole
+      updateMemberRole,
+      refreshWorkspaces: fetchWorkspaces
     }}>
       {children}
     </WorkspaceContext.Provider>
