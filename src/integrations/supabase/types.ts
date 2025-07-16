@@ -367,6 +367,50 @@ export type Database = {
           },
         ]
       }
+      project_drafts: {
+        Row: {
+          created_at: string
+          current_step: number
+          draft_data: Json
+          draft_name: string
+          id: string
+          last_modified: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_step?: number
+          draft_data?: Json
+          draft_name: string
+          id?: string
+          last_modified?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          current_step?: number
+          draft_data?: Json
+          draft_name?: string
+          id?: string
+          last_modified?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_project_drafts_workspace"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_escalation_matrix: {
         Row: {
           contact_email: string

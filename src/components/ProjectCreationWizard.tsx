@@ -1,12 +1,13 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
+import { ProjectDraftService, ProjectDraft } from '@/services/ProjectDraftService';
+import { DraftManagementModal } from './DraftManagementModal';
 import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
 import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
 import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
@@ -29,6 +30,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
+  const [currentDraft, setCurrentDraft] = useState<ProjectDraft | null>(null);
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
   const [projectData, setProjectData] = useState<ProjectCreationData>({
     name: '',
     description: '',
@@ -102,7 +106,120 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   };
 
   const handleStepData = (stepData: any) => {
-    setProjectData(prev => ({ ...prev, ...stepData }));
+    const newData = { ...projectData, ...stepData };
+    setProjectData(newData);
+    
+    // Auto-save if we have a current workspace and project data
+    if (currentWorkspace && (newData.name || currentDraft)) {
+      autoSaveDraft(newData);
+    }
+  };
+
+  const autoSaveDraft = async (data: ProjectCreationData) => {
+    if (!currentWorkspace || autoSaving) return;
+    
+    const draftName = data.name || currentDraft?.draft_name || `Draft ${new Date().toLocaleString()}`;
+    
+    setAutoSaving(true);
+    try {
+      const draft = await ProjectDraftService.autoSaveDraft(
+        draftName,
+        currentWorkspace.id,
+        data,
+        currentStep,
+        currentDraft?.id
+      );
+      setCurrentDraft(draft);
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setAutoSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!currentWorkspace) {
+      toast({
+        title: "Error",
+        description: "Please select a workspace first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const draftName = projectData.name || `Draft ${new Date().toLocaleString()}`;
+    
+    try {
+      const draft = await ProjectDraftService.saveDraft(
+        draftName,
+        currentWorkspace.id,
+        projectData,
+        currentStep,
+        currentDraft?.id
+      );
+      setCurrentDraft(draft);
+      toast({
+        title: "Success",
+        description: "Draft saved successfully"
+      });
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save draft",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleLoadDraft = (draft: ProjectDraft) => {
+    setProjectData(draft.draft_data);
+    setCurrentStep(draft.current_step);
+    setCurrentDraft(draft);
+    toast({
+      title: "Success",
+      description: "Draft loaded successfully"
+    });
+  };
+
+  const resetWizard = () => {
+    setCurrentStep(1);
+    setProjectData({
+      name: '',
+      description: '',
+      workspaceId: currentWorkspace?.id || '',
+      kickoffData: {
+        meetingMinutes: '',
+        objectives: [],
+        documents: []
+      },
+      requirements: {
+        functional: [],
+        nonFunctional: [],
+        constraints: [],
+        stakeholderSignoffs: []
+      },
+      resources: {
+        teamMembers: [],
+        budget: '',
+        timeline: { start: '', end: '' }
+      },
+      stakeholders: [],
+      escalationMatrix: [],
+      milestones: [],
+      aiGenerated: {
+        projectPlan: '',
+        riskAssessment: '',
+        recommendations: []
+      },
+      initiation: {
+        document: '',
+        signatures: [],
+        approved: false
+      }
+    });
+    setCurrentDraft(null);
+    setIsCreating(false);
   };
 
   const handleFinish = async () => {
@@ -129,44 +246,18 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       });
 
       onProjectCreated(project);
-      onClose();
       
-      // Reset form
-      setCurrentStep(1);
-      setProjectData({
-        name: '',
-        description: '',
-        workspaceId: currentWorkspace.id,
-        kickoffData: {
-          meetingMinutes: '',
-          objectives: [],
-          documents: []
-        },
-        requirements: {
-          functional: [],
-          nonFunctional: [],
-          constraints: [],
-          stakeholderSignoffs: []
-        },
-        resources: {
-          teamMembers: [],
-          budget: '',
-          timeline: { start: '', end: '' }
-        },
-        stakeholders: [],
-        escalationMatrix: [],
-        milestones: [],
-        aiGenerated: {
-          projectPlan: '',
-          riskAssessment: '',
-          recommendations: []
-        },
-        initiation: {
-          document: '',
-          signatures: [],
-          approved: false
+      // Delete the draft if it exists since project was created
+      if (currentDraft) {
+        try {
+          await ProjectDraftService.deleteDraft(currentDraft.id);
+        } catch (error) {
+          console.error('Error deleting draft after project creation:', error);
         }
-      });
+      }
+      
+      resetWizard();
+      onClose();
     } catch (error) {
       console.error('Error creating project:', error);
       toast({
@@ -179,14 +270,59 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }
   };
 
+  // Clear auto-save when component unmounts or dialog closes
+  useEffect(() => {
+    return () => {
+      if (currentDraft) {
+        ProjectDraftService.clearAutoSave(currentDraft.id);
+      }
+    };
+  }, [currentDraft]);
+
+  // Reset when dialog opens
+  useEffect(() => {
+    if (isOpen && !currentDraft) {
+      resetWizard();
+    }
+  }, [isOpen]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
-          <p id="project-creation-description" className="text-muted-foreground">
-            Follow this guided wizard to set up your new project with all necessary details and configurations.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
+              <p id="project-creation-description" className="text-muted-foreground">
+                Follow this guided wizard to set up your new project with all necessary details and configurations.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {autoSaving && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                  Saving...
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDraftModal(true)}
+              >
+                <FolderOpen className="h-4 w-4 mr-1" />
+                Load Draft
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveDraft}
+                disabled={!currentWorkspace}
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Save Draft
+              </Button>
+            </div>
+          </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Step {currentStep} of {steps.length}: {currentStepData.title}</span>
@@ -243,6 +379,12 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      <DraftManagementModal
+        isOpen={showDraftModal}
+        onClose={() => setShowDraftModal(false)}
+        onLoadDraft={handleLoadDraft}
+      />
     </Dialog>
   );
 };
