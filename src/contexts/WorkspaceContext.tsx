@@ -9,7 +9,7 @@ interface WorkspaceContextType {
   loading: boolean;
   error: string | null;
   setCurrentWorkspace: (workspace: Workspace) => void;
-  addWorkspace: (workspace: Workspace) => void;
+  addWorkspace: (name: string, description?: string) => Promise<string>;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
   removeWorkspace: (workspaceId: string) => void;
   inviteMember: (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => void;
@@ -140,13 +140,24 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchWorkspaces();
   }, [user, authLoading]) // Only depend on user and auth loading state
 
-  const addWorkspace = (workspace: Workspace) => {
-    const newWorkspace = {
-      ...workspace,
-      createdAt: workspace.createdAt || new Date().toISOString()
-    };
-    setWorkspaces(prev => [...prev, newWorkspace]);
-    console.log('[Workspace] Added workspace:', newWorkspace.name)
+  const addWorkspace = async (name: string, description?: string): Promise<string> => {
+    try {
+      const { data: workspaceId, error } = await supabase.rpc('create_workspace_with_owner', {
+        workspace_name: name,
+        workspace_description: description
+      });
+
+      if (error) throw error;
+
+      // Refresh workspaces to include the new one
+      await fetchWorkspaces();
+      
+      console.log('[Workspace] Created workspace:', name, 'with ID:', workspaceId);
+      return workspaceId;
+    } catch (error) {
+      console.error('Error creating workspace:', error);
+      throw error;
+    }
   };
 
   const updateWorkspace = (workspaceId: string, updates: Partial<Workspace>) => {

@@ -1241,6 +1241,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_workspace_admin: {
+        Args: { workspace_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      is_workspace_member: {
+        Args: { workspace_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
       track_user_session: {
         Args: {
           session_id_param: string
