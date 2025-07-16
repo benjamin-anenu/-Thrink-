@@ -152,7 +152,7 @@ export const useTaskManagement = (projectId: string) => {
     }
   };
 
-  // Update task
+  // Update task with enhanced dependency validation
   const updateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
     try {
       const dbUpdates: Partial<DatabaseTask> = {};
@@ -166,7 +166,11 @@ export const useTaskManagement = (projectId: string) => {
       if (updates.milestoneId !== undefined) dbUpdates.milestone_id = updates.milestoneId;
       if (updates.duration) dbUpdates.duration = updates.duration;
       if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
-      if (updates.dependencies) dbUpdates.dependencies = updates.dependencies;
+      if (updates.dependencies) {
+        // Validate dependencies before updating
+        await validateDependencies(taskId, updates.dependencies);
+        dbUpdates.dependencies = updates.dependencies;
+      }
       if (updates.assignedResources) dbUpdates.assigned_resources = updates.assignedResources;
       if (updates.assignedStakeholders) dbUpdates.assigned_stakeholders = updates.assignedStakeholders;
 
@@ -190,8 +194,37 @@ export const useTaskManagement = (projectId: string) => {
       return updatedTask;
     } catch (error) {
       console.error('Error updating task:', error);
-      toast.error('Failed to update task');
+      if (error instanceof Error && error.message.includes('Circular dependency')) {
+        toast.error('Cannot create circular dependency between tasks');
+      } else {
+        toast.error('Failed to update task');
+      }
       throw error;
+    }
+  };
+
+  // Validate dependencies to prevent circular references
+  const validateDependencies = async (taskId: string, dependencies: string[]) => {
+    if (!dependencies || dependencies.length === 0) return;
+
+    // Check for self-dependency
+    if (dependencies.includes(taskId)) {
+      throw new Error('Circular dependency detected: Task cannot depend on itself');
+    }
+
+    // Check for direct circular dependencies
+    for (const depId of dependencies) {
+      const { data: depTask, error } = await supabase
+        .from('project_tasks')
+        .select('dependencies')
+        .eq('id', depId)
+        .single();
+
+      if (error) continue;
+
+      if (depTask?.dependencies && depTask.dependencies.includes(taskId)) {
+        throw new Error(`Circular dependency detected: Task ${depId} already depends on task ${taskId}`);
+      }
     }
   };
 

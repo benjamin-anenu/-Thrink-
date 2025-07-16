@@ -1341,6 +1341,14 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
+      check_task_dependencies: {
+        Args: { task_id_param: string }
+        Returns: {
+          dependent_task_id: string
+          dependent_task_name: string
+          dependency_type: string
+        }[]
+      }
       create_milestone: {
         Args: {
           p_project_id: string

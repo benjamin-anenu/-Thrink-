@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import TableControls from './table/TableControls';
 import ResizableTable from './table/ResizableTable';
+import DeleteTaskConfirmationDialog from './DeleteTaskConfirmationDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -66,20 +68,59 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
-  // Available resources and stakeholders - should be fetched from database in production
-  const availableResources = useMemo(() => [
-    { id: 'sarah', name: 'Sarah Johnson', role: 'Frontend Developer', email: 'sarah@company.com' },
-    { id: 'michael', name: 'Michael Chen', role: 'Backend Developer', email: 'michael@company.com' },
-    { id: 'emily', name: 'Emily Rodriguez', role: 'UX Designer', email: 'emily@company.com' },
-    { id: 'david', name: 'David Kim', role: 'Project Manager', email: 'david@company.com' },
-    { id: 'james', name: 'James Wilson', role: 'DevOps Engineer', email: 'james@company.com' }
-  ], []);
+  // Load resources and stakeholders from database
+  const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
+  const [availableStakeholders, setAvailableStakeholders] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null);
 
-  const availableStakeholders = useMemo(() => [
-    { id: 'john-doe', name: 'John Doe', role: 'Product Manager', email: 'john@company.com' },
-    { id: 'jane-smith', name: 'Jane Smith', role: 'Business Analyst', email: 'jane@company.com' },
-    { id: 'mike-wilson', name: 'Mike Wilson', role: 'Tech Lead', email: 'mike@company.com' }
-  ], []);
+  // Load resources and stakeholders from database
+  useEffect(() => {
+    const loadResourcesAndStakeholders = async () => {
+      try {
+        // Load resources
+        const { data: resourcesData, error: resourcesError } = await supabase
+          .from('resources')
+          .select('id, name, role, email')
+          .order('name');
+
+        if (resourcesError) {
+          console.error('Error loading resources:', resourcesError);
+        } else {
+          setAvailableResources((resourcesData || []).map(r => ({
+            id: r.id,
+            name: r.name,
+            role: r.role || 'Unknown',
+            email: r.email
+          })));
+        }
+
+        // Load stakeholders
+        const { data: stakeholdersData, error: stakeholdersError } = await supabase
+          .from('stakeholders')
+          .select('id, name, role, email')
+          .eq('workspace_id', project.workspaceId)
+          .order('name');
+
+        if (stakeholdersError) {
+          console.error('Error loading stakeholders:', stakeholdersError);
+        } else {
+          setAvailableStakeholders((stakeholdersData || []).map(s => ({
+            id: s.id,
+            name: s.name,
+            role: s.role || 'Unknown',
+            email: s.email
+          })));
+        }
+      } catch (error) {
+        console.error('Error loading resources and stakeholders:', error);
+      }
+    };
+
+    if (project?.workspaceId) {
+      loadResourcesAndStakeholders();
+    }
+  }, [project?.workspaceId]);
 
   // Group tasks by milestone with safe data handling
   const groupedTasks = useMemo(() => {
@@ -174,10 +215,22 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setTaskToDelete(task);
+      setShowDeleteDialog(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    
     try {
-      await deleteTaskDB(taskId);
+      await deleteTaskDB(taskToDelete.id);
       toast.success('Task deleted successfully');
+      setShowDeleteDialog(false);
+      setTaskToDelete(null);
     } catch (error) {
       // Error is handled in the hook
     }
@@ -509,6 +562,15 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteTaskConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        task={taskToDelete}
+        allTasks={tasks}
+        onConfirm={handleConfirmDelete}
+      />
       </div>
     </ErrorBoundary>
   );
