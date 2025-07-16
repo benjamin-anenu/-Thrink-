@@ -5,6 +5,7 @@ import { EmailReminderService } from '@/services/EmailReminderService';
 import { NotificationIntegrationService } from '@/services/NotificationIntegrationService';
 import { eventBus } from '@/services/EventBus';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectContextType {
   projects: ProjectData[];
@@ -50,25 +51,25 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const emailService = EmailReminderService.getInstance();
   const notificationService = NotificationIntegrationService.getInstance();
 
-  // Load projects from localStorage on mount
+  // Load projects from Supabase on mount (with localStorage fallback)
   useEffect(() => {
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      const parsedProjects = JSON.parse(savedProjects);
-      setAllProjects(parsedProjects);
-      
-      // Schedule email reminders for existing tasks
-      parsedProjects.forEach((project: ProjectData) => {
-        project.tasks.forEach(task => {
-          if (task.status !== 'Completed') {
-            scheduleTaskReminders(task, project);
-          }
-        });
-      });
-    } else {
-      // Initialize with realistic single project data
-      initializeRealisticProject();
+    async function fetchProjects() {
+      setLoading(true);
+      const { data, error } = await supabase.from('projects').select('*');
+      if (data) {
+        setAllProjects(data);
+      } else {
+        // fallback to localStorage if Supabase fails
+        const savedProjects = localStorage.getItem('projects');
+        if (savedProjects) {
+          setAllProjects(JSON.parse(savedProjects));
+        } else {
+          initializeRealisticProject();
+        }
+      }
+      setLoading(false);
     }
+    fetchProjects();
   }, []);
 
   // Save projects to localStorage whenever projects change
@@ -413,25 +414,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentProjectState(project);
   };
 
-  const addProject = (project: Omit<ProjectData, 'id'>) => {
-    const newProject: ProjectData = {
-      ...project,
-      id: `proj-${Date.now()}`,
-      workspaceId: currentWorkspace?.id || 'ws-1',
-      createdAt: new Date().toISOString()
-    };
-    
-    setAllProjects(prev => [...prev, newProject]);
-
-    // Schedule email reminders for new project tasks
-    newProject.tasks?.forEach(task => {
-      if (task.status !== 'Completed') {
-        scheduleTaskReminders(task, newProject);
-      }
-    });
-
-    eventBus.emit('project_created', { projectId: newProject.id, project: newProject }, 'ProjectContext');
-    console.log('[ProjectContext] New project created:', newProject.name);
+  const addProject = async (project: Omit<ProjectData, 'id'>) => {
+    setLoading(true);
+    // You may want to generate a UUID here or let Supabase do it
+    const { data, error } = await supabase.from('projects').insert([project]).select().single();
+    if (data) {
+      setAllProjects(prev => [...prev, data]);
+      // Optionally update localStorage for fallback
+      localStorage.setItem('projects', JSON.stringify([...allProjects, data]));
+    } else {
+      // fallback to local logic if Supabase fails
+      const newProject = { ...project, id: `proj-${Date.now()}` };
+      setAllProjects(prev => [...prev, newProject]);
+      localStorage.setItem('projects', JSON.stringify([...allProjects, newProject]));
+    }
+    setLoading(false);
   };
 
   const updateProject = (id: string, updates: Partial<ProjectData>) => {
