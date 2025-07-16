@@ -1,15 +1,13 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Workspace, WorkspaceMember, WorkspaceSettings } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
-import { dataPersistence } from '@/services/DataPersistence';
-import { contextSynchronizer } from '@/services/ContextSynchronizer';
-import { eventBus } from '@/services/EventBus';
+import { useAuth } from './AuthContext';
 
 interface WorkspaceContextType {
   currentWorkspace: Workspace | null;
   workspaces: Workspace[];
   loading: boolean;
+  error: string | null;
   setCurrentWorkspace: (workspace: Workspace) => void;
   addWorkspace: (workspace: Workspace) => void;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
@@ -23,9 +21,11 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading: authLoading } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Helper function to safely parse workspace settings
   const parseWorkspaceSettings = (settings: any): WorkspaceSettings => {
@@ -56,17 +56,24 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
-  // Fetch workspaces from Supabase
+  // Fetch workspaces from Supabase - optimized
   const fetchWorkspaces = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    if (!user) {
+      console.log('[Workspace] No user, clearing workspaces')
+      setWorkspaces([])
+      setCurrentWorkspace(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
 
+    console.log('[Workspace] Fetching workspaces for user:', user.id)
+    setLoading(true)
+    setError(null)
+
+    try {
       // Fetch workspaces where user is a member
-      const { data: workspaceData, error } = await supabase
+      const { data: workspaceData, error: workspaceError } = await supabase
         .from('workspaces')
         .select(`
           *,
@@ -82,9 +89,9 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .eq('workspace_members.user_id', user.id)
         .eq('workspace_members.status', 'active');
 
-      if (error) {
-        console.error('Error fetching workspaces:', error);
-        setLoading(false);
+      if (workspaceError) {
+        console.error('[Workspace] Error fetching workspaces:', workspaceError);
+        setError('Failed to load workspaces')
         return;
       }
 
@@ -107,46 +114,31 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         settings: parseWorkspaceSettings(ws.settings)
       })) || [];
 
+      console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces')
       setWorkspaces(transformedWorkspaces);
+      
+      // Set current workspace if none selected
       if (transformedWorkspaces.length > 0 && !currentWorkspace) {
         setCurrentWorkspace(transformedWorkspaces[0]);
+        console.log('[Workspace] Set current workspace:', transformedWorkspaces[0].name)
       }
     } catch (error) {
-      console.error('Error in fetchWorkspaces:', error);
+      console.error('[Workspace] Exception in fetchWorkspaces:', error);
+      setError('An error occurred while loading workspaces')
     } finally {
       setLoading(false);
     }
   };
 
-  // Load workspaces on mount and when auth state changes
+  // Load workspaces when user is available and auth loading is complete
   useEffect(() => {
+    if (authLoading) {
+      console.log('[Workspace] Auth still loading, waiting...')
+      return
+    }
+
     fetchWorkspaces();
-
-    // Subscribe to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        fetchWorkspaces();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Register with context synchronizer
-  useEffect(() => {
-    const unregister = contextSynchronizer.registerContext('workspaces', (updatedWorkspaces: Workspace[]) => {
-      setWorkspaces(updatedWorkspaces);
-      // Update current workspace if it was modified
-      if (currentWorkspace) {
-        const updatedCurrent = updatedWorkspaces.find(ws => ws.id === currentWorkspace.id);
-        if (updatedCurrent) {
-          setCurrentWorkspace(updatedCurrent);
-        }
-      }
-    });
-
-    return unregister;
-  }, [currentWorkspace]);
+  }, [user, authLoading]) // Only depend on user and auth loading state
 
   const addWorkspace = (workspace: Workspace) => {
     const newWorkspace = {
@@ -154,12 +146,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       createdAt: workspace.createdAt || new Date().toISOString()
     };
     setWorkspaces(prev => [...prev, newWorkspace]);
-
-    // Emit creation event
-    eventBus.emit('context_updated', {
-      type: 'workspace_created',
-      workspace: newWorkspace
-    }, 'workspace_context');
+    console.log('[Workspace] Added workspace:', newWorkspace.name)
   };
 
   const updateWorkspace = (workspaceId: string, updates: Partial<Workspace>) => {
@@ -173,12 +160,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setCurrentWorkspace(prev => prev ? { ...prev, ...updates } : null);
     }
 
-    // Emit update event
-    eventBus.emit('context_updated', {
-      type: 'workspace_updated',
-      workspaceId,
-      updates
-    }, 'workspace_context');
+    console.log('[Workspace] Updated workspace:', workspaceId)
   };
 
   const removeWorkspace = (workspaceId: string) => {
@@ -189,11 +171,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setCurrentWorkspace(remainingWorkspaces[0] || null);
     }
 
-    // Emit removal event
-    eventBus.emit('context_updated', {
-      type: 'workspace_removed',
-      workspaceId
-    }, 'workspace_context');
+    console.log('[Workspace] Removed workspace:', workspaceId)
   };
 
   const inviteMember = (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
@@ -211,12 +189,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       members: [...(workspaces.find(ws => ws.id === workspaceId)?.members || []), newMember]
     });
 
-    // Emit member invitation event
-    eventBus.emit('context_updated', {
-      type: 'member_invited',
-      workspaceId,
-      member: newMember
-    }, 'workspace_context');
+    console.log('[Workspace] Invited member:', email, 'to workspace:', workspaceId)
   };
 
   const removeMember = (workspaceId: string, memberId: string) => {
@@ -225,13 +198,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateWorkspace(workspaceId, {
         members: workspace.members.filter(member => member.id !== memberId)
       });
-
-      // Emit member removal event
-      eventBus.emit('context_updated', {
-        type: 'member_removed',
-        workspaceId,
-        memberId
-      }, 'workspace_context');
+      console.log('[Workspace] Removed member:', memberId, 'from workspace:', workspaceId)
     }
   };
 
@@ -243,14 +210,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           member.id === memberId ? { ...member, role } : member
         )
       });
-
-      // Emit member role update event
-      eventBus.emit('context_updated', {
-        type: 'member_role_updated',
-        workspaceId,
-        memberId,
-        role
-      }, 'workspace_context');
+      console.log('[Workspace] Updated member role:', memberId, 'to', role)
     }
   };
 
@@ -259,6 +219,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       currentWorkspace,
       workspaces,
       loading,
+      error,
       setCurrentWorkspace,
       addWorkspace,
       updateWorkspace,

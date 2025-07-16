@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { ProfileLoader } from '@/components/auth/ProfileLoader';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ResourceProvider } from '@/contexts/ResourceContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
@@ -85,17 +86,19 @@ function App() {
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>
-                <WorkspaceProvider>
-                  <ResourceProvider>
-                    <StakeholderProvider>
-                      <ProjectProvider>
-                        <BrowserRouter>
-                          <AppContent />
-                        </BrowserRouter>
-                      </ProjectProvider>
-                    </StakeholderProvider>
-                  </ResourceProvider>
-                </WorkspaceProvider>
+                <ProfileLoader>
+                  <WorkspaceProvider>
+                    <ResourceProvider>
+                      <StakeholderProvider>
+                        <ProjectProvider>
+                          <BrowserRouter>
+                            <AppContent />
+                          </BrowserRouter>
+                        </ProjectProvider>
+                      </StakeholderProvider>
+                    </ResourceProvider>
+                  </WorkspaceProvider>
+                </ProfileLoader>
               </AuthProvider>
             </GlobalErrorHandler>
           </TooltipProvider>
