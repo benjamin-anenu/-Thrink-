@@ -82,8 +82,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             user_id,
             role,
             status,
-            joined_at,
-            profiles(email, full_name)
+            joined_at
           )
         `)
         .eq('workspace_members.user_id', user.id)
@@ -105,8 +104,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         members: ws.workspace_members.map((member: any) => ({
           id: member.id,
           userId: member.user_id,
-          email: member.profiles?.email || '',
-          name: member.profiles?.full_name || member.profiles?.email || 'Unknown User',
+          email: user.email || '',
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           role: member.role,
           joinedAt: member.joined_at,
           status: member.status
