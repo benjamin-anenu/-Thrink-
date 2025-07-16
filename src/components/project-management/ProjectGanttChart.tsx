@@ -30,7 +30,7 @@ interface ProjectGanttChartProps {
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const { getProject } = useProject();
   
-  // Early return if no projectId - BEFORE any hooks
+  // ALL early returns MUST happen before any hooks are called
   if (!projectId) {
     return <div>No project ID provided</div>;
   }
@@ -40,6 +40,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     return <div className="p-6 text-center text-muted-foreground">Project not found</div>;
   }
   
+  // Now we can safely call all hooks - they will always be called in the same order
   const { 
     tasks, 
     milestones, 
@@ -67,6 +68,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
+  // Loading check can only happen after hooks
   if (loading) {
     return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
   }
