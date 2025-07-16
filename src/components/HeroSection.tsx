@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Play } from 'lucide-react';
@@ -50,12 +50,12 @@ const HeroSection = () => {
         {!user && (
           <div className="mt-4 text-center">
             <span className="text-muted-foreground">Already have an account? </span>
-            <a
-              href="/auth?tab=signin"
+            <Link
+              to="/auth"
               className="text-primary font-medium hover:underline ml-1"
             >
               Sign In
-            </a>
+            </Link>
           </div>
         )}
       </div>
