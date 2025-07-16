@@ -32,11 +32,42 @@ export const useAccessibility = () => {
                            navigator.userAgent.includes('VoiceOver');
 
     const updatePreferences = () => {
-      setPreferences({
-        reduceMotion: mediaQueryReduceMotion.matches,
-        highContrast: mediaQueryHighContrast.matches,
-        largeFonts: mediaQueryLargeFonts.matches,
-        screenReader: hasScreenReader
+      setPreferences(newPrefs => {
+        const updated = {
+          reduceMotion: mediaQueryReduceMotion.matches,
+          highContrast: mediaQueryHighContrast.matches,
+          largeFonts: mediaQueryLargeFonts.matches,
+          screenReader: hasScreenReader
+        };
+
+        // Apply accessibility classes immediately when preferences change
+        const root = document.documentElement;
+        
+        if (updated.reduceMotion) {
+          root.classList.add('reduce-motion');
+        } else {
+          root.classList.remove('reduce-motion');
+        }
+
+        if (updated.highContrast) {
+          root.classList.add('high-contrast');
+        } else {
+          root.classList.remove('high-contrast');
+        }
+
+        if (updated.largeFonts) {
+          root.classList.add('large-fonts');
+        } else {
+          root.classList.remove('large-fonts');
+        }
+
+        if (updated.screenReader) {
+          root.classList.add('screen-reader');
+        } else {
+          root.classList.remove('screen-reader');
+        }
+
+        return updated;
       });
     };
 
@@ -48,44 +79,13 @@ export const useAccessibility = () => {
     mediaQueryHighContrast.addEventListener('change', updatePreferences);
     mediaQueryLargeFonts.addEventListener('change', updatePreferences);
 
-    // Apply accessibility classes to document
-    const applyAccessibilityClasses = () => {
-      const root = document.documentElement;
-      
-      if (preferences.reduceMotion) {
-        root.classList.add('reduce-motion');
-      } else {
-        root.classList.remove('reduce-motion');
-      }
-
-      if (preferences.highContrast) {
-        root.classList.add('high-contrast');
-      } else {
-        root.classList.remove('high-contrast');
-      }
-
-      if (preferences.largeFonts) {
-        root.classList.add('large-fonts');
-      } else {
-        root.classList.remove('large-fonts');
-      }
-
-      if (preferences.screenReader) {
-        root.classList.add('screen-reader');
-      } else {
-        root.classList.remove('screen-reader');
-      }
-    };
-
-    applyAccessibilityClasses();
-
     // Cleanup
     return () => {
       mediaQueryReduceMotion.removeEventListener('change', updatePreferences);
       mediaQueryHighContrast.removeEventListener('change', updatePreferences);
       mediaQueryLargeFonts.removeEventListener('change', updatePreferences);
     };
-  }, [preferences]);
+  }, []);
 
   // Keyboard navigation helpers
   const enhanceKeyboardNavigation = () => {

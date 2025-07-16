@@ -34,37 +34,9 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({ open, onOpe
 
     setIsLoading(true);
     
-    const newWorkspace: Workspace = {
-      id: `ws-${Date.now()}`,
-      name: name.trim(),
-      description: description.trim(),
-      createdAt: new Date().toISOString(),
-      ownerId: 'user-1', // In a real app, this would be the current user ID
-      members: [
-        {
-          id: `member-${Date.now()}`,
-          userId: 'user-1',
-          email: 'you@company.com',
-          name: 'You',
-          role: 'owner',
-          joinedAt: new Date().toISOString(),
-          status: 'active'
-        }
-      ],
-      settings: {
-        allowGuestAccess: false,
-        defaultProjectVisibility: 'workspace',
-        notificationSettings: {
-          emailNotifications: true,
-          projectUpdates: true,
-          taskAssignments: true,
-          deadlineReminders: true
-        }
-      }
-    };
-
     try {
-      addWorkspace(newWorkspace);
+      const workspaceId = await addWorkspace(name.trim(), description.trim());
+      
       toast({
         title: "Workspace created successfully! 🎉",
         description: `${name} is ready for your team to collaborate.`,
@@ -75,9 +47,10 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({ open, onOpe
       setDescription('');
       onOpenChange(false);
     } catch (error) {
+      console.error('Error creating workspace:', error);
       toast({
         title: "Error creating workspace",
-        description: "Please try again later.",
+        description: error instanceof Error ? error.message : "Please try again later.",
         variant: "destructive",
       });
     } finally {

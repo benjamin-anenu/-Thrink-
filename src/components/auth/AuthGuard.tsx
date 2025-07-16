@@ -1,96 +1,46 @@
-import React from 'react'
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
-import { AppRole } from '@/types/auth'
-import { LoadingState } from '@/components/ui/loading-state'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { AlertTriangle } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
-  children: React.ReactNode
-  fallback?: React.ReactNode
-  requiredRole?: AppRole
-  requiredPermission?: string
-  resource?: string
-  redirectTo?: string
+  children: React.ReactNode;
 }
 
-export function AuthGuard({
-  children,
-  fallback,
-  requiredRole,
-  requiredPermission,
-  resource,
-  redirectTo = '/auth'
-}: AuthGuardProps) {
-  const { user, loading, hasRole, hasPermission } = useAuth()
+export function AuthGuard({ children }: AuthGuardProps) {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const [hasChecked, setHasChecked] = useState(false);
 
-  if (loading) {
-    return fallback || <LoadingState />
+  useEffect(() => {
+    console.log('[AuthGuard] Auth state:', { user: !!user, loading, hasChecked });
+    
+    if (loading) return; // Still loading, wait
+    
+    setHasChecked(true);
+    
+    if (!user) {
+      console.log('[AuthGuard] No user found, redirecting to auth');
+      navigate('/auth', { replace: true });
+    }
+  }, [user, loading, navigate, hasChecked]);
+
+  // Show loading while auth is loading OR we haven't checked yet
+  if (loading || !hasChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center space-x-2 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Authenticating...</span>
+        </div>
+      </div>
+    );
   }
 
+  // If we've checked and there's no user, show nothing (redirect is happening)
   if (!user) {
-    return <Navigate to={redirectTo} replace />
+    return null;
   }
 
-  // Check role requirement
-  if (requiredRole && !hasRole(requiredRole)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You don't have the required permissions to access this page.
-              Required role: {requiredRole}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => window.history.back()}
-            >
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Check permission requirement
-  if (requiredPermission && !hasPermission(requiredPermission, resource)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>
-              You don't have permission to perform this action.
-              Required permission: {requiredPermission}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => window.history.back()}
-            >
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  return <>{children}</>
+  return <>{children}</>;
 }

@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthGuard } from '@/components/auth/AuthGuard';
+import { ProfileLoader } from '@/components/auth/ProfileLoader';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ResourceProvider } from '@/contexts/ResourceContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
@@ -59,13 +61,13 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/project/:id" element={<ProjectManagement />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/stakeholders" element={<Stakeholders />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/workspaces" element={<Workspaces />} />
+          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+          <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
+          <Route path="/project/:id" element={<AuthGuard><ProjectManagement /></AuthGuard>} />
+          <Route path="/resources" element={<AuthGuard><Resources /></AuthGuard>} />
+          <Route path="/stakeholders" element={<AuthGuard><Stakeholders /></AuthGuard>} />
+          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
+          <Route path="/workspaces" element={<AuthGuard><Workspaces /></AuthGuard>} />
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
@@ -84,17 +86,19 @@ function App() {
           <TooltipProvider>
             <GlobalErrorHandler>
               <AuthProvider>
-                <WorkspaceProvider>
-                  <ResourceProvider>
-                    <StakeholderProvider>
-                      <ProjectProvider>
-                        <BrowserRouter>
-                          <AppContent />
-                        </BrowserRouter>
-                      </ProjectProvider>
-                    </StakeholderProvider>
-                  </ResourceProvider>
-                </WorkspaceProvider>
+                <ProfileLoader>
+                  <WorkspaceProvider>
+                    <ResourceProvider>
+                      <StakeholderProvider>
+                        <ProjectProvider>
+                          <BrowserRouter>
+                            <AppContent />
+                          </BrowserRouter>
+                        </ProjectProvider>
+                      </StakeholderProvider>
+                    </ResourceProvider>
+                  </WorkspaceProvider>
+                </ProfileLoader>
               </AuthProvider>
             </GlobalErrorHandler>
           </TooltipProvider>

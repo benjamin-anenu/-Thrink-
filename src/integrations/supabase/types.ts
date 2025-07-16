@@ -50,6 +50,53 @@ export type Database = {
         }
         Relationships: []
       }
+      client_satisfaction: {
+        Row: {
+          client_email: string | null
+          client_name: string
+          created_at: string
+          feedback_text: string | null
+          id: string
+          project_id: string | null
+          satisfaction_score: number
+          survey_date: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          client_email?: string | null
+          client_name: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          project_id?: string | null
+          satisfaction_score: number
+          survey_date?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          client_email?: string | null
+          client_name?: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          project_id?: string | null
+          satisfaction_score?: number
+          survey_date?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_satisfaction_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_logs: {
         Row: {
           created_at: string
@@ -363,6 +410,91 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_budgets: {
+        Row: {
+          allocated_amount: number
+          budget_category: string
+          created_at: string
+          currency: string
+          id: string
+          project_id: string | null
+          spent_amount: number
+          updated_at: string
+        }
+        Insert: {
+          allocated_amount?: number
+          budget_category: string
+          created_at?: string
+          currency?: string
+          id?: string
+          project_id?: string | null
+          spent_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          allocated_amount?: number
+          budget_category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          project_id?: string | null
+          spent_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_drafts: {
+        Row: {
+          created_at: string
+          current_step: number
+          draft_data: Json
+          draft_name: string
+          id: string
+          last_modified: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_step?: number
+          draft_data?: Json
+          draft_name: string
+          id?: string
+          last_modified?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          current_step?: number
+          draft_data?: Json
+          draft_name?: string
+          id?: string
+          last_modified?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_project_drafts_workspace"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1195,6 +1327,14 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      is_workspace_admin: {
+        Args: { workspace_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      is_workspace_member: {
+        Args: { workspace_id_param: string; user_id_param: string }
         Returns: boolean
       }
       track_user_session: {

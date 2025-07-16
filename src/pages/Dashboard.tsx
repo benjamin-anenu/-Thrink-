@@ -16,56 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'lucide-react';
 
 const Dashboard = () => {
-  const [activeProject, setActiveProject] = useState(0);
   const { projects } = useProject();
   const { resources } = useResources();
 
   console.log('[Dashboard] Rendering with projects:', projects.length);
-
-  // Transform real projects data for display
-  const projectsForDisplay = projects.map(project => ({
-    name: project.name,
-    status: project.status,
-    progress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length) || 0,
-    risk: project.health.status === 'green' ? 'Low' : project.health.status === 'yellow' ? 'Medium' : 'High',
-    team: project.teamSize,
-    deadline: (() => {
-      const endDate = new Date(project.endDate);
-      const today = new Date();
-      const diffTime = endDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays > 0 ? `${diffDays} days` : 'Overdue';
-    })(),
-    aiInsight: `Project is ${project.health.score}% healthy. Current status: ${project.status}. ${project.tasks.filter(t => t.status === 'Completed').length}/${project.tasks.length} tasks completed.`,
-    color: project.priority === 'High' ? 'from-red-500 to-orange-500' : 
-           project.priority === 'Medium' ? 'from-blue-500 to-cyan-500' : 'from-green-500 to-emerald-500',
-    priority: project.priority
-  }));
-
-  console.log('[Dashboard] Projects for display:', projectsForDisplay.length);
-
-  // Reset activeProject when projects array changes or becomes empty
-  useEffect(() => {
-    if (projectsForDisplay.length === 0) {
-      setActiveProject(0);
-    } else if (activeProject >= projectsForDisplay.length) {
-      setActiveProject(0);
-    }
-  }, [projectsForDisplay.length, activeProject]);
-
-  // Cycle through projects every 5 seconds, but only if we have projects
-  useEffect(() => {
-    if (projectsForDisplay.length > 1) {
-      const interval = setInterval(() => {
-        setActiveProject((prev) => {
-          const next = (prev + 1) % projectsForDisplay.length;
-          console.log('[Dashboard] Cycling to project:', next);
-          return next;
-        });
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [projectsForDisplay.length]);
 
   // Generate upcoming deadlines from real project data
   const upcomingDeadlines = projects.flatMap(project => 
@@ -278,7 +232,7 @@ const Dashboard = () => {
 
           <TabsContent value="projects">
             <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load projects</div>}>
-              <ProjectDisplay projects={projectsForDisplay} activeProject={activeProject} />
+              <ProjectDisplay />
             </ErrorBoundary>
           </TabsContent>
         </Tabs>

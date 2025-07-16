@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { AuthContextType, Profile, AppRole, ROLE_HIERARCHY, ROLE_PERMISSIONS } from '@/types/auth'
@@ -14,86 +14,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  // Fetch user profile and role
-  const fetchUserData = useCallback(async (userId: string) => {
-    try {
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError)
-        return
-      }
-
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (roleError && roleError.code !== 'PGRST116') {
-        console.error('Error fetching role:', roleError)
-        return
-      }
-
-      setProfile(profileData)
-      setRole(roleData?.role || 'member')
-    } catch (error) {
-      console.error('Error in fetchUserData:', error)
-    }
-  }, [])
-
-  // Initialize auth state
+  // Initialize auth state - simplified to only handle core authentication
   useEffect(() => {
+    console.log('[Auth] Initializing authentication...')
     let mounted = true
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return
 
+        console.log('[Auth] Auth state changed:', event, session?.user?.id)
+        
         setSession(session)
         setUser(session?.user ?? null)
+        setLoading(false)
 
-        if (session?.user) {
-          // Defer profile fetching to prevent recursion
-          setTimeout(() => {
-            if (mounted) {
-              fetchUserData(session.user.id)
-            }
-          }, 0)
-        } else {
+        // Clear profile/role data on sign out
+        if (!session?.user) {
           setProfile(null)
           setRole(null)
         }
-
-        if (event === 'SIGNED_IN') {
-          // Log successful sign in
-          if (session?.user) {
-            await supabase.from('audit_logs').insert({
-              user_id: session.user.id,
-              action: 'user_signed_in',
-              metadata: { timestamp: new Date().toISOString() }
-            })
-          }
-        }
-
-        if (event === 'SIGNED_OUT') {
-          // Log successful sign out
-          await supabase.from('audit_logs').insert({
-            action: 'user_signed_out',
-            metadata: { timestamp: new Date().toISOString() }
-          })
-        }
-
-        setLoading(false)
       }
     )
 
@@ -101,24 +42,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return
       
+      console.log('[Auth] Initial session:', session?.user?.id)
       setSession(session)
       setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        fetchUserData(session.user.id)
-      }
-      
       setLoading(false)
     })
 
     return () => {
+      console.log('[Auth] Cleaning up auth listener')
       mounted = false
       subscription.unsubscribe()
     }
-  }, [fetchUserData])
+  }, []) // No dependencies to prevent loops
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('[Auth] Attempting sign in...')
       setLoading(true)
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -126,15 +65,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (error) {
+        console.error('[Auth] Sign in error:', error)
         toast({
           title: "Sign In Failed",
           description: error.message,
           variant: "destructive",
         })
+      } else {
+        console.log('[Auth] Sign in successful')
       }
 
       return { error }
     } catch (error: any) {
+      console.error('[Auth] Sign in exception:', error)
       toast({
         title: "Sign In Error",
         description: "An unexpected error occurred. Please try again.",
@@ -148,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
+      console.log('[Auth] Attempting sign up...')
       setLoading(true)
       const redirectUrl = `${window.location.origin}/`
       
@@ -163,12 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (error) {
+        console.error('[Auth] Sign up error:', error)
         toast({
           title: "Sign Up Failed",
           description: error.message,
           variant: "destructive",
         })
       } else {
+        console.log('[Auth] Sign up successful')
         toast({
           title: "Sign Up Successful",
           description: "Please check your email to verify your account.",
@@ -177,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error }
     } catch (error: any) {
+      console.error('[Auth] Sign up exception:', error)
       toast({
         title: "Sign Up Error",
         description: "An unexpected error occurred. Please try again.",
@@ -190,19 +137,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log('[Auth] Attempting sign out...')
       setLoading(true)
       const { error } = await supabase.auth.signOut()
       
       if (error) {
+        console.error('[Auth] Sign out error:', error)
         toast({
           title: "Sign Out Failed",
           description: error.message,
           variant: "destructive",
         })
+      } else {
+        console.log('[Auth] Sign out successful')
       }
 
       return { error }
     } catch (error: any) {
+      console.error('[Auth] Sign out exception:', error)
       toast({
         title: "Sign Out Error",
         description: "An unexpected error occurred. Please try again.",
@@ -246,6 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Simplified profile update without immediate refetch
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error('User not authenticated') }
 
@@ -266,7 +219,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: "Profile Updated",
           description: "Your profile has been successfully updated.",
         })
-        await fetchUserData(user.id)
+        // Update local profile state
+        setProfile(prev => prev ? { ...prev, ...updates } : null)
       }
 
       return { error }
@@ -280,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Basic role checking - will be enhanced by useProfile hook
   const hasRole = (requiredRole: AppRole): boolean => {
     if (!role) return false
     return ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[requiredRole]
@@ -295,9 +250,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return permissions.includes(permission)
   }
 
+  // Simple refresh without complex fetching
   const refreshProfile = async () => {
-    if (user) {
-      await fetchUserData(user.id)
+    if (!user) return
+    
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      setProfile(profileData)
+      setRole(roleData?.role || 'member')
+    } catch (error) {
+      console.error('[Auth] Error refreshing profile:', error)
     }
   }
 
