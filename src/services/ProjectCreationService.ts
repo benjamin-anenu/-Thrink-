@@ -1,5 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { AIProjectService } from './AIProjectService';
+import { TaskManagementService } from './TaskManagementService';
 
 export interface ProjectCreationData {
   // Basic project info
@@ -215,21 +217,28 @@ export class ProjectCreationService {
         if (milestoneError) throw milestoneError;
       }
 
-      // 8. Create AI data if provided
-      if (data.aiGenerated) {
-        const { error: aiError } = await supabase
-          .from('project_ai_data')
-          .insert({
-            project_id: projectId,
-            project_plan: data.aiGenerated.projectPlan,
-            risk_assessment: data.aiGenerated.riskAssessment,
-            recommendations: data.aiGenerated.recommendations
-          });
-        
-        if (aiError) throw aiError;
-      }
+      // 8. Generate and save AI content
+      const aiContent = await AIProjectService.generateProjectPlan(data);
+      await AIProjectService.saveAIDataForProject(projectId, aiContent);
 
-      // 9. Create initiation document if provided
+      // 9. Generate AI task suggestions and create initial tasks
+      const taskSuggestions = AIProjectService.generateTaskSuggestions(data);
+      const initialTasks = await Promise.all(
+        taskSuggestions.slice(0, 3).map(suggestion => // Create first 3 suggested tasks
+          TaskManagementService.createTask({
+            name: suggestion.name,
+            description: suggestion.description,
+            projectId: projectId,
+            priority: suggestion.priority,
+            status: 'Pending',
+            startDate: data.resources?.timeline.start || new Date().toISOString().split('T')[0],
+            endDate: data.resources?.timeline.end || new Date().toISOString().split('T')[0],
+            dependencies: []
+          })
+        )
+      );
+
+      // 10. Create initiation document if provided
       if (data.initiation) {
         const { error: initiationError } = await supabase
           .from('project_initiation_documents')
@@ -243,12 +252,16 @@ export class ProjectCreationService {
         if (initiationError) throw initiationError;
       }
 
-      // 10. Handle file uploads if provided
+      // 11. Handle file uploads if provided
       if (data.kickoffData?.documents && data.kickoffData.documents.length > 0) {
         await this.uploadProjectFiles(projectId, data.kickoffData.documents);
       }
 
-      return project;
+      return {
+        ...project,
+        tasks: initialTasks, // Include the created initial tasks
+        milestones: data.milestones || []
+      };
     } catch (error) {
       console.error('Error creating project:', error);
       throw error;

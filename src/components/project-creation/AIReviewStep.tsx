@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Brain, AlertTriangle, CheckCircle, Zap, FileText, Download } from 'lucide-react';
-import { aiInsightsService } from '@/services/AIInsightsService';
+import { AIProjectService, AIGeneratedContent, AIInsight } from '@/services/AIProjectService';
 import { useProject } from '@/contexts/ProjectContext';
 
 interface AIReviewStepProps {
@@ -15,116 +15,65 @@ interface AIReviewStepProps {
 }
 
 const AIReviewStep: React.FC<AIReviewStepProps> = ({ data, onDataChange }) => {
+  const [aiContent, setAiContent] = useState<AIGeneratedContent | null>(null);
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const { addProject } = useProject();
 
-  const generateAIAnalysis = async () => {
+  useEffect(() => {
+    if (!data.aiGenerated?.projectPlan) {
+      generateAIContent();
+    }
+    generateInsights();
+  }, []);
+
+  const generateAIContent = async () => {
     setIsGenerating(true);
     setProgress(0);
 
-    // Simulate AI processing
-    const steps = [
-      'Analyzing project requirements...',
-      'Evaluating resource allocation...',
-      'Identifying potential risks...',
-      'Generating project plan...',
-      'Creating recommendations...'
-    ];
+    try {
+      // Simulate progress steps
+      const steps = [
+        'Analyzing project requirements...',
+        'Evaluating resource allocation...',
+        'Identifying potential risks...',
+        'Generating project plan...',
+        'Creating recommendations...'
+      ];
 
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setProgress(((i + 1) / steps.length) * 100);
+      for (let i = 0; i < steps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setProgress(((i + 1) / steps.length) * 100);
+      }
+
+      const content = await AIProjectService.generateProjectPlan(data);
+      setAiContent(content);
+      
+      // Update the data with AI-generated content
+      onDataChange({
+        ...data,
+        aiGenerated: {
+          projectPlan: content.projectPlan,
+          riskAssessment: content.riskAssessment,
+          recommendations: content.recommendations
+        }
+      });
+    } catch (error) {
+      console.error('Error generating AI content:', error);
+    } finally {
+      setIsGenerating(false);
     }
+  };
 
-    // Generate AI content based on project data
-    const aiGenerated = {
-      projectPlan: `# ${data.name || 'New Project'} - AI Generated Project Plan
+  const generateInsights = () => {
+    const projectInsights = AIProjectService.generateProjectInsights(data);
+    setInsights(projectInsights);
+  };
 
-## Executive Summary
-Based on the requirements and resource analysis, this project has a high probability of success with proper risk mitigation.
-
-## Project Phases
-1. **Planning & Setup** (Weeks 1-2)
-   - Finalize requirements documentation
-   - Set up development environment
-   - Team onboarding
-
-2. **Development Phase** (Weeks 3-8)
-   - Core functionality implementation
-   - Regular stakeholder reviews
-   - Quality assurance testing
-
-3. **Testing & Deployment** (Weeks 9-10)
-   - User acceptance testing
-   - Performance optimization
-   - Production deployment
-
-## Success Metrics
-- On-time delivery: 95% probability
-- Budget adherence: Within 5% variance
-- Quality standards: All requirements met`,
-
-      riskAssessment: `# Risk Assessment Report
-
-## High Priority Risks
-- **Resource Availability**: Team allocation conflicts may arise
-- **Timeline Pressure**: Ambitious deadline requires careful monitoring
-- **Technical Complexity**: Integration challenges anticipated
-
-## Medium Priority Risks
-- **Stakeholder Alignment**: Multiple sign-offs required
-- **Budget Constraints**: Additional costs may emerge
-- **Scope Creep**: Requirements may expand during development
-
-## Risk Mitigation Strategies
-- Weekly resource planning reviews
-- Bi-weekly stakeholder check-ins
-- 15% budget contingency allocated
-- Change control process implementation`,
-
-      recommendations: [
-        'Implement daily standups for improved communication',
-        'Set up automated testing pipeline early in development',
-        'Establish clear change management process',
-        'Schedule bi-weekly stakeholder demos',
-        'Create detailed technical documentation',
-        'Plan for user training and adoption',
-        'Set up monitoring and alerting systems',
-        'Prepare rollback procedures for deployment'
-      ]
-    };
-
-    onDataChange({ aiGenerated });
-
-    // If we have enough project data, generate initial AI insights
-    if (data.name && data.startDate && data.endDate) {
-      const projectData = {
-        id: data.id || `temp-${Date.now()}`,
-        name: data.name,
-        description: data.description || '',
-        status: 'Planning' as const,
-        priority: data.priority || 'Medium' as const,
-        progress: 0,
-        health: { status: 'green' as const, score: 85 },
-        startDate: data.startDate,
-        endDate: data.endDate,
-        teamSize: data.teamSize || 1,
-        budget: data.budget || '0',
-        tags: data.tags || [],
-        workspaceId: data.workspaceId || '',
-        resources: data.resources || [],
-        stakeholders: data.stakeholders || [],
-        milestones: data.milestones || [],
-        tasks: data.tasks || [],
-        aiGenerated
-      };
-
-      // Generate initial AI insights, risk profile, and recommendations
-      aiInsightsService.generateInitialInsights(projectData);
-    }
-
-    setIsGenerating(false);
+  const handleRegenerateInsights = () => {
+    generateAIContent();
+    generateInsights();
   };
 
   const downloadProjectPlan = () => {
@@ -152,7 +101,7 @@ Based on the requirements and resource analysis, this project has a high probabi
           </p>
         </div>
         <Button 
-          onClick={generateAIAnalysis} 
+          onClick={handleRegenerateInsights} 
           disabled={isGenerating}
           className="flex items-center gap-2"
         >
