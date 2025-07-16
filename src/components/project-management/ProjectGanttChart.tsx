@@ -16,8 +16,6 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
-import TaskRow from './TaskRow';
-
 import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import TableControls from './table/TableControls';
@@ -317,44 +315,48 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             onExport={handleExport}
           />
           
-          <div className="overflow-auto bg-background">
-            <div className="min-w-[1400px]">
-              {/* Fixed Table Header */}
-              <div className="grid grid-cols-12 gap-0 border-b bg-muted/50 sticky top-0 z-20 backdrop-blur-sm">
-                <div className="col-span-2 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('name')}>
+          <ResizableTable
+            zoomLevel={zoomLevel}
+            tableDensity={tableDensity}
+            className="w-full"
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('name')}>
                   Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('status')}>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('status')}>
                   Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('priority')}>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('priority')}>
                   Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r">Resources</div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('startDate')}>
+                </TableHead>
+                <TableHead>Resources</TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('startDate')}>
                   Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('endDate')}>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('endDate')}>
                   End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('duration')}>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('duration')}>
                   Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
                   Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </div>
-                <div className="col-span-1 p-3 font-medium border-r">Dependencies</div>
-                <div className="col-span-1 p-3 font-medium border-r">Milestone</div>
-                <div className="col-span-1 p-3 font-medium">Actions</div>
-              </div>
-              
-              {/* Task Content */}
-              <div className="space-y-0">
-                {Object.entries(groupedTasks).map(([groupKey, group]) => (
-                  <React.Fragment key={groupKey}>
-                    {/* Milestone Header */}
-                    {group.milestone && (
-                      <div className="border-b bg-muted/30">
+                </TableHead>
+                <TableHead>Dependencies</TableHead>
+                <TableHead>Milestone</TableHead>
+                <TableHead>Variance</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(groupedTasks).map(([groupKey, group]) => (
+                <React.Fragment key={groupKey}>
+                  {/* Milestone Header Row */}
+                  {group.milestone && (
+                    <TableRow className="bg-muted/30 hover:bg-muted/40">
+                      <td colSpan={12} className="p-0 border-b">
                         <Collapsible
                           open={expandedMilestones.has(group.milestone.id)}
                           onOpenChange={() => toggleMilestone(group.milestone.id)}
@@ -408,128 +410,34 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                               </div>
                             </div>
                           </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="space-y-0">
-                              {group.tasks.map((task) => (
-                                <div key={task.id} className="grid grid-cols-12 gap-0 border-b hover:bg-muted/50">
-                                  <div className="col-span-2 p-3 border-r">
-                                    <div className="font-medium">{task.name}</div>
-                                  </div>
-                                  <div className="col-span-1 p-3 border-r">
-                                    <Badge variant="outline">{task.status}</Badge>
-                                  </div>
-                                  <div className="col-span-1 p-3 border-r">
-                                    <Badge variant="outline">{task.priority}</Badge>
-                                  </div>
-                                  <div className="col-span-1 p-3 border-r">
-                                    <div className="flex flex-wrap gap-1">
-                                      {Array.isArray(task.assignedResources) && task.assignedResources.map(resourceId => {
-                                        const resource = availableResources.find(r => r.id === resourceId);
-                                        return resource ? (
-                                          <Badge key={resourceId} variant="secondary" className="text-xs">
-                                            {resource.name}
-                                          </Badge>
-                                        ) : null;
-                                      })}
-                                    </div>
-                                  </div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.startDate || '-'}</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.endDate || '-'}</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.duration || 1}d</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.progress || 0}%</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">
-                                    {Array.isArray(task.dependencies) && task.dependencies.length > 0 ? `${task.dependencies.length} deps` : '-'}
-                                  </div>
-                                  <div className="col-span-1 p-3 border-r text-sm">
-                                    {group.milestone?.name || '-'}
-                                  </div>
-                                  <div className="col-span-1 p-3">
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleEditTask(task)}
-                                      >
-                                        <Edit className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleDeleteTask(task.id)}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
                         </Collapsible>
-                      </div>
-                    )}
-                    
-                    {/* Tasks without milestone */}
-                    {groupKey === 'no-milestone' && group.tasks.length > 0 && (
-                      <>
-                        {group.tasks.map((task) => (
-                          <div key={task.id} className="grid grid-cols-12 gap-0 border-b hover:bg-muted/50">
-                            <div className="col-span-2 p-3 border-r">
-                              <div className="font-medium">{task.name}</div>
-                            </div>
-                            <div className="col-span-1 p-3 border-r">
-                              <Badge variant="outline">{task.status}</Badge>
-                            </div>
-                            <div className="col-span-1 p-3 border-r">
-                              <Badge variant="outline">{task.priority}</Badge>
-                            </div>
-                             <div className="col-span-1 p-3 border-r">
-                               <div className="flex flex-wrap gap-1">
-                                 {Array.isArray(task.assignedResources) && task.assignedResources.map(resourceId => {
-                                   const resource = availableResources.find(r => r.id === resourceId);
-                                   return resource ? (
-                                     <Badge key={resourceId} variant="secondary" className="text-xs">
-                                       {resource.name}
-                                     </Badge>
-                                   ) : null;
-                                 })}
-                               </div>
-                             </div>
-                             <div className="col-span-1 p-3 border-r text-sm">{task.startDate || '-'}</div>
-                             <div className="col-span-1 p-3 border-r text-sm">{task.endDate || '-'}</div>
-                             <div className="col-span-1 p-3 border-r text-sm">{task.duration || 1}d</div>
-                             <div className="col-span-1 p-3 border-r text-sm">{task.progress || 0}%</div>
-                             <div className="col-span-1 p-3 border-r text-sm">
-                               {Array.isArray(task.dependencies) && task.dependencies.length > 0 ? `${task.dependencies.length} deps` : '-'}
-                             </div>
-                            <div className="col-span-1 p-3 border-r text-sm">-</div>
-                            <div className="col-span-1 p-3">
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleEditTask(task)}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDeleteTask(task.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-          </div>
+                      </td>
+                    </TableRow>
+                  )}
+                  
+                  {/* Task Rows - Show if no milestone or milestone is expanded */}
+                  {(groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) && (
+                    <>
+                      {group.tasks.map((task) => (
+                        <TaskTableRow
+                          key={task.id}
+                          task={task}
+                          milestones={milestones}
+                          availableResources={availableResources}
+                          availableStakeholders={availableStakeholders}
+                          allTasks={tasks}
+                          onUpdateTask={handleUpdateTask}
+                          onDeleteTask={handleDeleteTask}
+                          onEditTask={handleEditTask}
+                          onRebaselineTask={handleRebaselineClick}
+                        />
+                      ))}
+                    </>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </ResizableTable>
         </CardContent>
       </Card>
 
