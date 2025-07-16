@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { ProjectDetailsModal } from '@/components/ProjectDetailsModal';
+import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Task {
@@ -76,21 +76,21 @@ const ProjectDisplay = () => {
     loadProjectTasks();
   }, [currentWorkspace, workspaceProjects.length]);
 
-  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+  const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
-      case 'Completed': return 'success';
-      case 'In Progress': return 'info';
-      case 'On Hold': return 'warning';
-      case 'Cancelled': return 'error';
+      case 'Completed': return 'default';
+      case 'In Progress': return 'outline';
+      case 'On Hold': return 'secondary';
+      case 'Cancelled': return 'destructive';
       default: return 'default';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'High': return 'text-error';
-      case 'Medium': return 'text-warning';
-      case 'Low': return 'text-success';
+      case 'High': return 'text-red-600';
+      case 'Medium': return 'text-yellow-600';
+      case 'Low': return 'text-green-600';
       default: return 'text-muted-foreground';
     }
   };

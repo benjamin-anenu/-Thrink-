@@ -19,11 +19,11 @@ const AIInsights = () => {
     }
   };
 
-  const getInsightVariant = (impact: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+  const getInsightVariant = (impact: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (impact) {
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'info';
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      case 'low': return 'outline';
       default: return 'default';
     }
   };
