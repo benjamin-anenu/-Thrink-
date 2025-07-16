@@ -697,48 +697,79 @@ export type Database = {
       }
       project_tasks: {
         Row: {
+          assigned_resources: string[] | null
+          assigned_stakeholders: string[] | null
           assignee_id: string | null
+          baseline_end_date: string | null
+          baseline_start_date: string | null
           completed_at: string | null
           created_at: string
+          dependencies: string[] | null
           description: string | null
+          duration: number | null
           end_date: string | null
           id: string
+          milestone_id: string | null
           name: string
           priority: string | null
+          progress: number | null
           project_id: string | null
           start_date: string | null
           status: string | null
           updated_at: string
         }
         Insert: {
+          assigned_resources?: string[] | null
+          assigned_stakeholders?: string[] | null
           assignee_id?: string | null
+          baseline_end_date?: string | null
+          baseline_start_date?: string | null
           completed_at?: string | null
           created_at?: string
+          dependencies?: string[] | null
           description?: string | null
+          duration?: number | null
           end_date?: string | null
           id?: string
+          milestone_id?: string | null
           name: string
           priority?: string | null
+          progress?: number | null
           project_id?: string | null
           start_date?: string | null
           status?: string | null
           updated_at?: string
         }
         Update: {
+          assigned_resources?: string[] | null
+          assigned_stakeholders?: string[] | null
           assignee_id?: string | null
+          baseline_end_date?: string | null
+          baseline_start_date?: string | null
           completed_at?: string | null
           created_at?: string
+          dependencies?: string[] | null
           description?: string | null
+          duration?: number | null
           end_date?: string | null
           id?: string
+          milestone_id?: string | null
           name?: string
           priority?: string | null
+          progress?: number | null
           project_id?: string | null
           start_date?: string | null
           status?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_milestone_id"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_tasks_assignee_id_fkey"
             columns: ["assignee_id"]
@@ -1309,6 +1340,15 @@ export type Database = {
       accept_workspace_invitation: {
         Args: { invitation_token: string }
         Returns: boolean
+      }
+      create_milestone: {
+        Args: {
+          p_project_id: string
+          p_name: string
+          p_description?: string
+          p_due_date?: string
+        }
+        Returns: string
       }
       create_workspace_with_owner: {
         Args: {
