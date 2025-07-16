@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
 
@@ -27,6 +28,12 @@ interface ProjectGanttChartProps {
 
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const { getProject } = useProject();
+  
+  // Early return if no projectId
+  if (!projectId) {
+    return <div>No project ID provided</div>;
+  }
+  
   const { 
     tasks, 
     milestones, 
@@ -55,8 +62,14 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
   const project = getProject(projectId);
-  if (!project) return <div>Project not found</div>;
-  if (loading) return <div>Loading tasks and milestones...</div>;
+  
+  if (!project) {
+    return <div className="p-6 text-center text-muted-foreground">Project not found</div>;
+  }
+  
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
+  }
 
   // Available resources and stakeholders
   const availableResources = [
@@ -73,13 +86,19 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     { id: 'mike-wilson', name: 'Mike Wilson', role: 'Tech Lead' }
   ];
 
-  // Group tasks by milestone
+  // Group tasks by milestone with safe data handling
   const groupedTasks = useMemo(() => {
+    if (!Array.isArray(tasks) || !Array.isArray(milestones)) {
+      return { 'no-milestone': { milestone: null, tasks: [] } };
+    }
+    
     const groups: { [key: string]: { milestone: ProjectMilestone | null; tasks: ProjectTask[] } } = {};
     
     // Initialize groups for each milestone
     milestones.forEach(milestone => {
-      groups[milestone.id] = { milestone, tasks: [] };
+      if (milestone && milestone.id) {
+        groups[milestone.id] = { milestone, tasks: [] };
+      }
     });
     
     // Add group for tasks without milestone
@@ -87,23 +106,33 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     
     // Assign tasks to groups
     tasks.forEach(task => {
+      if (!task || !task.id) return;
+      
       const groupKey = task.milestoneId || 'no-milestone';
       if (groups[groupKey]) {
         groups[groupKey].tasks.push(task);
+      } else {
+        groups['no-milestone'].tasks.push(task);
       }
     });
     
     // Sort tasks within each group
     Object.values(groups).forEach(group => {
-      group.tasks.sort((a, b) => {
-        const aValue = (a as any)[sortBy];
-        const bValue = (b as any)[sortBy];
-        const modifier = sortDirection === 'asc' ? 1 : -1;
-        
-        if (aValue < bValue) return -1 * modifier;
-        if (aValue > bValue) return 1 * modifier;
-        return 0;
-      });
+      if (group.tasks) {
+        group.tasks.sort((a, b) => {
+          try {
+            const aValue = (a as any)[sortBy] || '';
+            const bValue = (b as any)[sortBy] || '';
+            const modifier = sortDirection === 'asc' ? 1 : -1;
+            
+            if (aValue < bValue) return -1 * modifier;
+            if (aValue > bValue) return 1 * modifier;
+            return 0;
+          } catch {
+            return 0;
+          }
+        });
+      }
     });
     
     return groups;
@@ -233,8 +262,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="table-container">
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <Card className="table-container">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -384,7 +414,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                                   </div>
                                   <div className="col-span-1 p-3 border-r">
                                     <div className="flex flex-wrap gap-1">
-                                      {task.assignedResources.map(resourceId => {
+                                      {Array.isArray(task.assignedResources) && task.assignedResources.map(resourceId => {
                                         const resource = availableResources.find(r => r.id === resourceId);
                                         return resource ? (
                                           <Badge key={resourceId} variant="secondary" className="text-xs">
@@ -394,12 +424,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                                       })}
                                     </div>
                                   </div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.startDate}</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.endDate}</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.duration}d</div>
-                                  <div className="col-span-1 p-3 border-r text-sm">{task.progress}%</div>
+                                  <div className="col-span-1 p-3 border-r text-sm">{task.startDate || '-'}</div>
+                                  <div className="col-span-1 p-3 border-r text-sm">{task.endDate || '-'}</div>
+                                  <div className="col-span-1 p-3 border-r text-sm">{task.duration || 1}d</div>
+                                  <div className="col-span-1 p-3 border-r text-sm">{task.progress || 0}%</div>
                                   <div className="col-span-1 p-3 border-r text-sm">
-                                    {task.dependencies.length > 0 ? `${task.dependencies.length} deps` : '-'}
+                                    {Array.isArray(task.dependencies) && task.dependencies.length > 0 ? `${task.dependencies.length} deps` : '-'}
                                   </div>
                                   <div className="col-span-1 p-3 border-r text-sm">
                                     {group.milestone?.name || '-'}
@@ -444,25 +474,25 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                             <div className="col-span-1 p-3 border-r">
                               <Badge variant="outline">{task.priority}</Badge>
                             </div>
-                            <div className="col-span-1 p-3 border-r">
-                              <div className="flex flex-wrap gap-1">
-                                {task.assignedResources.map(resourceId => {
-                                  const resource = availableResources.find(r => r.id === resourceId);
-                                  return resource ? (
-                                    <Badge key={resourceId} variant="secondary" className="text-xs">
-                                      {resource.name}
-                                    </Badge>
-                                  ) : null;
-                                })}
-                              </div>
-                            </div>
-                            <div className="col-span-1 p-3 border-r text-sm">{task.startDate}</div>
-                            <div className="col-span-1 p-3 border-r text-sm">{task.endDate}</div>
-                            <div className="col-span-1 p-3 border-r text-sm">{task.duration}d</div>
-                            <div className="col-span-1 p-3 border-r text-sm">{task.progress}%</div>
-                            <div className="col-span-1 p-3 border-r text-sm">
-                              {task.dependencies.length > 0 ? `${task.dependencies.length} deps` : '-'}
-                            </div>
+                             <div className="col-span-1 p-3 border-r">
+                               <div className="flex flex-wrap gap-1">
+                                 {Array.isArray(task.assignedResources) && task.assignedResources.map(resourceId => {
+                                   const resource = availableResources.find(r => r.id === resourceId);
+                                   return resource ? (
+                                     <Badge key={resourceId} variant="secondary" className="text-xs">
+                                       {resource.name}
+                                     </Badge>
+                                   ) : null;
+                                 })}
+                               </div>
+                             </div>
+                             <div className="col-span-1 p-3 border-r text-sm">{task.startDate || '-'}</div>
+                             <div className="col-span-1 p-3 border-r text-sm">{task.endDate || '-'}</div>
+                             <div className="col-span-1 p-3 border-r text-sm">{task.duration || 1}d</div>
+                             <div className="col-span-1 p-3 border-r text-sm">{task.progress || 0}%</div>
+                             <div className="col-span-1 p-3 border-r text-sm">
+                               {Array.isArray(task.dependencies) && task.dependencies.length > 0 ? `${task.dependencies.length} deps` : '-'}
+                             </div>
                             <div className="col-span-1 p-3 border-r text-sm">-</div>
                             <div className="col-span-1 p-3">
                               <div className="flex items-center gap-1">
@@ -562,7 +592,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 

@@ -44,36 +44,45 @@ export const useTaskManagement = (projectId: string) => {
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Transform database task to frontend task
-  const transformTask = (dbTask: DatabaseTask): ProjectTask => ({
-    id: dbTask.id,
-    name: dbTask.name,
-    description: dbTask.description || '',
-    startDate: dbTask.start_date || '',
-    endDate: dbTask.end_date || '',
-    baselineStartDate: dbTask.baseline_start_date || dbTask.start_date || '',
-    baselineEndDate: dbTask.baseline_end_date || dbTask.end_date || '',
-    progress: dbTask.progress || 0,
-    assignedResources: dbTask.assigned_resources || [],
-    assignedStakeholders: dbTask.assigned_stakeholders || [],
-    dependencies: dbTask.dependencies || [],
-    priority: (dbTask.priority as any) || 'Medium',
-    status: (dbTask.status as any) || 'Not Started',
-    milestoneId: dbTask.milestone_id,
-    duration: dbTask.duration || 1
-  });
+  // Transform database task to frontend task with safe defaults
+  const transformTask = (dbTask: DatabaseTask): ProjectTask => {
+    const today = new Date().toISOString().split('T')[0];
+    const defaultEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    return {
+      id: dbTask.id,
+      name: dbTask.name || 'Untitled Task',
+      description: dbTask.description || '',
+      startDate: dbTask.start_date || today,
+      endDate: dbTask.end_date || defaultEndDate,
+      baselineStartDate: dbTask.baseline_start_date || dbTask.start_date || today,
+      baselineEndDate: dbTask.baseline_end_date || dbTask.end_date || defaultEndDate,
+      progress: typeof dbTask.progress === 'number' ? dbTask.progress : 0,
+      assignedResources: Array.isArray(dbTask.assigned_resources) ? dbTask.assigned_resources : [],
+      assignedStakeholders: Array.isArray(dbTask.assigned_stakeholders) ? dbTask.assigned_stakeholders : [],
+      dependencies: Array.isArray(dbTask.dependencies) ? dbTask.dependencies : [],
+      priority: (dbTask.priority as any) || 'Medium',
+      status: (dbTask.status as any) || 'Not Started',
+      milestoneId: dbTask.milestone_id || undefined,
+      duration: typeof dbTask.duration === 'number' ? dbTask.duration : 1
+    };
+  };
 
-  // Transform database milestone to frontend milestone
-  const transformMilestone = (dbMilestone: DatabaseMilestone): ProjectMilestone => ({
-    id: dbMilestone.id,
-    name: dbMilestone.name,
-    description: dbMilestone.description || '',
-    date: dbMilestone.due_date || '',
-    baselineDate: dbMilestone.baseline_date || dbMilestone.due_date || '',
-    status: (dbMilestone.status as any) || 'upcoming',
-    tasks: dbMilestone.task_ids || [],
-    progress: dbMilestone.progress || 0
-  });
+  // Transform database milestone to frontend milestone with safe defaults
+  const transformMilestone = (dbMilestone: DatabaseMilestone): ProjectMilestone => {
+    const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    return {
+      id: dbMilestone.id,
+      name: dbMilestone.name || 'Untitled Milestone',
+      description: dbMilestone.description || '',
+      date: dbMilestone.due_date || defaultDate,
+      baselineDate: dbMilestone.baseline_date || dbMilestone.due_date || defaultDate,
+      status: (dbMilestone.status as any) || 'upcoming',
+      tasks: Array.isArray(dbMilestone.task_ids) ? dbMilestone.task_ids : [],
+      progress: typeof dbMilestone.progress === 'number' ? dbMilestone.progress : 0
+    };
+  };
 
   // Load tasks and milestones
   const loadData = async () => {
