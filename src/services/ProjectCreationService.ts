@@ -87,7 +87,7 @@ export interface ProjectCreationData {
 export class ProjectCreationService {
   static async createProject(data: ProjectCreationData) {
     try {
-      // 1. Create the main project record
+      // 1. Create the main project record with AI processing status
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert({
@@ -105,7 +105,8 @@ export class ProjectCreationService {
           health_status: 'green',
           health_score: 100,
           team_size: data.resources?.teamMembers?.length || 0,
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+          ai_processing_status: 'pending' // Start with pending status
         })
         .select()
         .single();
@@ -217,26 +218,8 @@ export class ProjectCreationService {
         if (milestoneError) throw milestoneError;
       }
 
-      // 8. Generate and save AI content
-      const aiContent = await AIProjectService.generateProjectPlan(data);
-      await AIProjectService.saveAIDataForProject(projectId, aiContent);
-
-      // 9. Generate AI task suggestions and create initial tasks
-      const taskSuggestions = AIProjectService.generateTaskSuggestions(data);
-      const initialTasks = await Promise.all(
-        taskSuggestions.slice(0, 3).map(suggestion => // Create first 3 suggested tasks
-          TaskManagementService.createTask({
-            name: suggestion.name,
-            description: suggestion.description,
-            projectId: projectId,
-            priority: suggestion.priority,
-            status: 'Pending',
-            startDate: data.resources?.timeline.start || new Date().toISOString().split('T')[0],
-            endDate: data.resources?.timeline.end || new Date().toISOString().split('T')[0],
-            dependencies: []
-          })
-        )
-      );
+      // 8. Trigger background AI processing (non-blocking)
+      this.triggerBackgroundAIProcessing(projectId);
 
       // 10. Create initiation document if provided
       if (data.initiation) {
@@ -259,12 +242,34 @@ export class ProjectCreationService {
 
       return {
         ...project,
-        tasks: initialTasks, // Include the created initial tasks
+        tasks: [], // Tasks will be created in background
         milestones: data.milestones || []
       };
     } catch (error) {
       console.error('Error creating project:', error);
       throw error;
+    }
+  }
+
+  // Trigger background AI processing without blocking
+  private static async triggerBackgroundAIProcessing(projectId: string) {
+    try {
+      // Call the edge function asynchronously
+      supabase.functions.invoke('process-project-ai', {
+        body: { projectId }
+      }).catch(error => {
+        console.error('Background AI processing failed:', error);
+        // Update status to failed
+        supabase
+          .from('projects')
+          .update({ 
+            ai_processing_status: 'failed',
+            ai_processing_completed_at: new Date().toISOString()
+          })
+          .eq('id', projectId);
+      });
+    } catch (error) {
+      console.error('Failed to trigger background AI processing:', error);
     }
   }
 

@@ -660,6 +660,9 @@ export type Database = {
       }
       projects: {
         Row: {
+          ai_processing_completed_at: string | null
+          ai_processing_started_at: string | null
+          ai_processing_status: string | null
           budget: string | null
           created_at: string
           created_by: string | null
@@ -681,6 +684,9 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          ai_processing_completed_at?: string | null
+          ai_processing_started_at?: string | null
+          ai_processing_status?: string | null
           budget?: string | null
           created_at?: string
           created_by?: string | null
@@ -702,6 +708,9 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          ai_processing_completed_at?: string | null
+          ai_processing_started_at?: string | null
+          ai_processing_status?: string | null
           budget?: string | null
           created_at?: string
           created_by?: string | null

@@ -29,6 +29,9 @@ export interface ProjectData {
   riskProfile?: RiskProfile;
   aiRecommendations?: AIRecommendation[];
   lastAIAnalysis?: string;
+  aiProcessingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  aiProcessingStartedAt?: string;
+  aiProcessingCompletedAt?: string;
 }
 
 export interface ProjectHealth {

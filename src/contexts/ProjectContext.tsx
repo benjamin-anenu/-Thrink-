@@ -25,6 +25,7 @@ interface ProjectContextType {
   completeTask: (projectId: string, taskId: string) => Promise<void>;
   assignTaskToResource: (projectId: string, taskId: string, resourceId: string) => Promise<void>;
   refreshProjects: () => Promise<void>;
+  retryAIProcessing: (projectId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -47,6 +48,41 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const projects = allProjects.filter(project => 
     currentWorkspace ? project.workspaceId === currentWorkspace.id : true
   );
+
+  // Set up real-time updates for project changes
+  useEffect(() => {
+    if (!currentWorkspace) return;
+
+    const channel = supabase
+      .channel('project-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        (payload) => {
+          console.log('Project updated:', payload);
+          // Update the project in our state
+          setAllProjects(prev => prev.map(project => 
+            project.id === payload.new.id 
+              ? { ...project, 
+                  aiProcessingStatus: payload.new.ai_processing_status,
+                  aiProcessingStartedAt: payload.new.ai_processing_started_at,
+                  aiProcessingCompletedAt: payload.new.ai_processing_completed_at
+                }
+              : project
+          ));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentWorkspace]);
 
   // Initialize services
   const performanceTracker = PerformanceTracker.getInstance();
@@ -200,7 +236,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         })),
         tasks: [], // Tasks will be loaded separately when needed
         createdAt: project.created_at,
-        updatedAt: project.updated_at
+        updatedAt: project.updated_at,
+        aiProcessingStatus: (project.ai_processing_status as 'pending' | 'processing' | 'completed' | 'failed') || 'pending',
+        aiProcessingStartedAt: project.ai_processing_started_at,
+        aiProcessingCompletedAt: project.ai_processing_completed_at
       }));
 
       setAllProjects(transformedProjects);
@@ -734,6 +773,42 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
   };
 
+  // Retry AI processing function
+  const retryAIProcessing = async (projectId: string) => {
+    try {
+      // Update status to processing
+      await supabase
+        .from('projects')
+        .update({ 
+          ai_processing_status: 'processing',
+          ai_processing_started_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+
+      // Trigger background AI processing
+      const { error } = await supabase.functions.invoke('process-project-ai', {
+        body: { projectId }
+      });
+
+      if (error) throw error;
+      
+      await refreshProjects();
+    } catch (error) {
+      console.error('Error retrying AI processing:', error);
+      
+      // Update status to failed
+      await supabase
+        .from('projects')
+        .update({ 
+          ai_processing_status: 'failed',
+          ai_processing_completed_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+        
+      throw error;
+    }
+  };
+
   return (
     <ProjectContext.Provider value={{
       projects,
@@ -751,7 +826,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setCurrentProject,
       completeTask,
       assignTaskToResource,
-      refreshProjects
+      refreshProjects,
+      retryAIProcessing
     }}>
       {children}
     </ProjectContext.Provider>
