@@ -135,10 +135,21 @@ export class EmailReminderService {
       try {
         const resources = JSON.parse(localStorage.getItem('resources') || '[]');
         resource = resources.find((r: any) => r.id === task.assignedTo);
+        
+        if (!resource) {
+          console.warn(`[Email Reminder Service] No resource found for task ${task.name || task.title}`);
+          return;
+        }
       } catch (error) {
-        console.warn('[Email Reminder Service] Could not find resource for task');
+        console.warn('[Email Reminder Service] Could not find resource for task:', error);
         return;
       }
+    }
+    
+    // Validate resource has email
+    if (!resource.email || !resource.email.includes('@')) {
+      console.warn(`[Email Reminder Service] Resource ${resource.name} has invalid email: ${resource.email}`);
+      return;
     }
 
     const deadline = new Date(task.endDate || task.dueDate || task.date);
@@ -274,7 +285,11 @@ export class EmailReminderService {
   private async sendReminderEmail(reminder: TaskDeadlineReminder): Promise<void> {
     // Enhanced email sending with validation and error handling
     if (!reminder.resourceEmail || !reminder.resourceEmail.includes('@')) {
-      throw new Error(`Invalid email address for ${reminder.resourceName}`);
+      throw new Error(`Invalid email address "${reminder.resourceEmail}" for ${reminder.resourceName || 'undefined resource'}`);
+    }
+    
+    if (!reminder.resourceName) {
+      console.warn(`[Email Reminder Service] Resource name is undefined for email ${reminder.resourceEmail}`);
     }
     
     const emailContent = this.generateEmailContent(reminder);

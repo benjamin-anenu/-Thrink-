@@ -16,6 +16,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
+import TaskRow from './TaskRow';
 
 import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
@@ -70,20 +71,20 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
   }
 
-  // Available resources and stakeholders
-  const availableResources = [
-    { id: 'sarah', name: 'Sarah Johnson', role: 'Frontend Developer' },
-    { id: 'michael', name: 'Michael Chen', role: 'Backend Developer' },
-    { id: 'emily', name: 'Emily Rodriguez', role: 'UX Designer' },
-    { id: 'david', name: 'David Kim', role: 'Project Manager' },
-    { id: 'james', name: 'James Wilson', role: 'DevOps Engineer' }
-  ];
+  // Available resources and stakeholders - should be fetched from database in production
+  const availableResources = useMemo(() => [
+    { id: 'sarah', name: 'Sarah Johnson', role: 'Frontend Developer', email: 'sarah@company.com' },
+    { id: 'michael', name: 'Michael Chen', role: 'Backend Developer', email: 'michael@company.com' },
+    { id: 'emily', name: 'Emily Rodriguez', role: 'UX Designer', email: 'emily@company.com' },
+    { id: 'david', name: 'David Kim', role: 'Project Manager', email: 'david@company.com' },
+    { id: 'james', name: 'James Wilson', role: 'DevOps Engineer', email: 'james@company.com' }
+  ], []);
 
-  const availableStakeholders = [
-    { id: 'john-doe', name: 'John Doe', role: 'Product Manager' },
-    { id: 'jane-smith', name: 'Jane Smith', role: 'Business Analyst' },
-    { id: 'mike-wilson', name: 'Mike Wilson', role: 'Tech Lead' }
-  ];
+  const availableStakeholders = useMemo(() => [
+    { id: 'john-doe', name: 'John Doe', role: 'Product Manager', email: 'john@company.com' },
+    { id: 'jane-smith', name: 'Jane Smith', role: 'Business Analyst', email: 'jane@company.com' },
+    { id: 'mike-wilson', name: 'Mike Wilson', role: 'Tech Lead', email: 'mike@company.com' }
+  ], []);
 
   // Group tasks by milestone with safe data handling
   const groupedTasks = useMemo(() => {
@@ -312,35 +313,38 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             onExport={handleExport}
           />
           
-          <div className="overflow-auto">
+          <div className="overflow-auto bg-background">
             <div className="min-w-[1400px]">
-              <div className="grid grid-cols-12 gap-0 border-b bg-muted/50 sticky top-0 z-10">
-                <div className="col-span-2 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('name')}>
+              {/* Fixed Table Header */}
+              <div className="grid grid-cols-12 gap-0 border-b bg-muted/50 sticky top-0 z-20 backdrop-blur-sm">
+                <div className="col-span-2 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('name')}>
                   Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('status')}>
+                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('status')}>
                   Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('priority')}>
+                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('priority')}>
                   Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
-                <div className="col-span-1 p-3 font-medium border-r">Assigned Resources</div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('startDate')}>
+                <div className="col-span-1 p-3 font-medium border-r">Resources</div>
+                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('startDate')}>
                   Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('endDate')}>
+                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('endDate')}>
                   End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('duration')}>
+                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('duration')}>
                   Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
-                <div className="col-span-1 p-3 font-medium border-r cursor-pointer" onClick={() => handleSort('progress')}>
+                <div className="col-span-1 p-3 font-medium border-r cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
                   Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </div>
                 <div className="col-span-1 p-3 font-medium border-r">Dependencies</div>
                 <div className="col-span-1 p-3 font-medium border-r">Milestone</div>
                 <div className="col-span-1 p-3 font-medium">Actions</div>
               </div>
+              
+              {/* Task Content */}
               <div className="space-y-0">
                 {Object.entries(groupedTasks).map(([groupKey, group]) => (
                   <React.Fragment key={groupKey}>
@@ -351,25 +355,25 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                           open={expandedMilestones.has(group.milestone.id)}
                           onOpenChange={() => toggleMilestone(group.milestone.id)}
                         >
-                          <CollapsibleTrigger className="w-full p-3">
+                          <CollapsibleTrigger className="w-full p-3 hover:bg-muted/40 transition-colors">
                             <div className="flex items-center gap-2 w-full text-left">
                               {expandedMilestones.has(group.milestone.id) ? (
-                                <ChevronDown className="h-4 w-4" />
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
                               ) : (
-                                <ChevronRight className="h-4 w-4" />
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               )}
                               <Target className="h-4 w-4 text-primary" />
-                              <span className="font-semibold">{group.milestone.name}</span>
+                              <span className="font-semibold text-foreground">{group.milestone.name}</span>
                               <Badge variant="outline" className="ml-2">
-                                {group.tasks.length} tasks
+                                {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                               </Badge>
                               <Badge 
                                 variant="outline" 
                                 className={`ml-1 ${
-                                  group.milestone.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                                  group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
-                                  group.milestone.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
-                                  'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                  group.milestone.status === 'completed' ? 'bg-success/10 text-success border-success/20' :
+                                  group.milestone.status === 'in-progress' ? 'bg-primary/10 text-primary border-primary/20' :
+                                  group.milestone.status === 'overdue' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                  'bg-muted text-muted-foreground'
                                 }`}
                               >
                                 {group.milestone.status}
@@ -378,6 +382,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-muted"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleEditMilestone(group.milestone!);
@@ -388,6 +393,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteMilestone(group.milestone!.id);

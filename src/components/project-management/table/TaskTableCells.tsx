@@ -36,10 +36,10 @@ export const TaskStatusCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId
   onUpdateTask
 }) => {
   const statusOptions = [
-    { value: 'Not Started', label: 'Not Started', color: 'bg-gray-500 dark:bg-gray-600' },
-    { value: 'In Progress', label: 'In Progress', color: 'bg-blue-500 dark:bg-blue-600' },
-    { value: 'Completed', label: 'Completed', color: 'bg-green-500 dark:bg-green-600' },
-    { value: 'On Hold', label: 'On Hold', color: 'bg-yellow-500 dark:bg-yellow-600' }
+    { value: 'Not Started', label: 'Not Started', color: 'bg-muted text-muted-foreground' },
+    { value: 'In Progress', label: 'In Progress', color: 'bg-primary/10 text-primary' },
+    { value: 'Completed', label: 'Completed', color: 'bg-success/10 text-success' },
+    { value: 'On Hold', label: 'On Hold', color: 'bg-warning/10 text-warning' }
   ];
 
   return (
