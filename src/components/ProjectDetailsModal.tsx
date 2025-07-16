@@ -118,6 +118,19 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
     }
   };
 
+  // Safe number formatting with fallbacks
+  const formatCurrency = (amount: number | undefined): string => {
+    if (typeof amount !== 'number' || isNaN(amount)) {
+      return '0';
+    }
+    return amount.toLocaleString();
+  };
+
+  const calculateBudgetPercentage = (spent: number | undefined, budget: number | undefined): number => {
+    if (!spent || !budget || budget === 0) return 0;
+    return Math.round((spent / budget) * 100);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
@@ -157,8 +170,8 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <Target className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{currentProject.progress}%</div>
-                    <Progress value={currentProject.progress} className="mt-2" />
+                    <div className="text-2xl font-bold">{currentProject.progress || 0}%</div>
+                    <Progress value={currentProject.progress || 0} className="mt-2" />
                   </CardContent>
                 </Card>
 
@@ -168,11 +181,11 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${currentProject.spent.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${formatCurrency(currentProject.spent)}</div>
                     <p className="text-xs text-muted-foreground">
-                      of ${currentProject.budget.toLocaleString()} ({Math.round((currentProject.spent / currentProject.budget) * 100)}%)
+                      of ${formatCurrency(currentProject.budget)} ({calculateBudgetPercentage(currentProject.spent, currentProject.budget)}%)
                     </p>
-                    <Progress value={(currentProject.spent / currentProject.budget) * 100} className="mt-2" />
+                    <Progress value={calculateBudgetPercentage(currentProject.spent, currentProject.budget)} className="mt-2" />
                   </CardContent>
                 </Card>
 
