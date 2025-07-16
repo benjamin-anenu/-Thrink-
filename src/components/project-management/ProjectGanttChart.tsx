@@ -40,7 +40,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     return <div className="p-6 text-center text-muted-foreground">Project not found</div>;
   }
   
-  // Now we can safely call all hooks - they will always be called in the same order
+  // Now we can safely call all hooks - they will ALWAYS be called in the same order
   const { 
     tasks, 
     milestones, 
@@ -67,11 +67,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   // New table state management
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
-
-  // Loading check can only happen after hooks
-  if (loading) {
-    return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
-  }
 
   // Available resources and stakeholders - should be fetched from database in production
   const availableResources = useMemo(() => [
@@ -139,6 +134,13 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     
     return groups;
   }, [tasks, milestones, sortBy, sortDirection]);
+
+  // NO MORE EARLY RETURNS AFTER THIS POINT - ALL HOOKS CALLED CONSISTENTLY
+  
+  // Handle loading state in render, not with early return
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
+  }
 
   // Table control handlers
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 2));
