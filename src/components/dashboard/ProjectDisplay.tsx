@@ -1,165 +1,251 @@
 
-import React from 'react';
-import { Activity, Users, Clock, Zap, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { 
+  Calendar, Users, TrendingUp, AlertTriangle, 
+  CheckCircle, Clock, Eye, Edit
+} from 'lucide-react';
+import { useProject } from '@/contexts/ProjectContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { ProjectDetailsModal } from '@/components/ProjectDetailsModal';
+import { supabase } from '@/integrations/supabase/client';
 
-interface Project {
+interface Task {
+  id: string;
   name: string;
   status: string;
-  progress: number;
-  risk: string;
-  team: number;
-  deadline: string;
-  aiInsight: string;
-  color: string;
   priority: string;
+  assigneeId?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
 }
 
-interface ProjectDisplayProps {
-  projects: Project[];
-  activeProject: number;
-}
+const ProjectDisplay = () => {
+  const { projects } = useProject();
+  const { currentWorkspace } = useWorkspace();
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-const ProjectDisplay: React.FC<ProjectDisplayProps> = ({ projects, activeProject }) => {
-  console.log('[ProjectDisplay] Rendering with:', { projectsLength: projects.length, activeProject });
+  // Filter projects by current workspace
+  const workspaceProjects = projects.filter(project => 
+    !currentWorkspace || project.workspaceId === currentWorkspace.id
+  );
 
-  // Safety checks for empty or invalid data
-  if (!projects || projects.length === 0) {
-    return (
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="text-xl font-bold text-foreground flex items-center gap-3">
-            <Activity className="h-5 w-5 text-primary" />
-            Live Project Analysis
-          </h4>
-        </div>
-        <div className="p-8 rounded-3xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border">
-          <div className="text-center py-12">
-            <Activity className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h5 className="text-xl font-semibold text-foreground mb-2">No Projects Available</h5>
-            <p className="text-muted-foreground">Create your first project to see live analysis here.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Load tasks for all projects
+  useEffect(() => {
+    const loadProjectTasks = async () => {
+      if (!currentWorkspace || workspaceProjects.length === 0) return;
 
-  // Ensure activeProject index is valid
-  const safeActiveProject = Math.max(0, Math.min(activeProject, projects.length - 1));
-  const currentProject = projects[safeActiveProject];
+      try {
+        const { data: tasks, error } = await supabase
+          .from('project_tasks')
+          .select('*')
+          .in('project_id', workspaceProjects.map(p => p.id));
 
-  if (!currentProject) {
-    console.warn('[ProjectDisplay] No current project found, using fallback');
-    return (
-      <div className="mb-8">
-        <div className="p-8 rounded-3xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border">
-          <div className="text-center py-12">
-            <Activity className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h5 className="text-xl font-semibold text-foreground mb-2">Loading Project Data</h5>
-            <p className="text-muted-foreground">Please wait while we load your project information.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+        if (error) throw error;
 
-  console.log('[ProjectDisplay] Current project:', currentProject.name);
+        // Group tasks by project ID
+        const tasksByProject: Record<string, Task[]> = {};
+        tasks?.forEach(task => {
+          if (!tasksByProject[task.project_id]) {
+            tasksByProject[task.project_id] = [];
+          }
+          tasksByProject[task.project_id].push({
+            id: task.id,
+            name: task.name,
+            status: task.status || 'Pending',
+            priority: task.priority || 'Medium',
+            assigneeId: task.assignee_id,
+            startDate: task.start_date,
+            endDate: task.end_date,
+            description: task.description
+          });
+        });
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'Low': return 'text-emerald-400 bg-emerald-400/20 border-emerald-400/30';
-      case 'Medium': return 'text-yellow-400 bg-yellow-400/20 border-yellow-400/30';
-      case 'High': return 'text-red-400 bg-red-400/20 border-red-400/30';
-      default: return 'text-gray-400 bg-gray-400/20 border-gray-400/30';
+        setProjectTasks(tasksByProject);
+      } catch (error) {
+        console.error('Error loading project tasks:', error);
+      }
+    };
+
+    loadProjectTasks();
+  }, [currentWorkspace, workspaceProjects.length]);
+
+  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+    switch (status) {
+      case 'Completed': return 'success';
+      case 'In Progress': return 'info';
+      case 'On Hold': return 'warning';
+      case 'Cancelled': return 'error';
+      default: return 'default';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'Critical': return 'text-red-400';
-      case 'High': return 'text-orange-400';
-      case 'Medium': return 'text-blue-400';
-      default: return 'text-gray-400';
+      case 'High': return 'text-error';
+      case 'Medium': return 'text-warning';
+      case 'Low': return 'text-success';
+      default: return 'text-muted-foreground';
     }
   };
 
+  const calculateProjectStats = (project: any) => {
+    const tasks = projectTasks[project.id] || [];
+    const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+    const totalTasks = tasks.length;
+    const overdueTasks = tasks.filter(t => {
+      if (!t.endDate || t.status === 'Completed') return false;
+      return new Date(t.endDate) < new Date();
+    }).length;
+
+    return {
+      totalTasks,
+      completedTasks,
+      overdueTasks,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    };
+  };
+
+  const handleViewDetails = (project: any) => {
+    const tasks = projectTasks[project.id] || [];
+    setSelectedProject({ ...project, tasks });
+    setIsModalOpen(true);
+  };
+
+  if (workspaceProjects.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-muted-foreground mb-4">
+          <Calendar className="h-12 w-12 mx-auto mb-4" />
+          <h3 className="text-lg font-medium">No Projects Found</h3>
+          <p>Create your first project to get started with project management.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-6">
-        <h4 className="text-xl font-bold text-foreground flex items-center gap-3">
-          <Activity className="h-5 w-5 text-primary animate-pulse" />
-          Live Project Analysis
-        </h4>
-        <div className="flex gap-2">
-          {projects.map((_, i) => (
-            <div 
-              key={i} 
-              className={`h-3 w-12 rounded-full transition-all duration-700 ${
-                i === safeActiveProject ? 'bg-gradient-to-r from-primary to-purple-500 shadow-glow' : 'bg-border/40'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className={`p-8 rounded-3xl bg-gradient-to-br ${currentProject.color || 'from-primary/10 to-purple-500/10'} border border-white/10 transform transition-all duration-1000 hover:scale-[1.02] shadow-premium`}>
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h5 className="text-2xl font-bold text-foreground">{currentProject.name}</h5>
-              <div className={`px-3 py-1 rounded-lg text-xs font-bold border ${getPriorityColor(currentProject.priority)}`}>
-                {currentProject.priority}
-              </div>
-            </div>
-            <div className="flex items-center gap-6 text-sm mb-4">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground font-medium">{currentProject.status}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground font-medium">{currentProject.team} members</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground font-medium">{currentProject.deadline} remaining</span>
-              </div>
-            </div>
-          </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {workspaceProjects.map((project) => {
+          const stats = calculateProjectStats(project);
           
-          <div className={`px-4 py-2 rounded-xl text-sm font-bold border ${getRiskColor(currentProject.risk)}`}>
-            {currentProject.risk} Risk
-          </div>
-        </div>
+          return (
+            <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusVariant(project.status)}>
+                        {project.status}
+                      </Badge>
+                      <Badge variant="outline" className={getPriorityColor(project.priority)}>
+                        {project.priority}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {project.description}
+                </p>
+              </CardHeader>
 
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm mb-3">
-            <span className="text-muted-foreground font-medium">Project Progress</span>
-            <span className="text-foreground font-bold">{currentProject.progress}%</span>
-          </div>
-          <div className="h-3 bg-border/30 rounded-full overflow-hidden shadow-inner">
-            <div 
-              className={`h-full bg-gradient-to-r ${currentProject.color || 'from-primary to-purple-500'} transition-all duration-1200 ease-out shadow-glow`}
-              style={{ width: `${currentProject.progress}%` }}
-            />
-          </div>
-        </div>
+              <CardContent className="space-y-4">
+                {/* Progress */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>{stats.completionRate}%</span>
+                  </div>
+                  <Progress value={stats.completionRate} className="h-2" />
+                </div>
 
-        {/* AI Insight */}
-        <div className="flex items-start gap-4 p-6 rounded-2xl bg-gradient-to-r from-primary/15 to-purple-500/15 border border-primary/25 shadow-elevated">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-glow animate-pulse">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm text-primary font-bold mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 animate-pulse" />
-              AI Predictive Analysis
-            </div>
-            <div className="text-sm text-foreground font-medium">{currentProject.aiInsight}</div>
-          </div>
-        </div>
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    <span>{stats.completedTasks}/{stats.totalTasks} Tasks</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-info" />
+                    <span>{project.teamSize || 0} Members</span>
+                  </div>
+                  {stats.overdueTasks > 0 && (
+                    <div className="flex items-center gap-2 col-span-2">
+                      <AlertTriangle className="h-4 w-4 text-error" />
+                      <span className="text-error">{stats.overdueTasks} Overdue</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Timeline */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>
+                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'} - 
+                    {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                  </span>
+                </div>
+
+                {/* Health Indicator */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      project.health?.status === 'green' ? 'bg-success' :
+                      project.health?.status === 'yellow' ? 'bg-warning' : 'bg-error'
+                    }`} />
+                    <span className="text-sm text-muted-foreground">
+                      Health: {project.health?.score || 100}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewDetails(project)}
+                    className="flex-1"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.location.href = `/project-management/${project.id}`}
+                    className="flex-1"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Manage
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
-    </div>
+
+      {/* Project Details Modal */}
+      {selectedProject && (
+        <ProjectDetailsModal
+          project={selectedProject}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedProject(null);
+          }}
+        />
+      )}
+    </>
   );
 };
 

@@ -50,6 +50,53 @@ export type Database = {
         }
         Relationships: []
       }
+      client_satisfaction: {
+        Row: {
+          client_email: string | null
+          client_name: string
+          created_at: string
+          feedback_text: string | null
+          id: string
+          project_id: string | null
+          satisfaction_score: number
+          survey_date: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          client_email?: string | null
+          client_name: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          project_id?: string | null
+          satisfaction_score: number
+          survey_date?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          client_email?: string | null
+          client_name?: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          project_id?: string | null
+          satisfaction_score?: number
+          survey_date?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_satisfaction_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_logs: {
         Row: {
           created_at: string
@@ -363,6 +410,47 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_budgets: {
+        Row: {
+          allocated_amount: number
+          budget_category: string
+          created_at: string
+          currency: string
+          id: string
+          project_id: string | null
+          spent_amount: number
+          updated_at: string
+        }
+        Insert: {
+          allocated_amount?: number
+          budget_category: string
+          created_at?: string
+          currency?: string
+          id?: string
+          project_id?: string | null
+          spent_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          allocated_amount?: number
+          budget_category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          project_id?: string | null
+          spent_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
