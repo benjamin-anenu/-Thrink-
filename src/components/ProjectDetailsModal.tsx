@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -11,35 +11,14 @@ import {
   Calendar, Users, DollarSign, Target, Clock, AlertTriangle,
   CheckCircle, TrendingUp, FileText, MessageSquare, Settings
 } from 'lucide-react';
-
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: 'Planning' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled';
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  progress: number;
-  startDate: string;
-  endDate: string;
-  budget: number;
-  spent: number;
-  team: Array<{ id: string; name: string; role: string; avatar?: string }>;
-  milestones: Array<{ id: string; name: string; date: string; completed: boolean }>;
-  risks: Array<{ id: string; description: string; impact: 'Low' | 'Medium' | 'High'; probability: 'Low' | 'Medium' | 'High' }>;
-  health?: {
-    overall: 'green' | 'yellow' | 'red';
-    schedule: 'green' | 'yellow' | 'red';
-    budget: 'green' | 'yellow' | 'red';
-    scope: 'green' | 'yellow' | 'red';
-    quality: 'green' | 'yellow' | 'red';
-  };
-}
+import { ProjectDetailsModalData } from '@/types/project-modal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectDetailsModalProps {
-  project: Project | null;
+  project: ProjectDetailsModalData | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit?: (project: Project) => void;
+  onEdit?: (project: ProjectDetailsModalData) => void;
 }
 
 const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
@@ -49,25 +28,74 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
   onEdit
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(false);
+  const [extendedProject, setExtendedProject] = useState<ProjectDetailsModalData | null>(null);
+
+  useEffect(() => {
+    if (project && isOpen) {
+      loadExtendedProjectData(project);
+    }
+  }, [project, isOpen]);
+
+  const loadExtendedProjectData = async (baseProject: ProjectDetailsModalData) => {
+    setLoading(true);
+    try {
+      // Load additional data that might be missing
+      const [teamData, milestonesData, risksData] = await Promise.all([
+        supabase.from('project_team_members').select('*').eq('project_id', baseProject.id),
+        supabase.from('milestones').select('*').eq('project_id', baseProject.id),
+        // For now, we'll use empty risks since we don't have a risks table
+        Promise.resolve({ data: [], error: null })
+      ]);
+
+      const team = teamData.data?.map(member => ({
+        id: member.id,
+        name: member.name,
+        role: member.role,
+        avatar: undefined
+      })) || baseProject.team;
+
+      const milestones = milestonesData.data?.map(milestone => ({
+        id: milestone.id,
+        name: milestone.name,
+        date: milestone.due_date,
+        completed: milestone.status === 'completed'
+      })) || baseProject.milestones;
+
+      setExtendedProject({
+        ...baseProject,
+        team,
+        milestones,
+        risks: baseProject.risks // Keep existing risks for now
+      });
+    } catch (error) {
+      console.error('Error loading extended project data:', error);
+      setExtendedProject(baseProject);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!project) return null;
 
-  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+  const currentProject = extendedProject || project;
+
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
-      case 'Completed': return 'success';
-      case 'In Progress': return 'info';
-      case 'On Hold': return 'warning';
-      case 'Cancelled': return 'error';
+      case 'Completed': return 'default';
+      case 'In Progress': return 'outline';
+      case 'On Hold': return 'secondary';
+      case 'Cancelled': return 'destructive';
       default: return 'default';
     }
   };
 
-  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'default' => {
+  const getPriorityVariant = (priority: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (priority) {
       case 'Critical': 
-      case 'High': return 'error';
-      case 'Medium': return 'warning';
-      case 'Low': return 'success';
+      case 'High': return 'destructive';
+      case 'Medium': return 'secondary';
+      case 'Low': return 'default';
       default: return 'default';
     }
   };
@@ -81,11 +109,11 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
     }
   };
 
-  const getRiskVariant = (level: string): 'success' | 'warning' | 'error' | 'default' => {
+  const getRiskVariant = (level: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (level) {
-      case 'High': return 'error';
-      case 'Medium': return 'warning';
-      case 'Low': return 'success';
+      case 'High': return 'destructive';
+      case 'Medium': return 'secondary';
+      case 'Low': return 'default';
       default: return 'default';
     }
   };
@@ -96,16 +124,16 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="text-2xl font-bold">{project.name}</DialogTitle>
-              <p className="text-muted-foreground mt-1">{project.description}</p>
+              <DialogTitle className="text-2xl font-bold">{currentProject.name}</DialogTitle>
+              <p className="text-muted-foreground mt-1">{currentProject.description}</p>
             </div>
             <div className="flex items-center gap-2">
-              <StatusBadge variant={getStatusVariant(project.status)}>
-                {project.status}
-              </StatusBadge>
-              <StatusBadge variant={getPriorityVariant(project.priority)}>
-                {project.priority}
-              </StatusBadge>
+              <Badge variant={getStatusVariant(currentProject.status)}>
+                {currentProject.status}
+              </Badge>
+              <Badge variant={getPriorityVariant(currentProject.priority)}>
+                {currentProject.priority}
+              </Badge>
             </div>
           </div>
         </DialogHeader>
@@ -129,8 +157,8 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <Target className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{project.progress}%</div>
-                    <Progress value={project.progress} className="mt-2" />
+                    <div className="text-2xl font-bold">{currentProject.progress}%</div>
+                    <Progress value={currentProject.progress} className="mt-2" />
                   </CardContent>
                 </Card>
 
@@ -140,11 +168,11 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${project.spent.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${currentProject.spent.toLocaleString()}</div>
                     <p className="text-xs text-muted-foreground">
-                      of ${project.budget.toLocaleString()} ({Math.round((project.spent / project.budget) * 100)}%)
+                      of ${currentProject.budget.toLocaleString()} ({Math.round((currentProject.spent / currentProject.budget) * 100)}%)
                     </p>
-                    <Progress value={(project.spent / project.budget) * 100} className="mt-2" />
+                    <Progress value={(currentProject.spent / currentProject.budget) * 100} className="mt-2" />
                   </CardContent>
                 </Card>
 
@@ -154,56 +182,76 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-sm font-medium">{project.startDate}</div>
-                    <div className="text-sm text-muted-foreground">to {project.endDate}</div>
+                    <div className="text-sm font-medium">{new Date(currentProject.startDate).toLocaleDateString()}</div>
+                    <div className="text-sm text-muted-foreground">to {new Date(currentProject.endDate).toLocaleDateString()}</div>
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
             <TabsContent value="team" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {project.team.map(member => (
-                  <Card key={member.id}>
-                    <CardContent className="flex items-center space-x-4 p-4">
-                      <div className="w-10 h-10 bg-surface-muted rounded-full flex items-center justify-center">
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-muted-foreground">{member.role}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-8">Loading team data...</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentProject.team.length > 0 ? currentProject.team.map(member => (
+                    <Card key={member.id}>
+                      <CardContent className="flex items-center space-x-4 p-4">
+                        <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                          {member.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <p className="font-medium">{member.name}</p>
+                          <p className="text-sm text-muted-foreground">{member.role}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No team members found</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="milestones" className="space-y-4">
-              {project.milestones.map(milestone => (
-                <Card key={milestone.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center space-x-3">
-                      {milestone.completed ? (
-                        <CheckCircle className="h-5 w-5 text-success" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-muted-foreground" />
-                      )}
-                      <div>
-                        <p className="font-medium">{milestone.name}</p>
-                        <p className="text-sm text-muted-foreground">{milestone.date}</p>
-                      </div>
+              {loading ? (
+                <div className="text-center py-8">Loading milestones...</div>
+              ) : (
+                <>
+                  {currentProject.milestones.length > 0 ? currentProject.milestones.map(milestone => (
+                    <Card key={milestone.id}>
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex items-center space-x-3">
+                          {milestone.completed ? (
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <Clock className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          <div>
+                            <p className="font-medium">{milestone.name}</p>
+                            <p className="text-sm text-muted-foreground">{new Date(milestone.date).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <Badge variant={milestone.completed ? 'default' : 'secondary'}>
+                          {milestone.completed ? 'Completed' : 'Pending'}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No milestones found</p>
                     </div>
-                    <StatusBadge variant={milestone.completed ? 'success' : 'default'}>
-                      {milestone.completed ? 'Completed' : 'Pending'}
-                    </StatusBadge>
-                  </CardContent>
-                </Card>
-              ))}
+                  )}
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="risks" className="space-y-4">
-              {project.risks.map(risk => (
+              {currentProject.risks.length > 0 ? currentProject.risks.map(risk => (
                 <Card key={risk.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
@@ -211,33 +259,42 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                         <p className="font-medium">{risk.description}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-sm text-muted-foreground">Impact:</span>
-                          <StatusBadge variant={getRiskVariant(risk.impact)}>
+                          <Badge variant={getRiskVariant(risk.impact)}>
                             {risk.impact}
-                          </StatusBadge>
+                          </Badge>
                           <span className="text-sm text-muted-foreground">Probability:</span>
-                          <StatusBadge variant={getRiskVariant(risk.probability)}>
+                          <Badge variant={getRiskVariant(risk.probability)}>
                             {risk.probability}
-                          </StatusBadge>
+                          </Badge>
                         </div>
                       </div>
-                      <AlertTriangle className="h-5 w-5 text-warning mt-1" />
+                      <AlertTriangle className="h-5 w-5 text-yellow-500 mt-1" />
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No risks identified</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="health" className="space-y-4">
-              {project.health && (
+              {currentProject.health && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Overall Health</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <StatusBadge variant={getHealthVariant(project.health.overall)}>
-                        {project.health.overall.toUpperCase()}
-                      </StatusBadge>
+                      <Badge variant="outline" className={
+                        currentProject.health.overall === 'green' ? 'border-green-500 text-green-700' :
+                        currentProject.health.overall === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                        'border-red-500 text-red-700'
+                      }>
+                        {currentProject.health.overall.toUpperCase()}
+                      </Badge>
                     </CardContent>
                   </Card>
 
@@ -248,27 +305,43 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Schedule</span>
-                        <StatusBadge variant={getHealthVariant(project.health.schedule)}>
-                          {project.health.schedule}
-                        </StatusBadge>
+                        <Badge variant="outline" className={
+                          currentProject.health.schedule === 'green' ? 'border-green-500 text-green-700' :
+                          currentProject.health.schedule === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                          'border-red-500 text-red-700'
+                        }>
+                          {currentProject.health.schedule}
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Budget</span>
-                        <StatusBadge variant={getHealthVariant(project.health.budget)}>
-                          {project.health.budget}
-                        </StatusBadge>
+                        <Badge variant="outline" className={
+                          currentProject.health.budget === 'green' ? 'border-green-500 text-green-700' :
+                          currentProject.health.budget === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                          'border-red-500 text-red-700'
+                        }>
+                          {currentProject.health.budget}
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Scope</span>
-                        <StatusBadge variant={getHealthVariant(project.health.scope)}>
-                          {project.health.scope}
-                        </StatusBadge>
+                        <Badge variant="outline" className={
+                          currentProject.health.scope === 'green' ? 'border-green-500 text-green-700' :
+                          currentProject.health.scope === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                          'border-red-500 text-red-700'
+                        }>
+                          {currentProject.health.scope}
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Quality</span>
-                        <StatusBadge variant={getHealthVariant(project.health.quality)}>
-                          {project.health.quality}
-                        </StatusBadge>
+                        <Badge variant="outline" className={
+                          currentProject.health.quality === 'green' ? 'border-green-500 text-green-700' :
+                          currentProject.health.quality === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                          'border-red-500 text-red-700'
+                        }>
+                          {currentProject.health.quality}
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -283,7 +356,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
             Close
           </Button>
           {onEdit && (
-            <Button onClick={() => onEdit(project)}>
+            <Button onClick={() => onEdit(currentProject)}>
               <Settings className="h-4 w-4 mr-2" />
               Edit Project
             </Button>

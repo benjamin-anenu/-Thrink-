@@ -12,6 +12,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { supabase } from '@/integrations/supabase/client';
+import { transformProjectForModal, ProjectDetailsModalData } from '@/types/project-modal';
 
 interface Task {
   id: string;
@@ -27,7 +28,7 @@ interface Task {
 const ProjectDisplay = () => {
   const { projects } = useProject();
   const { currentWorkspace } = useWorkspace();
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectDetailsModalData | null>(null);
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -112,10 +113,33 @@ const ProjectDisplay = () => {
     };
   };
 
-  const handleViewDetails = (project: any) => {
-    const tasks = projectTasks[project.id] || [];
-    setSelectedProject({ ...project, tasks });
-    setIsModalOpen(true);
+  const handleViewDetails = async (project: any) => {
+    try {
+      // Transform the project data to match the modal interface
+      const modalProject = transformProjectForModal(
+        {
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          status: project.status,
+          priority: project.priority,
+          progress: project.progress,
+          start_date: project.startDate,
+          end_date: project.endDate,
+          budget: project.budget,
+          health_status: project.health?.status,
+          health_score: project.health?.score,
+          team_size: project.teamSize,
+          workspaceId: project.workspaceId
+        },
+        projectTasks[project.id] || []
+      );
+
+      setSelectedProject(modalProject);
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('Error preparing project details:', error);
+    }
   };
 
   if (workspaceProjects.length === 0) {
@@ -170,17 +194,17 @@ const ProjectDisplay = () => {
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-success" />
+                    <CheckCircle className="h-4 w-4 text-green-500" />
                     <span>{stats.completedTasks}/{stats.totalTasks} Tasks</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-info" />
+                    <Users className="h-4 w-4 text-blue-500" />
                     <span>{project.teamSize || 0} Members</span>
                   </div>
                   {stats.overdueTasks > 0 && (
                     <div className="flex items-center gap-2 col-span-2">
-                      <AlertTriangle className="h-4 w-4 text-error" />
-                      <span className="text-error">{stats.overdueTasks} Overdue</span>
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span className="text-red-500">{stats.overdueTasks} Overdue</span>
                     </div>
                   )}
                 </div>
@@ -198,8 +222,8 @@ const ProjectDisplay = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${
-                      project.health?.status === 'green' ? 'bg-success' :
-                      project.health?.status === 'yellow' ? 'bg-warning' : 'bg-error'
+                      project.health?.status === 'green' ? 'bg-green-500' :
+                      project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
                     }`} />
                     <span className="text-sm text-muted-foreground">
                       Health: {project.health?.score || 100}%
