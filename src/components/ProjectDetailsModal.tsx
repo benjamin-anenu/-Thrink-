@@ -200,8 +200,12 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-sm font-medium">{new Date(currentProject.startDate).toLocaleDateString()}</div>
-                    <div className="text-sm text-muted-foreground">to {new Date(currentProject.endDate).toLocaleDateString()}</div>
+                    <div className="text-sm font-medium">
+                      {currentProject.startDate ? new Date(currentProject.startDate).toLocaleDateString() : 'Not set'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      to {currentProject.endDate ? new Date(currentProject.endDate).toLocaleDateString() : 'Not set'}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -250,7 +254,9 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                           )}
                           <div>
                             <p className="font-medium">{milestone.name}</p>
-                            <p className="text-sm text-muted-foreground">{new Date(milestone.date).toLocaleDateString()}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {milestone.date ? new Date(milestone.date).toLocaleDateString() : 'No date set'}
+                            </p>
                           </div>
                         </div>
                         <Badge variant={milestone.completed ? 'default' : 'secondary'}>
@@ -299,72 +305,70 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
             </TabsContent>
 
             <TabsContent value="health" className="space-y-4">
-              {currentProject.health && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Overall Health</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Overall Health</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant="outline" className={
+                      currentProject.health.overall === 'green' ? 'border-green-500 text-green-700' :
+                      currentProject.health.overall === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                      'border-red-500 text-red-700'
+                    }>
+                      {currentProject.health.overall?.toUpperCase() || 'GREEN'}
+                    </Badge>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Detailed Health</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Schedule</span>
                       <Badge variant="outline" className={
-                        currentProject.health.overall === 'green' ? 'border-green-500 text-green-700' :
-                        currentProject.health.overall === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                        currentProject.health.schedule === 'green' ? 'border-green-500 text-green-700' :
+                        currentProject.health.schedule === 'yellow' ? 'border-yellow-500 text-yellow-700' :
                         'border-red-500 text-red-700'
                       }>
-                        {currentProject.health.overall.toUpperCase()}
+                        {currentProject.health.schedule || 'green'}
                       </Badge>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Detailed Health</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Schedule</span>
-                        <Badge variant="outline" className={
-                          currentProject.health.schedule === 'green' ? 'border-green-500 text-green-700' :
-                          currentProject.health.schedule === 'yellow' ? 'border-yellow-500 text-yellow-700' :
-                          'border-red-500 text-red-700'
-                        }>
-                          {currentProject.health.schedule}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Budget</span>
-                        <Badge variant="outline" className={
-                          currentProject.health.budget === 'green' ? 'border-green-500 text-green-700' :
-                          currentProject.health.budget === 'yellow' ? 'border-yellow-500 text-yellow-700' :
-                          'border-red-500 text-red-700'
-                        }>
-                          {currentProject.health.budget}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Scope</span>
-                        <Badge variant="outline" className={
-                          currentProject.health.scope === 'green' ? 'border-green-500 text-green-700' :
-                          currentProject.health.scope === 'yellow' ? 'border-yellow-500 text-yellow-700' :
-                          'border-red-500 text-red-700'
-                        }>
-                          {currentProject.health.scope}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Quality</span>
-                        <Badge variant="outline" className={
-                          currentProject.health.quality === 'green' ? 'border-green-500 text-green-700' :
-                          currentProject.health.quality === 'yellow' ? 'border-yellow-500 text-yellow-700' :
-                          'border-red-500 text-red-700'
-                        }>
-                          {currentProject.health.quality}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Budget</span>
+                      <Badge variant="outline" className={
+                        currentProject.health.budget === 'green' ? 'border-green-500 text-green-700' :
+                        currentProject.health.budget === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                        'border-red-500 text-red-700'
+                      }>
+                        {currentProject.health.budget || 'green'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Scope</span>
+                      <Badge variant="outline" className={
+                        currentProject.health.scope === 'green' ? 'border-green-500 text-green-700' :
+                        currentProject.health.scope === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                        'border-red-500 text-red-700'
+                      }>
+                        {currentProject.health.scope || 'green'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Quality</span>
+                      <Badge variant="outline" className={
+                        currentProject.health.quality === 'green' ? 'border-green-500 text-green-700' :
+                        currentProject.health.quality === 'yellow' ? 'border-yellow-500 text-yellow-700' :
+                        'border-red-500 text-red-700'
+                      }>
+                        {currentProject.health.quality || 'green'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </div>
         </Tabs>

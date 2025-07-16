@@ -127,18 +127,45 @@ const ProjectDisplay = () => {
           start_date: project.startDate,
           end_date: project.endDate,
           budget: project.budget,
-          health_status: project.health?.status,
-          health_score: project.health?.score,
+          health_status: project.healthStatus || project.health?.status,
+          health_score: project.healthScore || project.health?.score,
           team_size: project.teamSize,
-          workspaceId: project.workspaceId
+          workspace_id: project.workspaceId
         },
-        projectTasks[project.id] || []
+        projectTasks[project.id] || [],
+        [], // team members will be loaded in modal
+        [], // milestones will be loaded in modal
+        []  // risks will be loaded in modal
       );
 
       setSelectedProject(modalProject);
       setIsModalOpen(true);
     } catch (error) {
       console.error('Error preparing project details:', error);
+      // Still try to open modal with basic data
+      setSelectedProject({
+        id: project.id || '',
+        name: project.name || 'Unnamed Project',
+        description: project.description || '',
+        status: 'Planning',
+        priority: 'Medium',
+        progress: project.progress || 0,
+        startDate: project.startDate || new Date().toISOString().split('T')[0],
+        endDate: project.endDate || new Date().toISOString().split('T')[0],
+        budget: 0,
+        spent: 0,
+        team: [],
+        milestones: [],
+        risks: [],
+        health: {
+          overall: 'green',
+          schedule: 'green',
+          budget: 'green',
+          scope: 'green',
+          quality: 'green'
+        }
+      });
+      setIsModalOpen(true);
     }
   };
 
