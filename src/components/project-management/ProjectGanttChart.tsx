@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useResources } from '@/hooks/useResources';
@@ -537,7 +536,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         onOpenChange={setShowMilestoneDialog}
         onCreateMilestone={createMilestone}
         onUpdateMilestone={updateMilestone}
-        onDeleteMilestone={deleteMilestone}
         editingMilestone={null}
       />
 
