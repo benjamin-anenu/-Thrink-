@@ -54,7 +54,7 @@ const TaskFilterDialog: React.FC<TaskFilterDialogProps> = ({
     return Object.keys(filters).filter(key => {
       const value = filters[key as keyof TaskFilters];
       if (key === 'dateRange') {
-        return value && (value.start || value.end);
+        return value && typeof value === 'object' && (value.start || value.end);
       }
       return value && value !== '';
     }).length;
