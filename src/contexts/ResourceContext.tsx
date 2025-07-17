@@ -55,17 +55,17 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       if (error) throw error;
 
-      // Transform database data to match our interface with default values
+      // Transform database data to match our interface with default values for UI-specific properties
       const transformedResources: Resource[] = (data || []).map(resource => ({
         ...resource,
-        phone: resource.phone || '',
-        location: resource.location || '',
-        skills: resource.skills || [],
-        currentProjects: resource.current_projects || [],
-        hourlyRate: resource.hourly_rate || '$0/hr',
-        utilization: resource.utilization || 0,
-        status: resource.status || 'Available',
-        availability: resource.availability || 100
+        phone: '', // Default value since not in database
+        location: '', // Default value since not in database
+        skills: [], // Default value since not in database
+        currentProjects: [], // Default value since not in database
+        hourlyRate: '$0/hr', // Default value since not in database
+        utilization: 0, // Default value since not in database
+        status: 'Available', // Default value since not in database
+        availability: 100 // Default value since not in database
       }));
 
       setResources(transformedResources);
@@ -94,14 +94,14 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       const transformedResource: Resource = {
         ...data,
-        phone: '',
-        location: '',
-        skills: [],
-        currentProjects: [],
-        hourlyRate: '$0/hr',
-        utilization: 0,
-        status: 'Available',
-        availability: 100
+        phone: resourceData.phone || '',
+        location: resourceData.location || '',
+        skills: resourceData.skills || [],
+        currentProjects: resourceData.currentProjects || [],
+        hourlyRate: resourceData.hourlyRate || '$0/hr',
+        utilization: resourceData.utilization || 0,
+        status: resourceData.status || 'Available',
+        availability: resourceData.availability || 100
       };
 
       setResources(prev => [...prev, transformedResource]);
@@ -138,7 +138,7 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
         hourlyRate: resourceData.hourlyRate || '$0/hr',
         utilization: resourceData.utilization || 0,
         status: resourceData.status || 'Available',
-        availability: 100
+        availability: resourceData.availability || 100
       };
 
       setResources(prev => prev.map(resource => 

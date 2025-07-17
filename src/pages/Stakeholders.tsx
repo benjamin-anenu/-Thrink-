@@ -1,17 +1,17 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
-import StakeholderCard from '@/components/stakeholders/StakeholderCard';
-import StakeholderForm from '@/components/stakeholders/StakeholderForm';
+import StakeholderCard from '@/components/StakeholderCard';
+import StakeholderForm from '@/components/StakeholderForm';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table } from '@/components/ui/table';
 import { TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
-import { Plus, Search, Filter, Users, Grid3x3, Table, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Users, Grid3x3, Table as TableIcon, Eye, Edit, Trash2 } from 'lucide-react';
 import { useStakeholders } from '@/contexts/StakeholderContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -48,7 +48,7 @@ const Stakeholders = () => {
 
   // Calculate metrics
   const totalStakeholders = stakeholders.length;
-  const keyStakeholders = stakeholders.filter(s => s.influence_level === 'High' || (s.escalation_level && s.escalation_level <= 2)).length;
+  const keyStakeholders = stakeholders.filter(s => s.influence_level === 'High').length;
   const activeProjects = projects.filter(p => p.status === 'active').length;
   const stakeholdersByProject = projects.length > 0 
     ? Math.round(stakeholders.length / projects.length) 
@@ -197,7 +197,7 @@ const Stakeholders = () => {
               Grid View
             </TabsTrigger>
             <TabsTrigger value="table" className="flex items-center gap-2">
-              <Table className="h-4 w-4" />
+              <TableIcon className="h-4 w-4" />
               Table View
             </TabsTrigger>
           </TabsList>
@@ -250,75 +250,60 @@ const Stakeholders = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredStakeholders.map((stakeholder) => {
-                        // Transform to match the expected interface
-                        const transformedStakeholder = {
-                          ...stakeholder,
-                          role: stakeholder.role || 'Member',
-                          department: '',
-                          phone: '',
-                          communicationPreference: 'email',
-                          influence: stakeholder.influence_level || 'Medium',
-                          availability: 100,
-                          notes: '',
-                          tags: []
-                        };
-                        
-                        return (
-                          <tr key={stakeholder.id} className="border-b hover:bg-muted/30">
-                            <td className="p-4">
-                              <div>
-                                <p className="font-medium">{stakeholder.name}</p>
-                                <p className="text-sm text-muted-foreground">{stakeholder.email}</p>
+                      {filteredStakeholders.map((stakeholder) => (
+                        <tr key={stakeholder.id} className="border-b hover:bg-muted/30">
+                          <td className="p-4">
+                            <div>
+                              <p className="font-medium">{stakeholder.name}</p>
+                              <p className="text-sm text-muted-foreground">{stakeholder.email}</p>
+                            </div>
+                          </td>
+                          <td className="p-4">{stakeholder.role || 'Not specified'}</td>
+                          <td className="p-4">{stakeholder.organization || 'Not specified'}</td>
+                          <td className="p-4">
+                            {stakeholder.email && (
+                              <div className="text-sm">
+                                <p>{stakeholder.email}</p>
                               </div>
-                            </td>
-                            <td className="p-4">{stakeholder.role || 'Not specified'}</td>
-                            <td className="p-4">{stakeholder.organization || 'Not specified'}</td>
-                            <td className="p-4">
-                              {stakeholder.email && (
-                                <div className="text-sm">
-                                  <p>{stakeholder.email}</p>
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              <Badge 
-                                variant={
-                                  stakeholder.influence_level === 'High' ? 'destructive' :
-                                  stakeholder.influence_level === 'Medium' ? 'default' : 'secondary'
-                                }
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <Badge 
+                              variant={
+                                stakeholder.influence_level === 'High' ? 'destructive' :
+                                stakeholder.influence_level === 'Medium' ? 'default' : 'secondary'
+                              }
+                            >
+                              {stakeholder.influence_level || 'Medium'}
+                            </Badge>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewDetails(stakeholder)}
                               >
-                                {stakeholder.influence_level || 'Medium'}
-                              </Badge>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleViewDetails(transformedStakeholder)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleEdit(transformedStakeholder)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDelete(transformedStakeholder)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEdit(stakeholder)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(stakeholder)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -333,14 +318,13 @@ const Stakeholders = () => {
       {/* Stakeholder Form Modal */}
       {showForm && (
         <StakeholderForm
-          isOpen={showForm}
+          open={showForm}
           onClose={() => {
             setShowForm(false);
             setSelectedStakeholder(null);
           }}
           stakeholder={selectedStakeholder}
-          onSubmit={handleFormSubmit}
-          isEditing={isEditing}
+          onSave={handleFormSubmit}
         />
       )}
 
