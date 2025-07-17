@@ -17,8 +17,11 @@ export interface Stakeholder {
   phone?: string;
   communicationPreference?: string;
   influence?: string;
+  interest?: string;
   availability?: string;
   projects?: string[];
+  status?: string;
+  lastContact?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -78,13 +81,16 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
         project_id: stakeholder.project_id,
         workspace_id: stakeholder.workspace_id,
         escalation_level: stakeholder.escalation_level,
-        contact_info: typeof stakeholder.contact_info === 'object' ? stakeholder.contact_info as Record<string, any> : {},
-        department: '',
+        contact_info: typeof stakeholder.contact_info === 'object' && stakeholder.contact_info !== null ? stakeholder.contact_info as Record<string, any> : {},
+        department: stakeholder.role || '',
         phone: '',
         communicationPreference: 'Email',
         influence: stakeholder.influence_level || 'Medium',
+        interest: 'Medium',
         availability: 'Available',
         projects: [],
+        status: 'Active',
+        lastContact: new Date().toISOString().split('T')[0],
         created_at: stakeholder.created_at,
         updated_at: stakeholder.updated_at
       }));
@@ -106,7 +112,7 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
         email: stakeholderData.email,
         role: stakeholderData.role,
         organization: stakeholderData.organization,
-        influence_level: stakeholderData.influence_level,
+        influence_level: stakeholderData.influence_level || stakeholderData.influence,
         project_id: stakeholderData.project_id,
         workspace_id: stakeholderData.workspace_id,
         escalation_level: stakeholderData.escalation_level,
@@ -134,13 +140,16 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
         project_id: data.project_id,
         workspace_id: data.workspace_id,
         escalation_level: data.escalation_level,
-        contact_info: typeof data.contact_info === 'object' ? data.contact_info as Record<string, any> : {},
-        department: stakeholderData.department || '',
+        contact_info: typeof data.contact_info === 'object' && data.contact_info !== null ? data.contact_info as Record<string, any> : {},
+        department: stakeholderData.department || data.role || '',
         phone: stakeholderData.phone || '',
         communicationPreference: stakeholderData.communicationPreference || 'Email',
         influence: stakeholderData.influence || data.influence_level || 'Medium',
+        interest: stakeholderData.interest || 'Medium',
         availability: stakeholderData.availability || 'Available',
         projects: stakeholderData.projects || [],
+        status: stakeholderData.status || 'Active',
+        lastContact: stakeholderData.lastContact || new Date().toISOString().split('T')[0],
         created_at: data.created_at,
         updated_at: data.updated_at
       };
@@ -161,12 +170,19 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
         email: updates.email,
         role: updates.role,
         organization: updates.organization,
-        influence_level: updates.influence_level,
+        influence_level: updates.influence_level || updates.influence,
         project_id: updates.project_id,
         workspace_id: updates.workspace_id,
         escalation_level: updates.escalation_level,
         contact_info: updates.contact_info
       };
+
+      // Remove undefined values
+      Object.keys(basicUpdates).forEach(key => {
+        if (basicUpdates[key as keyof typeof basicUpdates] === undefined) {
+          delete basicUpdates[key as keyof typeof basicUpdates];
+        }
+      });
 
       const { error: updateError } = await supabase
         .from('stakeholders')
