@@ -13,7 +13,7 @@ interface TaskHierarchyRendererProps {
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: ProjectTask) => void;
-  onRebaselineTask: (task: ProjectTask) => void;
+  onRebaselineTask: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
   onToggleExpansion: (taskId: string) => void;
   onPromoteTask: (taskId: string) => void;
   onDemoteTask: (taskId: string) => void;
