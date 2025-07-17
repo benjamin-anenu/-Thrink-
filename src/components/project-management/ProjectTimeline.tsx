@@ -95,7 +95,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
     }
   };
 
-  // Timeline view data
+  // Timeline view data with proper typing
   const timelineItems = [
     ...tasks.map(task => ({
       id: task.id,
@@ -237,7 +237,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                             <Badge variant={item.type === 'milestone' ? 'default' : 'secondary'}>
                               {item.type}
                             </Badge>
-                            {item.type === 'task' && item.priority && (
+                            {item.type === 'task' && 'priority' in item && item.priority && (
                               <span className={`text-xs font-medium ${getPriorityColor(item.priority)}`}>
                                 {item.priority} Priority
                               </span>
@@ -248,7 +248,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                           
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
                             <span>{new Date(item.date).toLocaleDateString()}</span>
-                            {item.endDate && (
+                            {item.type === 'task' && 'endDate' in item && item.endDate && (
                               <span>- {new Date(item.endDate).toLocaleDateString()}</span>
                             )}
                             <Badge variant="outline" className={getStatusColor(item.status)}>

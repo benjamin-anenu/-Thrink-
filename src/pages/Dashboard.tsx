@@ -9,6 +9,7 @@ import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,62 +19,97 @@ import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'luci
 const Dashboard = () => {
   const { projects } = useProject();
   const { resources } = useResources();
+  const [projectTasks, setProjectTasks] = useState<any[]>([]);
+  const [projectMilestones, setProjectMilestones] = useState<any[]>([]);
 
   console.log('[Dashboard] Rendering with projects:', projects.length);
 
+  useEffect(() => {
+    const loadProjectData = async () => {
+      try {
+        // Load tasks for all projects
+        const { data: tasks, error: tasksError } = await supabase
+          .from('project_tasks')
+          .select('*');
+        
+        if (tasksError) throw tasksError;
+
+        // Load milestones for all projects
+        const { data: milestones, error: milestonesError } = await supabase
+          .from('milestones')
+          .select('*');
+        
+        if (milestonesError) throw milestonesError;
+
+        setProjectTasks(tasks || []);
+        setProjectMilestones(milestones || []);
+      } catch (error) {
+        console.error('Error loading project data:', error);
+      }
+    };
+
+    loadProjectData();
+  }, []);
+
   // Generate upcoming deadlines from real project data
-  const upcomingDeadlines = projects.flatMap(project => 
-    [...project.tasks, ...project.milestones.map(m => ({
+  const upcomingDeadlines = projects.flatMap(project => {
+    const projectTasksData = projectTasks.filter(t => t.project_id === project.id);
+    const projectMilestonesData = projectMilestones.filter(m => m.project_id === project.id);
+    
+    return [...projectTasksData, ...projectMilestonesData.map(m => ({
       ...m,
       name: m.name,
-      endDate: m.date,
+      end_date: m.due_date,
       status: m.status === 'completed' ? 'Completed' : 'Pending',
       priority: 'Medium' as const
     }))]
       .filter(item => {
-        const itemDate = new Date(item.endDate);
+        const itemDate = new Date(item.end_date || item.due_date);
         const today = new Date();
         const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return diffDays >= 0 && diffDays <= 14 && item.status !== 'Completed';
       })
-      .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
+      .sort((a, b) => new Date(a.end_date || a.due_date).getTime() - new Date(b.end_date || b.due_date).getTime())
       .slice(0, 3)
       .map(item => ({
         project: project.name,
         task: item.name,
-        date: new Date(item.endDate).toLocaleDateString(),
+        date: new Date(item.end_date || item.due_date).toLocaleDateString(),
         priority: item.priority || 'Medium'
-      }))
-  );
+      }));
+  });
 
   // Generate recent activity from real project data
-  const recentActivity = projects.flatMap(project => 
-    project.tasks
-      .filter(task => task.status === 'Completed' || task.progress > 80)
-      .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
+  const recentActivity = projects.flatMap(project => {
+    const projectTasksData = projectTasks.filter(t => t.project_id === project.id);
+    
+    return projectTasksData
+      .filter(task => task.status === 'Completed' || (task.progress && task.progress > 80))
+      .sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
       .slice(0, 2)
       .map(task => ({
         action: task.status === 'Completed' ? 'Task completed' : `Task ${task.progress}% complete`,
         project: project.name,
         time: (() => {
-          const taskDate = new Date(task.endDate);
+          const taskDate = new Date(task.end_date);
           const now = new Date();
           const diffHours = Math.floor((now.getTime() - taskDate.getTime()) / (1000 * 60 * 60));
           return diffHours < 24 ? `${diffHours} hours ago` : `${Math.floor(diffHours / 24)} days ago`;
         })()
-      }))
-  ).slice(0, 4);
+      }));
+  }).slice(0, 4);
 
   // Calculate real metrics from context data
   const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
-  const completedProjects = projects.filter(p => p.status === 'Completed').length;
+  const activeProjects = projects.filter(p => p.status === 'active').length;
+  const completedProjects = projects.filter(p => p.status === 'completed').length;
   const totalResources = resources.length;
   const availableResources = resources.filter(r => r.status === 'Available').length;
   const avgProjectProgress = projects.length > 0 
     ? Math.round(projects.reduce((acc, project) => {
-        const projectProgress = project.tasks.length > 0 
-          ? project.tasks.reduce((taskAcc, task) => taskAcc + task.progress, 0) / project.tasks.length
+        const projectTasksData = projectTasks.filter(t => t.project_id === project.id);
+        const projectProgress = projectTasksData.length > 0 
+          ? projectTasksData.reduce((taskAcc, task) => taskAcc + (task.progress || 0), 0) / projectTasksData.length
           : 0;
         return acc + projectProgress;
       }, 0) / projects.length)

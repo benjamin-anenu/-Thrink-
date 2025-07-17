@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -21,7 +20,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, addProject, softDeleteProject, checkProjectDependencies } = useProject();
+  const { projects, addProject, softDeleteProject } = useProject();
   const { currentWorkspace } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
@@ -89,11 +88,7 @@ const Projects = () => {
 
   const handleDeleteProject = async (project: any) => {
     setSelectedProject(project);
-    
-    // Check for dependencies
-    const deps = await checkProjectDependencies(project.id);
-    setDependencies(deps);
-    
+    setDependencies([]);
     setShowDeleteDialog(true);
   };
 
@@ -198,7 +193,7 @@ const Projects = () => {
                           {project.priority || 'Medium'}
                         </Badge>
                         <HealthIndicator 
-                          health={project.health_status || 'green'} 
+                          health={project.health_status as 'green' | 'yellow' | 'red' || 'green'} 
                           score={project.health_score || 100}
                         />
                       </div>
@@ -341,7 +336,7 @@ const Projects = () => {
                         <TableCell>{project.budget || '$0'}</TableCell>
                         <TableCell>
                           <HealthIndicator 
-                            health={project.health_status || 'green'} 
+                            health={project.health_status as 'green' | 'yellow' | 'red' || 'green'} 
                             score={project.health_score || 100}
                           />
                         </TableCell>
