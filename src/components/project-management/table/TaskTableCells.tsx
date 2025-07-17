@@ -150,10 +150,10 @@ export const TaskStatusCell: React.FC<TaskStatusCellProps> = ({
     return (
       <TableCell className={`table-cell ${densityClass}`}>
         <InlineSelectEdit
-          value={task.status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled'}
+          value={task.status}
           options={statusOptions}
           onSave={(value) => {
-            onUpdateTask(task.id, { status: value });
+            onUpdateTask(task.id, { status: value as ProjectTask['status'] });
             setIsEditing(false);
           }}
         />
@@ -212,10 +212,10 @@ export const TaskPriorityCell: React.FC<TaskPriorityCellProps> = ({
     return (
       <TableCell className={`table-cell ${densityClass}`}>
         <InlineSelectEdit
-          value={task.priority as 'Low' | 'Medium' | 'High' | 'Critical'}
+          value={task.priority}
           options={priorityOptions}
           onSave={(value) => {
-            onUpdateTask(task.id, { priority: value });
+            onUpdateTask(task.id, { priority: value as ProjectTask['priority'] });
             setIsEditing(false);
           }}
         />
@@ -254,32 +254,13 @@ export const TaskResourcesCell: React.FC<TaskResourcesCellProps> = ({
   onUpdateTask, 
   densityClass = 'py-3 px-4' 
 }) => {
-  const resourceOptions = availableResources.map(r => ({ 
-    value: r.id, 
-    label: `${r.name} (${r.role})` 
-  }));
-
   return (
     <TableCell className={`table-cell ${densityClass}`}>
       <InlineMultiSelectEdit
-        values={task.assignedResources || []}
-        options={resourceOptions}
+        value={task.assignedResources || []}
+        options={availableResources}
         onSave={(values) => onUpdateTask(task.id, { assignedResources: values })}
-        renderValues={(values) => (
-          <div className="flex flex-wrap gap-1">
-            {values.map(resourceId => {
-              const resource = availableResources.find(r => r.id === resourceId);
-              return resource ? (
-                <Badge key={resourceId} variant="secondary" className="text-xs px-2 py-1">
-                  {resource.name}
-                </Badge>
-              ) : null;
-            })}
-            {values.length === 0 && (
-              <span className="text-muted-foreground text-sm">Unassigned</span>
-            )}
-          </div>
-        )}
+        placeholder="Unassigned"
       />
     </TableCell>
   );
@@ -394,31 +375,18 @@ export const TaskDependenciesCell: React.FC<TaskDependenciesCellProps> = ({
   onUpdateTask, 
   densityClass = 'py-3 px-4' 
 }) => {
+  // Convert tasks to the format expected by InlineMultiSelectEdit
   const dependencyOptions = allTasks
     .filter(t => t.id !== task.id)
-    .map(t => ({ value: t.id, label: t.name }));
+    .map(t => ({ id: t.id, name: t.name, role: 'Task' }));
 
   return (
     <TableCell className={`table-cell ${densityClass}`}>
       <InlineMultiSelectEdit
-        values={task.dependencies || []}
+        value={task.dependencies || []}
         options={dependencyOptions}
         onSave={(values) => onUpdateTask(task.id, { dependencies: values })}
-        renderValues={(values) => (
-          <div className="flex flex-wrap gap-1">
-            {values.map(depId => {
-              const depTask = allTasks.find(t => t.id === depId);
-              return depTask ? (
-                <Badge key={depId} variant="outline" className="text-xs px-2 py-1">
-                  {depTask.name}
-                </Badge>
-              ) : null;
-            })}
-            {values.length === 0 && (
-              <span className="text-muted-foreground text-sm">None</span>
-            )}
-          </div>
-        )}
+        placeholder="None"
       />
     </TableCell>
   );
