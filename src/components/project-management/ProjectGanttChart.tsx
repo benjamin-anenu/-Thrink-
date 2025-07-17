@@ -258,7 +258,14 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
 
   const handleCreateTask = async (task: Omit<ProjectTask, 'id'>) => {
     try {
-      await createTask(task);
+      // Fix UUID conversion issues
+      const taskData = {
+        ...task,
+        // Ensure milestoneId is properly handled as UUID or null
+        milestoneId: task.milestoneId && task.milestoneId !== '' ? task.milestoneId : undefined,
+      };
+      
+      await createTask(taskData);
       toast.success('Task created successfully');
       setShowTaskDialog(false);
     } catch (error) {
@@ -476,7 +483,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
                   Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </TableHead>
-                <TableHead className="min-w-[250px]">Dependencies</TableHead>
+                <TableHead className="w-64 max-w-64 text-xs leading-tight px-2">
+                  <span className="block truncate">Dependencies</span>
+                </TableHead>
                 <TableHead>Milestone</TableHead>
                 <TableHead>Variance</TableHead>
                 <TableHead>Actions</TableHead>

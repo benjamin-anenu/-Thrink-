@@ -186,28 +186,32 @@ export const useTaskManagement = (projectId: string) => {
     }
   };
 
-  // Create task with proper baseline initialization
+  // Create task with proper UUID handling and baseline initialization
   const createTask = async (taskData: Omit<ProjectTask, 'id'>) => {
     try {
+      // Ensure proper UUID formatting and null handling
+      const dbTaskData = {
+        project_id: projectId,
+        name: taskData.name,
+        description: taskData.description,
+        start_date: taskData.startDate,
+        end_date: taskData.endDate,
+        baseline_start_date: taskData.startDate,
+        baseline_end_date: taskData.endDate,
+        status: taskData.status,
+        priority: taskData.priority,
+        // Handle milestoneId properly - convert empty string to null for UUID field
+        milestone_id: taskData.milestoneId && taskData.milestoneId !== '' ? taskData.milestoneId : null,
+        duration: taskData.duration,
+        progress: taskData.progress,
+        dependencies: taskData.dependencies,
+        assigned_resources: taskData.assignedResources,
+        assigned_stakeholders: taskData.assignedStakeholders
+      };
+
       const { data, error } = await supabase
         .from('project_tasks')
-        .insert({
-          project_id: projectId,
-          name: taskData.name,
-          description: taskData.description,
-          start_date: taskData.startDate,
-          end_date: taskData.endDate,
-          baseline_start_date: taskData.startDate,
-          baseline_end_date: taskData.endDate,
-          status: taskData.status,
-          priority: taskData.priority,
-          milestone_id: taskData.milestoneId,
-          duration: taskData.duration,
-          progress: taskData.progress,
-          dependencies: taskData.dependencies,
-          assigned_resources: taskData.assignedResources,
-          assigned_stakeholders: taskData.assignedStakeholders
-        })
+        .insert(dbTaskData)
         .select()
         .single();
 
