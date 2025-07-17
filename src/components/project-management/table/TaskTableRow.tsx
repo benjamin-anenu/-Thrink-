@@ -57,7 +57,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   const delayed = isDelayed();
 
   return (
-    <TableRow className={`table-row transition-colors group ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''}`}>
+    <TableRow className={`border-b transition-colors ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''}`}>
       <TaskNameCell 
         task={task} 
         onUpdateTask={onUpdateTask}

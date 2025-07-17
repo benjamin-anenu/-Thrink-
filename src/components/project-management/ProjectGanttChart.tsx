@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ChevronDown, ChevronRight, Target, Settings, FileDown, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -15,6 +15,7 @@ import TaskCreationDialog from './gantt/TaskCreationDialog';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
 import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
 import TaskTableRow from './table/TaskTableRow';
+import TableControls from './table/TableControls';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
@@ -52,7 +53,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [editingMilestone, setEditingMilestone] = useState<ProjectMilestone | null>(null);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
-  const [zoomLevel, setZoomLevel] = useState(100);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
   // Load resources and stakeholders
@@ -250,6 +251,13 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     setExpandedMilestones(newExpanded);
   };
 
+  const handleZoomIn = () => setZoomLevel(Math.min(2, zoomLevel + 0.1));
+  const handleZoomOut = () => setZoomLevel(Math.max(0.5, zoomLevel - 0.1));
+  const handleZoomReset = () => setZoomLevel(1);
+  const handleExport = () => {
+    toast.info('Export functionality will be implemented');
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -299,51 +307,32 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         </CardHeader>
         
         <CardContent className="p-0">
-          {/* Table Controls */}
-          <div className="flex items-center justify-between p-4 border-b bg-muted/30">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}>
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium min-w-[50px] text-center">{zoomLevel}%</span>
-                <Button variant="outline" size="sm" onClick={() => setZoomLevel(Math.min(200, zoomLevel + 10))}>
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setZoomLevel(100)}>
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span className="text-sm">{tableDensity}</span>
-              </div>
-            </div>
-            
-            <Button variant="outline" size="sm" className="flex items-center gap-2">
-              <FileDown className="h-4 w-4" />
-              Export
-            </Button>
-          </div>
+          <TableControls
+            zoomLevel={zoomLevel}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+            tableDensity={tableDensity}
+            onDensityChange={setTableDensity}
+            onExport={handleExport}
+          />
 
-          {/* Task Table */}
-          <div className="overflow-auto" style={{ fontSize: `${zoomLevel}%` }}>
-            <Table>
+          <div className="overflow-x-auto" style={{ fontSize: `${zoomLevel * 100}%` }}>
+            <Table className="min-w-full">
               <TableHeader>
-                <TableRow>
-                  <TableHead>Task Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Resources</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Dependencies</TableHead>
-                  <TableHead>Milestone</TableHead>
-                  <TableHead>Variance</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-64 min-w-[256px]">Task Name</TableHead>
+                  <TableHead className="w-32 min-w-[120px]">Status</TableHead>
+                  <TableHead className="w-24">Priority</TableHead>
+                  <TableHead className="w-32">Resources</TableHead>
+                  <TableHead className="w-32">Start Date</TableHead>
+                  <TableHead className="w-32">End Date</TableHead>
+                  <TableHead className="w-24">Duration</TableHead>
+                  <TableHead className="w-24">Progress</TableHead>
+                  <TableHead className="w-48">Dependencies</TableHead>
+                  <TableHead className="w-32">Milestone</TableHead>
+                  <TableHead className="w-24">Variance</TableHead>
+                  <TableHead className="w-32">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -394,7 +383,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                               setShowTaskDialog(true);
                             }}
                             onRebaselineTask={(task) => {
-                              // Handle rebaseline functionality
                               toast.info('Rebaseline functionality will be implemented');
                             }}
                           />
