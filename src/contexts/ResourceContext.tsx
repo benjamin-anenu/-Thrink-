@@ -8,6 +8,15 @@ export interface Resource {
   email?: string;
   role?: string;
   department?: string;
+  phone?: string;
+  location?: string;
+  skills?: string[];
+  availability?: number;
+  currentProjects?: string[];
+  hourlyRate?: string;
+  utilization?: number;
+  status?: string;
+  workspaceId?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -20,6 +29,8 @@ interface ResourceContextType {
   updateResource: (id: string, updates: Partial<Resource>) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   refreshResources: () => Promise<void>;
+  addResource: (resource: Omit<Resource, 'id' | 'created_at' | 'updated_at'>) => Promise<Resource>;
+  getResourcesByProject: (projectId: string) => Resource[];
 }
 
 const ResourceContext = createContext<ResourceContextType | undefined>(undefined);
@@ -55,7 +66,27 @@ export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) 
         throw fetchError;
       }
 
-      setResources(data || []);
+      // Map the basic database fields to the extended Resource interface
+      const mappedResources: Resource[] = (data || []).map(resource => ({
+        id: resource.id,
+        name: resource.name,
+        email: resource.email,
+        role: resource.role,
+        department: resource.department,
+        phone: '',
+        location: '',
+        skills: [],
+        availability: 80,
+        currentProjects: [],
+        hourlyRate: '$50/hr',
+        utilization: 75,
+        status: 'Available',
+        workspaceId: '',
+        created_at: resource.created_at,
+        updated_at: resource.updated_at
+      }));
+
+      setResources(mappedResources);
     } catch (err) {
       console.error('Error fetching resources:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch resources');
@@ -66,9 +97,17 @@ export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) 
 
   const createResource = async (resourceData: Omit<Resource, 'id' | 'created_at' | 'updated_at'>): Promise<Resource> => {
     try {
+      // Only send basic fields to the database
+      const basicResourceData = {
+        name: resourceData.name,
+        email: resourceData.email,
+        role: resourceData.role,
+        department: resourceData.department
+      };
+
       const { data, error: createError } = await supabase
         .from('resources')
-        .insert([resourceData])
+        .insert([basicResourceData])
         .select()
         .single();
 
@@ -76,7 +115,26 @@ export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) 
         throw createError;
       }
 
-      const newResource = data as Resource;
+      // Map to full Resource interface
+      const newResource: Resource = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        department: data.department,
+        phone: resourceData.phone || '',
+        location: resourceData.location || '',
+        skills: resourceData.skills || [],
+        availability: resourceData.availability || 80,
+        currentProjects: resourceData.currentProjects || [],
+        hourlyRate: resourceData.hourlyRate || '$50/hr',
+        utilization: resourceData.utilization || 75,
+        status: resourceData.status || 'Available',
+        workspaceId: resourceData.workspaceId || '',
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
       setResources(prev => [newResource, ...prev]);
       return newResource;
     } catch (err) {
@@ -87,9 +145,17 @@ export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) 
 
   const updateResource = async (id: string, updates: Partial<Resource>): Promise<void> => {
     try {
+      // Only send basic fields to the database
+      const basicUpdates = {
+        name: updates.name,
+        email: updates.email,
+        role: updates.role,
+        department: updates.department
+      };
+
       const { error: updateError } = await supabase
         .from('resources')
-        .update(updates)
+        .update(basicUpdates)
         .eq('id', id);
 
       if (updateError) {
@@ -129,6 +195,16 @@ export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) 
     await fetchResources();
   };
 
+  const addResource = async (resourceData: Omit<Resource, 'id' | 'created_at' | 'updated_at'>): Promise<Resource> => {
+    return createResource(resourceData);
+  };
+
+  const getResourcesByProject = (projectId: string): Resource[] => {
+    return resources.filter(resource => 
+      resource.currentProjects?.includes(projectId)
+    );
+  };
+
   useEffect(() => {
     fetchResources();
   }, []);
@@ -140,7 +216,9 @@ export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) 
     createResource,
     updateResource,
     deleteResource,
-    refreshResources
+    refreshResources,
+    addResource,
+    getResourcesByProject
   };
 
   return (

@@ -13,6 +13,12 @@ export interface Stakeholder {
   workspace_id?: string;
   escalation_level?: number;
   contact_info?: Record<string, any>;
+  department?: string;
+  phone?: string;
+  communicationPreference?: string;
+  influence?: string;
+  availability?: string;
+  projects?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -25,6 +31,7 @@ interface StakeholderContextType {
   updateStakeholder: (id: string, updates: Partial<Stakeholder>) => Promise<void>;
   deleteStakeholder: (id: string) => Promise<void>;
   refreshStakeholders: () => Promise<void>;
+  addStakeholder: (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => Promise<Stakeholder>;
 }
 
 const StakeholderContext = createContext<StakeholderContextType | undefined>(undefined);
@@ -60,7 +67,29 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
         throw fetchError;
       }
 
-      setStakeholders(data || []);
+      // Map the database fields to the extended Stakeholder interface
+      const mappedStakeholders: Stakeholder[] = (data || []).map(stakeholder => ({
+        id: stakeholder.id,
+        name: stakeholder.name,
+        email: stakeholder.email,
+        role: stakeholder.role,
+        organization: stakeholder.organization,
+        influence_level: stakeholder.influence_level,
+        project_id: stakeholder.project_id,
+        workspace_id: stakeholder.workspace_id,
+        escalation_level: stakeholder.escalation_level,
+        contact_info: typeof stakeholder.contact_info === 'object' ? stakeholder.contact_info as Record<string, any> : {},
+        department: '',
+        phone: '',
+        communicationPreference: 'Email',
+        influence: stakeholder.influence_level || 'Medium',
+        availability: 'Available',
+        projects: [],
+        created_at: stakeholder.created_at,
+        updated_at: stakeholder.updated_at
+      }));
+
+      setStakeholders(mappedStakeholders);
     } catch (err) {
       console.error('Error fetching stakeholders:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch stakeholders');
@@ -71,9 +100,22 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
 
   const createStakeholder = async (stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>): Promise<Stakeholder> => {
     try {
+      // Only send basic fields to the database
+      const basicStakeholderData = {
+        name: stakeholderData.name,
+        email: stakeholderData.email,
+        role: stakeholderData.role,
+        organization: stakeholderData.organization,
+        influence_level: stakeholderData.influence_level,
+        project_id: stakeholderData.project_id,
+        workspace_id: stakeholderData.workspace_id,
+        escalation_level: stakeholderData.escalation_level,
+        contact_info: stakeholderData.contact_info || {}
+      };
+
       const { data, error: createError } = await supabase
         .from('stakeholders')
-        .insert([stakeholderData])
+        .insert([basicStakeholderData])
         .select()
         .single();
 
@@ -81,7 +123,28 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
         throw createError;
       }
 
-      const newStakeholder = data as Stakeholder;
+      // Map to full Stakeholder interface
+      const newStakeholder: Stakeholder = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        organization: data.organization,
+        influence_level: data.influence_level,
+        project_id: data.project_id,
+        workspace_id: data.workspace_id,
+        escalation_level: data.escalation_level,
+        contact_info: typeof data.contact_info === 'object' ? data.contact_info as Record<string, any> : {},
+        department: stakeholderData.department || '',
+        phone: stakeholderData.phone || '',
+        communicationPreference: stakeholderData.communicationPreference || 'Email',
+        influence: stakeholderData.influence || data.influence_level || 'Medium',
+        availability: stakeholderData.availability || 'Available',
+        projects: stakeholderData.projects || [],
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
       setStakeholders(prev => [newStakeholder, ...prev]);
       return newStakeholder;
     } catch (err) {
@@ -92,9 +155,22 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
 
   const updateStakeholder = async (id: string, updates: Partial<Stakeholder>): Promise<void> => {
     try {
+      // Only send basic fields to the database
+      const basicUpdates = {
+        name: updates.name,
+        email: updates.email,
+        role: updates.role,
+        organization: updates.organization,
+        influence_level: updates.influence_level,
+        project_id: updates.project_id,
+        workspace_id: updates.workspace_id,
+        escalation_level: updates.escalation_level,
+        contact_info: updates.contact_info
+      };
+
       const { error: updateError } = await supabase
         .from('stakeholders')
-        .update(updates)
+        .update(basicUpdates)
         .eq('id', id);
 
       if (updateError) {
@@ -134,6 +210,10 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
     await fetchStakeholders();
   };
 
+  const addStakeholder = async (stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>): Promise<Stakeholder> => {
+    return createStakeholder(stakeholderData);
+  };
+
   useEffect(() => {
     fetchStakeholders();
   }, []);
@@ -145,7 +225,8 @@ export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ childr
     createStakeholder,
     updateStakeholder,
     deleteStakeholder,
-    refreshStakeholders
+    refreshStakeholders,
+    addStakeholder
   };
 
   return (
