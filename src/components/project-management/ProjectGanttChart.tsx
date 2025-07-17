@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
-import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
+import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,13 +16,14 @@ import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
+import { TaskHierarchyUtils } from '@/utils/taskHierarchy';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
-import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import TableControls from './table/TableControls';
 import ResizableTable from './table/ResizableTable';
 import DeleteTaskConfirmationDialog from './DeleteTaskConfirmationDialog';
 import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
+import TaskHierarchyRenderer from './table/TaskHierarchyRenderer';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
@@ -72,6 +74,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
 
   // Task filtering state
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
+
+  // Hierarchy state management
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   // Load resources and stakeholders from database
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
@@ -187,57 +192,50 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     });
   }, [tasks, taskFilters]);
 
-  // Group tasks by milestone with safe data handling and filtering
-  const groupedTasks = useMemo(() => {
+  // Group tasks by milestone with hierarchical structure
+  const groupedTasksWithHierarchy = useMemo(() => {
     if (!Array.isArray(filteredTasks) || !Array.isArray(milestones)) {
-      return { 'no-milestone': { milestone: null, tasks: [] } };
+      return { 'no-milestone': { milestone: null, hierarchyTree: [] } };
     }
     
-    const groups: { [key: string]: { milestone: ProjectMilestone | null; tasks: ProjectTask[] } } = {};
+    const groups: { [key: string]: { milestone: ProjectMilestone | null; hierarchyTree: TaskHierarchyNode[] } } = {};
     
     // Initialize groups for each milestone
     milestones.forEach(milestone => {
       if (milestone && milestone.id) {
-        groups[milestone.id] = { milestone, tasks: [] };
+        groups[milestone.id] = { milestone, hierarchyTree: [] };
       }
     });
     
     // Add group for tasks without milestone
-    groups['no-milestone'] = { milestone: null, tasks: [] };
+    groups['no-milestone'] = { milestone: null, hierarchyTree: [] };
     
-    // Assign tasks to groups
+    // Group tasks by milestone and build hierarchy for each group
+    const tasksByMilestone: { [key: string]: ProjectTask[] } = {};
+    
     filteredTasks.forEach(task => {
       if (!task || !task.id) return;
       
       const groupKey = task.milestoneId || 'no-milestone';
-      if (groups[groupKey]) {
-        groups[groupKey].tasks.push(task);
-      } else {
-        groups['no-milestone'].tasks.push(task);
+      if (!tasksByMilestone[groupKey]) {
+        tasksByMilestone[groupKey] = [];
       }
+      tasksByMilestone[groupKey].push(task);
     });
     
-    // Sort tasks within each group
-    Object.values(groups).forEach(group => {
-      if (group.tasks) {
-        group.tasks.sort((a, b) => {
-          try {
-            const aValue = (a as any)[sortBy] || '';
-            const bValue = (b as any)[sortBy] || '';
-            const modifier = sortDirection === 'asc' ? 1 : -1;
-            
-            if (aValue < bValue) return -1 * modifier;
-            if (aValue > bValue) return 1 * modifier;
-            return 0;
-          } catch {
-            return 0;
-          }
-        });
+    // Build hierarchy tree for each milestone group
+    Object.keys(tasksByMilestone).forEach(groupKey => {
+      const groupTasks = tasksByMilestone[groupKey];
+      if (groupTasks && groupTasks.length > 0) {
+        const hierarchyTree = TaskHierarchyUtils.buildHierarchyTree(groupTasks);
+        if (groups[groupKey]) {
+          groups[groupKey].hierarchyTree = hierarchyTree;
+        }
       }
     });
     
     return groups;
-  }, [filteredTasks, milestones, sortBy, sortDirection]);
+  }, [filteredTasks, milestones]);
 
   // NO MORE EARLY RETURNS AFTER THIS POINT - ALL HOOKS CALLED CONSISTENTLY
   
@@ -394,6 +392,106 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
+  // Hierarchy control handlers
+  const handleToggleExpansion = (taskId: string) => {
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedNodes(newExpanded);
+  };
+
+  const handlePromoteTask = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const canMove = TaskHierarchyUtils.canMoveTask(taskId, undefined, Object.values(groupedTasksWithHierarchy).flatMap(g => g.hierarchyTree));
+    if (!canMove.canMove) {
+      toast.error(canMove.reason || 'Cannot promote task');
+      return;
+    }
+
+    try {
+      const newLevel = Math.max(0, task.hierarchyLevel - 1);
+      const newSortOrder = TaskHierarchyUtils.generateSortOrder(undefined, 0, tasks);
+      
+      await handleUpdateTask(taskId, {
+        parentTaskId: undefined,
+        hierarchyLevel: newLevel,
+        sortOrder: newSortOrder
+      });
+      toast.success('Task promoted successfully');
+    } catch (error) {
+      toast.error('Failed to promote task');
+    }
+  };
+
+  const handleDemoteTask = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    const siblings = TaskHierarchyUtils.getTaskSiblings(taskId, tasks);
+    
+    if (!task || siblings.length === 0) {
+      toast.error('Cannot demote task - no suitable parent found');
+      return;
+    }
+
+    // Find the previous sibling to use as parent
+    const taskIndex = siblings.findIndex(s => s.sortOrder > task.sortOrder);
+    const newParent = taskIndex > 0 ? siblings[taskIndex - 1] : siblings[0];
+
+    const canMove = TaskHierarchyUtils.canMoveTask(taskId, newParent.id, Object.values(groupedTasksWithHierarchy).flatMap(g => g.hierarchyTree));
+    if (!canMove.canMove) {
+      toast.error(canMove.reason || 'Cannot demote task');
+      return;
+    }
+
+    try {
+      const newLevel = newParent.hierarchyLevel + 1;
+      const newSortOrder = TaskHierarchyUtils.generateSortOrder(newParent.id, 0, tasks);
+      
+      await handleUpdateTask(taskId, {
+        parentTaskId: newParent.id,
+        hierarchyLevel: newLevel,
+        sortOrder: newSortOrder
+      });
+      toast.success('Task demoted successfully');
+    } catch (error) {
+      toast.error('Failed to demote task');
+    }
+  };
+
+  const handleAddSubtask = (parentTaskId: string) => {
+    const parentTask = tasks.find(t => t.id === parentTaskId);
+    if (!parentTask) return;
+
+    // Set the editing task with parent context for the dialog
+    setEditingTask({
+      id: '',
+      name: '',
+      description: '',
+      startDate: parentTask.endDate,
+      endDate: parentTask.endDate,
+      baselineStartDate: parentTask.endDate,
+      baselineEndDate: parentTask.endDate,
+      progress: 0,
+      assignedResources: [],
+      assignedStakeholders: [],
+      dependencies: [],
+      priority: parentTask.priority,
+      status: 'Not Started',
+      milestoneId: parentTask.milestoneId,
+      duration: 1,
+      parentTaskId: parentTaskId,
+      hierarchyLevel: parentTask.hierarchyLevel + 1,
+      sortOrder: TaskHierarchyUtils.generateSortOrder(parentTaskId, 0, tasks),
+      hasChildren: false
+    } as ProjectTask);
+    
+    setShowTaskDialog(true);
+  };
+
   return (
     <ErrorBoundary>
       <div className="space-y-6">
@@ -492,7 +590,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(groupedTasks).map(([groupKey, group]) => (
+              {Object.entries(groupedTasksWithHierarchy).map(([groupKey, group]) => (
                 <React.Fragment key={groupKey}>
                   {/* Milestone Header Row */}
                   {group.milestone && (
@@ -512,7 +610,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                               <Target className="h-4 w-4 text-primary" />
                               <span className="font-semibold text-foreground">{group.milestone.name}</span>
                               <Badge variant="outline" className="ml-2">
-                                {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
+                                {TaskHierarchyUtils.flattenHierarchy(group.hierarchyTree).length} task{TaskHierarchyUtils.flattenHierarchy(group.hierarchyTree).length !== 1 ? 's' : ''}
                               </Badge>
                               <Badge 
                                 variant="outline" 
@@ -556,24 +654,24 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                     </TableRow>
                   )}
                   
-                  {/* Task Rows - Show if no milestone or milestone is expanded */}
+                  {/* Hierarchical Task Rows - Show if no milestone or milestone is expanded */}
                   {(groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) && (
-                    <>
-                      {group.tasks.map((task) => (
-                        <TaskTableRow
-                          key={task.id}
-                          task={task}
-                          milestones={milestones}
-                          availableResources={availableResources}
-                          availableStakeholders={availableStakeholders}
-                          allTasks={tasks}
-                          onUpdateTask={handleUpdateTask}
-                          onDeleteTask={handleDeleteTask}
-                          onEditTask={handleEditTask}
-                          onRebaselineTask={handleRebaselineClick}
-                        />
-                      ))}
-                    </>
+                    <TaskHierarchyRenderer
+                      hierarchyTree={group.hierarchyTree}
+                      expandedNodes={expandedNodes}
+                      milestones={milestones}
+                      availableResources={availableResources}
+                      availableStakeholders={availableStakeholders}
+                      allTasks={tasks}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      onEditTask={handleEditTask}
+                      onRebaselineTask={handleRebaselineClick}
+                      onToggleExpansion={handleToggleExpansion}
+                      onPromoteTask={handlePromoteTask}
+                      onDemoteTask={handleDemoteTask}
+                      onAddSubtask={handleAddSubtask}
+                    />
                   )}
                 </React.Fragment>
               ))}
