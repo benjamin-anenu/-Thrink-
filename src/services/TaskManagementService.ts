@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 
@@ -59,6 +60,8 @@ export class TaskManagementService {
         assignedStakeholders: [],
         progress: 0,
         duration: 1,
+        hierarchyLevel: task.hierarchy_level || 0,
+        sortOrder: task.sort_order || 0
       }));
     } catch (error) {
       console.error('Error creating tasks from milestone:', error);
@@ -80,6 +83,9 @@ export class TaskManagementService {
           status: taskData.status,
           start_date: taskData.startDate,
           end_date: taskData.endDate,
+          parent_task_id: taskData.parentTaskId || null,
+          hierarchy_level: taskData.hierarchyLevel || 0,
+          sort_order: taskData.sortOrder || 0
         })
         .select()
         .single();
@@ -90,7 +96,6 @@ export class TaskManagementService {
         id: task.id,
         name: task.name,
         description: task.description || '',
-        
         milestoneId: null,
         priority: task.priority as "High" | "Medium" | "Low" | "Critical",
         status: task.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
@@ -103,6 +108,8 @@ export class TaskManagementService {
         assignedStakeholders: [],
         progress: 0,
         duration: 1,
+        hierarchyLevel: task.hierarchy_level || 0,
+        sortOrder: task.sort_order || 0
       };
     } catch (error) {
       console.error('Error creating task:', error);
@@ -160,9 +167,7 @@ export class TaskManagementService {
         id: task.id,
         name: task.name,
         description: task.description || '',
-        
         milestoneId: null,
-        
         priority: task.priority as "High" | "Medium" | "Low" | "Critical",
         status: task.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
         startDate: task.start_date,
@@ -174,6 +179,8 @@ export class TaskManagementService {
         assignedStakeholders: [],
         progress: 0,
         duration: 1,
+        hierarchyLevel: task.hierarchy_level || 0,
+        sortOrder: task.sort_order || 0
       }));
     } catch (error) {
       console.error('Error fetching project tasks:', error);

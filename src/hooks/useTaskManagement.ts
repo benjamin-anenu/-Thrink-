@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
@@ -567,7 +568,16 @@ export const useTaskManagement = (projectId: string) => {
         return;
       }
 
-      const { error } = await supabase.rpc('promote_task', { task_id: taskId });
+      // Use direct database operation instead of RPC function
+      const parentTask = tasks.find(t => t.id === task.parentTaskId);
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({
+          parent_task_id: parentTask?.parentTaskId || null,
+          hierarchy_level: (parentTask?.hierarchyLevel || 1) - 1,
+        })
+        .eq('id', taskId);
+
       if (error) throw error;
 
       await loadData();
