@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ProjectTask, ProjectMilestone } from '@/types/project';
+import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
+import { TaskHierarchyUtils } from '@/utils/taskHierarchy';
 import { toast } from 'sonner';
 
 export interface DatabaseTask {
@@ -23,6 +25,9 @@ export interface DatabaseTask {
   assigned_stakeholders?: string[];
   created_at: string;
   updated_at: string;
+  parent_task_id?: string;
+  hierarchy_level?: number;
+  sort_order?: number;
 }
 
 export interface DatabaseMilestone {
@@ -76,6 +81,8 @@ export const useTaskManagement = (projectId: string) => {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hierarchyTree, setHierarchyTree] = useState<TaskHierarchyNode[]>([]);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   // Transform database task to frontend task with safe defaults
   const transformTask = (dbTask: DatabaseTask): ProjectTask => {
@@ -97,7 +104,11 @@ export const useTaskManagement = (projectId: string) => {
       priority: (dbTask.priority as any) || 'Medium',
       status: (dbTask.status as any) || 'Not Started',
       milestoneId: dbTask.milestone_id || undefined,
-      duration: typeof dbTask.duration === 'number' ? dbTask.duration : 1
+      duration: typeof dbTask.duration === 'number' ? dbTask.duration : 1,
+      parentTaskId: dbTask.parent_task_id || undefined,
+      hierarchyLevel: typeof dbTask.hierarchy_level === 'number' ? dbTask.hierarchy_level : 0,
+      sortOrder: typeof dbTask.sort_order === 'number' ? dbTask.sort_order : 0,
+      hasChildren: false
     };
   };
 
@@ -193,11 +204,13 @@ export const useTaskManagement = (projectId: string) => {
     try {
       setLoading(true);
 
-      // Load tasks
+      // Load tasks with hierarchy information
       const { data: tasksData, error: tasksError } = await supabase
         .from('project_tasks')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', projectId)
+        .order('hierarchy_level', { ascending: true })
+        .order('sort_order', { ascending: true });
 
       if (tasksError) throw tasksError;
 
@@ -209,8 +222,17 @@ export const useTaskManagement = (projectId: string) => {
 
       if (milestonesError) throw milestonesError;
 
-      setTasks((tasksData || []).map(transformTask));
+      const transformedTasks = (tasksData || []).map(transformTask);
+      setTasks(transformedTasks);
       setMilestones((milestonesData || []).map(transformMilestone));
+
+      // Build hierarchy tree
+      const tree = TaskHierarchyUtils.buildHierarchyTree(transformedTasks);
+      setHierarchyTree(tree);
+
+      // Set all nodes as expanded by default
+      const allTaskIds = new Set(transformedTasks.map(t => t.id));
+      setExpandedNodes(allTaskIds);
     } catch (error) {
       console.error('Error loading project data:', error);
       toast.error('Failed to load project data');
@@ -537,6 +559,133 @@ export const useTaskManagement = (projectId: string) => {
     }
   };
 
+  // New hierarchy operations
+  const promoteTask = async (taskId: string) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task?.parentTaskId) {
+        toast.error('Task is already at root level');
+        return;
+      }
+
+      // Use direct database operation instead of RPC function
+      const parentTask = tasks.find(t => t.id === task.parentTaskId);
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({
+          parent_task_id: parentTask?.parentTaskId || null,
+          hierarchy_level: (parentTask?.hierarchyLevel || 1) - 1,
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      await loadData();
+      toast.success('Task promoted successfully');
+    } catch (error) {
+      console.error('Error promoting task:', error);
+      toast.error('Failed to promote task');
+      throw error;
+    }
+  };
+
+  const demoteTask = async (taskId: string, newParentId?: string) => {
+    try {
+      const validation = TaskHierarchyUtils.canMoveTask(taskId, newParentId, hierarchyTree);
+      if (!validation.canMove) {
+        toast.error(validation.reason || 'Cannot demote task');
+        return;
+      }
+
+      // If no parent specified, find previous sibling
+      if (!newParentId) {
+        const task = tasks.find(t => t.id === taskId);
+        const siblings = TaskHierarchyUtils.getTaskSiblings(taskId, tasks);
+        const currentIndex = siblings.findIndex(s => s.sortOrder < task!.sortOrder);
+        
+        if (currentIndex === -1) {
+          toast.error('No previous sibling found to demote under');
+          return;
+        }
+        
+        newParentId = siblings[currentIndex].id;
+      }
+
+      const newHierarchyLevel = TaskHierarchyUtils.calculateHierarchyLevel(newParentId, tasks);
+      const newSortOrder = TaskHierarchyUtils.generateSortOrder(newParentId, 0, tasks);
+
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({
+          parent_task_id: newParentId,
+          hierarchy_level: newHierarchyLevel,
+          sort_order: newSortOrder
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      await loadData();
+      toast.success('Task demoted successfully');
+    } catch (error) {
+      console.error('Error demoting task:', error);
+      toast.error('Failed to demote task');
+      throw error;
+    }
+  };
+
+  const moveTask = async (taskId: string, newParentId?: string, newPosition?: number) => {
+    try {
+      const validation = TaskHierarchyUtils.canMoveTask(taskId, newParentId, hierarchyTree);
+      if (!validation.canMove) {
+        toast.error(validation.reason || 'Cannot move task');
+        return;
+      }
+
+      const newHierarchyLevel = TaskHierarchyUtils.calculateHierarchyLevel(newParentId, tasks);
+      const newSortOrder = TaskHierarchyUtils.generateSortOrder(newParentId, newPosition || 0, tasks);
+
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({
+          parent_task_id: newParentId || null,
+          hierarchy_level: newHierarchyLevel,
+          sort_order: newSortOrder
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      await loadData();
+      toast.success('Task moved successfully');
+    } catch (error) {
+      console.error('Error moving task:', error);
+      toast.error('Failed to move task');
+      throw error;
+    }
+  };
+
+  const toggleNodeExpansion = (taskId: string) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  const expandAllNodes = () => {
+    const allTaskIds = new Set(tasks.map(t => t.id));
+    setExpandedNodes(allTaskIds);
+  };
+
+  const collapseAllNodes = () => {
+    setExpandedNodes(new Set());
+  };
+
   // Set up real-time subscriptions
   useEffect(() => {
     if (!projectId) return;
@@ -593,6 +742,14 @@ export const useTaskManagement = (projectId: string) => {
     createMilestone,
     updateMilestone,
     deleteMilestone,
-    refreshData: loadData
+    refreshData: loadData,
+    hierarchyTree,
+    expandedNodes,
+    promoteTask,
+    demoteTask,
+    moveTask,
+    toggleNodeExpansion,
+    expandAllNodes,
+    collapseAllNodes
   };
 };

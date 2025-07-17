@@ -329,7 +329,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'Completed',
           milestoneId: 'milestone-discovery',
-          duration: 14
+          duration: 14,
+          hierarchyLevel: 0,
+          sortOrder: 100
         },
         {
           id: 'task-analysis',
@@ -346,7 +348,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'Completed',
           milestoneId: 'milestone-discovery',
-          duration: 15
+          duration: 15,
+          hierarchyLevel: 0,
+          sortOrder: 200
         },
         {
           id: 'task-wireframes',
@@ -363,7 +367,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'Completed',
           milestoneId: 'milestone-design',
-          duration: 14
+          duration: 14,
+          hierarchyLevel: 0,
+          sortOrder: 300
         },
         {
           id: 'task-prototypes',
@@ -380,7 +386,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'Completed',
           milestoneId: 'milestone-design',
-          duration: 15
+          duration: 15,
+          hierarchyLevel: 0,
+          sortOrder: 400
         },
         {
           id: 'task-components',
@@ -397,7 +405,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'In Progress',
           milestoneId: 'milestone-development',
-          duration: 19
+          duration: 19,
+          hierarchyLevel: 0,
+          sortOrder: 500
         },
         {
           id: 'task-checkout',
@@ -414,7 +424,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'In Progress',
           milestoneId: 'milestone-development',
-          duration: 20
+          duration: 20,
+          hierarchyLevel: 0,
+          sortOrder: 600
         },
         {
           id: 'task-testing',
@@ -431,7 +443,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'Not Started',
           milestoneId: 'milestone-testing',
-          duration: 19
+          duration: 19,
+          hierarchyLevel: 0,
+          sortOrder: 700
         },
         {
           id: 'task-deployment',
@@ -448,7 +462,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           priority: 'High',
           status: 'Not Started',
           milestoneId: 'milestone-testing',
-          duration: 10
+          duration: 10,
+          hierarchyLevel: 0,
+          sortOrder: 800
         }
       ]
     };

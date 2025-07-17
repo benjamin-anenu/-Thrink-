@@ -10,6 +10,7 @@ import InlineDateEdit from './InlineDateEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
 import DependencyManager from '../dependencies/DependencyManager';
 import DependencyVisualizer from '../dependencies/DependencyVisualizer';
+import TaskHierarchyControls from './TaskHierarchyControls';
 
 interface TaskTableCellsProps {
   task: ProjectTask;
@@ -19,18 +20,84 @@ interface TaskTableCellsProps {
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
 }
 
-export const TaskNameCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
+interface TaskNameCellProps {
+  task: ProjectTask;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  isExpanded?: boolean;
+  onToggleExpansion?: (taskId: string) => void;
+  onPromoteTask?: (taskId: string) => void;
+  onDemoteTask?: (taskId: string) => void;
+  onAddSubtask?: (taskId: string) => void;
+  allTasks?: ProjectTask[];
+}
+
+export const TaskNameCell: React.FC<TaskNameCellProps> = ({
   task,
-  onUpdateTask
-}) => (
-  <TableCell className="table-cell font-medium">
-    <InlineTextEdit
-      value={task.name}
-      onSave={(value) => onUpdateTask(task.id, { name: value })}
-      placeholder="Task name"
-    />
-  </TableCell>
-);
+  onUpdateTask,
+  isExpanded = true,
+  onToggleExpansion,
+  onPromoteTask,
+  onDemoteTask,
+  onAddSubtask,
+  allTasks = []
+}) => {
+  const indentLevel = task.hierarchyLevel || 0;
+  const hasChildren = task.hasChildren || false;
+  
+  // Check if task can be promoted (not at root level)
+  const canPromote = indentLevel > 0;
+  
+  // Check if task can be demoted (has a previous sibling)
+  const siblings = allTasks.filter(t => t.parentTaskId === task.parentTaskId);
+  const taskIndex = siblings.findIndex(t => t.id === task.id);
+  const canDemote = taskIndex > 0;
+
+  return (
+    <TableCell className="table-cell font-medium group">
+      <div className="flex items-center gap-2">
+        {/* Indentation for hierarchy */}
+        <div style={{ width: `${indentLevel * 16}px` }} className="flex-shrink-0" />
+        
+        {/* Hierarchy controls */}
+        {(onToggleExpansion || onPromoteTask || onDemoteTask || onAddSubtask) && (
+          <TaskHierarchyControls
+            task={task}
+            isExpanded={isExpanded}
+            hasChildren={hasChildren}
+            onToggleExpansion={onToggleExpansion || (() => {})}
+            onPromoteTask={onPromoteTask || (() => {})}
+            onDemoteTask={onDemoteTask || (() => {})}
+            onAddSubtask={onAddSubtask || (() => {})}
+            canPromote={canPromote}
+            canDemote={canDemote}
+          />
+        )}
+        
+        {/* Task name with hierarchy indicator */}
+        <div className="flex items-center gap-2 flex-1">
+          {/* Visual hierarchy indicator */}
+          {indentLevel > 0 && (
+            <div className="flex items-center">
+              <div className="w-2 h-px bg-border" />
+              <div className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+            </div>
+          )}
+          
+          {/* Parent task indicator */}
+          {hasChildren && (
+            <div className="w-1.5 h-1.5 rounded-sm bg-primary/60 flex-shrink-0" />
+          )}
+          
+          <InlineTextEdit
+            value={task.name}
+            onSave={(value) => onUpdateTask(task.id, { name: value })}
+            placeholder="Task name"
+          />
+        </div>
+      </div>
+    </TableCell>
+  );
+};
 
 export const TaskStatusCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
