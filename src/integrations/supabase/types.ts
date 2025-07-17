@@ -708,12 +708,15 @@ export type Database = {
           description: string | null
           duration: number | null
           end_date: string | null
+          hierarchy_level: number | null
           id: string
           milestone_id: string | null
           name: string
+          parent_task_id: string | null
           priority: string | null
           progress: number | null
           project_id: string | null
+          sort_order: number | null
           start_date: string | null
           status: string | null
           updated_at: string
@@ -730,12 +733,15 @@ export type Database = {
           description?: string | null
           duration?: number | null
           end_date?: string | null
+          hierarchy_level?: number | null
           id?: string
           milestone_id?: string | null
           name: string
+          parent_task_id?: string | null
           priority?: string | null
           progress?: number | null
           project_id?: string | null
+          sort_order?: number | null
           start_date?: string | null
           status?: string | null
           updated_at?: string
@@ -752,12 +758,15 @@ export type Database = {
           description?: string | null
           duration?: number | null
           end_date?: string | null
+          hierarchy_level?: number | null
           id?: string
           milestone_id?: string | null
           name?: string
+          parent_task_id?: string | null
           priority?: string | null
           progress?: number | null
           project_id?: string | null
+          sort_order?: number | null
           start_date?: string | null
           status?: string | null
           updated_at?: string
@@ -775,6 +784,13 @@ export type Database = {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
             referencedColumns: ["id"]
           },
           {
@@ -829,6 +845,8 @@ export type Database = {
           budget: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           end_date: string | null
           health_score: number | null
@@ -853,6 +871,8 @@ export type Database = {
           budget?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           end_date?: string | null
           health_score?: number | null
@@ -877,6 +897,8 @@ export type Database = {
           budget?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           end_date?: string | null
           health_score?: number | null
@@ -1341,6 +1363,14 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
+      check_project_dependencies: {
+        Args: { project_id_param: string }
+        Returns: {
+          dependency_type: string
+          dependency_count: number
+          details: string
+        }[]
+      }
       check_task_dependencies: {
         Args: { task_id_param: string }
         Returns: {
@@ -1348,6 +1378,10 @@ export type Database = {
           dependent_task_name: string
           dependency_type: string
         }[]
+      }
+      cleanup_deleted_projects: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       create_milestone: {
         Args: {
@@ -1365,6 +1399,18 @@ export type Database = {
           workspace_slug?: string
         }
         Returns: string
+      }
+      get_task_hierarchy: {
+        Args: { p_project_id: string }
+        Returns: {
+          id: string
+          name: string
+          parent_task_id: string
+          hierarchy_level: number
+          sort_order: number
+          has_children: boolean
+          path: string[]
+        }[]
       }
       get_user_role: {
         Args: { _user_id: string }

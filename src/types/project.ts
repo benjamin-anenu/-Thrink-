@@ -55,6 +55,12 @@ export interface ProjectTask {
   status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled';
   milestoneId?: string;
   duration: number;
+  // New hierarchy fields
+  parentTaskId?: string;
+  hierarchyLevel: number;
+  sortOrder: number;
+  hasChildren?: boolean;
+  children?: ProjectTask[];
 }
 
 export interface ProjectMilestone {
@@ -149,4 +155,26 @@ export interface AIRecommendation {
   implementedAt?: Date;
   results?: string;
   relatedInsightId?: string;
+}
+
+// New hierarchy-related interfaces
+export interface TaskHierarchyNode {
+  task: ProjectTask;
+  children: TaskHierarchyNode[];
+  depth: number;
+  isExpanded: boolean;
+  path: string[];
+}
+
+export interface TaskHierarchyOperations {
+  promoteTask: (taskId: string) => Promise<void>;
+  demoteTask: (taskId: string, newParentId?: string) => Promise<void>;
+  moveTask: (taskId: string, newParentId?: string, newPosition?: number) => Promise<void>;
+  reorderTasks: (taskIds: string[], newParentId?: string) => Promise<void>;
+}
+
+export interface TaskHierarchyState {
+  hierarchyTree: TaskHierarchyNode[];
+  expandedNodes: Set<string>;
+  selectedTasks: Set<string>;
 }
