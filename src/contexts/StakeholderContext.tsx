@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from './WorkspaceContext';
@@ -16,7 +15,12 @@ export interface Stakeholder {
   created_at: string;
   updated_at: string;
   // Extended properties for UI components
-  interest?: string;
+  department?: string;
+  phone?: string;
+  communicationPreference?: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  influence?: 'High' | 'Medium' | 'Low';
+  interest?: 'High' | 'Medium' | 'Low';
+  projects?: string[];
   status?: string;
   lastContact?: string;
 }
@@ -39,6 +43,9 @@ export const useStakeholder = () => {
   }
   return context;
 };
+
+// Also export as useStakeholders for backward compatibility
+export const useStakeholders = useStakeholder;
 
 export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
@@ -74,7 +81,12 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
         created_at: stakeholder.created_at,
         updated_at: stakeholder.updated_at,
         // Default values for extended properties
-        interest: 'Medium',
+        department: stakeholder.organization || '',
+        phone: '',
+        communicationPreference: 'Email' as const,
+        influence: 'Medium' as const,
+        interest: 'Medium' as const,
+        projects: [],
         status: 'Active',
         lastContact: new Date().toISOString().split('T')[0]
       }));
@@ -83,7 +95,7 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error) {
       console.error('Error loading stakeholders:', error);
       toast.error('Failed to load stakeholders');
-      setStakeholders([]); // No fallback data
+      setStakeholders([]);
     } finally {
       setLoading(false);
     }
@@ -123,7 +135,12 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
         workspace_id: data.workspace_id || undefined,
         created_at: data.created_at,
         updated_at: data.updated_at,
+        department: stakeholderData.department || data.organization || '',
+        phone: stakeholderData.phone || '',
+        communicationPreference: stakeholderData.communicationPreference || 'Email',
+        influence: stakeholderData.influence || 'Medium',
         interest: stakeholderData.interest || 'Medium',
+        projects: stakeholderData.projects || [],
         status: stakeholderData.status || 'Active',
         lastContact: stakeholderData.lastContact || new Date().toISOString().split('T')[0]
       };
@@ -166,7 +183,12 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
         workspace_id: data.workspace_id || undefined,
         created_at: data.created_at,
         updated_at: data.updated_at,
+        department: updates.department || data.organization || '',
+        phone: updates.phone || '',
+        communicationPreference: updates.communicationPreference || 'Email',
+        influence: updates.influence || 'Medium',
         interest: updates.interest || 'Medium',
+        projects: updates.projects || [],
         status: updates.status || 'Active',
         lastContact: updates.lastContact || new Date().toISOString().split('T')[0]
       };
@@ -203,7 +225,6 @@ export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     loadStakeholders();
 
-    // Set up real-time subscription
     const subscription = supabase
       .channel('stakeholders_changes')
       .on(

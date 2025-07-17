@@ -11,6 +11,12 @@ export interface Resource {
   department?: string;
   skills?: string[];
   availability?: number;
+  phone?: string;
+  location?: string;
+  currentProjects?: string[];
+  hourlyRate?: string;
+  utilization?: number;
+  status?: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +28,7 @@ interface ResourceContextType {
   updateResource: (id: string, updates: Partial<Resource>) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   refreshResources: () => Promise<void>;
+  getResourcesByProject: (projectId: string) => Resource[];
 }
 
 const ResourceContext = createContext<ResourceContextType | undefined>(undefined);
@@ -33,6 +40,9 @@ export const useResource = () => {
   }
   return context;
 };
+
+// Also export as useResources for backward compatibility
+export const useResources = useResource;
 
 export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -54,8 +64,14 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         email: resource.email || undefined,
         role: resource.role || undefined,
         department: resource.department || undefined,
-        skills: [], // TODO: Add skills field to database
-        availability: 100, // TODO: Add availability field to database
+        skills: [],
+        availability: 100,
+        phone: '',
+        location: '',
+        currentProjects: [],
+        hourlyRate: '$50/hr',
+        utilization: 75,
+        status: 'Available',
         created_at: resource.created_at,
         updated_at: resource.updated_at
       }));
@@ -64,7 +80,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');
-      setResources([]); // No fallback data
+      setResources([]);
     } finally {
       setLoading(false);
     }
@@ -93,6 +109,12 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         department: data.department || undefined,
         skills: resourceData.skills || [],
         availability: resourceData.availability || 100,
+        phone: resourceData.phone || '',
+        location: resourceData.location || '',
+        currentProjects: resourceData.currentProjects || [],
+        hourlyRate: resourceData.hourlyRate || '$50/hr',
+        utilization: resourceData.utilization || 75,
+        status: resourceData.status || 'Available',
         created_at: data.created_at,
         updated_at: data.updated_at
       };
@@ -130,6 +152,12 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         department: data.department || undefined,
         skills: updates.skills || [],
         availability: updates.availability || 100,
+        phone: updates.phone || '',
+        location: updates.location || '',
+        currentProjects: updates.currentProjects || [],
+        hourlyRate: updates.hourlyRate || '$50/hr',
+        utilization: updates.utilization || 75,
+        status: updates.status || 'Available',
         created_at: data.created_at,
         updated_at: data.updated_at
       };
@@ -163,10 +191,14 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const getResourcesByProject = (projectId: string): Resource[] => {
+    // For now, return all resources since we don't have project assignment logic yet
+    return resources;
+  };
+
   useEffect(() => {
     loadResources();
 
-    // Set up real-time subscription
     const subscription = supabase
       .channel('resources_changes')
       .on(
@@ -193,7 +225,8 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addResource,
     updateResource,
     deleteResource,
-    refreshResources: loadResources
+    refreshResources: loadResources,
+    getResourcesByProject
   };
 
   return (

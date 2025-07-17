@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -25,20 +24,20 @@ const Stakeholders = () => {
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.department.toLowerCase().includes(searchTerm.toLowerCase());
+                         (stakeholder.role || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (stakeholder.department || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = filterDepartment === 'all' || stakeholder.department === filterDepartment;
-    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence.toLowerCase() === filterInfluence;
+    const matchesInfluence = filterInfluence === 'all' || (stakeholder.influence || '').toLowerCase() === filterInfluence;
     
     return matchesSearch && matchesDepartment && matchesInfluence;
   });
 
-  const handleSaveStakeholder = (stakeholder: any) => {
+  const handleSaveStakeholder = (stakeholderData: any) => {
     if (editingStakeholder) {
-      updateStakeholder(stakeholder.id, stakeholder);
+      updateStakeholder(editingStakeholder.id, stakeholderData);
     } else {
-      const { id, ...stakeholderData } = stakeholder;
-      addStakeholder(stakeholderData);
+      const { id, created_at, updated_at, ...newStakeholderData } = stakeholderData;
+      addStakeholder(newStakeholderData);
     }
     setEditingStakeholder(undefined);
     setShowForm(false);
@@ -49,7 +48,7 @@ const Stakeholders = () => {
     setShowForm(true);
   };
 
-  const departments = [...new Set(stakeholders.map(s => s.department))];
+  const departments = [...new Set(stakeholders.map(s => s.department).filter(Boolean))];
 
   if (loading) {
     return (
@@ -98,7 +97,6 @@ const Stakeholders = () => {
           </TabsList>
 
           <TabsContent value="stakeholders" className="space-y-6">
-            {/* Stakeholder Management Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="relative">
@@ -118,7 +116,9 @@ const Stakeholders = () => {
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
                     {departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      <SelectItem key={dept || 'unknown'} value={dept || 'unknown'}>
+                        {dept || 'Unknown'}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -140,7 +140,6 @@ const Stakeholders = () => {
               </Button>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4">
@@ -180,7 +179,7 @@ const Stakeholders = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
-                      <p className="text-2xl font-bold">{[...new Set(stakeholders.flatMap(s => s.projects))].length}</p>
+                      <p className="text-2xl font-bold">{[...new Set(stakeholders.flatMap(s => s.projects || []))].length}</p>
                     </div>
                     <MessageSquare className="h-8 w-8 text-green-500" />
                   </div>
@@ -188,12 +187,19 @@ const Stakeholders = () => {
               </Card>
             </div>
 
-            {/* Stakeholder Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredStakeholders.map((stakeholder) => (
                 <StakeholderCard
                   key={stakeholder.id}
-                  stakeholder={stakeholder}
+                  stakeholder={{
+                    ...stakeholder,
+                    department: stakeholder.department || '',
+                    phone: stakeholder.phone || '',
+                    communicationPreference: stakeholder.communicationPreference || 'Email',
+                    influence: stakeholder.influence || 'Medium',
+                    interest: stakeholder.interest || 'Medium',
+                    projects: stakeholder.projects || []
+                  }}
                   onEdit={handleEditStakeholder}
                 />
               ))}
@@ -283,7 +289,17 @@ const Stakeholders = () => {
             setShowForm(false);
             setEditingStakeholder(undefined);
           }}
-          stakeholder={editingStakeholder}
+          stakeholder={editingStakeholder ? {
+            ...editingStakeholder,
+            department: editingStakeholder.department || '',
+            phone: editingStakeholder.phone || '',
+            communicationPreference: editingStakeholder.communicationPreference || 'Email',
+            influence: editingStakeholder.influence || 'Medium',
+            interest: editingStakeholder.interest || 'Medium',
+            projects: editingStakeholder.projects || [],
+            status: editingStakeholder.status || 'Active',
+            lastContact: editingStakeholder.lastContact || new Date().toISOString().split('T')[0]
+          } : undefined}
           onSave={handleSaveStakeholder}
         />
       </main>
