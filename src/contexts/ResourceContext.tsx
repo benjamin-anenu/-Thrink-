@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -8,15 +9,7 @@ export interface Resource {
   email?: string;
   role?: string;
   department?: string;
-  workspaceId?: string;
-  phone?: string;
-  location?: string;
-  skills?: string[];
   availability?: number;
-  currentProjects?: string[];
-  hourlyRate?: string;
-  utilization?: number;
-  status?: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,27 +17,23 @@ export interface Resource {
 interface ResourceContextType {
   resources: Resource[];
   loading: boolean;
-  addResource: (resource: Omit<Resource, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
-  updateResource: (id: string, updates: Partial<Resource>) => Promise<void>;
+  addResource: (resourceData: Omit<Resource, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateResource: (id: string, resourceData: Partial<Resource>) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   refreshResources: () => Promise<void>;
-  getResourcesByProject: (projectId: string) => Resource[];
 }
 
 const ResourceContext = createContext<ResourceContextType | undefined>(undefined);
 
-export const useResource = () => {
+export const useResources = () => {
   const context = useContext(ResourceContext);
   if (!context) {
-    throw new Error('useResource must be used within a ResourceProvider');
+    throw new Error('useResources must be used within a ResourceProvider');
   }
   return context;
 };
 
-// Also export as useResources for backward compatibility
-export const useResources = useResource;
-
-export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,29 +47,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       if (error) throw error;
 
-      const transformedResources = (data || []).map(resource => ({
-        id: resource.id,
-        name: resource.name,
-        email: resource.email || undefined,
-        role: resource.role || undefined,
-        department: resource.department || undefined,
-        skills: [],
-        availability: 100,
-        phone: '',
-        location: '',
-        currentProjects: [],
-        hourlyRate: '$50/hr',
-        utilization: 75,
-        status: 'Available',
-        created_at: resource.created_at,
-        updated_at: resource.updated_at
-      }));
-
-      setResources(transformedResources);
+      setResources(data || []);
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');
-      setResources([]);
     } finally {
       setLoading(false);
     }
@@ -90,36 +60,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const { data, error } = await supabase
         .from('resources')
-        .insert({
-          name: resourceData.name,
-          email: resourceData.email,
-          role: resourceData.role,
-          department: resourceData.department
-        })
+        .insert([resourceData])
         .select()
         .single();
 
       if (error) throw error;
 
-      const newResource: Resource = {
-        id: data.id,
-        name: data.name,
-        email: data.email || undefined,
-        role: data.role || undefined,
-        department: data.department || undefined,
-        skills: resourceData.skills || [],
-        availability: resourceData.availability || 100,
-        phone: resourceData.phone || '',
-        location: resourceData.location || '',
-        currentProjects: resourceData.currentProjects || [],
-        hourlyRate: resourceData.hourlyRate || '$50/hr',
-        utilization: resourceData.utilization || 75,
-        status: resourceData.status || 'Available',
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      };
-
-      setResources(prev => [...prev, newResource]);
+      setResources(prev => [...prev, data]);
       toast.success('Resource added successfully');
     } catch (error) {
       console.error('Error adding resource:', error);
@@ -128,42 +75,19 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const updateResource = async (id: string, updates: Partial<Resource>) => {
+  const updateResource = async (id: string, resourceData: Partial<Resource>) => {
     try {
       const { data, error } = await supabase
         .from('resources')
-        .update({
-          name: updates.name,
-          email: updates.email,
-          role: updates.role,
-          department: updates.department
-        })
+        .update(resourceData)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
 
-      const updatedResource: Resource = {
-        id: data.id,
-        name: data.name,
-        email: data.email || undefined,
-        role: data.role || undefined,
-        department: data.department || undefined,
-        skills: updates.skills || [],
-        availability: updates.availability || 100,
-        phone: updates.phone || '',
-        location: updates.location || '',
-        currentProjects: updates.currentProjects || [],
-        hourlyRate: updates.hourlyRate || '$50/hr',
-        utilization: updates.utilization || 75,
-        status: updates.status || 'Available',
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      };
-
       setResources(prev => prev.map(resource => 
-        resource.id === id ? updatedResource : resource
+        resource.id === id ? { ...resource, ...data } : resource
       ));
       toast.success('Resource updated successfully');
     } catch (error) {
@@ -191,14 +115,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const getResourcesByProject = (projectId: string): Resource[] => {
-    // For now, return all resources since we don't have project assignment logic yet
-    return resources;
-  };
-
   useEffect(() => {
     loadResources();
 
+    // Set up real-time subscription
     const subscription = supabase
       .channel('resources_changes')
       .on(
@@ -225,8 +145,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addResource,
     updateResource,
     deleteResource,
-    refreshResources: loadResources,
-    getResourcesByProject
+    refreshResources: loadResources
   };
 
   return (

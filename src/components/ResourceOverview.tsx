@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Resource } from '@/contexts/ResourceContext';
 import ResourceCard from './ResourceCard';
 import ResourceStats from './ResourceStats';
-import ResourceFilters from './ResourceFilters';
+import ResourceFilters, { FilterState } from './ResourceFilters';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 
@@ -20,7 +20,7 @@ const ResourceOverview: React.FC<ResourceOverviewProps> = ({
   onShowResourceForm,
   onDeleteResource 
 }) => {
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FilterState>({
     search: '',
     department: 'all',
     role: 'all',
@@ -29,12 +29,12 @@ const ResourceOverview: React.FC<ResourceOverviewProps> = ({
 
   const filteredResources = resources.filter(resource => {
     const matchesSearch = resource.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-                         resource.email.toLowerCase().includes(filters.search.toLowerCase());
+                         (resource.email && resource.email.toLowerCase().includes(filters.search.toLowerCase()));
     const matchesDepartment = filters.department === 'all' || resource.department === filters.department;
     const matchesRole = filters.role === 'all' || resource.role === filters.role;
     const matchesAvailability = filters.availability === 'all' || 
-                               (filters.availability === 'available' && resource.availability > 50) ||
-                               (filters.availability === 'busy' && resource.availability <= 50);
+                               (filters.availability === 'available' && (resource.availability || 0) > 50) ||
+                               (filters.availability === 'busy' && (resource.availability || 0) <= 50);
 
     return matchesSearch && matchesDepartment && matchesRole && matchesAvailability;
   });

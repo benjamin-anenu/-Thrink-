@@ -1,78 +1,67 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
-import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
+import StakeholderCard from '@/components/StakeholderCard';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useStakeholders, Stakeholder } from '@/hooks/useStakeholders';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Users, TrendingUp, AlertTriangle, Building } from 'lucide-react';
-import { useStakeholder } from '@/contexts/StakeholderContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Search, Users, Building, Mail, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const Stakeholders = () => {
-  const { stakeholders, loading } = useStakeholder();
-  const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterDepartment, setFilterDepartment] = useState('all');
-  const [filterInfluence, setFilterInfluence] = useState('all');
-  const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState<any>(undefined);
+  const [showStakeholderForm, setShowStakeholderForm] = useState(false);
+  const [selectedStakeholder, setSelectedStakeholder] = useState<Stakeholder | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [stakeholderToDelete, setStakeholderToDelete] = useState<any>(null);
+  const [stakeholderToDelete, setStakeholderToDelete] = useState<Stakeholder | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [dependencies, setDependencies] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [influenceFilter, setInfluenceFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  const { stakeholders, loading } = useStakeholders();
+  const { toast } = useToast();
 
-  const filteredStakeholders = stakeholders.filter(stakeholder => {
-    const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.organization?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDepartment = filterDepartment === 'all' || stakeholder.organization === filterDepartment;
-    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence_level === filterInfluence;
-
-    return matchesSearch && matchesDepartment && matchesInfluence;
-  });
-
-  const handleAddStakeholder = () => {
-    setEditingStakeholder(undefined);
-    setShowForm(true);
+  const handleStakeholderSave = (stakeholder: Stakeholder) => {
+    console.log('Saving stakeholder:', stakeholder);
+    // addStakeholder(stakeholder); // Assuming you have an addStakeholder function
+    setShowStakeholderForm(false);
   };
 
-  const handleEditStakeholder = (stakeholder: any) => {
-    setEditingStakeholder(stakeholder);
-    setShowForm(true);
+  const handleEditStakeholder = (stakeholder: Stakeholder) => {
+    setSelectedStakeholder(stakeholder);
+    setShowStakeholderForm(true);
   };
 
-  const handleViewDetails = (stakeholder: any) => {
-    // For now, just edit - could open a detailed modal later
-    handleEditStakeholder(stakeholder);
+  const handleCancelEdit = () => {
+    setSelectedStakeholder(null);
+    setShowStakeholderForm(false);
   };
 
   const checkStakeholderDependencies = async (stakeholderId: string) => {
     try {
-      // Check if stakeholder is assigned to any active projects
-      const { data: projects, error } = await supabase
+      // Check for active project assignments
+      const { data: projects, error: projectsError } = await supabase
         .from('projects')
-        .select('id, name, status')
+        .select('id, name')
         .contains('stakeholder_ids', [stakeholderId])
-        .is('deleted_at', null);
+        .eq('deleted_at', null);
 
-      if (error) throw error;
+      if (projectsError) throw projectsError;
 
-      const activeProjects = projects?.filter(p => p.status !== 'Completed') || [];
-      
       const deps: any[] = [];
-      if (activeProjects.length > 0) {
+      if (projects && projects.length > 0) {
         deps.push({
           dependency_type: 'projects',
-          dependency_count: activeProjects.length,
-          details: 'Active project assignments'
+          dependency_count: projects.length,
+          details: `Assigned to ${projects.length} active project(s)`
         });
       }
 
@@ -83,7 +72,7 @@ const Stakeholders = () => {
     }
   };
 
-  const handleDeleteStakeholder = async (stakeholder: any) => {
+  const handleDeleteStakeholder = async (stakeholder: Stakeholder) => {
     setStakeholderToDelete(stakeholder);
     
     const deps = await checkStakeholderDependencies(stakeholder.id);
@@ -121,7 +110,7 @@ const Stakeholders = () => {
       setStakeholderToDelete(null);
       setDependencies([]);
       
-      // Refresh the page
+      // Refresh the page or update state
       window.location.reload();
     } catch (error) {
       console.error('Error deleting stakeholder:', error);
@@ -135,29 +124,20 @@ const Stakeholders = () => {
     }
   };
 
-  // Get unique organizations for filter
-  const organizations = Array.from(new Set(stakeholders.map(s => s.organization).filter(Boolean)));
+  const filteredStakeholders = stakeholders.filter(stakeholder => {
+    const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (stakeholder.email && stakeholder.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (stakeholder.organization && stakeholder.organization.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesRole = roleFilter === 'all' || stakeholder.role === roleFilter;
+    const matchesInfluence = influenceFilter === 'all' || stakeholder.influence_level === influenceFilter;
 
-  // Calculate statistics
-  const stats = {
-    total: stakeholders.length,
-    highInfluence: stakeholders.filter(s => s.influence_level === 'High').length,
-    mediumInfluence: stakeholders.filter(s => s.influence_level === 'Medium').length,
-    lowInfluence: stakeholders.filter(s => s.influence_level === 'Low').length,
-  };
+    return matchesSearch && matchesRole && matchesInfluence;
+  });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading stakeholders...</p>
-            </div>
-          </div>
-        </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -169,132 +149,132 @@ const Stakeholders = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">Stakeholders</h1>
-            <p className="text-muted-foreground">Manage project stakeholders and their involvement levels</p>
+            <p className="text-muted-foreground">Manage project stakeholders and their engagement</p>
           </div>
-          <Button onClick={handleAddStakeholder} className="flex items-center gap-2">
+          <Button onClick={() => setShowStakeholderForm(true)} className="flex items-center gap-2">
             <Plus size={16} />
             Add Stakeholder
           </Button>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="overview">Stakeholder Overview</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview">
+            {/* Search and Filters */}
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search stakeholders..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Roles" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="Client">Client</SelectItem>
+                      <SelectItem value="Sponsor">Sponsor</SelectItem>
+                      <SelectItem value="User">User</SelectItem>
+                      <SelectItem value="Vendor">Vendor</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={influenceFilter} onValueChange={setInfluenceFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Influence Levels" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Influence Levels</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Stakeholders</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.total}</div>
+                  <div className="text-2xl font-bold">{stakeholders.length}</div>
                 </CardContent>
               </Card>
-
+              
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">High Influence</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-red-500" />
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">{stats.highInfluence}</div>
+                  <div className="text-2xl font-bold">
+                    {stakeholders.filter(s => s.influence_level === 'High').length}
+                  </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Medium Influence</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-600">{stats.mediumInfluence}</div>
-                </CardContent>
-              </Card>
-
+              
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Organizations</CardTitle>
                   <Building className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{organizations.length}</div>
+                  <div className="text-2xl font-bold">
+                    {new Set(stakeholders.filter(s => s.organization).map(s => s.organization)).size}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">With Email</CardTitle>
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stakeholders.filter(s => s.email).length}
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search stakeholders..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Organizations</SelectItem>
-                  {organizations.map(org => (
-                    <SelectItem key={org} value={org}>{org}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={filterInfluence} onValueChange={setFilterInfluence}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by influence" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Influence Levels</SelectItem>
-                  <SelectItem value="High">High Influence</SelectItem>
-                  <SelectItem value="Medium">Medium Influence</SelectItem>
-                  <SelectItem value="Low">Low Influence</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Stakeholders Grid */}
+            {/* Stakeholder Cards */}
             {filteredStakeholders.length === 0 ? (
               <div className="text-center py-12">
-                {stakeholders.length === 0 ? (
-                  <div className="text-muted-foreground">
-                    <Users className="h-12 w-12 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Stakeholders Yet</h3>
-                    <p className="mb-4">Start by adding your first stakeholder to track project involvement.</p>
-                    <Button onClick={handleAddStakeholder}>Add Stakeholder</Button>
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground">
-                    <p className="mb-4">No stakeholders match your search criteria.</p>
-                    <Button variant="outline" onClick={() => {
-                      setSearchTerm('');
-                      setFilterDepartment('all');
-                      setFilterInfluence('all');
-                    }}>
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
+                <div className="text-muted-foreground mb-4">
+                  <Users className="h-12 w-12 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">No Stakeholders Found</h3>
+                  <p>Add your first stakeholder to get started.</p>
+                </div>
+                <Button onClick={() => setShowStakeholderForm(true)}>Add Stakeholder</Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredStakeholders.map((stakeholder) => (
+                {filteredStakeholders.map(stakeholder => (
                   <StakeholderCard
                     key={stakeholder.id}
                     stakeholder={stakeholder}
-                    onEdit={handleEditStakeholder}
-                    onViewDetails={handleViewDetails}
+                    onEdit={(stakeholder) => {
+                      setSelectedStakeholder(stakeholder);
+                      setShowStakeholderForm(true);
+                    }}
                     onDelete={handleDeleteStakeholder}
                   />
                 ))}
@@ -302,25 +282,22 @@ const Stakeholders = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="text-center py-12 text-muted-foreground">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Analytics Coming Soon</h3>
-              <p>Detailed stakeholder analytics and insights will be available here.</p>
+          <TabsContent value="analytics">
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Stakeholder analytics will be available soon.</p>
             </div>
           </TabsContent>
         </Tabs>
       </main>
 
-      <TinkAssistant />
-
+      {/* Modals */}
       <StakeholderForm
-        isOpen={showForm}
+        open={showStakeholderForm}
         onClose={() => {
-          setShowForm(false);
-          setEditingStakeholder(undefined);
+          setShowStakeholderForm(false);
+          setSelectedStakeholder(null);
         }}
-        stakeholder={editingStakeholder}
+        stakeholder={selectedStakeholder}
       />
 
       <DeleteConfirmationDialog
@@ -336,6 +313,8 @@ const Stakeholders = () => {
         dependencies={dependencies}
         isLoading={deleteLoading}
       />
+
+      <TinkAssistant />
     </div>
   );
 };
