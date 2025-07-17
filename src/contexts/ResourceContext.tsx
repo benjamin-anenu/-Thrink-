@@ -1,40 +1,25 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { dataPersistence } from '@/services/DataPersistence';
-import { contextSynchronizer } from '@/services/ContextSynchronizer';
-import { eventBus } from '@/services/EventBus';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Resource {
   id: string;
   name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  availability: number;
-  currentProjects: string[];
-  hourlyRate: string;
-  utilization: number;
-  status: 'Available' | 'Busy' | 'Overallocated';
-  workspaceId: string;
-  createdAt?: string;
-  updatedAt?: string;
-  lastActive?: string;
+  email?: string;
+  role?: string;
+  department?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ResourceContextType {
   resources: Resource[];
   loading: boolean;
-  getResource: (id: string) => Resource | null;
-  updateResource: (id: string, updates: Partial<Resource>) => void;
-  addResource: (resource: Omit<Resource, 'id'>) => void;
-  assignToProject: (resourceId: string, projectId: string) => void;
-  removeFromProject: (resourceId: string, projectId: string) => void;
-  updateUtilization: (resourceId: string, utilization: number) => void;
-  getAvailableResources: () => Resource[];
-  getResourcesByProject: (projectId: string) => Resource[];
+  error: string | null;
+  createResource: (resource: Omit<Resource, 'id' | 'created_at' | 'updated_at'>) => Promise<Resource>;
+  updateResource: (id: string, updates: Partial<Resource>) => Promise<void>;
+  deleteResource: (id: string) => Promise<void>;
+  refreshResources: () => Promise<void>;
 }
 
 const ResourceContext = createContext<ResourceContextType | undefined>(undefined);
@@ -47,255 +32,119 @@ export const useResources = () => {
   return context;
 };
 
-export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allResources, setAllResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { currentWorkspace } = useWorkspace();
+interface ResourceProviderProps {
+  children: ReactNode;
+}
 
-  // Filter resources by current workspace
-  const resources = allResources.filter(resource => 
-    currentWorkspace ? resource.workspaceId === currentWorkspace.id : true
-  );
+export const ResourceProvider: React.FC<ResourceProviderProps> = ({ children }) => {
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Helper function to ensure resource has required array properties
-  const sanitizeResource = (resource: any): Resource => {
-    return {
-      ...resource,
-      skills: Array.isArray(resource.skills) ? resource.skills : [],
-      currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : [],
-      workspaceId: resource.workspaceId || currentWorkspace?.id || 'ws-1',
-      createdAt: resource.createdAt || new Date().toISOString(),
-      updatedAt: resource.updatedAt || new Date().toISOString(),
-      lastActive: resource.lastActive || new Date().toISOString()
-    };
-  };
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Load resources from persistent storage on mount
-  useEffect(() => {
-    const savedResources = dataPersistence.getData<Resource[]>('resources');
-    if (savedResources) {
-      const sanitizedResources = savedResources.map(sanitizeResource);
-      setAllResources(sanitizedResources);
-    } else {
-      initializeSampleData();
-    }
-  }, []);
+      const { data, error: fetchError } = await supabase
+        .from('resources')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  // Register with context synchronizer
-  useEffect(() => {
-    const unregister = contextSynchronizer.registerContext('resources', (updatedResources: Resource[]) => {
-      setAllResources(updatedResources);
-    });
-
-    return unregister;
-  }, []);
-
-  const initializeSampleData = () => {
-    const workspaceId = currentWorkspace?.id || 'ws-1';
-    const sampleResources: Resource[] = [
-      {
-        id: 'sarah',
-        name: 'Sarah Johnson',
-        role: 'Senior Frontend Developer',
-        department: 'Engineering',
-        email: 'sarah.johnson@company.com',
-        phone: '+1 (555) 123-4567',
-        location: 'New York, NY',
-        skills: ['React', 'TypeScript', 'CSS', 'UI/UX'],
-        availability: 80,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$85/hr',
-        utilization: 75,
-        status: 'Available',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
-      },
-      {
-        id: 'michael',
-        name: 'Michael Chen',
-        role: 'Backend Developer',
-        department: 'Engineering',
-        email: 'michael.chen@company.com',
-        phone: '+1 (555) 234-5678',
-        location: 'San Francisco, CA',
-        skills: ['Node.js', 'Python', 'PostgreSQL', 'AWS'],
-        availability: 60,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$90/hr',
-        utilization: 85,
-        status: 'Busy',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
-      },
-      {
-        id: 'emily',
-        name: 'Emily Rodriguez',
-        role: 'UX Designer',
-        department: 'Design',
-        email: 'emily.rodriguez@company.com',
-        phone: '+1 (555) 345-6789',
-        location: 'Austin, TX',
-        skills: ['Figma', 'User Research', 'Prototyping', 'Design Systems'],
-        availability: 90,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$75/hr',
-        utilization: 65,
-        status: 'Available',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
-      },
-      {
-        id: 'david',
-        name: 'David Kim',
-        role: 'Project Manager',
-        department: 'Operations',
-        email: 'david.kim@company.com',
-        phone: '+1 (555) 456-7890',
-        location: 'Seattle, WA',
-        skills: ['Agile', 'Scrum', 'Risk Management', 'Stakeholder Management'],
-        availability: 70,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$70/hr',
-        utilization: 70,
-        status: 'Available',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+      if (fetchError) {
+        throw fetchError;
       }
-    ];
-    setAllResources(sampleResources);
-    dataPersistence.persistData('resources', sampleResources, 'resource_context');
-  };
 
-  // Save resources to persistent storage whenever resources change
-  useEffect(() => {
-    if (allResources.length > 0) {
-      dataPersistence.persistData('resources', allResources, 'resource_context');
+      setResources(data || []);
+    } catch (err) {
+      console.error('Error fetching resources:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch resources');
+    } finally {
+      setLoading(false);
     }
-  }, [allResources]);
-
-  const getResource = (id: string): Resource | null => {
-    return resources.find(r => r.id === id) || null;
   };
 
-  const updateResource = (id: string, updates: Partial<Resource>) => {
-    setAllResources(prev => prev.map(r => r.id === id ? sanitizeResource({ 
-      ...r, 
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }) : r));
+  const createResource = async (resourceData: Omit<Resource, 'id' | 'created_at' | 'updated_at'>): Promise<Resource> => {
+    try {
+      const { data, error: createError } = await supabase
+        .from('resources')
+        .insert([resourceData])
+        .select()
+        .single();
 
-    // Emit update event
-    eventBus.emit('resource_availability_changed', {
-      type: 'resource_updated',
-      resourceId: id,
-      updates
-    }, 'resource_context');
+      if (createError) {
+        throw createError;
+      }
+
+      const newResource = data as Resource;
+      setResources(prev => [newResource, ...prev]);
+      return newResource;
+    } catch (err) {
+      console.error('Error creating resource:', err);
+      throw err;
+    }
   };
 
-  const addResource = (resource: Omit<Resource, 'id'>) => {
-    const newResource: Resource = sanitizeResource({
-      ...resource,
-      id: `resource-${Date.now()}`,
-      workspaceId: currentWorkspace?.id || 'ws-1'
-    });
-    setAllResources(prev => [...prev, newResource]);
+  const updateResource = async (id: string, updates: Partial<Resource>): Promise<void> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('resources')
+        .update(updates)
+        .eq('id', id);
 
-    // Emit creation event
-    eventBus.emit('context_updated', {
-      type: 'resource_created',
-      resource: newResource
-    }, 'resource_context');
+      if (updateError) {
+        throw updateError;
+      }
+
+      setResources(prev => 
+        prev.map(resource => 
+          resource.id === id ? { ...resource, ...updates } : resource
+        )
+      );
+    } catch (err) {
+      console.error('Error updating resource:', err);
+      throw err;
+    }
   };
 
-  const assignToProject = (resourceId: string, projectId: string) => {
-    setAllResources(prev => prev.map(r => 
-      r.id === resourceId 
-        ? { 
-          ...r, 
-          currentProjects: [...r.currentProjects, projectId],
-          lastActive: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-        : r
-    ));
+  const deleteResource = async (id: string): Promise<void> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('resources')
+        .delete()
+        .eq('id', id);
 
-    // Emit assignment event
-    eventBus.emit('resource_assigned', {
-      resourceId,
-      projectId,
-      timestamp: new Date()
-    }, 'resource_context');
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      setResources(prev => prev.filter(resource => resource.id !== id));
+    } catch (err) {
+      console.error('Error deleting resource:', err);
+      throw err;
+    }
   };
 
-  const removeFromProject = (resourceId: string, projectId: string) => {
-    setAllResources(prev => prev.map(r => 
-      r.id === resourceId 
-        ? { 
-          ...r, 
-          currentProjects: r.currentProjects.filter(p => p !== projectId),
-          updatedAt: new Date().toISOString()
-        }
-        : r
-    ));
-
-    // Emit removal event
-    eventBus.emit('context_updated', {
-      type: 'resource_unassigned',
-      resourceId,
-      projectId
-    }, 'resource_context');
+  const refreshResources = async () => {
+    await fetchResources();
   };
 
-  const updateUtilization = (resourceId: string, utilization: number) => {
-    setAllResources(prev => prev.map(r => 
-      r.id === resourceId 
-        ? { 
-            ...r, 
-            utilization,
-            status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available',
-            lastActive: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        : r
-    ));
+  useEffect(() => {
+    fetchResources();
+  }, []);
 
-    // Emit utilization update event
-    eventBus.emit('resource_availability_changed', {
-      resourceId,
-      utilization,
-      status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available'
-    }, 'resource_context');
-  };
-
-  const getAvailableResources = (): Resource[] => {
-    return resources.filter(r => r.status === 'Available');
-  };
-
-  const getResourcesByProject = (projectId: string): Resource[] => {
-    return resources.filter(r => r.currentProjects.includes(projectId));
+  const contextValue: ResourceContextType = {
+    resources,
+    loading,
+    error,
+    createResource,
+    updateResource,
+    deleteResource,
+    refreshResources
   };
 
   return (
-    <ResourceContext.Provider value={{
-      resources,
-      loading,
-      getResource,
-      updateResource,
-      addResource,
-      assignToProject,
-      removeFromProject,
-      updateUtilization,
-      getAvailableResources,
-      getResourcesByProject
-    }}>
+    <ResourceContext.Provider value={contextValue}>
       {children}
     </ResourceContext.Provider>
   );

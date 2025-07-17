@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useResources } from '@/hooks/useResources';
@@ -11,6 +12,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components
 import { Plus, Download, Upload, Calendar, Users, Target, ChevronDown, ChevronRight, Filter, BarChart3, Zap, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import ResizableTable from './table/ResizableTable';
+import TableControls from './table/TableControls';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
 import DeleteTaskConfirmationDialog from './DeleteTaskConfirmationDialog';
@@ -19,7 +21,6 @@ import BulkOperationsBar from './table/BulkOperationsBar';
 import QuickTaskCreator from './table/QuickTaskCreator';
 import AdvancedTaskFilters, { TaskFilters } from './table/AdvancedTaskFilters';
 import TaskTemplateManager, { TaskTemplate } from './templates/TaskTemplateManager';
-import { TaskAutomationEngine } from './automation/TaskAutomation';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -49,6 +50,10 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const { resources } = useResources();
   const { stakeholders } = useStakeholders();
 
+  // Table UI state
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
+
   // State for advanced features
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showQuickCreator, setShowQuickCreator] = useState(false);
@@ -65,9 +70,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     overdue: false,
     completedTasks: true
   });
-  const [savedFilters, setSavedFilters] = useState<Array<{ id: string; name: string; filters: TaskFilters }>>([]);
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
-  const [showTemplateManager, setShowTemplateManager] = useState(false);
 
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showMilestoneDialog, setShowMilestoneDialog] = useState(false);
@@ -75,11 +78,41 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null);
 
-  // Filtered and processed tasks
+  // Table control handlers
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 2));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
+  const handleZoomReset = () => setZoomLevel(1);
+  const handleDensityChange = (density: 'compact' | 'normal' | 'comfortable') => setTableDensity(density);
+  const handleExport = () => {
+    // Simple CSV export
+    const csvData = tasks.map(task => ({
+      Name: task.name,
+      Status: task.status,
+      Priority: task.priority,
+      'Start Date': task.startDate,
+      'End Date': task.endDate,
+      Progress: `${task.progress}%`
+    }));
+    
+    const csv = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `project-tasks-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Tasks exported to CSV');
+  };
+
+  // Filtered tasks
   const filteredTasks = useMemo(() => {
     let filtered = [...tasks];
 
-    // Apply filters
     if (taskFilters.search) {
       const searchLower = taskFilters.search.toLowerCase();
       filtered = filtered.filter(task => 
@@ -96,14 +129,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
       filtered = filtered.filter(task => taskFilters.priority.includes(task.priority));
     }
 
-    if (taskFilters.hierarchyLevel.length > 0) {
-      filtered = filtered.filter(task => taskFilters.hierarchyLevel.includes(task.hierarchyLevel || 0));
-    }
-
-    if (taskFilters.hasChildren !== null) {
-      filtered = filtered.filter(task => task.hasChildren === taskFilters.hasChildren);
-    }
-
     if (!taskFilters.completedTasks) {
       filtered = filtered.filter(task => task.status !== 'Completed');
     }
@@ -113,27 +138,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
       filtered = filtered.filter(task => task.endDate < today && task.status !== 'Completed');
     }
 
-    if (taskFilters.dateRange.start || taskFilters.dateRange.end) {
-      filtered = filtered.filter(task => {
-        if (taskFilters.dateRange.start && task.endDate < taskFilters.dateRange.start) return false;
-        if (taskFilters.dateRange.end && task.startDate > taskFilters.dateRange.end) return false;
-        return true;
-      });
-    }
-
     return filtered;
   }, [tasks, taskFilters]);
-
-  // Auto-update parent task progress
-  useEffect(() => {
-    const parentTasks = tasks.filter(task => task.hasChildren);
-    for (const parentTask of parentTasks) {
-      const calculatedProgress = TaskAutomationEngine.calculateParentTaskProgress(parentTask.id, tasks);
-      if (calculatedProgress !== parentTask.progress) {
-        updateTask(parentTask.id, { progress: calculatedProgress });
-      }
-    }
-  }, [tasks, updateTask]);
 
   // Bulk operations handlers
   const handleBulkStatusUpdate = async (status: string) => {
@@ -235,57 +241,39 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  const handleSaveFilter = (name: string, filters: TaskFilters) => {
-    const newFilter = {
-      id: Date.now().toString(),
-      name,
-      filters
-    };
-    setSavedFilters(prev => [...prev, newFilter]);
-    toast.success('Filter saved');
-  };
-
-  const handleLoadFilter = (filters: TaskFilters) => {
-    setTaskFilters(filters);
-    toast.success('Filter applied');
-  };
-
-  const handleAutoSchedule = () => {
-    const optimizedTasks = TaskAutomationEngine.autoScheduleTasks(filteredTasks);
-    optimizedTasks.forEach(task => {
-      const originalTask = tasks.find(t => t.id === task.id);
-      if (originalTask && (originalTask.startDate !== task.startDate || originalTask.endDate !== task.endDate)) {
-        updateTask(task.id, {
-          startDate: task.startDate,
-          endDate: task.endDate
-        });
-      }
-    });
-    toast.success('Tasks auto-scheduled based on dependencies');
-  };
-
   const handleCreateTask = async (taskData: Omit<ProjectTask, 'id'>) => {
     try {
-      // Ensure hasChildren is set correctly
       const taskWithDefaults = {
         ...taskData,
         hasChildren: false,
-        sortOrder: taskData.sortOrder || 0
+        sortOrder: taskData.sortOrder || 0,
+        dependencies: Array.isArray(taskData.dependencies) ? taskData.dependencies : [],
+        assignedResources: Array.isArray(taskData.assignedResources) ? taskData.assignedResources : [],
+        assignedStakeholders: Array.isArray(taskData.assignedStakeholders) ? taskData.assignedStakeholders : []
       };
       await createTask(taskWithDefaults);
       setShowTaskDialog(false);
       setEditingTask(null);
       toast.success('Task created successfully');
     } catch (error) {
+      console.error('Task creation error:', error);
       toast.error('Failed to create task');
     }
   };
 
   const handleUpdateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
     try {
-      await updateTask(taskId, updates);
+      // Ensure arrays are properly handled
+      const cleanUpdates = {
+        ...updates,
+        dependencies: Array.isArray(updates.dependencies) ? updates.dependencies : [],
+        assignedResources: Array.isArray(updates.assignedResources) ? updates.assignedResources : [],
+        assignedStakeholders: Array.isArray(updates.assignedStakeholders) ? updates.assignedStakeholders : []
+      };
+      await updateTask(taskId, cleanUpdates);
       toast.success('Task updated successfully');
     } catch (error) {
+      console.error('Task update error:', error);
       toast.error('Failed to update task');
     }
   };
@@ -364,11 +352,14 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             <div className="flex items-center gap-4">
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Project Tasks
+                Project Tasks & Milestones
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">
-                  {filteredTasks.length} of {tasks.length} tasks
+                  {filteredTasks.length} tasks
+                </Badge>
+                <Badge variant="outline">
+                  {milestones.length} milestones
                 </Badge>
                 {selectedTasks.length > 0 && (
                   <Badge variant="secondary">
@@ -378,23 +369,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAutoSchedule}
-                disabled={filteredTasks.length === 0}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Auto Schedule
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTemplateManager(true)}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Templates
-              </Button>
               <Button onClick={() => setShowTaskDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Task
@@ -415,107 +389,89 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
               tasks={tasks}
               milestones={milestones}
               availableResources={resources.map(r => ({ id: r.id, name: r.name, role: r.role || 'Member' }))}
-              savedFilters={savedFilters}
-              onSaveFilter={handleSaveFilter}
-              onLoadFilter={handleLoadFilter}
+              savedFilters={[]}
+              onSaveFilter={() => {}}
+              onLoadFilter={() => {}}
             />
           </div>
 
-          <Tabs defaultValue="table" className="w-full">
-            <TabsList>
-              <TabsTrigger value="table">Task Table</TabsTrigger>
-              <TabsTrigger value="templates">Templates</TabsTrigger>
-            </TabsList>
+          {/* Table Controls */}
+          <TableControls
+            zoomLevel={zoomLevel}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+            tableDensity={tableDensity}
+            onDensityChange={handleDensityChange}
+            onExport={handleExport}
+          />
 
-            <TabsContent value="table" className="space-y-4">
-              {/* Quick Task Creator */}
-              {showQuickCreator && (
-                <QuickTaskCreator
-                  onCreateTask={handleQuickTaskCreate}
-                  parentTaskId={quickCreatorParent}
-                  milestones={milestones}
-                  onCancel={() => {
-                    setShowQuickCreator(false);
-                    setQuickCreatorParent(undefined);
-                  }}
-                />
-              )}
+          {/* Quick Task Creator */}
+          {showQuickCreator && (
+            <QuickTaskCreator
+              onCreateTask={handleQuickTaskCreate}
+              parentTaskId={quickCreatorParent}
+              milestones={milestones}
+              onCancel={() => {
+                setShowQuickCreator(false);
+                setQuickCreatorParent(undefined);
+              }}
+            />
+          )}
 
-              <ResizableTable zoomLevel={1} tableDensity="comfortable">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-8">
-                        <input
-                          type="checkbox"
-                          checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTasks(filteredTasks.map(t => t.id));
-                            } else {
-                              setSelectedTasks([]);
-                            }
-                          }}
-                        />
-                      </TableHead>
-                      <TableHead className="min-w-60">Task Name</TableHead>
-                      <TableHead className="w-32">Status</TableHead>
-                      <TableHead className="w-28">Priority</TableHead>
-                      <TableHead className="w-40">Resources</TableHead>
-                      <TableHead className="w-32">Start Date</TableHead>
-                      <TableHead className="w-32">End Date</TableHead>
-                      <TableHead className="w-24">Duration</TableHead>
-                      <TableHead className="w-28">Progress</TableHead>
-                      <TableHead className="w-48">Dependencies</TableHead>
-                      <TableHead className="w-36">Milestone</TableHead>
-                      <TableHead className="w-28">Variance</TableHead>
-                      <TableHead className="w-32">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TaskHierarchyRenderer
-                      hierarchyTree={hierarchyTree}
-                      expandedNodes={expandedNodes}
-                      milestones={milestones}
-                      availableResources={resources.map(r => ({ id: r.id, name: r.name, role: r.role || 'Member' }))}
-                      availableStakeholders={stakeholders.map(s => ({ id: s.id, name: s.name, role: s.role || 'Stakeholder' }))}
-                      allTasks={filteredTasks}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      onEditTask={handleEditTask}
-                      onRebaselineTask={handleRebaselineTask}
-                      onToggleExpansion={toggleNodeExpansion}
-                      onPromoteTask={promoteTask}
-                      onDemoteTask={demoteTask}
-                      onAddSubtask={handleAddSubtask}
-                      selectedTasks={selectedTasks}
-                      onSelectionChange={handleSelectionChange}
+          <ResizableTable zoomLevel={zoomLevel} tableDensity={tableDensity}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTasks(filteredTasks.map(t => t.id));
+                        } else {
+                          setSelectedTasks([]);
+                        }
+                      }}
                     />
-                  </TableBody>
-                </Table>
-              </ResizableTable>
-            </TabsContent>
-
-            <TabsContent value="templates">
-              <TaskTemplateManager
-                templates={taskTemplates}
-                onCreateFromTemplate={handleCreateFromTemplate}
-                onSaveTemplate={(template) => {
-                  const newTemplate: TaskTemplate = {
-                    ...template,
-                    id: Date.now().toString()
-                  };
-                  setTaskTemplates(prev => [...prev, newTemplate]);
-                  toast.success('Template saved');
-                }}
-                onDeleteTemplate={(templateId) => {
-                  setTaskTemplates(prev => prev.filter(t => t.id !== templateId));
-                  toast.success('Template deleted');
-                }}
-                availableRoles={resources.map(r => r.role || 'Member')}
-              />
-            </TabsContent>
-          </Tabs>
+                  </TableHead>
+                  <TableHead className="min-w-60">Task/Milestone Name</TableHead>
+                  <TableHead className="w-32">Status</TableHead>
+                  <TableHead className="w-28">Priority</TableHead>
+                  <TableHead className="w-40">Resources</TableHead>
+                  <TableHead className="w-32">Start Date</TableHead>
+                  <TableHead className="w-32">End Date</TableHead>
+                  <TableHead className="w-24">Duration</TableHead>
+                  <TableHead className="w-28">Progress</TableHead>
+                  <TableHead className="w-48">Dependencies</TableHead>
+                  <TableHead className="w-36">Milestone</TableHead>
+                  <TableHead className="w-28">Variance</TableHead>
+                  <TableHead className="w-32">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TaskHierarchyRenderer
+                  hierarchyTree={hierarchyTree}
+                  expandedNodes={expandedNodes}
+                  milestones={milestones}
+                  availableResources={resources.map(r => ({ id: r.id, name: r.name, role: r.role || 'Member' }))}
+                  availableStakeholders={stakeholders.map(s => ({ id: s.id, name: s.name, role: s.role || 'Stakeholder' }))}
+                  allTasks={filteredTasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onEditTask={handleEditTask}
+                  onRebaselineTask={handleRebaselineTask}
+                  onToggleExpansion={toggleNodeExpansion}
+                  onPromoteTask={promoteTask}
+                  onDemoteTask={demoteTask}
+                  onAddSubtask={handleAddSubtask}
+                  selectedTasks={selectedTasks}
+                  onSelectionChange={handleSelectionChange}
+                />
+              </TableBody>
+            </Table>
+          </ResizableTable>
         </CardContent>
       </Card>
 
