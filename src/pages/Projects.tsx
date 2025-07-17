@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -5,6 +6,7 @@ import HealthIndicator from '@/components/HealthIndicator';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import BulkImportModal from '@/components/BulkImportModal';
 import ProjectDetailsModal from '@/components/ProjectDetailsModal';
+import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,20 +14,23 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, addProject } = useProject();
+  const { projects, addProject, softDeleteProject, checkProjectDependencies } = useProject();
   const { currentWorkspace } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [dependencies, setDependencies] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
 
   const filteredProjects = projects.filter(project =>
@@ -83,6 +88,32 @@ const Projects = () => {
     navigate(`/project/${projectId}`);
   };
 
+  const handleDeleteProject = async (project: any) => {
+    setSelectedProject(project);
+    
+    // Check for dependencies
+    const deps = await checkProjectDependencies(project.id);
+    setDependencies(deps);
+    
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!selectedProject) return;
+    
+    setDeleteLoading(true);
+    try {
+      await softDeleteProject(selectedProject.id);
+      setShowDeleteDialog(false);
+      setSelectedProject(null);
+      setDependencies([]);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
@@ -96,6 +127,14 @@ const Projects = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/recycle-bin')}
+              className="flex items-center gap-2"
+            >
+              <Trash2 size={16} />
+              Recycle Bin
+            </Button>
             <Button 
               variant="outline"
               onClick={() => setShowBulkImport(true)}
@@ -238,6 +277,13 @@ const Projects = () => {
                         <ArrowRight className="h-4 w-4" />
                         Open Project
                       </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteProject(project)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -316,6 +362,13 @@ const Projects = () => {
                             >
                               <ArrowRight className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteProject(project)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -360,6 +413,20 @@ const Projects = () => {
           project={selectedProject}
         />
       )}
+
+      <DeleteConfirmationDialog
+        isOpen={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false);
+          setSelectedProject(null);
+          setDependencies([]);
+        }}
+        onConfirm={confirmDeleteProject}
+        itemName={selectedProject?.name || ''}
+        itemType="project"
+        dependencies={dependencies}
+        isLoading={deleteLoading}
+      />
     </div>
   );
 };

@@ -1,49 +1,47 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
 import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
-import EscalationMatrix from '@/components/EscalationMatrix';
-import { useStakeholder } from '@/contexts/StakeholderContext';
-import type { Stakeholder } from '@/contexts/StakeholderContext';
+import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Search, Filter, UserCheck, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Search, Users, TrendingUp, AlertTriangle, Building } from 'lucide-react';
+import { useStakeholder } from '@/contexts/StakeholderContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Stakeholders = () => {
-  const { stakeholders, addStakeholder, updateStakeholder, loading } = useStakeholder();
+  const { stakeholders, loading } = useStakeholder();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState<any>(undefined);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [stakeholderToDelete, setStakeholderToDelete] = useState<any>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [dependencies, setDependencies] = useState<any[]>([]);
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (stakeholder.role || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (stakeholder.department || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = filterDepartment === 'all' || stakeholder.department === filterDepartment;
-    const matchesInfluence = filterInfluence === 'all' || (stakeholder.influence || '').toLowerCase() === filterInfluence;
+                         stakeholder.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         stakeholder.organization?.toLowerCase().includes(searchTerm.toLowerCase());
     
+    const matchesDepartment = filterDepartment === 'all' || stakeholder.organization === filterDepartment;
+    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence_level === filterInfluence;
+
     return matchesSearch && matchesDepartment && matchesInfluence;
   });
 
-  const handleSaveStakeholder = (stakeholderData: any) => {
-    if (editingStakeholder) {
-      updateStakeholder(editingStakeholder.id, stakeholderData);
-    } else {
-      const { id, created_at, updated_at, ...newStakeholderData } = stakeholderData;
-      addStakeholder({
-        ...newStakeholderData,
-        role: newStakeholderData.role || 'Stakeholder'
-      });
-    }
+  const handleAddStakeholder = () => {
     setEditingStakeholder(undefined);
-    setShowForm(false);
+    setShowForm(true);
   };
 
   const handleEditStakeholder = (stakeholder: any) => {
@@ -51,14 +49,109 @@ const Stakeholders = () => {
     setShowForm(true);
   };
 
-  const departments = [...new Set(stakeholders.map(s => s.department).filter(Boolean))];
+  const handleViewDetails = (stakeholder: any) => {
+    // For now, just edit - could open a detailed modal later
+    handleEditStakeholder(stakeholder);
+  };
+
+  const checkStakeholderDependencies = async (stakeholderId: string) => {
+    try {
+      // Check if stakeholder is assigned to any active projects
+      const { data: projects, error } = await supabase
+        .from('projects')
+        .select('id, name, status')
+        .contains('stakeholder_ids', [stakeholderId])
+        .is('deleted_at', null);
+
+      if (error) throw error;
+
+      const activeProjects = projects?.filter(p => p.status !== 'Completed') || [];
+      
+      const deps: any[] = [];
+      if (activeProjects.length > 0) {
+        deps.push({
+          dependency_type: 'projects',
+          dependency_count: activeProjects.length,
+          details: 'Active project assignments'
+        });
+      }
+
+      return deps;
+    } catch (error) {
+      console.error('Error checking stakeholder dependencies:', error);
+      return [];
+    }
+  };
+
+  const handleDeleteStakeholder = async (stakeholder: any) => {
+    setStakeholderToDelete(stakeholder);
+    
+    const deps = await checkStakeholderDependencies(stakeholder.id);
+    setDependencies(deps);
+    
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteStakeholder = async () => {
+    if (!stakeholderToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('stakeholders')
+        .delete()
+        .eq('id', stakeholderToDelete.id);
+
+      if (error) throw error;
+
+      // Log the deletion
+      await supabase.from('audit_logs').insert({
+        action: 'stakeholder_deleted',
+        resource_type: 'stakeholder',
+        resource_id: stakeholderToDelete.id,
+        metadata: { stakeholder_name: stakeholderToDelete.name }
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Stakeholder deleted successfully'
+      });
+
+      setShowDeleteDialog(false);
+      setStakeholderToDelete(null);
+      setDependencies([]);
+      
+      // Refresh the page
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting stakeholder:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete stakeholder',
+        variant: 'destructive'
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Get unique organizations for filter
+  const organizations = Array.from(new Set(stakeholders.map(s => s.organization).filter(Boolean)));
+
+  // Calculate statistics
+  const stats = {
+    total: stakeholders.length,
+    highInfluence: stakeholders.filter(s => s.influence_level === 'High').length,
+    mediumInfluence: stakeholders.filter(s => s.influence_level === 'Medium').length,
+    lowInfluence: stakeholders.filter(s => s.influence_level === 'Low').length,
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
+          <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Loading stakeholders...</p>
@@ -73,232 +166,176 @@ const Stakeholders = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <Users className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">Stakeholder Management</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Stakeholders</h1>
+            <p className="text-muted-foreground">Manage project stakeholders and their involvement levels</p>
           </div>
-          <p className="text-muted-foreground">
-            Manage your project stakeholders, communication preferences, and escalation matrix.
-          </p>
+          <Button onClick={handleAddStakeholder} className="flex items-center gap-2">
+            <Plus size={16} />
+            Add Stakeholder
+          </Button>
         </div>
 
-        <Tabs defaultValue="stakeholders" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="stakeholders" className="flex items-center space-x-2">
-              <UserCheck className="h-4 w-4" />
-              <span>Stakeholders</span>
-            </TabsTrigger>
-            <TabsTrigger value="escalation" className="flex items-center space-x-2">
-              <AlertTriangle className="h-4 w-4" />
-              <span>Escalation Matrix</span>
-            </TabsTrigger>
-            <TabsTrigger value="communication" className="flex items-center space-x-2">
-              <MessageSquare className="h-4 w-4" />
-              <span>Communication Plan</span>
-            </TabsTrigger>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="stakeholders" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search stakeholders..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-64"
-                  />
-                </div>
-                <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                  <SelectTrigger className="w-40">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(dept => (
-                      <SelectItem key={dept || 'unknown'} value={dept || 'unknown'}>
-                        {dept || 'Unknown'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={filterInfluence} onValueChange={setFilterInfluence}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Influence" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={() => setShowForm(true)} className="flex items-center space-x-2">
-                <Plus className="h-4 w-4" />
-                <span>Add Stakeholder</span>
-              </Button>
-            </div>
-
+          <TabsContent value="overview" className="space-y-6">
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total Stakeholders</p>
-                      <p className="text-2xl font-bold">{stakeholders.length}</p>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-500" />
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Stakeholders</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.total}</div>
                 </CardContent>
               </Card>
+
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">High Influence</p>
-                      <p className="text-2xl font-bold">{stakeholders.filter(s => s.influence === 'High').length}</p>
-                    </div>
-                    <AlertTriangle className="h-8 w-8 text-red-500" />
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">High Influence</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">{stats.highInfluence}</div>
                 </CardContent>
               </Card>
+
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Departments</p>
-                      <p className="text-2xl font-bold">{departments.length}</p>
-                    </div>
-                    <Badge className="h-8 w-8 rounded-full" />
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Medium Influence</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-600">{stats.mediumInfluence}</div>
                 </CardContent>
               </Card>
+
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
-                      <p className="text-2xl font-bold">{[...new Set(stakeholders.flatMap(s => s.projects || []))].length}</p>
-                    </div>
-                    <MessageSquare className="h-8 w-8 text-green-500" />
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Organizations</CardTitle>
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{organizations.length}</div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredStakeholders.map((stakeholder) => (
-                <StakeholderCard
-                  key={stakeholder.id}
-                  stakeholder={stakeholder}
-                  onEdit={handleEditStakeholder}
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search stakeholders..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
                 />
-              ))}
+              </div>
+              
+              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Organizations</SelectItem>
+                  {organizations.map(org => (
+                    <SelectItem key={org} value={org}>{org}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterInfluence} onValueChange={setFilterInfluence}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by influence" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Influence Levels</SelectItem>
+                  <SelectItem value="High">High Influence</SelectItem>
+                  <SelectItem value="Medium">Medium Influence</SelectItem>
+                  <SelectItem value="Low">Low Influence</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {filteredStakeholders.length === 0 && (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No stakeholders found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchTerm || filterDepartment !== 'all' || filterInfluence !== 'all'
-                      ? 'Try adjusting your filters or search terms.'
-                      : 'Get started by adding your first stakeholder.'}
-                  </p>
-                  <Button onClick={() => setShowForm(true)}>Add Stakeholder</Button>
-                </CardContent>
-              </Card>
+            {/* Stakeholders Grid */}
+            {filteredStakeholders.length === 0 ? (
+              <div className="text-center py-12">
+                {stakeholders.length === 0 ? (
+                  <div className="text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Stakeholders Yet</h3>
+                    <p className="mb-4">Start by adding your first stakeholder to track project involvement.</p>
+                    <Button onClick={handleAddStakeholder}>Add Stakeholder</Button>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    <p className="mb-4">No stakeholders match your search criteria.</p>
+                    <Button variant="outline" onClick={() => {
+                      setSearchTerm('');
+                      setFilterDepartment('all');
+                      setFilterInfluence('all');
+                    }}>
+                      Clear Filters
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredStakeholders.map((stakeholder) => (
+                  <StakeholderCard
+                    key={stakeholder.id}
+                    stakeholder={stakeholder}
+                    onEdit={handleEditStakeholder}
+                    onViewDetails={handleViewDetails}
+                    onDelete={handleDeleteStakeholder}
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="escalation">
-            <EscalationMatrix />
-          </TabsContent>
-
-          <TabsContent value="communication">
-            <Card>
-              <CardHeader>
-                <CardTitle>Communication Plan</CardTitle>
-                <CardDescription>
-                  Manage communication preferences and frequency for all stakeholders
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'Email').length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Prefer Email</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'Slack').length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Prefer Slack</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'In-person').length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Prefer In-person</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'Phone').length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Prefer Phone</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Communication Templates</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Automated communication templates and scheduling coming soon.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="text-center py-12 text-muted-foreground">
+              <BarChart3 className="h-12 w-12 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Analytics Coming Soon</h3>
+              <p>Detailed stakeholder analytics and insights will be available here.</p>
+            </div>
           </TabsContent>
         </Tabs>
-
-        <StakeholderForm
-          open={showForm}
-          onClose={() => {
-            setShowForm(false);
-            setEditingStakeholder(undefined);
-          }}
-          stakeholder={editingStakeholder ? {
-            ...editingStakeholder,
-            department: editingStakeholder.department || '',
-            phone: editingStakeholder.phone || '',
-            communicationPreference: editingStakeholder.communicationPreference || 'Email',
-            influence: editingStakeholder.influence || 'Medium',
-            interest: editingStakeholder.interest || 'Medium',
-            projects: editingStakeholder.projects || [],
-            role: editingStakeholder.role || 'Stakeholder'
-          } : undefined}
-          onSave={handleSaveStakeholder}
-        />
       </main>
 
       <TinkAssistant />
+
+      <StakeholderForm
+        isOpen={showForm}
+        onClose={() => {
+          setShowForm(false);
+          setEditingStakeholder(undefined);
+        }}
+        stakeholder={editingStakeholder}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false);
+          setStakeholderToDelete(null);
+          setDependencies([]);
+        }}
+        onConfirm={confirmDeleteStakeholder}
+        itemName={stakeholderToDelete?.name || ''}
+        itemType="stakeholder"
+        dependencies={dependencies}
+        isLoading={deleteLoading}
+      />
     </div>
   );
 };
