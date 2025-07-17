@@ -71,7 +71,7 @@ const ResourceFilters: React.FC<ResourceFiltersProps> = ({ filters, onFiltersCha
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Availability</SelectItem>
-              <SelectItem value="available">Available (>50%)</SelectItem>
+              <SelectItem value="available">Available (&gt;50%)</SelectItem>
               <SelectItem value="busy">Busy (≤50%)</SelectItem>
             </SelectContent>
           </Select>
