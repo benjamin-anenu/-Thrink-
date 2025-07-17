@@ -1,243 +1,240 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { dataPersistence } from '@/services/DataPersistence';
-import { contextSynchronizer } from '@/services/ContextSynchronizer';
-import { eventBus } from '@/services/EventBus';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from './WorkspaceContext';
+import { toast } from 'sonner';
 
 export interface Stakeholder {
   id: string;
   name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  influence: 'Low' | 'Medium' | 'High';
-  interest: 'Low' | 'Medium' | 'High';
-  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
-  projects: string[];
-  lastContact: string;
-  status: 'Active' | 'Inactive';
-  workspaceId: string;
-  createdAt?: string;
-  updatedAt?: string;
+  email?: string;
+  role?: string;
+  organization?: string;
+  influence_level?: string;
+  project_id?: string;
+  workspace_id?: string;
+  created_at: string;
+  updated_at: string;
+  // Extended properties for UI components
+  interest?: string;
+  status?: string;
+  lastContact?: string;
 }
 
 interface StakeholderContextType {
   stakeholders: Stakeholder[];
   loading: boolean;
-  getStakeholder: (id: string) => Stakeholder | null;
-  updateStakeholder: (id: string, updates: Partial<Stakeholder>) => void;
-  addStakeholder: (stakeholder: Omit<Stakeholder, 'id'>) => void;
-  assignToProject: (stakeholderId: string, projectId: string) => void;
-  removeFromProject: (stakeholderId: string, projectId: string) => void;
-  getStakeholdersByProject: (projectId: string) => Stakeholder[];
-  updateLastContact: (stakeholderId: string) => void;
+  addStakeholder: (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateStakeholder: (id: string, updates: Partial<Stakeholder>) => Promise<void>;
+  deleteStakeholder: (id: string) => Promise<void>;
+  refreshStakeholders: () => Promise<void>;
 }
 
 const StakeholderContext = createContext<StakeholderContextType | undefined>(undefined);
 
-export const useStakeholders = () => {
+export const useStakeholder = () => {
   const context = useContext(StakeholderContext);
   if (!context) {
-    throw new Error('useStakeholders must be used within a StakeholderProvider');
+    throw new Error('useStakeholder must be used within a StakeholderProvider');
   }
   return context;
 };
 
 export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allStakeholders, setAllStakeholders] = useState<Stakeholder[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
 
-  // Filter stakeholders by current workspace
-  const stakeholders = allStakeholders.filter(stakeholder => 
-    currentWorkspace ? stakeholder.workspaceId === currentWorkspace.id : true
-  );
-
-  // Load stakeholders from localStorage on mount
-  useEffect(() => {
-    const savedStakeholders = dataPersistence.getData<Stakeholder[]>('stakeholders');
-    if (savedStakeholders) {
-      // Ensure workspace association
-      const workspaceAwareStakeholders = savedStakeholders.map(s => ({
-        ...s,
-        workspaceId: s.workspaceId || currentWorkspace?.id || 'ws-1'
-      }));
-      setAllStakeholders(workspaceAwareStakeholders);
-    } else {
-      // Initialize with sample data
-      initializeSampleData();
+  const loadStakeholders = async () => {
+    if (!currentWorkspace?.id) {
+      setStakeholders([]);
+      setLoading(false);
+      return;
     }
-  }, []);
 
-  // Register with context synchronizer
-  useEffect(() => {
-    const unregister = contextSynchronizer.registerContext('stakeholders', (updatedStakeholders: Stakeholder[]) => {
-      setAllStakeholders(updatedStakeholders);
-    });
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('stakeholders')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .order('name');
 
-    return unregister;
-  }, []);
+      if (error) throw error;
 
-  const initializeSampleData = () => {
-    const workspaceId = currentWorkspace?.id || 'ws-1';
-    const sampleStakeholders: Stakeholder[] = [
-      {
-        id: 'john-doe',
-        name: 'John Doe',
-        role: 'Product Manager',
-        department: 'Product',
-        email: 'john.doe@company.com',
-        phone: '+1 (555) 111-1111',
-        influence: 'High',
-        interest: 'High',
-        communicationPreference: 'Email',
-        projects: ['proj-ecommerce-2024'],
-        lastContact: '2024-07-10',
-        status: 'Active',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'jane-smith',
-        name: 'Jane Smith',
-        role: 'Design Director',
-        department: 'Design',
-        email: 'jane.smith@company.com',
-        phone: '+1 (555) 222-2222',
-        influence: 'High',
+      const transformedStakeholders = (data || []).map(stakeholder => ({
+        id: stakeholder.id,
+        name: stakeholder.name,
+        email: stakeholder.email || undefined,
+        role: stakeholder.role || undefined,
+        organization: stakeholder.organization || undefined,
+        influence_level: stakeholder.influence_level || undefined,
+        project_id: stakeholder.project_id || undefined,
+        workspace_id: stakeholder.workspace_id || undefined,
+        created_at: stakeholder.created_at,
+        updated_at: stakeholder.updated_at,
+        // Default values for extended properties
         interest: 'Medium',
-        communicationPreference: 'Slack',
-        projects: ['proj-ecommerce-2024'],
-        lastContact: '2024-07-08',
         status: 'Active',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ];
-    setAllStakeholders(sampleStakeholders);
-    dataPersistence.persistData('stakeholders', sampleStakeholders, 'stakeholder_context');
-  };
+        lastContact: new Date().toISOString().split('T')[0]
+      }));
 
-  // Save stakeholders to localStorage whenever stakeholders change
-  useEffect(() => {
-    if (allStakeholders.length > 0) {
-      dataPersistence.persistData('stakeholders', allStakeholders, 'stakeholder_context');
+      setStakeholders(transformedStakeholders);
+    } catch (error) {
+      console.error('Error loading stakeholders:', error);
+      toast.error('Failed to load stakeholders');
+      setStakeholders([]); // No fallback data
+    } finally {
+      setLoading(false);
     }
-  }, [allStakeholders]);
-
-  const getStakeholder = (id: string): Stakeholder | null => {
-    return stakeholders.find(s => s.id === id) || null;
   };
 
-  const updateStakeholder = (id: string, updates: Partial<Stakeholder>) => {
-    setAllStakeholders(prev => prev.map(s => s.id === id ? { 
-      ...s, 
-      ...updates,
-      updatedAt: new Date().toISOString()
-    } : s));
+  const addStakeholder = async (stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!currentWorkspace?.id) {
+      toast.error('No workspace selected');
+      return;
+    }
 
-    // Emit update event
-    eventBus.emit('context_updated', {
-      type: 'stakeholder_updated',
-      stakeholderId: id,
-      updates
-    }, 'stakeholder_context');
+    try {
+      const { data, error } = await supabase
+        .from('stakeholders')
+        .insert({
+          name: stakeholderData.name,
+          email: stakeholderData.email,
+          role: stakeholderData.role,
+          organization: stakeholderData.organization,
+          influence_level: stakeholderData.influence_level,
+          project_id: stakeholderData.project_id,
+          workspace_id: currentWorkspace.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newStakeholder: Stakeholder = {
+        id: data.id,
+        name: data.name,
+        email: data.email || undefined,
+        role: data.role || undefined,
+        organization: data.organization || undefined,
+        influence_level: data.influence_level || undefined,
+        project_id: data.project_id || undefined,
+        workspace_id: data.workspace_id || undefined,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        interest: stakeholderData.interest || 'Medium',
+        status: stakeholderData.status || 'Active',
+        lastContact: stakeholderData.lastContact || new Date().toISOString().split('T')[0]
+      };
+
+      setStakeholders(prev => [...prev, newStakeholder]);
+      toast.success('Stakeholder added successfully');
+    } catch (error) {
+      console.error('Error adding stakeholder:', error);
+      toast.error('Failed to add stakeholder');
+      throw error;
+    }
   };
 
-  const addStakeholder = (stakeholder: Omit<Stakeholder, 'id'>) => {
-    const newStakeholder: Stakeholder = {
-      ...stakeholder,
-      id: `stakeholder-${Date.now()}`,
-      workspaceId: currentWorkspace?.id || 'ws-1',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+  const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
+    try {
+      const { data, error } = await supabase
+        .from('stakeholders')
+        .update({
+          name: updates.name,
+          email: updates.email,
+          role: updates.role,
+          organization: updates.organization,
+          influence_level: updates.influence_level,
+          project_id: updates.project_id
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedStakeholder: Stakeholder = {
+        id: data.id,
+        name: data.name,
+        email: data.email || undefined,
+        role: data.role || undefined,
+        organization: data.organization || undefined,
+        influence_level: data.influence_level || undefined,
+        project_id: data.project_id || undefined,
+        workspace_id: data.workspace_id || undefined,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        interest: updates.interest || 'Medium',
+        status: updates.status || 'Active',
+        lastContact: updates.lastContact || new Date().toISOString().split('T')[0]
+      };
+
+      setStakeholders(prev => prev.map(stakeholder => 
+        stakeholder.id === id ? updatedStakeholder : stakeholder
+      ));
+      toast.success('Stakeholder updated successfully');
+    } catch (error) {
+      console.error('Error updating stakeholder:', error);
+      toast.error('Failed to update stakeholder');
+      throw error;
+    }
+  };
+
+  const deleteStakeholder = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('stakeholders')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setStakeholders(prev => prev.filter(stakeholder => stakeholder.id !== id));
+      toast.success('Stakeholder deleted successfully');
+    } catch (error) {
+      console.error('Error deleting stakeholder:', error);
+      toast.error('Failed to delete stakeholder');
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    loadStakeholders();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('stakeholders_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stakeholders'
+        },
+        () => {
+          loadStakeholders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
     };
-    setAllStakeholders(prev => [...prev, newStakeholder]);
+  }, [currentWorkspace?.id]);
 
-    // Emit creation event
-    eventBus.emit('context_updated', {
-      type: 'stakeholder_created',
-      stakeholder: newStakeholder
-    }, 'stakeholder_context');
-  };
-
-  const assignToProject = (stakeholderId: string, projectId: string) => {
-    setAllStakeholders(prev => prev.map(s => 
-      s.id === stakeholderId 
-        ? { 
-          ...s, 
-          projects: [...s.projects, projectId],
-          updatedAt: new Date().toISOString()
-        }
-        : s
-    ));
-
-    // Emit assignment event
-    eventBus.emit('context_updated', {
-      type: 'stakeholder_assigned',
-      stakeholderId,
-      projectId
-    }, 'stakeholder_context');
-  };
-
-  const removeFromProject = (stakeholderId: string, projectId: string) => {
-    setAllStakeholders(prev => prev.map(s => 
-      s.id === stakeholderId 
-        ? { 
-          ...s, 
-          projects: s.projects.filter(p => p !== projectId),
-          updatedAt: new Date().toISOString()
-        }
-        : s
-    ));
-
-    // Emit removal event
-    eventBus.emit('context_updated', {
-      type: 'stakeholder_unassigned',
-      stakeholderId,
-      projectId
-    }, 'stakeholder_context');
-  };
-
-  const getStakeholdersByProject = (projectId: string): Stakeholder[] => {
-    return stakeholders.filter(s => s.projects.includes(projectId));
-  };
-
-  const updateLastContact = (stakeholderId: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setAllStakeholders(prev => prev.map(s => 
-      s.id === stakeholderId 
-        ? { 
-          ...s, 
-          lastContact: today,
-          updatedAt: new Date().toISOString()
-        }
-        : s
-    ));
-
-    // Emit contact update event
-    eventBus.emit('context_updated', {
-      type: 'stakeholder_contact_updated',
-      stakeholderId,
-      lastContact: today
-    }, 'stakeholder_context');
+  const value: StakeholderContextType = {
+    stakeholders,
+    loading,
+    addStakeholder,
+    updateStakeholder,
+    deleteStakeholder,
+    refreshStakeholders: loadStakeholders
   };
 
   return (
-    <StakeholderContext.Provider value={{
-      stakeholders,
-      loading,
-      getStakeholder,
-      updateStakeholder,
-      addStakeholder,
-      assignToProject,
-      removeFromProject,
-      getStakeholdersByProject,
-      updateLastContact
-    }}>
+    <StakeholderContext.Provider value={value}>
       {children}
     </StakeholderContext.Provider>
   );
