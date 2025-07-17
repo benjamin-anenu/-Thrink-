@@ -4,45 +4,11 @@ import { ProjectTask } from '@/types/project';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, X, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-
-export interface DependencyType {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-}
-
-export const DEPENDENCY_TYPES: DependencyType[] = [
-  {
-    id: 'finish-to-start',
-    name: 'Finish-to-Start (FS)',
-    description: 'Task B starts after Task A finishes',
-    icon: <ArrowRight className="h-3 w-3" />
-  },
-  {
-    id: 'start-to-start',
-    name: 'Start-to-Start (SS)', 
-    description: 'Task B starts when Task A starts',
-    icon: <ArrowRight className="h-3 w-3" />
-  },
-  {
-    id: 'finish-to-finish',
-    name: 'Finish-to-Finish (FF)',
-    description: 'Task B finishes when Task A finishes',
-    icon: <ArrowRight className="h-3 w-3" />
-  },
-  {
-    id: 'start-to-finish',
-    name: 'Start-to-Finish (SF)',
-    description: 'Task B finishes when Task A starts',
-    icon: <ArrowRight className="h-3 w-3" />
-  }
-];
 
 interface DependencyManagerProps {
   task: ProjectTask;
@@ -50,126 +16,103 @@ interface DependencyManagerProps {
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
 }
 
-export interface TaskDependency {
-  taskId: string;
-  type: string;
-  lag: number; // days
-}
-
 const DependencyManager: React.FC<DependencyManagerProps> = ({
   task,
   allTasks,
   onUpdateTask
 }) => {
-  const [open, setOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string>('');
-  const [dependencyType, setDependencyType] = useState<string>('finish-to-start');
-  const [lagDays, setLagDays] = useState<number>(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState('');
+  const [dependencyType, setDependencyType] = useState('finish-to-start');
+  const [lagDays, setLagDays] = useState(0);
 
-  // Parse existing dependencies (assuming they're stored as taskId:type:lag format)
-  const parseDependencies = (): TaskDependency[] => {
+  const availableTasks = allTasks.filter(t => t.id !== task.id);
+  
+  const parseDependencies = () => {
     return task.dependencies.map(dep => {
       const parts = dep.split(':');
       return {
         taskId: parts[0],
         type: parts[1] || 'finish-to-start',
-        lag: parseInt(parts[2]) || 0
+        lag: parseInt(parts[2]) || 0,
+        task: allTasks.find(t => t.id === parts[0])
       };
-    });
+    }).filter(dep => dep.task);
   };
 
-  const formatDependency = (dependency: TaskDependency): string => {
-    return `${dependency.taskId}:${dependency.type}:${dependency.lag}`;
-  };
-
-  const validateDependency = (taskId: string): string | null => {
-    if (taskId === task.id) {
-      return 'A task cannot depend on itself';
-    }
-
-    // Check for circular dependencies
-    const checkCircular = (currentTaskId: string, visited: Set<string>): boolean => {
+  const checkCircularDependency = (newTaskId: string): boolean => {
+    const visited = new Set<string>();
+    
+    const hasCircularPath = (currentTaskId: string): boolean => {
       if (visited.has(currentTaskId)) return true;
+      if (currentTaskId === task.id) return true;
+      
       visited.add(currentTaskId);
-
+      
       const currentTask = allTasks.find(t => t.id === currentTaskId);
       if (!currentTask) return false;
-
+      
       for (const dep of currentTask.dependencies) {
         const depTaskId = dep.split(':')[0];
-        if (depTaskId === task.id) return true;
-        if (checkCircular(depTaskId, new Set(visited))) return true;
+        if (hasCircularPath(depTaskId)) return true;
       }
-
+      
+      visited.delete(currentTaskId);
       return false;
     };
-
-    if (checkCircular(taskId, new Set())) {
-      return 'This would create a circular dependency';
-    }
-
-    return null;
+    
+    return hasCircularPath(newTaskId);
   };
 
   const addDependency = () => {
-    if (!selectedTaskId) return;
-
-    const validationError = validateDependency(selectedTaskId);
-    if (validationError) {
-      toast.error(validationError);
+    if (!selectedTask) {
+      toast.error('Please select a task');
       return;
     }
 
-    const existingDeps = parseDependencies();
-    const newDependency: TaskDependency = {
-      taskId: selectedTaskId,
-      type: dependencyType,
-      lag: lagDays
-    };
-
-    // Check if dependency already exists
-    if (existingDeps.some(dep => dep.taskId === selectedTaskId)) {
-      toast.error('Dependency already exists');
+    if (checkCircularDependency(selectedTask)) {
+      toast.error('Cannot add dependency: This would create a circular dependency');
       return;
     }
 
-    const updatedDependencies = [...existingDeps, newDependency];
-    const formattedDeps = updatedDependencies.map(formatDependency);
+    const existingDep = task.dependencies.find(dep => dep.startsWith(selectedTask));
+    if (existingDep) {
+      toast.error('Dependency already exists for this task');
+      return;
+    }
 
-    onUpdateTask(task.id, { dependencies: formattedDeps });
+    const dependencyString = `${selectedTask}:${dependencyType}:${lagDays}`;
+    const updatedDependencies = [...task.dependencies, dependencyString];
     
-    // Reset form
-    setSelectedTaskId('');
+    onUpdateTask(task.id, { dependencies: updatedDependencies });
+    
+    setSelectedTask('');
     setDependencyType('finish-to-start');
     setLagDays(0);
     toast.success('Dependency added successfully');
   };
 
   const removeDependency = (taskId: string) => {
-    const existingDeps = parseDependencies();
-    const filteredDeps = existingDeps.filter(dep => dep.taskId !== taskId);
-    const formattedDeps = filteredDeps.map(formatDependency);
-
-    onUpdateTask(task.id, { dependencies: formattedDeps });
+    const updatedDependencies = task.dependencies.filter(dep => !dep.startsWith(taskId));
+    onUpdateTask(task.id, { dependencies: updatedDependencies });
     toast.success('Dependency removed');
   };
-
-  const availableTasks = allTasks.filter(t => 
-    t.id !== task.id && 
-    !parseDependencies().some(dep => dep.taskId === t.id)
-  );
 
   const currentDependencies = parseDependencies();
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8">
-          <Plus className="h-3 w-3 mr-1" />
-          Manage Dependencies
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full justify-start text-xs h-7 px-2"
+        >
+          <Plus className="h-3 w-3 mr-1 flex-shrink-0" />
+          <span className="truncate">Manage Dependencies</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Manage Dependencies for "{task.name}"</DialogTitle>
         </DialogHeader>
@@ -177,76 +120,59 @@ const DependencyManager: React.FC<DependencyManagerProps> = ({
         <div className="space-y-6">
           {/* Current Dependencies */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Current Dependencies</h4>
-            {currentDependencies.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No dependencies set</p>
-            ) : (
-              <div className="space-y-2">
-                {currentDependencies.map((dep) => {
-                  const depTask = allTasks.find(t => t.id === dep.taskId);
-                  const depType = DEPENDENCY_TYPES.find(t => t.id === dep.type);
-                  
-                  return (
-                    <div key={dep.taskId} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        {depType?.icon}
-                        <div>
-                          <div className="font-medium text-sm">{depTask?.name || 'Unknown Task'}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {depType?.name} {dep.lag !== 0 && `(${dep.lag > 0 ? '+' : ''}${dep.lag} days)`}
-                          </div>
-                        </div>
+            <Label className="text-sm font-medium">Current Dependencies</Label>
+            <div className="mt-2 space-y-2">
+              {currentDependencies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No dependencies</p>
+              ) : (
+                currentDependencies.map((dep) => (
+                  <div key={dep.taskId} className="flex items-center justify-between p-2 border rounded-md">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{dep.task?.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {dep.type.replace('-', ' to ')}
+                        </Badge>
+                        {dep.lag !== 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {dep.lag > 0 ? `+${dep.lag}d` : `${dep.lag}d`}
+                          </Badge>
+                        )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeDependency(dep.taskId)}
-                        className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeDependency(dep.taskId)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Add New Dependency */}
-          <div className="border-t pt-6">
-            <h4 className="text-sm font-medium mb-3">Add New Dependency</h4>
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <Label className="text-sm font-medium">Add New Dependency</Label>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="dependentTask">Dependent Task</Label>
-                <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a task..." />
+                <Label htmlFor="task-select" className="text-xs">Dependent Task</Label>
+                <Select value={selectedTask} onValueChange={setSelectedTask}>
+                  <SelectTrigger id="task-select">
+                    <SelectValue placeholder="Select task" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableTasks.map(availableTask => (
-                      <SelectItem key={availableTask.id} value={availableTask.id}>
-                        {availableTask.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="dependencyType">Dependency Type</Label>
-                <Select value={dependencyType} onValueChange={setDependencyType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPENDENCY_TYPES.map(type => (
-                      <SelectItem key={type.id} value={type.id}>
-                        <div className="flex items-center gap-2">
-                          {type.icon}
-                          <div>
-                            <div className="font-medium">{type.name}</div>
-                            <div className="text-xs text-muted-foreground">{type.description}</div>
-                          </div>
+                    {availableTasks.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <div className="flex flex-col">
+                          <span>{t.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {t.startDate} - {t.endDate}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}
@@ -255,28 +181,48 @@ const DependencyManager: React.FC<DependencyManagerProps> = ({
               </div>
 
               <div>
-                <Label htmlFor="lagDays">Lead/Lag Time (days)</Label>
+                <Label htmlFor="type-select" className="text-xs">Dependency Type</Label>
+                <Select value={dependencyType} onValueChange={setDependencyType}>
+                  <SelectTrigger id="type-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="finish-to-start">Finish to Start (FS)</SelectItem>
+                    <SelectItem value="start-to-start">Start to Start (SS)</SelectItem>
+                    <SelectItem value="finish-to-finish">Finish to Finish (FF)</SelectItem>
+                    <SelectItem value="start-to-finish">Start to Finish (SF)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="lag-input" className="text-xs">Lead/Lag (days)</Label>
                 <Input
-                  id="lagDays"
+                  id="lag-input"
                   type="number"
                   value={lagDays}
                   onChange={(e) => setLagDays(parseInt(e.target.value) || 0)}
                   placeholder="0"
-                  className="w-full"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Positive values add delay, negative values add lead time
-                </p>
               </div>
-
-              <Button 
-                onClick={addDependency} 
-                disabled={!selectedTaskId}
-                className="w-full"
-              >
-                Add Dependency
-              </Button>
             </div>
+
+            <Button onClick={addDependency} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Dependency
+            </Button>
+          </div>
+
+          {/* Help Text */}
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Dependency Types:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li><strong>Finish to Start (FS):</strong> Task B starts when Task A finishes</li>
+              <li><strong>Start to Start (SS):</strong> Task B starts when Task A starts</li>
+              <li><strong>Finish to Finish (FF):</strong> Task B finishes when Task A finishes</li>
+              <li><strong>Start to Finish (SF):</strong> Task B finishes when Task A starts</li>
+            </ul>
+            <p><strong>Lead/Lag:</strong> Positive values add delay, negative values create lead time</p>
           </div>
         </div>
       </DialogContent>

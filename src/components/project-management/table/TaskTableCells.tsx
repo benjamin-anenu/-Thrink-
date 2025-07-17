@@ -159,21 +159,28 @@ export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
   </TableCell>
 );
 
-// Enhanced Dependencies cell with visual indicators and management
+// Enhanced Dependencies cell with responsive design and proper spacing
 export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
   allTasks,
   onUpdateTask
 }) => {
   return (
-    <TableCell className="table-cell min-w-0 max-w-[250px]">
-      <div className="flex flex-col gap-2">
-        <DependencyVisualizer task={task} allTasks={allTasks} />
-        <DependencyManager 
-          task={task} 
-          allTasks={allTasks} 
-          onUpdateTask={onUpdateTask}
-        />
+    <TableCell className="table-cell p-2">
+      <div className="w-full min-w-[200px] max-w-[300px] space-y-2">
+        {/* Dependencies Visualizer - Responsive container */}
+        <div className="w-full overflow-hidden">
+          <DependencyVisualizer task={task} allTasks={allTasks} />
+        </div>
+        
+        {/* Dependency Manager - Responsive button */}
+        <div className="w-full">
+          <DependencyManager 
+            task={task} 
+            allTasks={allTasks} 
+            onUpdateTask={onUpdateTask}
+          />
+        </div>
       </div>
     </TableCell>
   );
