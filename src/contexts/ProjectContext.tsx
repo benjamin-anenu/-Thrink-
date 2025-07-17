@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -59,33 +58,86 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const loadProjects = async () => {
     try {
       setLoading(true);
+      console.log('[ProjectContext] Loading projects...');
+      
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.log('[ProjectContext] No authenticated user, skipping project load');
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('[ProjectContext] User authenticated:', session.user.id);
+
+      // First, let's check what workspaces the user has access to
+      const { data: workspaceData, error: workspaceError } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active');
+
+      if (workspaceError) {
+        console.error('[ProjectContext] Error fetching user workspaces:', workspaceError);
+        toast.error('Failed to load user workspaces');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[ProjectContext] User workspaces:', workspaceData);
+
+      if (!workspaceData || workspaceData.length === 0) {
+        console.log('[ProjectContext] User has no active workspace memberships');
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+
+      const workspaceIds = workspaceData.map(w => w.workspace_id);
+
+      // Now fetch projects from user's workspaces, explicitly checking for non-deleted projects
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('deleted_at', null)
+        .in('workspace_id', workspaceIds)
+        .is('deleted_at', null)  // Explicitly check for null instead of eq('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[ProjectContext] Error loading projects:', error);
+        toast.error('Failed to load projects: ' + error.message);
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[ProjectContext] Raw projects from database:', data);
 
       // Transform the database data to match our interface
-      const transformedProjects: Project[] = (data || []).map(project => ({
-        ...project,
-        status: project.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-        stakeholder_ids: project.stakeholder_ids || [],
-        progress: project.progress || 0,
-        priority: project.priority || 'Medium',
-        team_size: project.team_size || 0,
-        budget: project.budget || '',
-        tags: project.tags || [],
-        resources: project.resources || [],
-        health_status: project.health_status || 'green',
-        health_score: project.health_score || 100
-      }));
+      const transformedProjects: Project[] = (data || []).map(project => {
+        console.log('[ProjectContext] Transforming project:', project.name, 'Status:', project.status);
+        return {
+          ...project,
+          status: project.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
+          stakeholder_ids: project.stakeholder_ids || [],
+          progress: project.progress || 0,
+          priority: project.priority || 'Medium',
+          team_size: project.team_size || 0,
+          budget: project.budget || '',
+          tags: project.tags || [],
+          resources: project.resources || [],
+          health_status: project.health_status || 'green',
+          health_score: project.health_score || 100
+        };
+      });
 
+      console.log('[ProjectContext] Transformed projects:', transformedProjects.length, 'projects loaded');
       setProjects(transformedProjects);
     } catch (error) {
-      console.error('Error loading projects:', error);
+      console.error('[ProjectContext] Unexpected error loading projects:', error);
       toast.error('Failed to load projects');
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -244,6 +296,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   useEffect(() => {
+    console.log('[ProjectContext] Component mounted, loading projects...');
     loadProjects();
   }, []);
 

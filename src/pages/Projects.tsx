@@ -13,15 +13,17 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight, Trash2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, addProject, softDeleteProject } = useProject();
+  const { projects, addProject, softDeleteProject, loading, loadProjects } = useProject();
   const { currentWorkspace } = useWorkspace();
+  const { user, session } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -108,6 +110,21 @@ const Projects = () => {
     }
   };
 
+  const handleRefreshProjects = () => {
+    console.log('[Projects] Manual refresh triggered');
+    loadProjects();
+  };
+
+  // Debug information
+  console.log('[Projects Page] Render state:', {
+    user: !!user,
+    session: !!session,
+    currentWorkspace: currentWorkspace?.name,
+    projectsCount: projects.length,
+    loading,
+    filteredCount: filteredProjects.length
+  });
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
@@ -119,8 +136,22 @@ const Projects = () => {
               {currentWorkspace ? `${currentWorkspace.name} - ` : ''}
               Manage and track all your projects in one place
             </p>
+            {/* Debug info for development */}
+            <div className="text-xs text-muted-foreground mt-1">
+              User: {user ? '✓' : '✗'} | Session: {session ? '✓' : '✗'} | 
+              Projects: {projects.length} | Loading: {loading ? '✓' : '✗'}
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleRefreshProjects}
+              className="flex items-center gap-2"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button 
               variant="outline"
               onClick={() => navigate('/recycle-bin')}
@@ -164,222 +195,246 @@ const Projects = () => {
           </Button>
         </div>
 
-        {/* View Tabs */}
-        <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'grid' | 'list')} className="mb-6">
-          <TabsList>
-            <TabsTrigger value="grid" className="flex items-center gap-2">
-              <Grid3x3 className="h-4 w-4" />
-              Grid View
-            </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              List View
-            </TabsTrigger>
-          </TabsList>
+        {/* Show loading state */}
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading projects...</p>
+          </div>
+        )}
 
-          <TabsContent value="grid" className="mt-6">
-            {/* Projects Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredProjects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg mb-1">{project.name}</CardTitle>
-                        <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`${getPriorityColor(project.priority || 'Medium')} text-white`}>
-                          {project.priority || 'Medium'}
-                        </Badge>
-                        <HealthIndicator 
-                          health={project.health_status as 'green' | 'yellow' | 'red' || 'green'} 
-                          score={project.health_score || 100}
-                        />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Progress */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progress</span>
-                        <span>{project.progress || 0}%</span>
-                      </div>
-                      <Progress value={project.progress || 0} className="h-2" />
-                    </div>
+        {/* Show authentication prompt if no user */}
+        {!loading && !user && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">Please sign in to view your projects.</p>
+            <Button onClick={() => navigate('/auth')}>Sign In</Button>
+          </div>
+        )}
 
-                    {/* Project Details */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+        {/* Show no workspace message */}
+        {!loading && user && !currentWorkspace && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">No workspace selected. Please select or create a workspace.</p>
+          </div>
+        )}
+
+        {/* Show projects content only when user is authenticated and has workspace */}
+        {!loading && user && currentWorkspace && (
+          <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'grid' | 'list')} className="mb-6">
+            <TabsList>
+              <TabsTrigger value="grid" className="flex items-center gap-2">
+                <Grid3x3 className="h-4 w-4" />
+                Grid View
+              </TabsTrigger>
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <List className="h-4 w-4" />
+                List View
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="grid" className="mt-6">
+              {/* Projects Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredProjects.map((project) => (
+                  <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium">Timeline</p>
-                          <p className="text-muted-foreground text-xs">
-                            {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
-                          </p>
+                          <CardTitle className="text-lg mb-1">{project.name}</CardTitle>
+                          <CardDescription className="line-clamp-2">{project.description}</CardDescription>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Team</p>
-                          <p className="text-muted-foreground text-xs">{project.team_size || 0} members</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Budget</p>
-                          <p className="text-muted-foreground text-xs">{project.budget || '$0'}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{project.status}</Badge>
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2">
-                      {(project.tags || []).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1 flex items-center gap-2"
-                        onClick={() => handleViewDetails(project)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        View Details
-                      </Button>
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        className="flex-1 flex items-center gap-2"
-                        onClick={() => handleOpenProject(project.id)}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                        Open Project
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteProject(project)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
-                <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="list" className="mt-6">
-            {/* Projects List */}
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Progress</TableHead>
-                      <TableHead>Team Size</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Health</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProjects.map((project) => (
-                      <TableRow key={project.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <p className="font-medium">{project.name}</p>
-                            <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{project.status}</Badge>
-                        </TableCell>
-                        <TableCell>
+                        <div className="flex items-center gap-2">
                           <Badge variant="outline" className={`${getPriorityColor(project.priority || 'Medium')} text-white`}>
                             {project.priority || 'Medium'}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={project.progress || 0} className="h-2 w-16" />
-                            <span className="text-sm">{project.progress || 0}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{project.team_size || 0}</TableCell>
-                        <TableCell>{project.budget || '$0'}</TableCell>
-                        <TableCell>
                           <HealthIndicator 
                             health={project.health_status as 'green' | 'yellow' | 'red' || 'green'} 
                             score={project.health_score || 100}
                           />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewDetails(project)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="default" 
-                              size="sm"
-                              onClick={() => handleOpenProject(project.id)}
-                            >
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteProject(project)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Progress */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span>{project.progress || 0}%</span>
+                        </div>
+                        <Progress value={project.progress || 0} className="h-2" />
+                      </div>
 
-            {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
-                <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
+                      {/* Project Details */}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">Timeline</p>
+                            <p className="text-muted-foreground text-xs">
+                              {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">Team</p>
+                            <p className="text-muted-foreground text-xs">{project.team_size || 0} members</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Target className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">Budget</p>
+                            <p className="text-muted-foreground text-xs">{project.budget || '$0'}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{project.status}</Badge>
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2">
+                        {(project.tags || []).map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 flex items-center gap-2"
+                          onClick={() => handleViewDetails(project)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </Button>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="flex-1 flex items-center gap-2"
+                          onClick={() => handleOpenProject(project.id)}
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                          Open Project
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteProject(project)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            )}
-          </TabsContent>
-        </Tabs>
+
+              {filteredProjects.length === 0 && !loading && user && currentWorkspace && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
+                  <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="list" className="mt-6">
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project Name</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Progress</TableHead>
+                        <TableHead>Team Size</TableHead>
+                        <TableHead>Budget</TableHead>
+                        <TableHead>Health</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProjects.map((project) => (
+                        <TableRow key={project.id}>
+                          <TableCell className="font-medium">
+                            <div>
+                              <p className="font-medium">{project.name}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{project.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`${getPriorityColor(project.priority || 'Medium')} text-white`}>
+                              {project.priority || 'Medium'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={project.progress || 0} className="h-2 w-16" />
+                              <span className="text-sm">{project.progress || 0}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{project.team_size || 0}</TableCell>
+                          <TableCell>{project.budget || '$0'}</TableCell>
+                          <TableCell>
+                            <HealthIndicator 
+                              health={project.health_status as 'green' | 'yellow' | 'red' || 'green'} 
+                              score={project.health_score || 100}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewDetails(project)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleOpenProject(project.id)}
+                              >
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteProject(project)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {filteredProjects.length === 0 && !loading && user && currentWorkspace && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
+                  <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
 
       <TinkAssistant />

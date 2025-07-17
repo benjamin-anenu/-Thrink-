@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,14 +16,16 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const { user, signIn, signUp } = useAuth();
+  const { user, session, signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    console.log('[Auth Page] Auth state changed:', { user: !!user, session: !!session });
+    if (user && session) {
+      console.log('[Auth Page] User authenticated, redirecting to dashboard');
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, session, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,14 +33,19 @@ export default function Auth() {
     setError('');
     setMessage('');
 
+    console.log('[Auth Page] Attempting sign in for:', email);
+
     try {
       const { error } = await signIn(email, password);
       if (error) {
+        console.error('[Auth Page] Sign in error:', error);
         setError(error.message);
       } else {
-        navigate('/dashboard');
+        console.log('[Auth Page] Sign in successful, should redirect soon...');
+        // Navigation will happen automatically via useEffect when user state updates
       }
     } catch (err) {
+      console.error('[Auth Page] Sign in exception:', err);
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -50,14 +58,19 @@ export default function Auth() {
     setError('');
     setMessage('');
 
+    console.log('[Auth Page] Attempting sign up for:', email);
+
     try {
       const { error } = await signUp(email, password);
       if (error) {
+        console.error('[Auth Page] Sign up error:', error);
         setError(error.message);
       } else {
+        console.log('[Auth Page] Sign up successful');
         setMessage('Account created successfully! Please check your email to verify your account.');
       }
     } catch (err) {
+      console.error('[Auth Page] Sign up exception:', err);
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
