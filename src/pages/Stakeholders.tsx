@@ -4,7 +4,7 @@ import TinkAssistant from '@/components/TinkAssistant';
 import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
 import EscalationMatrix from '@/components/EscalationMatrix';
-import { useStakeholders } from '@/contexts/StakeholderContext';
+import { useStakeholder } from '@/contexts/StakeholderContext';
 import type { Stakeholder } from '@/contexts/StakeholderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Search, Filter, UserCheck, AlertTriangle, MessageSquare } from 'lucide-react';
 
 const Stakeholders = () => {
-  const { stakeholders, addStakeholder, updateStakeholder, loading } = useStakeholders();
+  const { stakeholders, addStakeholder, updateStakeholder, loading } = useStakeholder();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
@@ -202,8 +202,8 @@ const Stakeholders = () => {
                     influence: stakeholder.influence || 'Medium',
                     interest: stakeholder.interest || 'Medium',
                     projects: stakeholder.projects || [],
-                    status: stakeholder.status || 'Active',
-                    lastContact: stakeholder.lastContact || new Date().toISOString().split('T')[0]
+                    lastContact: stakeholder.lastContact || new Date().toISOString().split('T')[0],
+                    role: stakeholder.role || 'Stakeholder'
                   }}
                   onEdit={handleEditStakeholder}
                 />
@@ -302,7 +302,6 @@ const Stakeholders = () => {
             influence: editingStakeholder.influence || 'Medium',
             interest: editingStakeholder.interest || 'Medium',
             projects: editingStakeholder.projects || [],
-            status: editingStakeholder.status || 'Active',
             lastContact: editingStakeholder.lastContact || new Date().toISOString().split('T')[0],
             role: editingStakeholder.role || 'Stakeholder'
           } : undefined}
