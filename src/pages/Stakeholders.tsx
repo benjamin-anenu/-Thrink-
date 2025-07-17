@@ -20,7 +20,7 @@ const Stakeholders = () => {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState<Stakeholder | undefined>();
+  const [editingStakeholder, setEditingStakeholder] = useState<any>(undefined);
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -37,13 +37,16 @@ const Stakeholders = () => {
       updateStakeholder(editingStakeholder.id, stakeholderData);
     } else {
       const { id, created_at, updated_at, ...newStakeholderData } = stakeholderData;
-      addStakeholder(newStakeholderData);
+      addStakeholder({
+        ...newStakeholderData,
+        role: newStakeholderData.role || 'Stakeholder'
+      });
     }
     setEditingStakeholder(undefined);
     setShowForm(false);
   };
 
-  const handleEditStakeholder = (stakeholder: Stakeholder) => {
+  const handleEditStakeholder = (stakeholder: any) => {
     setEditingStakeholder(stakeholder);
     setShowForm(true);
   };
@@ -198,7 +201,9 @@ const Stakeholders = () => {
                     communicationPreference: stakeholder.communicationPreference || 'Email',
                     influence: stakeholder.influence || 'Medium',
                     interest: stakeholder.interest || 'Medium',
-                    projects: stakeholder.projects || []
+                    projects: stakeholder.projects || [],
+                    status: stakeholder.status || 'Active',
+                    lastContact: stakeholder.lastContact || new Date().toISOString().split('T')[0]
                   }}
                   onEdit={handleEditStakeholder}
                 />
@@ -298,7 +303,8 @@ const Stakeholders = () => {
             interest: editingStakeholder.interest || 'Medium',
             projects: editingStakeholder.projects || [],
             status: editingStakeholder.status || 'Active',
-            lastContact: editingStakeholder.lastContact || new Date().toISOString().split('T')[0]
+            lastContact: editingStakeholder.lastContact || new Date().toISOString().split('T')[0],
+            role: editingStakeholder.role || 'Stakeholder'
           } : undefined}
           onSave={handleSaveStakeholder}
         />

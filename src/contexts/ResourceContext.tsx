@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,10 +8,11 @@ export interface Resource {
   email?: string;
   role?: string;
   department?: string;
-  skills?: string[];
-  availability?: number;
+  workspaceId?: string;
   phone?: string;
   location?: string;
+  skills?: string[];
+  availability?: number;
   currentProjects?: string[];
   hourlyRate?: string;
   utilization?: number;
