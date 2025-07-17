@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
@@ -15,6 +16,7 @@ import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
+import DependencyManager from '../dependencies/DependencyManager';
 
 // Task Name Cell with hierarchy support
 interface TaskNameCellProps {
@@ -361,7 +363,7 @@ export const TaskProgressCell: React.FC<TaskProgressCellProps> = ({
   );
 };
 
-// Task Dependencies Cell
+// Task Dependencies Cell - REVERTED to use DependencyManager modal
 interface TaskDependenciesCellProps {
   task: ProjectTask;
   allTasks: ProjectTask[];
@@ -375,19 +377,53 @@ export const TaskDependenciesCell: React.FC<TaskDependenciesCellProps> = ({
   onUpdateTask, 
   densityClass = 'py-3 px-4' 
 }) => {
-  // Convert tasks to the format expected by InlineMultiSelectEdit
-  const dependencyOptions = allTasks
-    .filter(t => t.id !== task.id)
-    .map(t => ({ id: t.id, name: t.name, role: 'Task' }));
+  const parseDependencies = () => {
+    return task.dependencies.map(dep => {
+      const parts = dep.split(':');
+      return {
+        taskId: parts[0],
+        type: parts[1] || 'finish-to-start',
+        lag: parseInt(parts[2]) || 0,
+        task: allTasks.find(t => t.id === parts[0])
+      };
+    }).filter(dep => dep.task);
+  };
+
+  const currentDependencies = parseDependencies();
 
   return (
     <TableCell className={`table-cell ${densityClass}`}>
-      <InlineMultiSelectEdit
-        value={task.dependencies || []}
-        options={dependencyOptions}
-        onSave={(values) => onUpdateTask(task.id, { dependencies: values })}
-        placeholder="None"
-      />
+      <div className="flex items-center gap-2">
+        {/* Show current dependencies count */}
+        <div className="flex flex-wrap gap-1 flex-1">
+          {currentDependencies.length > 0 ? (
+            <>
+              <Badge variant="outline" className="text-xs">
+                {currentDependencies.length} dep{currentDependencies.length !== 1 ? 's' : ''}
+              </Badge>
+              {currentDependencies.slice(0, 2).map((dep) => (
+                <Badge key={dep.taskId} variant="secondary" className="text-xs">
+                  {dep.task?.name.substring(0, 10)}...
+                </Badge>
+              ))}
+              {currentDependencies.length > 2 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{currentDependencies.length - 2}
+                </Badge>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground text-sm">None</span>
+          )}
+        </div>
+        
+        {/* Dependency Manager Modal */}
+        <DependencyManager
+          task={task}
+          allTasks={allTasks}
+          onUpdateTask={onUpdateTask}
+        />
+      </div>
     </TableCell>
   );
 };
