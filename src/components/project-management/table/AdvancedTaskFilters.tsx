@@ -114,13 +114,16 @@ const AdvancedTaskFilters: React.FC<AdvancedTaskFiltersProps> = ({
         />
       </div>
 
-      {/* Quick Status Filter */}
-      <Select value={filters.status[0] || ''} onValueChange={(value) => updateFilter('status', value ? [value] : [])}>
+      {/* Quick Status Filter - Fixed to use proper value handling */}
+      <Select 
+        value={filters.status[0] || '__ALL__'} 
+        onValueChange={(value) => updateFilter('status', value === '__ALL__' ? [] : [value])}
+      >
         <SelectTrigger className="w-32">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Status</SelectItem>
+          <SelectItem value="__ALL__">All Status</SelectItem>
           {statusOptions.map(status => (
             <SelectItem key={status} value={status}>
               {status}
