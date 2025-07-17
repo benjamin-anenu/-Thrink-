@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,26 +8,58 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Filter, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Target, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-
+import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { useTaskManagement } from '@/hooks/useTaskManagement';
+import MilestoneManagementDialog from './MilestoneManagementDialog';
 import TaskTableRow from './table/TaskTableRow';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import TableControls from './table/TableControls';
 import ResizableTable from './table/ResizableTable';
+import DeleteTaskConfirmationDialog from './DeleteTaskConfirmationDialog';
+import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
   projectId: string;
 }
 
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
-  const { getProject, addTask, updateTask, deleteTask, rebaselineTasks } = useProject();
+  const { getProject } = useProject();
+  
+  // ALL early returns MUST happen before any hooks are called
+  if (!projectId) {
+    return <div>No project ID provided</div>;
+  }
+
+  const project = getProject(projectId);
+  if (!project) {
+    return <div className="p-6 text-center text-muted-foreground">Project not found</div>;
+  }
+  
+  // Now we can safely call all hooks - they will ALWAYS be called in the same order
+  const { 
+    tasks, 
+    milestones, 
+    loading, 
+    createTask, 
+    updateTask: updateTaskDB, 
+    deleteTask: deleteTaskDB,
+    createMilestone,
+    updateMilestone,
+    deleteMilestone,
+    refreshData
+  } = useTaskManagement(projectId);
+  
   const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [showMilestoneDialog, setShowMilestoneDialog] = useState(false);
   const [showRebaselineDialog, setShowRebaselineDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
+  const [editingMilestone, setEditingMilestone] = useState<ProjectMilestone | null>(null);
   const [rebaselineTask, setRebaselineTask] = useState<ProjectTask | null>(null);
   const [rebaselineData, setRebaselineData] = useState({ newStartDate: '', newEndDate: '', reason: '' });
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
@@ -38,59 +70,181 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
 
-  const project = getProject(projectId);
-  if (!project) return <div>Project not found</div>;
+  // Task filtering state
+  const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
 
-  // Available resources and stakeholders
-  const availableResources = [
-    { id: 'sarah', name: 'Sarah Johnson', role: 'Frontend Developer' },
-    { id: 'michael', name: 'Michael Chen', role: 'Backend Developer' },
-    { id: 'emily', name: 'Emily Rodriguez', role: 'UX Designer' },
-    { id: 'david', name: 'David Kim', role: 'Project Manager' },
-    { id: 'james', name: 'James Wilson', role: 'DevOps Engineer' }
-  ];
+  // Load resources and stakeholders from database
+  const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
+  const [availableStakeholders, setAvailableStakeholders] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null);
 
-  const availableStakeholders = [
-    { id: 'john-doe', name: 'John Doe', role: 'Product Manager' },
-    { id: 'jane-smith', name: 'Jane Smith', role: 'Business Analyst' },
-    { id: 'mike-wilson', name: 'Mike Wilson', role: 'Tech Lead' }
-  ];
+  // Load resources and stakeholders from database
+  useEffect(() => {
+    const loadResourcesAndStakeholders = async () => {
+      try {
+        // Load resources
+        const { data: resourcesData, error: resourcesError } = await supabase
+          .from('resources')
+          .select('id, name, role, email')
+          .order('name');
 
-  // Group tasks by milestone
+        if (resourcesError) {
+          console.error('Error loading resources:', resourcesError);
+        } else {
+          setAvailableResources((resourcesData || []).map(r => ({
+            id: r.id,
+            name: r.name,
+            role: r.role || 'Unknown',
+            email: r.email
+          })));
+        }
+
+        // Load stakeholders
+        const { data: stakeholdersData, error: stakeholdersError } = await supabase
+          .from('stakeholders')
+          .select('id, name, role, email')
+          .eq('workspace_id', project.workspaceId)
+          .order('name');
+
+        if (stakeholdersError) {
+          console.error('Error loading stakeholders:', stakeholdersError);
+        } else {
+          setAvailableStakeholders((stakeholdersData || []).map(s => ({
+            id: s.id,
+            name: s.name,
+            role: s.role || 'Unknown',
+            email: s.email
+          })));
+        }
+      } catch (error) {
+        console.error('Error loading resources and stakeholders:', error);
+      }
+    };
+
+    if (project?.workspaceId) {
+      loadResourcesAndStakeholders();
+    }
+  }, [project?.workspaceId]);
+
+  // Enhanced task filtering with dependency conflicts
+  const filteredTasks = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
+    
+    return tasks.filter(task => {
+      // Search filter
+      if (taskFilters.search) {
+        const searchLower = taskFilters.search.toLowerCase();
+        if (!task.name.toLowerCase().includes(searchLower) && 
+            !task.description.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (taskFilters.status && task.status !== taskFilters.status) {
+        return false;
+      }
+
+      // Priority filter
+      if (taskFilters.priority && task.priority !== taskFilters.priority) {
+        return false;
+      }
+
+      // Assignee filter
+      if (taskFilters.assignee) {
+        if (taskFilters.assignee === 'unassigned') {
+          if (task.assignedResources.length > 0) return false;
+        } else {
+          if (!task.assignedResources.includes(taskFilters.assignee)) return false;
+        }
+      }
+
+      // Milestone filter
+      if (taskFilters.milestone) {
+        if (taskFilters.milestone === 'no-milestone') {
+          if (task.milestoneId) return false;
+        } else {
+          if (task.milestoneId !== taskFilters.milestone) return false;
+        }
+      }
+
+      // Date range filter
+      if (taskFilters.dateRange?.start || taskFilters.dateRange?.end) {
+        const taskStart = new Date(task.startDate);
+        const taskEnd = new Date(task.endDate);
+        
+        if (taskFilters.dateRange.start && taskEnd < new Date(taskFilters.dateRange.start)) {
+          return false;
+        }
+        
+        if (taskFilters.dateRange.end && taskStart > new Date(taskFilters.dateRange.end)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [tasks, taskFilters]);
+
+  // Group tasks by milestone with safe data handling and filtering
   const groupedTasks = useMemo(() => {
+    if (!Array.isArray(filteredTasks) || !Array.isArray(milestones)) {
+      return { 'no-milestone': { milestone: null, tasks: [] } };
+    }
+    
     const groups: { [key: string]: { milestone: ProjectMilestone | null; tasks: ProjectTask[] } } = {};
     
     // Initialize groups for each milestone
-    project.milestones.forEach(milestone => {
-      groups[milestone.id] = { milestone, tasks: [] };
+    milestones.forEach(milestone => {
+      if (milestone && milestone.id) {
+        groups[milestone.id] = { milestone, tasks: [] };
+      }
     });
     
     // Add group for tasks without milestone
     groups['no-milestone'] = { milestone: null, tasks: [] };
     
     // Assign tasks to groups
-    project.tasks.forEach(task => {
+    filteredTasks.forEach(task => {
+      if (!task || !task.id) return;
+      
       const groupKey = task.milestoneId || 'no-milestone';
       if (groups[groupKey]) {
         groups[groupKey].tasks.push(task);
+      } else {
+        groups['no-milestone'].tasks.push(task);
       }
     });
     
     // Sort tasks within each group
     Object.values(groups).forEach(group => {
-      group.tasks.sort((a, b) => {
-        const aValue = (a as any)[sortBy];
-        const bValue = (b as any)[sortBy];
-        const modifier = sortDirection === 'asc' ? 1 : -1;
-        
-        if (aValue < bValue) return -1 * modifier;
-        if (aValue > bValue) return 1 * modifier;
-        return 0;
-      });
+      if (group.tasks) {
+        group.tasks.sort((a, b) => {
+          try {
+            const aValue = (a as any)[sortBy] || '';
+            const bValue = (b as any)[sortBy] || '';
+            const modifier = sortDirection === 'asc' ? 1 : -1;
+            
+            if (aValue < bValue) return -1 * modifier;
+            if (aValue > bValue) return 1 * modifier;
+            return 0;
+          } catch {
+            return 0;
+          }
+        });
+      }
     });
     
     return groups;
-  }, [project.tasks, project.milestones, sortBy, sortDirection]);
+  }, [filteredTasks, milestones, sortBy, sortDirection]);
+
+  // NO MORE EARLY RETURNS AFTER THIS POINT - ALL HOOKS CALLED CONSISTENTLY
+  
+  // Handle loading state in render, not with early return
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
+  }
 
   // Table control handlers
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 2));
@@ -102,9 +256,21 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     toast.info('Export functionality will be implemented');
   };
 
-  const handleCreateTask = (task: Omit<ProjectTask, 'id'>) => {
-    addTask(projectId, task);
-    toast.success('Task created successfully');
+  const handleCreateTask = async (task: Omit<ProjectTask, 'id'>) => {
+    try {
+      // Fix UUID conversion issues
+      const taskData = {
+        ...task,
+        // Ensure milestoneId is properly handled as UUID or null
+        milestoneId: task.milestoneId && task.milestoneId !== '' ? task.milestoneId : undefined,
+      };
+      
+      await createTask(taskData);
+      toast.success('Task created successfully');
+      setShowTaskDialog(false);
+    } catch (error) {
+      // Error is handled in the hook
+    }
   };
 
   const handleEditTask = (task: ProjectTask) => {
@@ -112,14 +278,70 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     setShowTaskDialog(true);
   };
 
-  const handleUpdateTask = (taskId: string, updates: Partial<ProjectTask>) => {
-    updateTask(projectId, taskId, updates);
-    toast.success('Task updated successfully');
+  const handleUpdateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
+    try {
+      await updateTaskDB(taskId, updates);
+      toast.success('Task updated successfully');
+    } catch (error) {
+      // Error is handled in the hook
+    }
   };
 
   const handleDeleteTask = (taskId: string) => {
-    deleteTask(projectId, taskId);
-    toast.success('Task deleted successfully');
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setTaskToDelete(task);
+      setShowDeleteDialog(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    
+    try {
+      await deleteTaskDB(taskToDelete.id);
+      toast.success('Task deleted successfully');
+      setShowDeleteDialog(false);
+      setTaskToDelete(null);
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
+  const handleCreateMilestone = async (milestone: Omit<ProjectMilestone, 'id'>) => {
+    try {
+      await createMilestone(milestone);
+      toast.success('Milestone created successfully');
+      setShowMilestoneDialog(false);
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
+  const handleEditMilestone = (milestone: ProjectMilestone) => {
+    setEditingMilestone(milestone);
+    setShowMilestoneDialog(true);
+  };
+
+  const handleUpdateMilestone = async (milestoneId: string, updates: Partial<ProjectMilestone>) => {
+    try {
+      await updateMilestone(milestoneId, updates);
+      toast.success('Milestone updated successfully');
+      setShowMilestoneDialog(false);
+    } catch (error) {
+      // Error is handled in the hook
+    }
+  };
+
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    try {
+      await deleteMilestone(milestoneId);
+      toast.success('Milestone deleted successfully');
+      // Refresh data to ensure UI is updated
+      await refreshData();
+    } catch (error) {
+      // Error is handled in the hook
+    }
   };
 
   const handleRebaselineClick = (task: ProjectTask) => {
@@ -132,24 +354,24 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     setShowRebaselineDialog(true);
   };
 
-  const handleRebaseline = () => {
+  // Fixed: Proper rebaseline handling with baseline date updates
+  const handleRebaseline = async () => {
     if (rebaselineTask && rebaselineData.reason) {
-      const dependentTasks = project.tasks.filter(t => 
-        t.dependencies.includes(rebaselineTask.id)
-      ).map(t => t.id);
-
-      const request: RebaselineRequest = {
-        taskId: rebaselineTask.id,
-        newStartDate: rebaselineData.newStartDate,
-        newEndDate: rebaselineData.newEndDate,
-        reason: rebaselineData.reason,
-        affectedTasks: dependentTasks
-      };
-
-      rebaselineTasks(projectId, request);
-      setShowRebaselineDialog(false);
-      setRebaselineTask(null);
-      toast.success(`Task rebaselined. ${dependentTasks.length} dependent tasks updated.`);
+      try {
+        await updateTaskDB(rebaselineTask.id, {
+          startDate: rebaselineData.newStartDate,
+          endDate: rebaselineData.newEndDate,
+          // Update baseline dates to current values before changing
+          baselineStartDate: rebaselineTask.startDate,
+          baselineEndDate: rebaselineTask.endDate
+        });
+        
+        setShowRebaselineDialog(false);
+        setRebaselineTask(null);
+        toast.success('Task rebaselined successfully');
+      } catch (error) {
+        // Error is handled in the hook
+      }
     }
   };
 
@@ -173,18 +395,39 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="table-container">
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <Card className="table-container">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Project Task Management
+              {tasks.some(task => task.dependencies.length > 0) && (
+                <Badge variant="outline" className="ml-2">
+                  {tasks.filter(task => task.dependencies.length > 0).length} with dependencies
+                </Badge>
+              )}
             </CardTitle>
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
+              <TaskFilterDialog
+                filters={taskFilters}
+                onFiltersChange={setTaskFilters}
+                availableResources={availableResources}
+                milestones={milestones}
+                tasks={tasks}
+              />
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={() => {
+                  setEditingMilestone(null);
+                  setShowMilestoneDialog(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Milestone
               </Button>
               <Button 
                 className="flex items-center gap-2"
@@ -211,121 +454,131 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             onExport={handleExport}
           />
           
-          <div className="overflow-hidden">
-            <ResizableTable
-              zoomLevel={zoomLevel}
-              tableDensity={tableDensity}
-              className="table-container"
-            >
-              <TableHeader className="table-header">
-                <TableRow>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('name')}>
-                    Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('status')}>
-                    Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('priority')}>
-                    Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="table-cell">Assigned Resources</TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('startDate')}>
-                    Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('endDate')}>
-                    End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('duration')}>
-                    Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer table-cell" onClick={() => handleSort('progress')}>
-                    Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </TableHead>
-                  <TableHead className="table-cell">Dependencies</TableHead>
-                  <TableHead className="table-cell">Milestone</TableHead>
-                  <TableHead className="table-cell">Variance</TableHead>
-                  <TableHead className="table-cell">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(groupedTasks).map(([groupKey, group]) => (
-                  <React.Fragment key={groupKey}>
-                    {/* Milestone Header */}
-                    {group.milestone && (
-                      <TableRow className="table-row bg-muted/50">
-                        <td colSpan={12} className="table-cell">
-                          <Collapsible
-                            open={expandedMilestones.has(group.milestone.id)}
-                            onOpenChange={() => toggleMilestone(group.milestone.id)}
-                          >
-                            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+          <ResizableTable
+            zoomLevel={zoomLevel}
+            tableDensity={tableDensity}
+            className="w-full"
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('name')}>
+                  Task Name {sortBy === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('status')}>
+                  Status {sortBy === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('priority')}>
+                  Priority {sortBy === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead>Resources</TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('startDate')}>
+                  Start Date {sortBy === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('endDate')}>
+                  End Date {sortBy === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('duration')}>
+                  Duration {sortBy === 'duration' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
+                  Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead className="w-64 max-w-64 text-xs leading-tight px-2">
+                  <span className="block truncate">Dependencies</span>
+                </TableHead>
+                <TableHead>Milestone</TableHead>
+                <TableHead>Variance</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(groupedTasks).map(([groupKey, group]) => (
+                <React.Fragment key={groupKey}>
+                  {/* Milestone Header Row */}
+                  {group.milestone && (
+                    <TableRow className="bg-muted/30 hover:bg-muted/40">
+                      <td colSpan={12} className="p-0 border-b">
+                        <Collapsible
+                          open={expandedMilestones.has(group.milestone.id)}
+                          onOpenChange={() => toggleMilestone(group.milestone.id)}
+                        >
+                          <CollapsibleTrigger className="w-full p-3 hover:bg-muted/40 transition-colors">
+                            <div className="flex items-center gap-2 w-full text-left">
                               {expandedMilestones.has(group.milestone.id) ? (
-                                <ChevronDown className="h-4 w-4" />
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
                               ) : (
-                                <ChevronRight className="h-4 w-4" />
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               )}
                               <Target className="h-4 w-4 text-primary" />
-                              <span className="font-semibold">{group.milestone.name}</span>
+                              <span className="font-semibold text-foreground">{group.milestone.name}</span>
                               <Badge variant="outline" className="ml-2">
-                                {group.tasks.length} tasks
+                                {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                               </Badge>
                               <Badge 
                                 variant="outline" 
                                 className={`ml-1 ${
-                                  group.milestone.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                                  group.milestone.status === 'in-progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
-                                  group.milestone.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
-                                  'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                  group.milestone.status === 'completed' ? 'bg-success/10 text-success border-success/20' :
+                                  group.milestone.status === 'in-progress' ? 'bg-primary/10 text-primary border-primary/20' :
+                                  group.milestone.status === 'overdue' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                  'bg-muted text-muted-foreground'
                                 }`}
                               >
                                 {group.milestone.status}
                               </Badge>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              {group.tasks.map((task) => (
-                                <TaskTableRow
-                                  key={task.id}
-                                  task={task}
-                                  milestones={project.milestones}
-                                  availableResources={availableResources}
-                                  availableStakeholders={availableStakeholders}
-                                  allTasks={project.tasks}
-                                  onUpdateTask={handleUpdateTask}
-                                  onDeleteTask={handleDeleteTask}
-                                  onEditTask={handleEditTask}
-                                  onRebaselineTask={handleRebaselineClick}
-                                />
-                              ))}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </td>
-                      </TableRow>
-                    )}
-                    
-                    {/* Tasks without milestone */}
-                    {groupKey === 'no-milestone' && group.tasks.length > 0 && (
-                      <>
-                        {group.tasks.map((task) => (
-                          <TaskTableRow
-                            key={task.id}
-                            task={task}
-                            milestones={project.milestones}
-                            availableResources={availableResources}
-                            availableStakeholders={availableStakeholders}
-                            allTasks={project.tasks}
-                            onUpdateTask={handleUpdateTask}
-                            onDeleteTask={handleDeleteTask}
-                            onEditTask={handleEditTask}
-                            onRebaselineTask={handleRebaselineClick}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </ResizableTable>
-          </div>
+                              <div className="ml-auto flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-muted"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditMilestone(group.milestone!);
+                                  }}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteMilestone(group.milestone!.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                        </Collapsible>
+                      </td>
+                    </TableRow>
+                  )}
+                  
+                  {/* Task Rows - Show if no milestone or milestone is expanded */}
+                  {(groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) && (
+                    <>
+                      {group.tasks.map((task) => (
+                        <TaskTableRow
+                          key={task.id}
+                          task={task}
+                          milestones={milestones}
+                          availableResources={availableResources}
+                          availableStakeholders={availableStakeholders}
+                          allTasks={tasks}
+                          onUpdateTask={handleUpdateTask}
+                          onDeleteTask={handleDeleteTask}
+                          onEditTask={handleEditTask}
+                          onRebaselineTask={handleRebaselineClick}
+                        />
+                      ))}
+                    </>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </ResizableTable>
         </CardContent>
       </Card>
 
@@ -335,10 +588,18 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         onCreateTask={handleCreateTask}
         onUpdateTask={handleUpdateTask}
         editingTask={editingTask}
-        tasks={project.tasks}
-        milestones={project.milestones}
+        tasks={tasks}
+        milestones={milestones}
         availableResources={availableResources}
         availableStakeholders={availableStakeholders}
+      />
+
+      <MilestoneManagementDialog
+        open={showMilestoneDialog}
+        onOpenChange={setShowMilestoneDialog}
+        onCreateMilestone={handleCreateMilestone}
+        onUpdateMilestone={handleUpdateMilestone}
+        editingMilestone={editingMilestone}
       />
 
       <AlertDialog open={showRebaselineDialog} onOpenChange={setShowRebaselineDialog}>
@@ -346,7 +607,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Rebaseline Task</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to rebaseline "{rebaselineTask?.name}". This will update the task's timeline and may affect dependent tasks.
+              You are about to rebaseline "{rebaselineTask?.name}". This will update the task's timeline and save the current dates as the new baseline.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
@@ -389,7 +650,17 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteTaskConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        task={taskToDelete}
+        allTasks={tasks}
+        onConfirm={handleConfirmDelete}
+      />
+      </div>
+    </ErrorBoundary>
   );
 };
 

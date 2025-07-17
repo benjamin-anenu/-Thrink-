@@ -134,15 +134,38 @@ export class EmailReminderService {
       // Try to find resource if not provided
       try {
         const resources = JSON.parse(localStorage.getItem('resources') || '[]');
-        resource = resources.find((r: any) => r.id === task.assignedTo);
+        resource = resources.find((r: any) => r.id === task.assignedTo || (task.assignedResources && task.assignedResources.includes(r.id)));
+        
+        if (!resource) {
+          console.warn(`[Email Reminder Service] No resource found for task ${task.name || task.title}`);
+          return;
+        }
       } catch (error) {
-        console.warn('[Email Reminder Service] Could not find resource for task');
+        console.warn('[Email Reminder Service] Could not find resource for task:', error);
         return;
       }
+    }
+    
+    // Validate resource has required fields
+    if (!resource.email || !resource.email.includes('@')) {
+      console.warn(`[Email Reminder Service] Resource ${resource.name || 'unknown'} has invalid email: ${resource.email || 'undefined'}`);
+      return;
+    }
+
+    if (!resource.name) {
+      console.warn(`[Email Reminder Service] Resource has undefined name for email ${resource.email}`);
+      // Set a fallback name to prevent undefined errors
+      resource.name = 'Team Member';
     }
 
     const deadline = new Date(task.endDate || task.dueDate || task.date);
     const now = new Date();
+
+    // Validate deadline
+    if (isNaN(deadline.getTime())) {
+      console.warn(`[Email Reminder Service] Invalid deadline for task ${task.name || task.title}`);
+      return;
+    }
 
     // Calculate reminder dates
     const reminderDates = [
@@ -274,7 +297,17 @@ export class EmailReminderService {
   private async sendReminderEmail(reminder: TaskDeadlineReminder): Promise<void> {
     // Enhanced email sending with validation and error handling
     if (!reminder.resourceEmail || !reminder.resourceEmail.includes('@')) {
-      throw new Error(`Invalid email address for ${reminder.resourceName}`);
+      throw new Error(`Invalid email address "${reminder.resourceEmail}" for ${reminder.resourceName || 'undefined resource'}`);
+    }
+    
+    if (!reminder.resourceName || reminder.resourceName === 'undefined') {
+      console.warn(`[Email Reminder Service] Resource name is undefined for email ${reminder.resourceEmail}, using fallback`);
+      reminder.resourceName = 'Team Member';
+    }
+    
+    if (!reminder.taskName) {
+      console.warn(`[Email Reminder Service] Task name is undefined for reminder ${reminder.id}`);
+      reminder.taskName = 'Untitled Task';
     }
     
     const emailContent = this.generateEmailContent(reminder);

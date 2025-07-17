@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
@@ -9,6 +8,8 @@ import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
+import DependencyManager from '../dependencies/DependencyManager';
+import DependencyVisualizer from '../dependencies/DependencyVisualizer';
 
 interface TaskTableCellsProps {
   task: ProjectTask;
@@ -36,10 +37,10 @@ export const TaskStatusCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId
   onUpdateTask
 }) => {
   const statusOptions = [
-    { value: 'Not Started', label: 'Not Started', color: 'bg-gray-500 dark:bg-gray-600' },
-    { value: 'In Progress', label: 'In Progress', color: 'bg-blue-500 dark:bg-blue-600' },
-    { value: 'Completed', label: 'Completed', color: 'bg-green-500 dark:bg-green-600' },
-    { value: 'On Hold', label: 'On Hold', color: 'bg-yellow-500 dark:bg-yellow-600' }
+    { value: 'Not Started', label: 'Not Started', color: 'bg-muted text-muted-foreground' },
+    { value: 'In Progress', label: 'In Progress', color: 'bg-primary/10 text-primary' },
+    { value: 'Completed', label: 'Completed', color: 'bg-success/10 text-success' },
+    { value: 'On Hold', label: 'On Hold', color: 'bg-warning/10 text-warning' }
   ];
 
   return (
@@ -61,7 +62,8 @@ export const TaskPriorityCell: React.FC<{ task: ProjectTask; onUpdateTask: (task
   const priorityOptions = [
     { value: 'Low', label: 'Low', color: 'bg-green-500 dark:bg-green-600' },
     { value: 'Medium', label: 'Medium', color: 'bg-yellow-500 dark:bg-yellow-600' },
-    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' }
+    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' },
+    { value: 'Critical', label: 'Critical', color: 'bg-red-700 dark:bg-red-800' }
   ];
 
   return (
@@ -156,27 +158,27 @@ export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
   </TableCell>
 );
 
+// Enhanced Dependencies cell with responsive design and proper spacing
 export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
   allTasks,
   onUpdateTask
 }) => {
-  const dependencyOptions = allTasks
-    .filter(t => t.id !== task.id)
-    .map(t => ({
-      id: t.id,
-      name: t.name,
-      role: t.status
-    }));
-
   return (
-    <TableCell className="table-cell">
-      <InlineMultiSelectEdit
-        value={task.dependencies}
-        options={dependencyOptions}
-        onSave={(value) => onUpdateTask(task.id, { dependencies: value })}
-        placeholder="Add dependencies"
-      />
+    <TableCell className="p-2 align-top">
+      <div className="w-full space-y-1.5 overflow-hidden">
+        <div className="w-full">
+          <DependencyVisualizer task={task} allTasks={allTasks} />
+        </div>
+        
+        <div className="w-full">
+          <DependencyManager 
+            task={task} 
+            allTasks={allTasks} 
+            onUpdateTask={onUpdateTask}
+          />
+        </div>
+      </div>
     </TableCell>
   );
 };
@@ -207,30 +209,36 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   );
 };
 
+// Enhanced Variance calculation with proper baseline date handling
 export const TaskVarianceCell: React.FC<{ task: ProjectTask }> = ({ task }) => {
-  const isDelayed = () => {
-    return new Date(task.endDate) > new Date(task.baselineEndDate);
-  };
-
   const getScheduleVariance = () => {
+    // Only calculate variance if we have baseline dates
+    if (!task.baselineEndDate || !task.endDate) {
+      return null;
+    }
+    
     const actualEnd = new Date(task.endDate);
     const baselineEnd = new Date(task.baselineEndDate);
     return differenceInDays(actualEnd, baselineEnd);
   };
 
   const scheduleVariance = getScheduleVariance();
-  const delayed = isDelayed();
 
   return (
     <TableCell className="table-cell">
-      {delayed && (
+      {scheduleVariance === null ? (
+        <span className="text-xs text-muted-foreground">No baseline</span>
+      ) : scheduleVariance > 0 ? (
         <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
           +{scheduleVariance}d
         </Badge>
-      )}
-      {scheduleVariance < 0 && (
+      ) : scheduleVariance < 0 ? (
         <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
           {scheduleVariance}d
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+          On track
         </Badge>
       )}
     </TableCell>
