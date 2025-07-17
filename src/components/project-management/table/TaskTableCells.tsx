@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
@@ -166,14 +165,12 @@ export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: Proje
   onUpdateTask
 }) => {
   return (
-    <TableCell className="table-cell p-2">
-      <div className="w-full min-w-[200px] max-w-[300px] space-y-2">
-        {/* Dependencies Visualizer - Responsive container */}
-        <div className="w-full overflow-hidden">
+    <TableCell className="p-2 align-top">
+      <div className="w-full space-y-1.5 overflow-hidden">
+        <div className="w-full">
           <DependencyVisualizer task={task} allTasks={allTasks} />
         </div>
         
-        {/* Dependency Manager - Responsive button */}
         <div className="w-full">
           <DependencyManager 
             task={task} 

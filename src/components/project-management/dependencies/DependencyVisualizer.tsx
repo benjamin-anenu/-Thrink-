@@ -2,7 +2,7 @@
 import React from 'react';
 import { ProjectTask } from '@/types/project';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowRight, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DependencyVisualizerProps {
@@ -32,14 +32,14 @@ const DependencyVisualizer: React.FC<DependencyVisualizerProps> = ({
         lag: parseInt(parts[2]) || 0,
         task: allTasks.find(t => t.id === taskId)
       };
-    }).filter(dep => dep.task); // Only include dependencies where we found the task
+    }).filter(dep => dep.task);
   };
 
   const dependencies = parseDependencies();
 
   if (dependencies.length === 0) {
     return (
-      <div className="text-xs text-muted-foreground p-1">
+      <div className="text-xs text-muted-foreground py-1">
         No dependencies
       </div>
     );
@@ -48,13 +48,13 @@ const DependencyVisualizer: React.FC<DependencyVisualizerProps> = ({
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'start-to-start':
-        return <ArrowRight className="h-3 w-3 text-blue-500 flex-shrink-0" />;
+        return <ArrowRight className="h-3 w-3 text-blue-500 shrink-0" />;
       case 'finish-to-finish':
-        return <ArrowRight className="h-3 w-3 text-green-500 flex-shrink-0" />;
+        return <ArrowRight className="h-3 w-3 text-green-500 shrink-0" />;
       case 'start-to-finish':
-        return <ArrowRight className="h-3 w-3 text-purple-500 flex-shrink-0" />;
-      default: // finish-to-start
-        return <ArrowRight className="h-3 w-3 text-orange-500 flex-shrink-0" />;
+        return <ArrowRight className="h-3 w-3 text-purple-500 shrink-0" />;
+      default:
+        return <ArrowRight className="h-3 w-3 text-orange-500 shrink-0" />;
     }
   };
 
@@ -77,32 +77,31 @@ const DependencyVisualizer: React.FC<DependencyVisualizerProps> = ({
     const depEndDate = new Date(dependency.task.endDate);
     const taskStartDate = new Date(task.startDate);
     
-    // Check if dependency task end date is after current task start date
     return depEndDate > taskStartDate;
   };
 
   return (
     <TooltipProvider>
-      <div className="flex flex-wrap gap-1 w-full overflow-hidden">
+      <div className="flex flex-wrap gap-1 w-full">
         {dependencies.map((dep) => (
           <Tooltip key={dep.taskId}>
             <TooltipTrigger asChild>
               <Badge 
                 variant="outline" 
-                className={`text-xs cursor-help flex items-center gap-1 max-w-full min-w-0 ${
+                className={`text-xs cursor-help flex items-center gap-1 min-w-0 max-w-full ${
                   isTaskDelayed(dep) ? 'border-red-200 bg-red-50 text-red-700' : ''
                 }`}
               >
                 {getTypeIcon(dep.type)}
-                <span className="truncate flex-1 min-w-0" title={dep.task?.name || 'Unknown'}>
+                <span className="truncate" title={dep.task?.name || 'Unknown'}>
                   {dep.task?.name || 'Unknown'}
                 </span>
                 {dep.lag !== 0 && (
-                  <span className="text-xs flex-shrink-0 ml-1">
+                  <span className="text-xs shrink-0">
                     {dep.lag > 0 ? `+${dep.lag}d` : `${dep.lag}d`}
                   </span>
                 )}
-                {isTaskDelayed(dep) && <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                {isTaskDelayed(dep) && <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">

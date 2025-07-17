@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, AlertTriangle } from 'lucide-react';
+import { Plus, X, AlertTriangle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DependencyManagerProps {
@@ -106,10 +106,11 @@ const DependencyManager: React.FC<DependencyManagerProps> = ({
         <Button 
           variant="outline" 
           size="sm" 
-          className="w-full justify-start text-xs h-7 px-2"
+          className="w-full h-6 px-2 text-xs group"
         >
-          <Plus className="h-3 w-3 mr-1 flex-shrink-0" />
-          <span className="truncate">Manage Dependencies</span>
+          <Settings className="h-3 w-3 shrink-0" />
+          <span className="ml-1 truncate group-hover:hidden">Manage</span>
+          <span className="ml-1 truncate hidden group-hover:inline">Manage Dependencies</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
