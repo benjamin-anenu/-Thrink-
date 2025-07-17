@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
@@ -267,13 +266,10 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   milestones,
   onUpdateTask
 }) => {
-  const milestoneOptions = [
-    { value: '', label: 'None' },
-    ...milestones.map(m => ({
-      value: m.id,
-      label: m.name
-    }))
-  ];
+  const milestoneOptions = milestones.map(m => ({
+    value: m.id,
+    label: m.name
+  }));
 
   return (
     <TableCell className="table-cell">
