@@ -9,6 +9,8 @@ import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
+import DependencyManager from '../dependencies/DependencyManager';
+import DependencyVisualizer from '../dependencies/DependencyVisualizer';
 
 interface TaskTableCellsProps {
   task: ProjectTask;
@@ -61,7 +63,8 @@ export const TaskPriorityCell: React.FC<{ task: ProjectTask; onUpdateTask: (task
   const priorityOptions = [
     { value: 'Low', label: 'Low', color: 'bg-green-500 dark:bg-green-600' },
     { value: 'Medium', label: 'Medium', color: 'bg-yellow-500 dark:bg-yellow-600' },
-    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' }
+    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' },
+    { value: 'Critical', label: 'Critical', color: 'bg-red-700 dark:bg-red-800' }
   ];
 
   return (
@@ -156,48 +159,20 @@ export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
   </TableCell>
 );
 
-// Fixed: Dependencies cell with proper overflow handling and layout
+// Enhanced Dependencies cell with visual indicators and management
 export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
   allTasks,
   onUpdateTask
 }) => {
-  const dependencyOptions = allTasks
-    .filter(t => t.id !== task.id)
-    .map(t => ({
-      id: t.id,
-      name: t.name,
-      role: t.status
-    }));
-
-  const dependencyTasks = task.dependencies
-    .map(depId => allTasks.find(t => t.id === depId))
-    .filter(Boolean);
-
   return (
-    <TableCell className="table-cell min-w-0 max-w-[200px]">
-      <div className="flex flex-col gap-1">
-        {dependencyTasks.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {dependencyTasks.map(depTask => (
-              <Badge 
-                key={depTask!.id} 
-                variant="outline" 
-                className="text-xs truncate max-w-[80px]"
-                title={depTask!.name}
-              >
-                {depTask!.name}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <span className="text-xs text-muted-foreground">No dependencies</span>
-        )}
-        <InlineMultiSelectEdit
-          value={task.dependencies}
-          options={dependencyOptions}
-          onSave={(value) => onUpdateTask(task.id, { dependencies: value })}
-          placeholder="Add dependencies"
+    <TableCell className="table-cell min-w-0 max-w-[250px]">
+      <div className="flex flex-col gap-2">
+        <DependencyVisualizer task={task} allTasks={allTasks} />
+        <DependencyManager 
+          task={task} 
+          allTasks={allTasks} 
+          onUpdateTask={onUpdateTask}
         />
       </div>
     </TableCell>
@@ -230,7 +205,7 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   );
 };
 
-// Fixed: Variance calculation with proper baseline date handling
+// Enhanced Variance calculation with proper baseline date handling
 export const TaskVarianceCell: React.FC<{ task: ProjectTask }> = ({ task }) => {
   const getScheduleVariance = () => {
     // Only calculate variance if we have baseline dates

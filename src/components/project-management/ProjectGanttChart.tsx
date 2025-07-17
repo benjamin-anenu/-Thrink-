@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
@@ -128,7 +127,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   }, [project?.workspaceId]);
 
-  // Filter tasks based on current filters
+  // Enhanced task filtering with dependency conflicts
   const filteredTasks = useMemo(() => {
     if (!Array.isArray(tasks)) return [];
     
@@ -396,6 +395,11 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Project Task Management
+              {tasks.some(task => task.dependencies.length > 0) && (
+                <Badge variant="outline" className="ml-2">
+                  {tasks.filter(task => task.dependencies.length > 0).length} with dependencies
+                </Badge>
+              )}
             </CardTitle>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -472,7 +476,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
                   Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </TableHead>
-                <TableHead className="min-w-[200px]">Dependencies</TableHead>
+                <TableHead className="min-w-[250px]">Dependencies</TableHead>
                 <TableHead>Milestone</TableHead>
                 <TableHead>Variance</TableHead>
                 <TableHead>Actions</TableHead>

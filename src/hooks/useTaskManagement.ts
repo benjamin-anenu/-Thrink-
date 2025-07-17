@@ -84,6 +84,77 @@ export const useTaskManagement = (projectId: string) => {
     };
   };
 
+  // Enhanced dependency validation with automatic date adjustment
+  const validateAndAdjustDependencies = async (taskId: string, updates: Partial<ProjectTask>) => {
+    if (!updates.dependencies) return updates;
+
+    // Parse dependencies
+    const parseDependency = (depString: string) => {
+      const parts = depString.split(':');
+      return {
+        taskId: parts[0],
+        type: parts[1] || 'finish-to-start',
+        lag: parseInt(parts[2]) || 0
+      };
+    };
+
+    const dependencies = updates.dependencies.map(parseDependency);
+    let suggestedStartDate = new Date(updates.startDate || tasks.find(t => t.id === taskId)?.startDate || Date.now());
+    let shouldAdjustDates = false;
+
+    for (const dep of dependencies) {
+      const depTask = tasks.find(t => t.id === dep.taskId);
+      if (!depTask) continue;
+
+      let requiredStartDate: Date;
+      const depStartDate = new Date(depTask.startDate);
+      const depEndDate = new Date(depTask.endDate);
+
+      switch (dep.type) {
+        case 'finish-to-start':
+          requiredStartDate = new Date(depEndDate);
+          requiredStartDate.setDate(requiredStartDate.getDate() + 1 + dep.lag);
+          break;
+        case 'start-to-start':
+          requiredStartDate = new Date(depStartDate);
+          requiredStartDate.setDate(requiredStartDate.getDate() + dep.lag);
+          break;
+        case 'finish-to-finish':
+          const taskDuration = updates.duration || tasks.find(t => t.id === taskId)?.duration || 1;
+          requiredStartDate = new Date(depEndDate);
+          requiredStartDate.setDate(requiredStartDate.getDate() - taskDuration + 1 + dep.lag);
+          break;
+        case 'start-to-finish':
+          const taskDuration2 = updates.duration || tasks.find(t => t.id === taskId)?.duration || 1;
+          requiredStartDate = new Date(depStartDate);
+          requiredStartDate.setDate(requiredStartDate.getDate() - taskDuration2 + 1 + dep.lag);
+          break;
+        default:
+          continue;
+      }
+
+      if (requiredStartDate > suggestedStartDate) {
+        suggestedStartDate = requiredStartDate;
+        shouldAdjustDates = true;
+      }
+    }
+
+    // If dates need adjustment, update them
+    if (shouldAdjustDates) {
+      const duration = updates.duration || tasks.find(t => t.id === taskId)?.duration || 1;
+      const suggestedEndDate = new Date(suggestedStartDate);
+      suggestedEndDate.setDate(suggestedEndDate.getDate() + duration - 1);
+
+      return {
+        ...updates,
+        startDate: suggestedStartDate.toISOString().split('T')[0],
+        endDate: suggestedEndDate.toISOString().split('T')[0]
+      };
+    }
+
+    return updates;
+  };
+
   // Load tasks and milestones
   const loadData = async () => {
     try {
@@ -152,27 +223,30 @@ export const useTaskManagement = (projectId: string) => {
     }
   };
 
-  // Update task with enhanced dependency validation
+  // Enhanced update task with dependency date adjustment
   const updateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
     try {
+      // Validate and adjust dependencies
+      const adjustedUpdates = await validateAndAdjustDependencies(taskId, updates);
+
       const dbUpdates: Partial<DatabaseTask> = {};
       
-      if (updates.name) dbUpdates.name = updates.name;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.startDate) dbUpdates.start_date = updates.startDate;
-      if (updates.endDate) dbUpdates.end_date = updates.endDate;
-      if (updates.status) dbUpdates.status = updates.status;
-      if (updates.priority) dbUpdates.priority = updates.priority;
-      if (updates.milestoneId !== undefined) dbUpdates.milestone_id = updates.milestoneId;
-      if (updates.duration) dbUpdates.duration = updates.duration;
-      if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
-      if (updates.dependencies) {
+      if (adjustedUpdates.name) dbUpdates.name = adjustedUpdates.name;
+      if (adjustedUpdates.description !== undefined) dbUpdates.description = adjustedUpdates.description;
+      if (adjustedUpdates.startDate) dbUpdates.start_date = adjustedUpdates.startDate;
+      if (adjustedUpdates.endDate) dbUpdates.end_date = adjustedUpdates.endDate;
+      if (adjustedUpdates.status) dbUpdates.status = adjustedUpdates.status;
+      if (adjustedUpdates.priority) dbUpdates.priority = adjustedUpdates.priority;
+      if (adjustedUpdates.milestoneId !== undefined) dbUpdates.milestone_id = adjustedUpdates.milestoneId;
+      if (adjustedUpdates.duration) dbUpdates.duration = adjustedUpdates.duration;
+      if (adjustedUpdates.progress !== undefined) dbUpdates.progress = adjustedUpdates.progress;
+      if (adjustedUpdates.dependencies) {
         // Validate dependencies before updating
-        await validateDependencies(taskId, updates.dependencies);
-        dbUpdates.dependencies = updates.dependencies;
+        await validateDependencies(taskId, adjustedUpdates.dependencies);
+        dbUpdates.dependencies = adjustedUpdates.dependencies;
       }
-      if (updates.assignedResources) dbUpdates.assigned_resources = updates.assignedResources;
-      if (updates.assignedStakeholders) dbUpdates.assigned_stakeholders = updates.assignedStakeholders;
+      if (adjustedUpdates.assignedResources) dbUpdates.assigned_resources = adjustedUpdates.assignedResources;
+      if (adjustedUpdates.assignedStakeholders) dbUpdates.assigned_stakeholders = adjustedUpdates.assignedStakeholders;
 
       const { data, error } = await supabase
         .from('project_tasks')
@@ -187,8 +261,13 @@ export const useTaskManagement = (projectId: string) => {
       setTasks(prev => prev.map(task => task.id === taskId ? updatedTask : task));
       
       // Handle resource assignments
-      if (updates.assignedResources) {
-        await updateResourceAssignments(taskId, updates.assignedResources);
+      if (adjustedUpdates.assignedResources) {
+        await updateResourceAssignments(taskId, adjustedUpdates.assignedResources);
+      }
+
+      // If dates were automatically adjusted, show notification
+      if (adjustedUpdates.startDate !== updates.startDate || adjustedUpdates.endDate !== updates.endDate) {
+        toast.info('Task dates were automatically adjusted based on dependencies');
       }
 
       return updatedTask;
@@ -203,17 +282,20 @@ export const useTaskManagement = (projectId: string) => {
     }
   };
 
-  // Validate dependencies to prevent circular references
+  // Enhanced circular dependency validation
   const validateDependencies = async (taskId: string, dependencies: string[]) => {
     if (!dependencies || dependencies.length === 0) return;
 
+    const parseDependency = (depString: string) => depString.split(':')[0];
+    const depTaskIds = dependencies.map(parseDependency);
+
     // Check for self-dependency
-    if (dependencies.includes(taskId)) {
+    if (depTaskIds.includes(taskId)) {
       throw new Error('Circular dependency detected: Task cannot depend on itself');
     }
 
     // Check for direct circular dependencies
-    for (const depId of dependencies) {
+    for (const depId of depTaskIds) {
       const { data: depTask, error } = await supabase
         .from('project_tasks')
         .select('dependencies')
@@ -222,8 +304,32 @@ export const useTaskManagement = (projectId: string) => {
 
       if (error) continue;
 
-      if (depTask?.dependencies && depTask.dependencies.includes(taskId)) {
+      const depTaskDeps = (depTask?.dependencies || []).map(parseDependency);
+      if (depTaskDeps.includes(taskId)) {
         throw new Error(`Circular dependency detected: Task ${depId} already depends on task ${taskId}`);
+      }
+    }
+
+    // Advanced: Check for indirect circular dependencies (A -> B -> C -> A)
+    const checkIndirectCircular = (currentTaskId: string, visited: Set<string>): boolean => {
+      if (visited.has(currentTaskId)) return true;
+      visited.add(currentTaskId);
+
+      const currentTask = tasks.find(t => t.id === currentTaskId);
+      if (!currentTask) return false;
+
+      for (const depString of currentTask.dependencies) {
+        const depTaskId = parseDependency(depString);
+        if (depTaskId === taskId) return true;
+        if (checkIndirectCircular(depTaskId, new Set(visited))) return true;
+      }
+
+      return false;
+    };
+
+    for (const depId of depTaskIds) {
+      if (checkIndirectCircular(depId, new Set())) {
+        throw new Error(`Indirect circular dependency detected involving task ${depId}`);
       }
     }
   };
