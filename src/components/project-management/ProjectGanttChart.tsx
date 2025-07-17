@@ -222,6 +222,22 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
+  const handleRebaselineTask = async (task: ProjectTask) => {
+    try {
+      // Rebaseline means setting the baseline dates to current dates
+      const updates = {
+        baselineStartDate: task.startDate,
+        baselineEndDate: task.endDate
+      };
+      
+      await updateTaskDB(task.id, updates);
+      toast.success(`Task "${task.name}" has been rebaselined`);
+    } catch (error) {
+      console.error('Error rebaselining task:', error);
+      toast.error('Failed to rebaseline task');
+    }
+  };
+
   const handleUpdateMilestone = async (milestoneId: string, updates: Partial<ProjectMilestone>) => {
     try {
       await updateMilestone(milestoneId, updates);
@@ -251,11 +267,72 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     setExpandedMilestones(newExpanded);
   };
 
-  const handleZoomIn = () => setZoomLevel(Math.min(2, zoomLevel + 0.1));
-  const handleZoomOut = () => setZoomLevel(Math.max(0.5, zoomLevel - 0.1));
-  const handleZoomReset = () => setZoomLevel(1);
+  // Table control handlers
+  const handleZoomIn = () => {
+    const newZoom = Math.min(2, zoomLevel + 0.1);
+    setZoomLevel(newZoom);
+    toast.info(`Zoom: ${Math.round(newZoom * 100)}%`);
+  };
+
+  const handleZoomOut = () => {
+    const newZoom = Math.max(0.5, zoomLevel - 0.1);
+    setZoomLevel(newZoom);
+    toast.info(`Zoom: ${Math.round(newZoom * 100)}%`);
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(1);
+    toast.info('Zoom reset to 100%');
+  };
+
+  const handleDensityChange = (density: 'compact' | 'normal' | 'comfortable') => {
+    setTableDensity(density);
+    toast.info(`Table density: ${density}`);
+  };
+
   const handleExport = () => {
-    toast.info('Export functionality will be implemented');
+    try {
+      // Create CSV content
+      const headers = ['Task Name', 'Status', 'Priority', 'Start Date', 'End Date', 'Duration', 'Progress', 'Milestone'];
+      const csvContent = [
+        headers.join(','),
+        ...filteredTasks.map(task => [
+          `"${task.name}"`,
+          task.status,
+          task.priority,
+          task.startDate,
+          task.endDate,
+          task.duration,
+          `${task.progress}%`,
+          task.milestoneId ? milestones.find(m => m.id === task.milestoneId)?.name || '' : ''
+        ].join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `project-tasks-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Tasks exported successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export tasks');
+    }
+  };
+
+  // Calculate table cell padding based on density
+  const getDensityClass = () => {
+    switch (tableDensity) {
+      case 'compact': return 'py-1 px-2';
+      case 'comfortable': return 'py-4 px-4';
+      default: return 'py-3 px-4';
+    }
   };
 
   return (
@@ -313,26 +390,32 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             onZoomOut={handleZoomOut}
             onZoomReset={handleZoomReset}
             tableDensity={tableDensity}
-            onDensityChange={setTableDensity}
+            onDensityChange={handleDensityChange}
             onExport={handleExport}
           />
 
-          <div className="overflow-x-auto" style={{ fontSize: `${zoomLevel * 100}%` }}>
+          <div 
+            className="overflow-x-auto" 
+            style={{ 
+              fontSize: `${zoomLevel * 100}%`,
+              maxHeight: '70vh'
+            }}
+          >
             <Table className="min-w-full">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-64 min-w-[256px]">Task Name</TableHead>
-                  <TableHead className="w-32 min-w-[120px]">Status</TableHead>
-                  <TableHead className="w-24">Priority</TableHead>
-                  <TableHead className="w-32">Resources</TableHead>
-                  <TableHead className="w-32">Start Date</TableHead>
-                  <TableHead className="w-32">End Date</TableHead>
-                  <TableHead className="w-24">Duration</TableHead>
-                  <TableHead className="w-24">Progress</TableHead>
-                  <TableHead className="w-48">Dependencies</TableHead>
-                  <TableHead className="w-32">Milestone</TableHead>
-                  <TableHead className="w-24">Variance</TableHead>
-                  <TableHead className="w-32">Actions</TableHead>
+                <TableRow>
+                  <TableHead className={`w-80 min-w-[320px] ${getDensityClass()}`}>Task Name</TableHead>
+                  <TableHead className={`w-40 min-w-[160px] ${getDensityClass()}`}>Status</TableHead>
+                  <TableHead className={`w-32 ${getDensityClass()}`}>Priority</TableHead>
+                  <TableHead className={`w-40 ${getDensityClass()}`}>Resources</TableHead>
+                  <TableHead className={`w-32 ${getDensityClass()}`}>Start Date</TableHead>
+                  <TableHead className={`w-32 ${getDensityClass()}`}>End Date</TableHead>
+                  <TableHead className={`w-24 ${getDensityClass()}`}>Duration</TableHead>
+                  <TableHead className={`w-24 ${getDensityClass()}`}>Progress</TableHead>
+                  <TableHead className={`w-48 ${getDensityClass()}`}>Dependencies</TableHead>
+                  <TableHead className={`w-32 ${getDensityClass()}`}>Milestone</TableHead>
+                  <TableHead className={`w-24 ${getDensityClass()}`}>Variance</TableHead>
+                  <TableHead className={`w-32 ${getDensityClass()}`}>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -340,7 +423,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                   <React.Fragment key={groupKey}>
                     {/* Milestone Header Row */}
                     {group.milestone && (
-                      <TableRow className="bg-muted/30 hover:bg-muted/40">
+                      <TableRow>
                         <TableCell colSpan={12} className="p-0 border-b">
                           <Collapsible
                             open={expandedMilestones.has(group.milestone.id)}
@@ -382,9 +465,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                               setEditingTask(task);
                               setShowTaskDialog(true);
                             }}
-                            onRebaselineTask={(task) => {
-                              toast.info('Rebaseline functionality will be implemented');
-                            }}
+                            onRebaselineTask={handleRebaselineTask}
+                            densityClass={getDensityClass()}
                           />
                         ))}
                       </>

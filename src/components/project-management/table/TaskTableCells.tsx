@@ -1,25 +1,23 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { differenceInDays } from 'date-fns';
+import { ChevronDown, ChevronRight, Plus, Minus, MoreHorizontal } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
-import DependencyManager from '../dependencies/DependencyManager';
-import DependencyVisualizer from '../dependencies/DependencyVisualizer';
-import TaskHierarchyControls from './TaskHierarchyControls';
 
-interface TaskTableCellsProps {
-  task: ProjectTask;
-  milestones: ProjectMilestone[];
-  availableResources: Array<{ id: string; name: string; role: string }>;
-  allTasks: ProjectTask[];
-  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
-}
-
+// Task Name Cell with hierarchy support
 interface TaskNameCellProps {
   task: ProjectTask;
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
@@ -28,7 +26,8 @@ interface TaskNameCellProps {
   onPromoteTask?: (taskId: string) => void;
   onDemoteTask?: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
-  allTasks?: ProjectTask[];
+  allTasks: ProjectTask[];
+  densityClass?: string;
 }
 
 export const TaskNameCell: React.FC<TaskNameCellProps> = ({
@@ -39,275 +38,430 @@ export const TaskNameCell: React.FC<TaskNameCellProps> = ({
   onPromoteTask,
   onDemoteTask,
   onAddSubtask,
-  allTasks = []
+  allTasks,
+  densityClass = 'py-3 px-4'
 }) => {
   const indentLevel = task.hierarchyLevel || 0;
   const hasChildren = task.hasChildren || false;
-  
-  // Check if task can be promoted (not at root level)
-  const canPromote = indentLevel > 0;
-  
-  // Check if task can be demoted (has a previous sibling)
-  const siblings = allTasks.filter(t => t.parentTaskId === task.parentTaskId);
-  const taskIndex = siblings.findIndex(t => t.id === task.id);
-  const canDemote = taskIndex > 0;
 
   return (
-    <TableCell className="table-cell font-medium group">
+    <TableCell className={`table-cell ${densityClass}`}>
       <div className="flex items-center gap-2">
         {/* Indentation for hierarchy */}
         <div style={{ width: `${indentLevel * 16}px` }} className="flex-shrink-0" />
         
-        {/* Hierarchy controls */}
-        {(onToggleExpansion || onPromoteTask || onDemoteTask || onAddSubtask) && (
-          <TaskHierarchyControls
-            task={task}
-            isExpanded={isExpanded}
-            hasChildren={hasChildren}
-            onToggleExpansion={onToggleExpansion || (() => {})}
-            onPromoteTask={onPromoteTask || (() => {})}
-            onDemoteTask={onDemoteTask || (() => {})}
-            onAddSubtask={onAddSubtask || (() => {})}
-            canPromote={canPromote}
-            canDemote={canDemote}
-          />
+        {/* Expansion toggle for parent tasks */}
+        {hasChildren && onToggleExpansion && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleExpansion(task.id)}
+            className="h-6 w-6 p-0"
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+          </Button>
         )}
         
-        {/* Task name with hierarchy indicator */}
-        <div className="flex items-center gap-2 flex-1">
-          {/* Visual hierarchy indicator */}
-          {indentLevel > 0 && (
-            <div className="flex items-center">
-              <div className="w-2 h-px bg-border" />
-              <div className="w-1 h-1 rounded-full bg-muted-foreground/40" />
-            </div>
-          )}
-          
-          {/* Parent task indicator */}
-          {hasChildren && (
-            <div className="w-1.5 h-1.5 rounded-sm bg-primary/60 flex-shrink-0" />
-          )}
-          
+        {/* Task name editor */}
+        <div className="flex-1 min-w-0">
           <InlineTextEdit
             value={task.name}
             onSave={(value) => onUpdateTask(task.id, { name: value })}
-            placeholder="Task name"
+            className="font-medium"
           />
+          {task.description && (
+            <div className="text-xs text-muted-foreground mt-1 truncate">
+              {task.description}
+            </div>
+          )}
         </div>
+
+        {/* Hierarchy controls */}
+        {(onPromoteTask || onDemoteTask || onAddSubtask) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {onPromoteTask && indentLevel > 0 && (
+                <DropdownMenuItem onClick={() => onPromoteTask(task.id)}>
+                  <Minus className="h-3 w-3 mr-2" />
+                  Promote
+                </DropdownMenuItem>
+              )}
+              {onDemoteTask && (
+                <DropdownMenuItem onClick={() => onDemoteTask(task.id)}>
+                  <Plus className="h-3 w-3 mr-2" />
+                  Demote
+                </DropdownMenuItem>
+              )}
+              {onAddSubtask && (
+                <DropdownMenuItem onClick={() => onAddSubtask(task.id)}>
+                  <Plus className="h-3 w-3 mr-2" />
+                  Add Subtask
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </TableCell>
   );
 };
 
-export const TaskStatusCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  onUpdateTask
+// Task Status Cell
+interface TaskStatusCellProps {
+  task: ProjectTask;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskStatusCell: React.FC<TaskStatusCellProps> = ({ 
+  task, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
 }) => {
   const statusOptions = [
-    { value: 'Not Started', label: 'Not Started', color: 'bg-muted text-muted-foreground' },
-    { value: 'In Progress', label: 'In Progress', color: 'bg-primary/10 text-primary' },
-    { value: 'Completed', label: 'Completed', color: 'bg-success/10 text-success' },
-    { value: 'On Hold', label: 'On Hold', color: 'bg-warning/10 text-warning' }
+    { value: 'Not Started', label: 'Not Started' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Completed', label: 'Completed' },
+    { value: 'On Hold', label: 'On Hold' },
+    { value: 'Cancelled', label: 'Cancelled' }
   ];
 
-  return (
-    <TableCell className="table-cell">
-      <InlineSelectEdit
-        value={task.status}
-        options={statusOptions}
-        onSave={(value) => onUpdateTask(task.id, { status: value as any })}
-        placeholder="Select status"
-      />
-    </TableCell>
-  );
-};
-
-export const TaskPriorityCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  onUpdateTask
-}) => {
-  const priorityOptions = [
-    { value: 'Low', label: 'Low', color: 'bg-green-500 dark:bg-green-600' },
-    { value: 'Medium', label: 'Medium', color: 'bg-yellow-500 dark:bg-yellow-600' },
-    { value: 'High', label: 'High', color: 'bg-red-500 dark:bg-red-600' },
-    { value: 'Critical', label: 'Critical', color: 'bg-red-700 dark:bg-red-800' }
-  ];
-
-  return (
-    <TableCell className="table-cell">
-      <InlineSelectEdit
-        value={task.priority}
-        options={priorityOptions}
-        onSave={(value) => onUpdateTask(task.id, { priority: value as any })}
-        placeholder="Select priority"
-      />
-    </TableCell>
-  );
-};
-
-export const TaskResourcesCell: React.FC<{ task: ProjectTask; availableResources: Array<{ id: string; name: string; role: string }>; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  availableResources,
-  onUpdateTask
-}) => (
-  <TableCell className="table-cell">
-    <InlineMultiSelectEdit
-      value={task.assignedResources}
-      options={availableResources}
-      onSave={(value) => onUpdateTask(task.id, { assignedResources: value })}
-      placeholder="Assign resources"
-    />
-  </TableCell>
-);
-
-export const TaskStartDateCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  onUpdateTask
-}) => (
-  <TableCell className="table-cell">
-    <InlineDateEdit
-      value={task.startDate}
-      onSave={(value) => onUpdateTask(task.id, { startDate: value })}
-      placeholder="Start date"
-    />
-  </TableCell>
-);
-
-export const TaskEndDateCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  onUpdateTask
-}) => (
-  <TableCell className="table-cell">
-    <InlineDateEdit
-      value={task.endDate}
-      onSave={(value) => onUpdateTask(task.id, { endDate: value })}
-      placeholder="End date"
-    />
-  </TableCell>
-);
-
-export const TaskDurationCell: React.FC<{ task: ProjectTask; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  onUpdateTask
-}) => {
-  const handleDurationUpdate = (newDuration: string) => {
-    const duration = parseInt(newDuration);
-    if (!isNaN(duration) && duration > 0) {
-      const startDate = new Date(task.startDate);
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + duration - 1);
-      
-      onUpdateTask(task.id, { 
-        duration,
-        endDate: endDate.toISOString().split('T')[0]
-      });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'In Progress': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'On Hold': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   return (
-    <TableCell className="table-cell">
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineSelectEdit
+        value={task.status}
+        options={statusOptions}
+        onSave={(value) => onUpdateTask(task.id, { status: value })}
+        renderValue={(value) => (
+          <Badge 
+            variant="outline" 
+            className={`${getStatusColor(value)} text-xs px-2 py-1`}
+          >
+            {value}
+          </Badge>
+        )}
+      />
+    </TableCell>
+  );
+};
+
+// Task Priority Cell
+interface TaskPriorityCellProps {
+  task: ProjectTask;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskPriorityCell: React.FC<TaskPriorityCellProps> = ({ 
+  task, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  const priorityOptions = [
+    { value: 'Low', label: 'Low' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'High', label: 'High' },
+    { value: 'Critical', label: 'Critical' }
+  ];
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'Critical': return 'bg-red-100 text-red-800 border-red-200';
+      case 'High': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default: return 'bg-green-100 text-green-800 border-green-200';
+    }
+  };
+
+  return (
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineSelectEdit
+        value={task.priority}
+        options={priorityOptions}
+        onSave={(value) => onUpdateTask(task.id, { priority: value })}
+        renderValue={(value) => (
+          <Badge 
+            variant="outline" 
+            className={`${getPriorityColor(value)} text-xs px-2 py-1`}
+          >
+            {value}
+          </Badge>
+        )}
+      />
+    </TableCell>
+  );
+};
+
+// Task Resources Cell  
+interface TaskResourcesCellProps {
+  task: ProjectTask;
+  availableResources: Array<{ id: string; name: string; role: string }>;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskResourcesCell: React.FC<TaskResourcesCellProps> = ({ 
+  task, 
+  availableResources, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  const resourceOptions = availableResources.map(r => ({ 
+    value: r.id, 
+    label: `${r.name} (${r.role})` 
+  }));
+
+  return (
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineMultiSelectEdit
+        values={task.assignedResources}
+        options={resourceOptions}
+        onSave={(values) => onUpdateTask(task.id, { assignedResources: values })}
+        renderValues={(values) => (
+          <div className="flex flex-wrap gap-1">
+            {values.map(resourceId => {
+              const resource = availableResources.find(r => r.id === resourceId);
+              return resource ? (
+                <Badge key={resourceId} variant="secondary" className="text-xs px-2 py-1">
+                  {resource.name}
+                </Badge>
+              ) : null;
+            })}
+            {values.length === 0 && (
+              <span className="text-muted-foreground text-sm">Unassigned</span>
+            )}
+          </div>
+        )}
+      />
+    </TableCell>
+  );
+};
+
+// Task Start Date Cell
+interface TaskStartDateCellProps {
+  task: ProjectTask;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskStartDateCell: React.FC<TaskStartDateCellProps> = ({ 
+  task, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  return (
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineDateEdit
+        value={task.startDate}
+        onSave={(value) => onUpdateTask(task.id, { startDate: value })}
+      />
+    </TableCell>
+  );
+};
+
+// Task End Date Cell
+interface TaskEndDateCellProps {
+  task: ProjectTask;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskEndDateCell: React.FC<TaskEndDateCellProps> = ({ 
+  task, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  return (
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineDateEdit
+        value={task.endDate}
+        onSave={(value) => onUpdateTask(task.id, { endDate: value })}
+      />
+    </TableCell>
+  );
+};
+
+// Task Duration Cell
+interface TaskDurationCellProps {
+  task: ProjectTask;
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskDurationCell: React.FC<TaskDurationCellProps> = ({ 
+  task, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  return (
+    <TableCell className={`table-cell ${densityClass}`}>
       <InlineTextEdit
-        value={task.duration.toString()}
-        onSave={handleDurationUpdate}
-        placeholder="Duration"
+        value={`${task.duration}`}
+        onSave={(value) => {
+          const duration = parseInt(value);
+          if (!isNaN(duration) && duration > 0) {
+            onUpdateTask(task.id, { duration });
+          }
+        }}
+        className="text-center"
       />
       <span className="text-xs text-muted-foreground ml-1">days</span>
     </TableCell>
   );
 };
 
-export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
-  <TableCell className="table-cell">
-    <div className="flex items-center gap-2">
-      <Progress value={task.progress} className="flex-1" />
-      <span className="text-sm font-medium">{task.progress}%</span>
-    </div>
-  </TableCell>
-);
+// Task Progress Cell
+interface TaskProgressCellProps {
+  task: ProjectTask;
+  densityClass?: string;
+}
 
-// Enhanced Dependencies cell with responsive design and proper spacing
-export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  allTasks,
-  onUpdateTask
+export const TaskProgressCell: React.FC<TaskProgressCellProps> = ({ 
+  task, 
+  densityClass = 'py-3 px-4' 
 }) => {
   return (
-    <TableCell className="p-2 align-top">
-      <div className="w-full space-y-1.5 overflow-hidden">
-        <div className="w-full">
-          <DependencyVisualizer task={task} allTasks={allTasks} />
-        </div>
-        
-        <div className="w-full">
-          <DependencyManager 
-            task={task} 
-            allTasks={allTasks} 
-            onUpdateTask={onUpdateTask}
-          />
-        </div>
+    <TableCell className={`table-cell ${densityClass}`}>
+      <div className="flex items-center gap-2">
+        <Progress value={task.progress} className="flex-1 h-2" />
+        <span className="text-xs text-muted-foreground min-w-[3ch]">
+          {task.progress}%
+        </span>
       </div>
     </TableCell>
   );
 };
 
-export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: ProjectMilestone[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
-  task,
-  milestones,
-  onUpdateTask
+// Task Dependencies Cell
+interface TaskDependenciesCellProps {
+  task: ProjectTask;
+  allTasks: ProjectTask[];
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
+
+export const TaskDependenciesCell: React.FC<TaskDependenciesCellProps> = ({ 
+  task, 
+  allTasks, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
 }) => {
-  const milestoneOptions = [
-    { value: '', label: 'None' },
-    ...milestones.map(m => ({
-      value: m.id,
-      label: m.name
-    }))
-  ];
+  const dependencyOptions = allTasks
+    .filter(t => t.id !== task.id)
+    .map(t => ({ value: t.id, label: t.name }));
 
   return (
-    <TableCell className="table-cell">
-      <InlineSelectEdit
-        value={task.milestoneId || ''}
-        options={milestoneOptions}
-        onSave={(value) => onUpdateTask(task.id, { milestoneId: value || undefined })}
-        placeholder="Select milestone"
-        allowEmpty={true}
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineMultiSelectEdit
+        values={task.dependencies}
+        options={dependencyOptions}
+        onSave={(values) => onUpdateTask(task.id, { dependencies: values })}
+        renderValues={(values) => (
+          <div className="flex flex-wrap gap-1">
+            {values.map(depId => {
+              const depTask = allTasks.find(t => t.id === depId);
+              return depTask ? (
+                <Badge key={depId} variant="outline" className="text-xs px-2 py-1">
+                  {depTask.name}
+                </Badge>
+              ) : null;
+            })}
+            {values.length === 0 && (
+              <span className="text-muted-foreground text-sm">None</span>
+            )}
+          </div>
+        )}
       />
     </TableCell>
   );
 };
 
-// Enhanced Variance calculation with proper baseline date handling
-export const TaskVarianceCell: React.FC<{ task: ProjectTask }> = ({ task }) => {
-  const getScheduleVariance = () => {
-    // Only calculate variance if we have baseline dates
-    if (!task.baselineEndDate || !task.endDate) {
-      return null;
-    }
-    
-    const actualEnd = new Date(task.endDate);
-    const baselineEnd = new Date(task.baselineEndDate);
-    return differenceInDays(actualEnd, baselineEnd);
-  };
+// Task Milestone Cell
+interface TaskMilestoneCellProps {
+  task: ProjectTask;
+  milestones: ProjectMilestone[];
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
+  densityClass?: string;
+}
 
-  const scheduleVariance = getScheduleVariance();
+export const TaskMilestoneCell: React.FC<TaskMilestoneCellProps> = ({ 
+  task, 
+  milestones, 
+  onUpdateTask, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  const milestoneOptions = [
+    { value: '', label: 'No Milestone' },
+    ...milestones.map(m => ({ value: m.id, label: m.name }))
+  ];
 
   return (
-    <TableCell className="table-cell">
-      {scheduleVariance === null ? (
-        <span className="text-xs text-muted-foreground">No baseline</span>
-      ) : scheduleVariance > 0 ? (
-        <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-          +{scheduleVariance}d
-        </Badge>
-      ) : scheduleVariance < 0 ? (
-        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-          {scheduleVariance}d
-        </Badge>
-      ) : (
-        <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-          On track
-        </Badge>
-      )}
+    <TableCell className={`table-cell ${densityClass}`}>
+      <InlineSelectEdit
+        value={task.milestoneId || ''}
+        options={milestoneOptions}
+        onSave={(value) => onUpdateTask(task.id, { milestoneId: value || undefined })}
+        renderValue={(value) => {
+          if (!value) return <span className="text-muted-foreground text-sm">None</span>;
+          const milestone = milestones.find(m => m.id === value);
+          return milestone ? (
+            <Badge variant="outline" className="text-xs px-2 py-1">
+              {milestone.name}
+            </Badge>
+          ) : <span className="text-muted-foreground text-sm">None</span>;
+        }}
+      />
+    </TableCell>
+  );
+};
+
+// Task Variance Cell
+interface TaskVarianceCellProps {
+  task: ProjectTask;
+  densityClass?: string;
+}
+
+export const TaskVarianceCell: React.FC<TaskVarianceCellProps> = ({ 
+  task, 
+  densityClass = 'py-3 px-4' 
+}) => {
+  const calculateVariance = () => {
+    const startVariance = new Date(task.startDate).getTime() - new Date(task.baselineStartDate).getTime();
+    const endVariance = new Date(task.endDate).getTime() - new Date(task.baselineEndDate).getTime();
+    const startDays = Math.round(startVariance / (1000 * 60 * 60 * 24));
+    const endDays = Math.round(endVariance / (1000 * 60 * 60 * 24));
+    
+    if (startDays === 0 && endDays === 0) return { text: 'On track', color: 'text-green-600' };
+    if (startDays > 0 || endDays > 0) return { text: `+${Math.max(startDays, endDays)}d`, color: 'text-red-600' };
+    return { text: `${Math.min(startDays, endDays)}d`, color: 'text-blue-600' };
+  };
+
+  const variance = calculateVariance();
+
+  return (
+    <TableCell className={`table-cell ${densityClass}`}>
+      <span className={`text-sm font-medium ${variance.color}`}>
+        {variance.text}
+      </span>
     </TableCell>
   );
 };
