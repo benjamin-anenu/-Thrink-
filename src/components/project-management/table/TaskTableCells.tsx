@@ -3,6 +3,7 @@ import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { differenceInDays } from 'date-fns';
 import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
@@ -19,6 +20,25 @@ interface TaskTableCellsProps {
   allTasks: ProjectTask[];
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
 }
+
+interface TaskSelectionCellProps {
+  task: ProjectTask;
+  selected: boolean;
+  onSelectionChange: (taskId: string, selected: boolean) => void;
+}
+
+export const TaskSelectionCell: React.FC<TaskSelectionCellProps> = ({
+  task,
+  selected,
+  onSelectionChange
+}) => (
+  <TableCell className="w-8">
+    <Checkbox
+      checked={selected}
+      onCheckedChange={(checked) => onSelectionChange(task.id, !!checked)}
+    />
+  </TableCell>
+);
 
 interface TaskNameCellProps {
   task: ProjectTask;

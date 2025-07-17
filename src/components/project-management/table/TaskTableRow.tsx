@@ -3,6 +3,7 @@ import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableRow } from '@/components/ui/table';
 import {
+  TaskSelectionCell,
   TaskNameCell,
   TaskStatusCell,
   TaskPriorityCell,
@@ -33,6 +34,9 @@ interface TaskTableRowProps {
   onPromoteTask?: (taskId: string) => void;
   onDemoteTask?: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
+  // Phase 4B: Selection props
+  selected?: boolean;
+  onSelectionChange?: (taskId: string, selected: boolean) => void;
 }
 
 const TaskTableRow: React.FC<TaskTableRowProps> = ({
@@ -48,7 +52,9 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   onToggleExpansion,
   onPromoteTask,
   onDemoteTask,
-  onAddSubtask
+  onAddSubtask,
+  selected = false,
+  onSelectionChange
 }) => {
   const isDelayed = () => {
     return new Date(task.endDate) > new Date(task.baselineEndDate);
@@ -57,7 +63,16 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   const delayed = isDelayed();
 
   return (
-    <TableRow className={`table-row transition-colors group ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''}`}>
+    <TableRow className={`table-row transition-colors group ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''} ${selected ? 'bg-muted/50' : ''}`}>
+      {/* Phase 4B: Selection checkbox */}
+      {onSelectionChange && (
+        <TaskSelectionCell 
+          task={task}
+          selected={selected}
+          onSelectionChange={onSelectionChange}
+        />
+      )}
+      
       <TaskNameCell 
         task={task} 
         onUpdateTask={onUpdateTask}
