@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Template, Save, Copy, Trash2 } from 'lucide-react';
+import { FileText, Save, Copy, Trash2 } from 'lucide-react';
 import { ProjectTask } from '@/types/project';
 
 export interface TaskTemplate {
@@ -204,7 +203,7 @@ const TaskTemplateManager: React.FC<TaskTemplateManagerProps> = ({
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Template className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4 mr-2" />
                 Create Template
               </Button>
             </DialogTrigger>

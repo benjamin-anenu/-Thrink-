@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useResources } from '@/hooks/useResources';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Download, Upload, Calendar, Users, Target, ChevronDown, ChevronRight, Filter, BarChart3, Zap, Template } from 'lucide-react';
+import { Plus, Download, Upload, Calendar, Users, Target, ChevronDown, ChevronRight, Filter, BarChart3, Zap, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import ResizableTable from './table/ResizableTable';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
@@ -285,9 +286,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  const handleDeleteTask = async (task: ProjectTask) => {
-    setTaskToDelete(task);
-    setShowDeleteDialog(true);
+  const handleDeleteTask = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setTaskToDelete(task);
+      setShowDeleteDialog(true);
+    }
   };
 
   const confirmDeleteTask = async () => {
@@ -376,7 +380,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 size="sm"
                 onClick={() => setShowTemplateManager(true)}
               >
-                <Template className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4 mr-2" />
                 Templates
               </Button>
               <Button onClick={() => setShowTaskDialog(true)}>
@@ -425,7 +429,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 />
               )}
 
-              <ResizableTable>
+              <ResizableTable zoomLevel={1} tableDensity="comfortable">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -531,16 +535,17 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
       <MilestoneManagementDialog
         open={showMilestoneDialog}
         onOpenChange={setShowMilestoneDialog}
-        milestones={milestones}
         onCreateMilestone={createMilestone}
         onUpdateMilestone={updateMilestone}
         onDeleteMilestone={deleteMilestone}
+        editingMilestone={null}
       />
 
       <DeleteTaskConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         task={taskToDelete}
+        allTasks={tasks}
         onConfirm={confirmDeleteTask}
       />
     </div>
