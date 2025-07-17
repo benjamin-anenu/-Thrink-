@@ -20,7 +20,7 @@ const Stakeholders = () => {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState<any>(undefined);
+  const [editingStakeholder, setEditingStakeeholder] = useState<any>(undefined);
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -194,17 +194,7 @@ const Stakeholders = () => {
               {filteredStakeholders.map((stakeholder) => (
                 <StakeholderCard
                   key={stakeholder.id}
-                  stakeholder={{
-                    ...stakeholder,
-                    department: stakeholder.department || '',
-                    phone: stakeholder.phone || '',
-                    communicationPreference: stakeholder.communicationPreference || 'Email',
-                    influence: stakeholder.influence || 'Medium',
-                    interest: stakeholder.interest || 'Medium',
-                    projects: stakeholder.projects || [],
-                    lastContact: stakeholder.lastContact || new Date().toISOString().split('T')[0],
-                    role: stakeholder.role || 'Stakeholder'
-                  }}
+                  stakeholder={stakeholder}
                   onEdit={handleEditStakeholder}
                 />
               ))}
@@ -302,7 +292,6 @@ const Stakeholders = () => {
             influence: editingStakeholder.influence || 'Medium',
             interest: editingStakeholder.interest || 'Medium',
             projects: editingStakeholder.projects || [],
-            lastContact: editingStakeholder.lastContact || new Date().toISOString().split('T')[0],
             role: editingStakeholder.role || 'Stakeholder'
           } : undefined}
           onSave={handleSaveStakeholder}
