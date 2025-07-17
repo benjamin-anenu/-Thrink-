@@ -26,7 +26,7 @@ interface TaskTableRowProps {
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: ProjectTask) => void;
-  onRebaselineTask: (task: ProjectTask) => void;
+  onRebaselineTask: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
   densityClass?: string;
   // New hierarchy props
   isExpanded?: boolean;

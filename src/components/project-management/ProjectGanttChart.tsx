@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
@@ -222,16 +221,41 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  const handleRebaselineTask = async (task: ProjectTask) => {
+  const handleRebaselineTask = async (taskId: string, newStartDate: string, newEndDate: string, reason: string) => {
     try {
-      // Rebaseline means setting the baseline dates to current dates
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+        toast.error('Task not found');
+        return;
+      }
+
+      // Store the old baseline dates for audit trail
+      const oldBaselineStart = task.baselineStartDate;
+      const oldBaselineEnd = task.baselineEndDate;
+
+      // Update the task with new baseline dates and actual dates
       const updates = {
-        baselineStartDate: task.startDate,
-        baselineEndDate: task.endDate
+        baselineStartDate: newStartDate,
+        baselineEndDate: newEndDate,
+        startDate: newStartDate,
+        endDate: newEndDate
       };
       
-      await updateTaskDB(task.id, updates);
-      toast.success(`Task "${task.name}" has been rebaselined`);
+      await updateTaskDB(taskId, updates);
+      
+      // Log the rebaseline action (you could enhance this to store in audit table)
+      console.log('Task rebaselined:', {
+        taskId,
+        taskName: task.name,
+        oldBaseline: { start: oldBaselineStart, end: oldBaselineEnd },
+        newBaseline: { start: newStartDate, end: newEndDate },
+        reason,
+        timestamp: new Date().toISOString()
+      });
+
+      toast.success(`Task "${task.name}" has been rebaselined`, {
+        description: `Reason: ${reason}`
+      });
     } catch (error) {
       console.error('Error rebaselining task:', error);
       toast.error('Failed to rebaseline task');
