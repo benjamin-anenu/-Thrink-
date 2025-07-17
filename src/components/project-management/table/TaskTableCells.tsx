@@ -156,6 +156,7 @@ export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
   </TableCell>
 );
 
+// Fixed: Dependencies cell with proper overflow handling and layout
 export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
   allTasks,
@@ -169,14 +170,36 @@ export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: Proje
       role: t.status
     }));
 
+  const dependencyTasks = task.dependencies
+    .map(depId => allTasks.find(t => t.id === depId))
+    .filter(Boolean);
+
   return (
-    <TableCell className="table-cell">
-      <InlineMultiSelectEdit
-        value={task.dependencies}
-        options={dependencyOptions}
-        onSave={(value) => onUpdateTask(task.id, { dependencies: value })}
-        placeholder="Add dependencies"
-      />
+    <TableCell className="table-cell min-w-0 max-w-[200px]">
+      <div className="flex flex-col gap-1">
+        {dependencyTasks.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {dependencyTasks.map(depTask => (
+              <Badge 
+                key={depTask!.id} 
+                variant="outline" 
+                className="text-xs truncate max-w-[80px]"
+                title={depTask!.name}
+              >
+                {depTask!.name}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">No dependencies</span>
+        )}
+        <InlineMultiSelectEdit
+          value={task.dependencies}
+          options={dependencyOptions}
+          onSave={(value) => onUpdateTask(task.id, { dependencies: value })}
+          placeholder="Add dependencies"
+        />
+      </div>
     </TableCell>
   );
 };
@@ -207,30 +230,36 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   );
 };
 
+// Fixed: Variance calculation with proper baseline date handling
 export const TaskVarianceCell: React.FC<{ task: ProjectTask }> = ({ task }) => {
-  const isDelayed = () => {
-    return new Date(task.endDate) > new Date(task.baselineEndDate);
-  };
-
   const getScheduleVariance = () => {
+    // Only calculate variance if we have baseline dates
+    if (!task.baselineEndDate || !task.endDate) {
+      return null;
+    }
+    
     const actualEnd = new Date(task.endDate);
     const baselineEnd = new Date(task.baselineEndDate);
     return differenceInDays(actualEnd, baselineEnd);
   };
 
   const scheduleVariance = getScheduleVariance();
-  const delayed = isDelayed();
 
   return (
     <TableCell className="table-cell">
-      {delayed && (
+      {scheduleVariance === null ? (
+        <span className="text-xs text-muted-foreground">No baseline</span>
+      ) : scheduleVariance > 0 ? (
         <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
           +{scheduleVariance}d
         </Badge>
-      )}
-      {scheduleVariance < 0 && (
+      ) : scheduleVariance < 0 ? (
         <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
           {scheduleVariance}d
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+          On track
         </Badge>
       )}
     </TableCell>

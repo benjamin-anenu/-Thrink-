@@ -115,7 +115,7 @@ export const useTaskManagement = (projectId: string) => {
     }
   };
 
-  // Create task
+  // Create task with proper baseline initialization
   const createTask = async (taskData: Omit<ProjectTask, 'id'>) => {
     try {
       const { data, error } = await supabase
@@ -126,8 +126,8 @@ export const useTaskManagement = (projectId: string) => {
           description: taskData.description,
           start_date: taskData.startDate,
           end_date: taskData.endDate,
-          baseline_start_date: taskData.baselineStartDate,
-          baseline_end_date: taskData.baselineEndDate,
+          baseline_start_date: taskData.startDate,
+          baseline_end_date: taskData.endDate,
           status: taskData.status,
           priority: taskData.priority,
           milestone_id: taskData.milestoneId,

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
@@ -8,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Filter, ChevronDown, ChevronRight, Target, Edit, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Target, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ import TaskCreationDialog from './gantt/TaskCreationDialog';
 import TableControls from './table/TableControls';
 import ResizableTable from './table/ResizableTable';
 import DeleteTaskConfirmationDialog from './DeleteTaskConfirmationDialog';
+import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
@@ -50,7 +52,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     deleteTask: deleteTaskDB,
     createMilestone,
     updateMilestone,
-    deleteMilestone
+    deleteMilestone,
+    refreshData
   } = useTaskManagement(projectId);
   
   const [showTaskDialog, setShowTaskDialog] = useState(false);
@@ -67,6 +70,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   // New table state management
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
+
+  // Task filtering state
+  const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
 
   // Load resources and stakeholders from database
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
@@ -122,9 +128,69 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   }, [project?.workspaceId]);
 
-  // Group tasks by milestone with safe data handling
+  // Filter tasks based on current filters
+  const filteredTasks = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
+    
+    return tasks.filter(task => {
+      // Search filter
+      if (taskFilters.search) {
+        const searchLower = taskFilters.search.toLowerCase();
+        if (!task.name.toLowerCase().includes(searchLower) && 
+            !task.description.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (taskFilters.status && task.status !== taskFilters.status) {
+        return false;
+      }
+
+      // Priority filter
+      if (taskFilters.priority && task.priority !== taskFilters.priority) {
+        return false;
+      }
+
+      // Assignee filter
+      if (taskFilters.assignee) {
+        if (taskFilters.assignee === 'unassigned') {
+          if (task.assignedResources.length > 0) return false;
+        } else {
+          if (!task.assignedResources.includes(taskFilters.assignee)) return false;
+        }
+      }
+
+      // Milestone filter
+      if (taskFilters.milestone) {
+        if (taskFilters.milestone === 'no-milestone') {
+          if (task.milestoneId) return false;
+        } else {
+          if (task.milestoneId !== taskFilters.milestone) return false;
+        }
+      }
+
+      // Date range filter
+      if (taskFilters.dateRange?.start || taskFilters.dateRange?.end) {
+        const taskStart = new Date(task.startDate);
+        const taskEnd = new Date(task.endDate);
+        
+        if (taskFilters.dateRange.start && taskEnd < new Date(taskFilters.dateRange.start)) {
+          return false;
+        }
+        
+        if (taskFilters.dateRange.end && taskStart > new Date(taskFilters.dateRange.end)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [tasks, taskFilters]);
+
+  // Group tasks by milestone with safe data handling and filtering
   const groupedTasks = useMemo(() => {
-    if (!Array.isArray(tasks) || !Array.isArray(milestones)) {
+    if (!Array.isArray(filteredTasks) || !Array.isArray(milestones)) {
       return { 'no-milestone': { milestone: null, tasks: [] } };
     }
     
@@ -141,7 +207,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     groups['no-milestone'] = { milestone: null, tasks: [] };
     
     // Assign tasks to groups
-    tasks.forEach(task => {
+    filteredTasks.forEach(task => {
       if (!task || !task.id) return;
       
       const groupKey = task.milestoneId || 'no-milestone';
@@ -172,7 +238,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     });
     
     return groups;
-  }, [tasks, milestones, sortBy, sortDirection]);
+  }, [filteredTasks, milestones, sortBy, sortDirection]);
 
   // NO MORE EARLY RETURNS AFTER THIS POINT - ALL HOOKS CALLED CONSISTENTLY
   
@@ -265,6 +331,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     try {
       await deleteMilestone(milestoneId);
       toast.success('Milestone deleted successfully');
+      // Refresh data to ensure UI is updated
+      await refreshData();
     } catch (error) {
       // Error is handled in the hook
     }
@@ -280,12 +348,16 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     setShowRebaselineDialog(true);
   };
 
+  // Fixed: Proper rebaseline handling with baseline date updates
   const handleRebaseline = async () => {
     if (rebaselineTask && rebaselineData.reason) {
       try {
         await updateTaskDB(rebaselineTask.id, {
           startDate: rebaselineData.newStartDate,
-          endDate: rebaselineData.newEndDate
+          endDate: rebaselineData.newEndDate,
+          // Update baseline dates to current values before changing
+          baselineStartDate: rebaselineTask.startDate,
+          baselineEndDate: rebaselineTask.endDate
         });
         
         setShowRebaselineDialog(false);
@@ -327,10 +399,13 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             </CardTitle>
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
+              <TaskFilterDialog
+                filters={taskFilters}
+                onFiltersChange={setTaskFilters}
+                availableResources={availableResources}
+                milestones={milestones}
+                tasks={tasks}
+              />
               <Button 
                 variant="outline"
                 size="sm"
@@ -397,7 +472,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 <TableHead className="cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('progress')}>
                   Progress {sortBy === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </TableHead>
-                <TableHead>Dependencies</TableHead>
+                <TableHead className="min-w-[200px]">Dependencies</TableHead>
                 <TableHead>Milestone</TableHead>
                 <TableHead>Variance</TableHead>
                 <TableHead>Actions</TableHead>
@@ -519,7 +594,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Rebaseline Task</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to rebaseline "{rebaselineTask?.name}". This will update the task's timeline and may affect dependent tasks.
+              You are about to rebaseline "{rebaselineTask?.name}". This will update the task's timeline and save the current dates as the new baseline.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
