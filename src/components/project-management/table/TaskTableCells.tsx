@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
@@ -12,14 +13,6 @@ import InlineMultiSelectEdit from './InlineMultiSelectEdit';
 import DependencyManager from '../dependencies/DependencyManager';
 import DependencyVisualizer from '../dependencies/DependencyVisualizer';
 import TaskHierarchyControls from './TaskHierarchyControls';
-
-interface TaskTableCellsProps {
-  task: ProjectTask;
-  milestones: ProjectMilestone[];
-  availableResources: Array<{ id: string; name: string; role: string }>;
-  allTasks: ProjectTask[];
-  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
-}
 
 interface TaskSelectionCellProps {
   task: ProjectTask;
@@ -245,7 +238,6 @@ export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
   </TableCell>
 );
 
-// Enhanced Dependencies cell with responsive design and proper spacing
 export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
   allTasks,
@@ -296,10 +288,8 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   );
 };
 
-// Enhanced Variance calculation with proper baseline date handling
 export const TaskVarianceCell: React.FC<{ task: ProjectTask }> = ({ task }) => {
   const getScheduleVariance = () => {
-    // Only calculate variance if we have baseline dates
     if (!task.baselineEndDate || !task.endDate) {
       return null;
     }

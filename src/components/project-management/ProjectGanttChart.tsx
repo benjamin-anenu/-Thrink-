@@ -49,7 +49,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const { resources } = useResources();
   const { stakeholders } = useStakeholders();
 
-  // Phase 4B: New state for advanced features
+  // State for advanced features
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showQuickCreator, setShowQuickCreator] = useState(false);
   const [quickCreatorParent, setQuickCreatorParent] = useState<string | undefined>();
@@ -75,7 +75,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null);
 
-  // Phase 4B: Filtered and processed tasks
+  // Filtered and processed tasks
   const filteredTasks = useMemo(() => {
     let filtered = [...tasks];
 
@@ -124,7 +124,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     return filtered;
   }, [tasks, taskFilters]);
 
-  // Phase 4B: Auto-update parent task progress
+  // Auto-update parent task progress
   useEffect(() => {
     const parentTasks = tasks.filter(task => task.hasChildren);
     for (const parentTask of parentTasks) {
@@ -135,7 +135,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   }, [tasks, updateTask]);
 
-  // Phase 4B: Bulk operations
+  // Bulk operations handlers
   const handleBulkStatusUpdate = async (status: string) => {
     try {
       await Promise.all(
@@ -180,7 +180,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
       setSelectedTasks([]);
       toast.success(`Updated milestone for ${selectedTasks.length} tasks`);
     } catch (error) {
-      toast.error('Failed to update milestone');
+      toast.error('Failed to update tasks');
     }
   };
 
@@ -194,7 +194,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  // Phase 4B: Template management
   const handleCreateFromTemplate = async (template: TaskTemplate, parentTaskId?: string) => {
     try {
       const createdTasks: ProjectTask[] = [];
@@ -267,7 +266,13 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
 
   const handleCreateTask = async (taskData: Omit<ProjectTask, 'id'>) => {
     try {
-      await createTask(taskData);
+      // Ensure hasChildren is set correctly
+      const taskWithDefaults = {
+        ...taskData,
+        hasChildren: false,
+        sortOrder: taskData.sortOrder || 0
+      };
+      await createTask(taskWithDefaults);
       setShowTaskDialog(false);
       setEditingTask(null);
       toast.success('Task created successfully');
@@ -339,6 +344,14 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
+  const handleSelectionChange = (taskId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedTasks(prev => [...prev, taskId]);
+    } else {
+      setSelectedTasks(prev => prev.filter(id => id !== taskId));
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading tasks...</div>;
   }
@@ -394,7 +407,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Phase 4B: Advanced Filters */}
+          {/* Advanced Filters */}
           <div className="mb-4">
             <AdvancedTaskFilters
               filters={taskFilters}
@@ -415,7 +428,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             </TabsList>
 
             <TabsContent value="table" className="space-y-4">
-              {/* Phase 4B: Quick Task Creator */}
+              {/* Quick Task Creator */}
               {showQuickCreator && (
                 <QuickTaskCreator
                   onCreateTask={handleQuickTaskCreate}
@@ -475,6 +488,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                       onPromoteTask={promoteTask}
                       onDemoteTask={demoteTask}
                       onAddSubtask={handleAddSubtask}
+                      selectedTasks={selectedTasks}
+                      onSelectionChange={handleSelectionChange}
                     />
                   </TableBody>
                 </Table>
@@ -504,7 +519,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         </CardContent>
       </Card>
 
-      {/* Phase 4B: Bulk Operations Bar */}
+      {/* Bulk Operations Bar */}
       <BulkOperationsBar
         selectedTasks={selectedTasks}
         allTasks={filteredTasks}
@@ -518,7 +533,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         onBulkDelete={handleBulkDelete}
       />
 
-      {/* Existing Dialogs */}
+      {/* Dialogs */}
       <TaskCreationDialog
         open={showTaskDialog}
         onOpenChange={setShowTaskDialog}

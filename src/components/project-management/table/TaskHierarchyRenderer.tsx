@@ -18,6 +18,9 @@ interface TaskHierarchyRendererProps {
   onPromoteTask: (taskId: string) => void;
   onDemoteTask: (taskId: string) => void;
   onAddSubtask: (taskId: string) => void;
+  // Selection props
+  selectedTasks?: string[];
+  onSelectionChange?: (taskId: string, selected: boolean) => void;
 }
 
 const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
@@ -34,7 +37,9 @@ const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
   onToggleExpansion,
   onPromoteTask,
   onDemoteTask,
-  onAddSubtask
+  onAddSubtask,
+  selectedTasks = [],
+  onSelectionChange
 }) => {
   const renderTaskNode = (node: TaskHierarchyNode): React.ReactNode[] => {
     const isExpanded = expandedNodes.has(node.task.id);
@@ -58,6 +63,8 @@ const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
         onPromoteTask={onPromoteTask}
         onDemoteTask={onDemoteTask}
         onAddSubtask={onAddSubtask}
+        selected={selectedTasks.includes(node.task.id)}
+        onSelectionChange={onSelectionChange}
       />
     );
     

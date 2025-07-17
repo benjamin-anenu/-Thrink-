@@ -28,13 +28,13 @@ interface TaskTableRowProps {
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: ProjectTask) => void;
   onRebaselineTask: (task: ProjectTask) => void;
-  // New hierarchy props
+  // Hierarchy props
   isExpanded?: boolean;
   onToggleExpansion?: (taskId: string) => void;
   onPromoteTask?: (taskId: string) => void;
   onDemoteTask?: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
-  // Phase 4B: Selection props
+  // Selection props
   selected?: boolean;
   onSelectionChange?: (taskId: string, selected: boolean) => void;
 }
@@ -64,7 +64,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
 
   return (
     <TableRow className={`table-row transition-colors group ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''} ${selected ? 'bg-muted/50' : ''}`}>
-      {/* Phase 4B: Selection checkbox */}
+      {/* Selection checkbox */}
       {onSelectionChange && (
         <TaskSelectionCell 
           task={task}
