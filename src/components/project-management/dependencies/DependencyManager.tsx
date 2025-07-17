@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, AlertTriangle, Settings } from 'lucide-react';
+import { Plus, X, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DependencyManagerProps {
@@ -71,8 +71,8 @@ const DependencyManager: React.FC<DependencyManagerProps> = ({
     }
 
     if (checkCircularDependency(selectedTask)) {
-      toast.error('Cannot add dependency: This would create a circular dependency');
-      return;
+      toast.error('Warning: This creates a circular dependency. Please review your task dependencies.');
+      // Don't return here - allow the dependency but warn the user
     }
 
     const existingDep = task.dependencies.find(dep => dep.startsWith(selectedTask));

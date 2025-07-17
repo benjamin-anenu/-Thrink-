@@ -5,7 +5,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Mail, Phone, MessageSquare, Edit, AlertTriangle, Users } from 'lucide-react';
-import type { Stakeholder } from '@/contexts/StakeholderContext';
+
+interface Stakeholder {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  escalationLevel?: number;
+  influence: 'High' | 'Medium' | 'Low';
+  interest: 'High' | 'Medium' | 'Low';
+  projects: string[];
+}
 
 interface StakeholderCardProps {
   stakeholder: Stakeholder;
@@ -38,11 +52,12 @@ const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Avatar>
+              <AvatarImage src={stakeholder.avatar} />
               <AvatarFallback>{stakeholder.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
             </Avatar>
             <div>
               <CardTitle className="text-lg">{stakeholder.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{stakeholder.role || 'Stakeholder'}</p>
+              <p className="text-sm text-muted-foreground">{stakeholder.role}</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={() => onEdit(stakeholder)}>
@@ -53,42 +68,52 @@ const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Department</span>
-          <Badge variant="outline">{stakeholder.department || stakeholder.organization || 'N/A'}</Badge>
+          <Badge variant="outline">{stakeholder.department}</Badge>
         </div>
         
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Influence</span>
-          <Badge className={getInfluenceColor(stakeholder.influence || 'Medium')}>
-            {stakeholder.influence || 'Medium'}
+          <Badge className={getInfluenceColor(stakeholder.influence)}>
+            {stakeholder.influence}
           </Badge>
         </div>
         
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Interest</span>
-          <Badge className={getInfluenceColor(stakeholder.interest || 'Medium')}>
-            {stakeholder.interest || 'Medium'}
+          <Badge className={getInfluenceColor(stakeholder.interest)}>
+            {stakeholder.interest}
           </Badge>
         </div>
         
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Preferred Contact</span>
           <div className="flex items-center space-x-1">
-            {getCommIcon(stakeholder.communicationPreference || 'Email')}
-            <span className="text-sm">{stakeholder.communicationPreference || 'Email'}</span>
+            {getCommIcon(stakeholder.communicationPreference)}
+            <span className="text-sm">{stakeholder.communicationPreference}</span>
           </div>
         </div>
         
+        {stakeholder.escalationLevel && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Escalation Level</span>
+            <div className="flex items-center space-x-1">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <span className="text-sm">Level {stakeholder.escalationLevel}</span>
+            </div>
+          </div>
+        )}
+        
         <div className="pt-2">
-          <span className="text-sm text-muted-foreground">Projects ({(stakeholder.projects || []).length})</span>
+          <span className="text-sm text-muted-foreground">Projects ({stakeholder.projects.length})</span>
           <div className="flex flex-wrap gap-1 mt-1">
-            {(stakeholder.projects || []).slice(0, 3).map((project, index) => (
+            {stakeholder.projects.slice(0, 3).map((project, index) => (
               <Badge key={index} variant="secondary" className="text-xs">
                 {project}
               </Badge>
             ))}
-            {(stakeholder.projects || []).length > 3 && (
+            {stakeholder.projects.length > 3 && (
               <Badge variant="secondary" className="text-xs">
-                +{(stakeholder.projects || []).length - 3} more
+                +{stakeholder.projects.length - 3} more
               </Badge>
             )}
           </div>
