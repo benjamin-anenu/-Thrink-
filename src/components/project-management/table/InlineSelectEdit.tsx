@@ -22,25 +22,17 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
 
-  // Use a special value for empty/none option instead of empty string
-  const EMPTY_VALUE = "__EMPTY__";
-  
-  // Convert actual value to internal value for the select
-  const internalValue = value || (allowEmpty ? EMPTY_VALUE : options[0]?.value || '');
+  // Handle empty values by using a special "__NONE__" value internally
+  const internalValue = value || (allowEmpty ? "__NONE__" : '');
   
   const currentOption = options.find(opt => opt.value === value);
 
   const handleValueChange = (newValue: string) => {
-    // Convert the special empty value back to empty string
-    const actualValue = newValue === EMPTY_VALUE ? '' : newValue;
+    // Convert the special "__NONE__" value back to empty string
+    const actualValue = newValue === "__NONE__" ? '' : newValue;
     onSave(actualValue);
     setIsEditing(false);
   };
-
-  // Create options with proper handling for empty values
-  const selectOptions = allowEmpty 
-    ? [{ value: EMPTY_VALUE, label: 'None' }, ...options]
-    : options;
 
   if (isEditing) {
     return (
@@ -49,10 +41,10 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {selectOptions.map((option) => (
+          {options.map((option) => (
             <SelectItem 
-              key={option.value} 
-              value={option.value}
+              key={option.value || "__NONE__"} 
+              value={option.value || "__NONE__"}
             >
               {option.label}
             </SelectItem>

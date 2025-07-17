@@ -5,9 +5,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
-import { Stakeholder } from '@/contexts/StakeholderContext';
+
+interface Stakeholder {
+  id?: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  influence: 'High' | 'Medium' | 'Low';
+  interest: 'High' | 'Medium' | 'Low';
+  projects: string[];
+  status: 'Active' | 'Inactive';
+  lastContact: string;
+}
 
 interface StakeholderFormProps {
   open: boolean;
@@ -18,7 +34,6 @@ interface StakeholderFormProps {
 
 const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderFormProps) => {
   const [formData, setFormData] = useState<Stakeholder>({
-    id: '',
     name: '',
     role: '',
     department: '',
@@ -36,20 +51,9 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
 
   useEffect(() => {
     if (stakeholder) {
-      setFormData({
-        ...stakeholder,
-        department: stakeholder.department || '',
-        phone: stakeholder.phone || '',
-        communicationPreference: stakeholder.communicationPreference || 'Email',
-        influence: stakeholder.influence || 'Medium',
-        interest: stakeholder.interest || 'Medium',
-        projects: stakeholder.projects || [],
-        status: stakeholder.status || 'Active',
-        lastContact: stakeholder.lastContact || new Date().toISOString().split('T')[0]
-      });
+      setFormData(stakeholder);
     } else {
       setFormData({
-        id: '',
         name: '',
         role: '',
         department: '',
@@ -71,10 +75,10 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
   };
 
   const addProject = () => {
-    if (newProject.trim() && !(formData.projects || []).includes(newProject.trim())) {
+    if (newProject.trim() && !formData.projects.includes(newProject.trim())) {
       setFormData({
         ...formData,
-        projects: [...(formData.projects || []), newProject.trim()]
+        projects: [...formData.projects, newProject.trim()]
       });
       setNewProject('');
     }
@@ -83,7 +87,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
   const removeProject = (project: string) => {
     setFormData({
       ...formData,
-      projects: (formData.projects || []).filter(p => p !== project)
+      projects: formData.projects.filter(p => p !== project)
     });
   };
 
@@ -110,7 +114,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Label htmlFor="role">Role/Title *</Label>
               <Input
                 id="role"
-                value={formData.role || ''}
+                value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 required
               />
@@ -122,15 +126,15 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Label htmlFor="department">Department</Label>
               <Input
                 id="department"
-                value={formData.department || ''}
+                value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
-                value={formData.status || 'Active'}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
+                value={formData.status}
+                onValueChange={(value: 'Active' | 'Inactive') => setFormData({ ...formData, status: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -149,7 +153,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Input
                 id="email"
                 type="email"
-                value={formData.email || ''}
+                value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
@@ -158,7 +162,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Label htmlFor="phone">Phone</Label>
               <Input
                 id="phone"
-                value={formData.phone || ''}
+                value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
@@ -168,8 +172,9 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
             <div className="space-y-2">
               <Label>Communication Preference</Label>
               <Select
-                value={formData.communicationPreference || 'Email'}
-                onValueChange={(value) => setFormData({ ...formData, communicationPreference: value })}
+                value={formData.communicationPreference}
+                onValueChange={(value: 'Email' | 'Phone' | 'Slack' | 'In-person') => 
+                  setFormData({ ...formData, communicationPreference: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -185,8 +190,9 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
             <div className="space-y-2">
               <Label>Influence Level</Label>
               <Select
-                value={formData.influence || 'Medium'}
-                onValueChange={(value) => setFormData({ ...formData, influence: value })}
+                value={formData.influence}
+                onValueChange={(value: 'High' | 'Medium' | 'Low') => 
+                  setFormData({ ...formData, influence: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -201,8 +207,9 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
             <div className="space-y-2">
               <Label>Interest Level</Label>
               <Select
-                value={formData.interest || 'Medium'}
-                onValueChange={(value) => setFormData({ ...formData, interest: value })}
+                value={formData.interest}
+                onValueChange={(value: 'High' | 'Medium' | 'Low') => 
+                  setFormData({ ...formData, interest: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -228,7 +235,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
               <Button type="button" onClick={addProject}>Add</Button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {(formData.projects || []).map((project, index) => (
+              {formData.projects.map((project, index) => (
                 <Badge key={index} variant="secondary" className="flex items-center space-x-1">
                   <span>{project}</span>
                   <X className="h-3 w-3 cursor-pointer" onClick={() => removeProject(project)} />
@@ -242,7 +249,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
             <Input
               id="lastContact"
               type="date"
-              value={formData.lastContact || new Date().toISOString().split('T')[0]}
+              value={formData.lastContact}
               onChange={(e) => setFormData({ ...formData, lastContact: e.target.value })}
             />
           </div>

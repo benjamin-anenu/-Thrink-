@@ -1,36 +1,24 @@
-
 import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { differenceInDays } from 'date-fns';
 import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
+import DependencyManager from '../dependencies/DependencyManager';
+import DependencyVisualizer from '../dependencies/DependencyVisualizer';
 import TaskHierarchyControls from './TaskHierarchyControls';
 
-interface TaskSelectionCellProps {
+interface TaskTableCellsProps {
   task: ProjectTask;
-  selected: boolean;
-  onSelectionChange: (taskId: string, selected: boolean) => void;
+  milestones: ProjectMilestone[];
+  availableResources: Array<{ id: string; name: string; role: string }>;
+  allTasks: ProjectTask[];
+  onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
 }
-
-export const TaskSelectionCell: React.FC<TaskSelectionCellProps> = ({
-  task,
-  selected,
-  onSelectionChange
-}) => (
-  <TableCell className="w-8">
-    <Checkbox
-      checked={selected}
-      onCheckedChange={(checked) => onSelectionChange(task.id, !!checked)}
-    />
-  </TableCell>
-);
 
 interface TaskNameCellProps {
   task: ProjectTask;
@@ -56,7 +44,10 @@ export const TaskNameCell: React.FC<TaskNameCellProps> = ({
   const indentLevel = task.hierarchyLevel || 0;
   const hasChildren = task.hasChildren || false;
   
+  // Check if task can be promoted (not at root level)
   const canPromote = indentLevel > 0;
+  
+  // Check if task can be demoted (has a previous sibling)
   const siblings = allTasks.filter(t => t.parentTaskId === task.parentTaskId);
   const taskIndex = siblings.findIndex(t => t.id === task.id);
   const canDemote = taskIndex > 0;
@@ -64,8 +55,10 @@ export const TaskNameCell: React.FC<TaskNameCellProps> = ({
   return (
     <TableCell className="table-cell font-medium group">
       <div className="flex items-center gap-2">
+        {/* Indentation for hierarchy */}
         <div style={{ width: `${indentLevel * 16}px` }} className="flex-shrink-0" />
         
+        {/* Hierarchy controls */}
         {(onToggleExpansion || onPromoteTask || onDemoteTask || onAddSubtask) && (
           <TaskHierarchyControls
             task={task}
@@ -80,7 +73,9 @@ export const TaskNameCell: React.FC<TaskNameCellProps> = ({
           />
         )}
         
+        {/* Task name with hierarchy indicator */}
         <div className="flex items-center gap-2 flex-1">
+          {/* Visual hierarchy indicator */}
           {indentLevel > 0 && (
             <div className="flex items-center">
               <div className="w-2 h-px bg-border" />
@@ -88,6 +83,7 @@ export const TaskNameCell: React.FC<TaskNameCellProps> = ({
             </div>
           )}
           
+          {/* Parent task indicator */}
           {hasChildren && (
             <div className="w-1.5 h-1.5 rounded-sm bg-primary/60 flex-shrink-0" />
           )}
@@ -156,7 +152,7 @@ export const TaskResourcesCell: React.FC<{ task: ProjectTask; availableResources
 }) => (
   <TableCell className="table-cell">
     <InlineMultiSelectEdit
-      value={task.assignedResources || []}
+      value={task.assignedResources}
       options={availableResources}
       onSave={(value) => onUpdateTask(task.id, { assignedResources: value })}
       placeholder="Assign resources"
@@ -229,71 +225,27 @@ export const TaskProgressCell: React.FC<{ task: ProjectTask }> = ({ task }) => (
   </TableCell>
 );
 
-// Simplified dependency cell
+// Enhanced Dependencies cell with responsive design and proper spacing
 export const TaskDependenciesCell: React.FC<{ task: ProjectTask; allTasks: ProjectTask[]; onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void }> = ({
   task,
   allTasks,
   onUpdateTask
 }) => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [dependencyInput, setDependencyInput] = React.useState('');
-
-  const handleStartEdit = () => {
-    setDependencyInput((task.dependencies || []).join(', '));
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    const deps = dependencyInput
-      .split(',')
-      .map(dep => dep.trim())
-      .filter(dep => dep.length > 0)
-      .filter(dep => allTasks.some(t => t.id === dep || t.name.toLowerCase().includes(dep.toLowerCase())));
-    
-    onUpdateTask(task.id, { dependencies: deps });
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setDependencyInput('');
-  };
-
-  const getDependencyNames = () => {
-    return (task.dependencies || [])
-      .map(depId => {
-        const depTask = allTasks.find(t => t.id === depId);
-        return depTask ? depTask.name : depId;
-      })
-      .join(', ');
-  };
-
   return (
-    <TableCell className="table-cell">
-      {isEditing ? (
-        <div className="flex items-center gap-1">
-          <Input
-            value={dependencyInput}
-            onChange={(e) => setDependencyInput(e.target.value)}
-            placeholder="Task IDs or names..."
-            className="h-6 text-xs"
-            onBlur={handleSave}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSave();
-              if (e.key === 'Escape') handleCancel();
-            }}
-            onFocus={(e) => e.target.select()}
-            autoFocus
+    <TableCell className="p-2 align-top">
+      <div className="w-full space-y-1.5 overflow-hidden">
+        <div className="w-full">
+          <DependencyVisualizer task={task} allTasks={allTasks} />
+        </div>
+        
+        <div className="w-full">
+          <DependencyManager 
+            task={task} 
+            allTasks={allTasks} 
+            onUpdateTask={onUpdateTask}
           />
         </div>
-      ) : (
-        <div
-          className="cursor-pointer hover:bg-muted/50 p-1 rounded text-xs"
-          onClick={handleStartEdit}
-        >
-          {getDependencyNames() || 'Add dependencies...'}
-        </div>
-      )}
+      </div>
     </TableCell>
   );
 };
@@ -304,7 +256,7 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   onUpdateTask
 }) => {
   const milestoneOptions = [
-    { value: '__EMPTY__', label: 'No milestone' },
+    { value: '', label: 'None' },
     ...milestones.map(m => ({
       value: m.id,
       label: m.name
@@ -314,9 +266,9 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   return (
     <TableCell className="table-cell">
       <InlineSelectEdit
-        value={task.milestoneId || '__EMPTY__'}
+        value={task.milestoneId || ''}
         options={milestoneOptions}
-        onSave={(value) => onUpdateTask(task.id, { milestoneId: value === '__EMPTY__' ? undefined : value })}
+        onSave={(value) => onUpdateTask(task.id, { milestoneId: value || undefined })}
         placeholder="Select milestone"
         allowEmpty={true}
       />
@@ -324,8 +276,10 @@ export const TaskMilestoneCell: React.FC<{ task: ProjectTask; milestones: Projec
   );
 };
 
+// Enhanced Variance calculation with proper baseline date handling
 export const TaskVarianceCell: React.FC<{ task: ProjectTask }> = ({ task }) => {
   const getScheduleVariance = () => {
+    // Only calculate variance if we have baseline dates
     if (!task.baselineEndDate || !task.endDate) {
       return null;
     }

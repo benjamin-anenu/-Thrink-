@@ -3,6 +3,7 @@ import React from 'react';
 import { ProjectTask } from '@/types/project';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Plus, Indent, Outdent } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TaskHierarchyControlsProps {
   task: ProjectTask;

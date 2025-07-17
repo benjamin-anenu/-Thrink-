@@ -3,7 +3,6 @@ import React from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableRow } from '@/components/ui/table';
 import {
-  TaskSelectionCell,
   TaskNameCell,
   TaskStatusCell,
   TaskPriorityCell,
@@ -28,15 +27,12 @@ interface TaskTableRowProps {
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: ProjectTask) => void;
   onRebaselineTask: (task: ProjectTask) => void;
-  // Hierarchy props
+  // New hierarchy props
   isExpanded?: boolean;
   onToggleExpansion?: (taskId: string) => void;
   onPromoteTask?: (taskId: string) => void;
   onDemoteTask?: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
-  // Selection props
-  selected?: boolean;
-  onSelectionChange?: (taskId: string, selected: boolean) => void;
 }
 
 const TaskTableRow: React.FC<TaskTableRowProps> = ({
@@ -52,9 +48,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   onToggleExpansion,
   onPromoteTask,
   onDemoteTask,
-  onAddSubtask,
-  selected = false,
-  onSelectionChange
+  onAddSubtask
 }) => {
   const isDelayed = () => {
     return new Date(task.endDate) > new Date(task.baselineEndDate);
@@ -63,16 +57,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   const delayed = isDelayed();
 
   return (
-    <TableRow className={`table-row transition-colors group ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''} ${selected ? 'bg-muted/50' : ''}`}>
-      {/* Selection checkbox */}
-      {onSelectionChange && (
-        <TaskSelectionCell 
-          task={task}
-          selected={selected}
-          onSelectionChange={onSelectionChange}
-        />
-      )}
-      
+    <TableRow className={`table-row transition-colors group ${delayed ? 'bg-destructive/10 dark:bg-destructive/20' : ''}`}>
       <TaskNameCell 
         task={task} 
         onUpdateTask={onUpdateTask}

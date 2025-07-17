@@ -1,40 +1,37 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { dataPersistence } from '@/services/DataPersistence';
+import { contextSynchronizer } from '@/services/ContextSynchronizer';
+import { eventBus } from '@/services/EventBus';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export interface Stakeholder {
   id: string;
   name: string;
-  email?: string;
-  role?: string;
-  organization?: string;
-  influence_level?: string;
-  project_id?: string;
-  workspace_id?: string;
-  escalation_level?: number;
-  contact_info?: Record<string, any>;
-  department?: string;
-  phone?: string;
-  communicationPreference?: string;
-  influence?: string;
-  interest?: string;
-  availability?: string;
-  projects?: string[];
-  status?: string;
-  lastContact?: string;
-  created_at?: string;
-  updated_at?: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  influence: 'Low' | 'Medium' | 'High';
+  interest: 'Low' | 'Medium' | 'High';
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  projects: string[];
+  lastContact: string;
+  status: 'Active' | 'Inactive';
+  workspaceId: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface StakeholderContextType {
   stakeholders: Stakeholder[];
   loading: boolean;
-  error: string | null;
-  createStakeholder: (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => Promise<Stakeholder>;
-  updateStakeholder: (id: string, updates: Partial<Stakeholder>) => Promise<void>;
-  deleteStakeholder: (id: string) => Promise<void>;
-  refreshStakeholders: () => Promise<void>;
-  addStakeholder: (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => Promise<Stakeholder>;
+  getStakeholder: (id: string) => Stakeholder | null;
+  updateStakeholder: (id: string, updates: Partial<Stakeholder>) => void;
+  addStakeholder: (stakeholder: Omit<Stakeholder, 'id'>) => void;
+  assignToProject: (stakeholderId: string, projectId: string) => void;
+  removeFromProject: (stakeholderId: string, projectId: string) => void;
+  getStakeholdersByProject: (projectId: string) => Stakeholder[];
+  updateLastContact: (stakeholderId: string) => void;
 }
 
 const StakeholderContext = createContext<StakeholderContextType | undefined>(undefined);
@@ -47,206 +44,200 @@ export const useStakeholders = () => {
   return context;
 };
 
-interface StakeholderProviderProps {
-  children: ReactNode;
-}
+export const StakeholderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [allStakeholders, setAllStakeholders] = useState<Stakeholder[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { currentWorkspace } = useWorkspace();
 
-export const StakeholderProvider: React.FC<StakeholderProviderProps> = ({ children }) => {
-  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Filter stakeholders by current workspace
+  const stakeholders = allStakeholders.filter(stakeholder => 
+    currentWorkspace ? stakeholder.workspaceId === currentWorkspace.id : true
+  );
 
-  const fetchStakeholders = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
-        .from('stakeholders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Map the database fields to the extended Stakeholder interface
-      const mappedStakeholders: Stakeholder[] = (data || []).map(stakeholder => ({
-        id: stakeholder.id,
-        name: stakeholder.name,
-        email: stakeholder.email,
-        role: stakeholder.role,
-        organization: stakeholder.organization,
-        influence_level: stakeholder.influence_level,
-        project_id: stakeholder.project_id,
-        workspace_id: stakeholder.workspace_id,
-        escalation_level: stakeholder.escalation_level,
-        contact_info: typeof stakeholder.contact_info === 'object' && stakeholder.contact_info !== null ? stakeholder.contact_info as Record<string, any> : {},
-        department: stakeholder.role || '',
-        phone: '',
-        communicationPreference: 'Email',
-        influence: stakeholder.influence_level || 'Medium',
-        interest: 'Medium',
-        availability: 'Available',
-        projects: [],
-        status: 'Active',
-        lastContact: new Date().toISOString().split('T')[0],
-        created_at: stakeholder.created_at,
-        updated_at: stakeholder.updated_at
-      }));
-
-      setStakeholders(mappedStakeholders);
-    } catch (err) {
-      console.error('Error fetching stakeholders:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch stakeholders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createStakeholder = async (stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>): Promise<Stakeholder> => {
-    try {
-      // Only send basic fields to the database
-      const basicStakeholderData = {
-        name: stakeholderData.name,
-        email: stakeholderData.email,
-        role: stakeholderData.role,
-        organization: stakeholderData.organization,
-        influence_level: stakeholderData.influence_level || stakeholderData.influence,
-        project_id: stakeholderData.project_id,
-        workspace_id: stakeholderData.workspace_id,
-        escalation_level: stakeholderData.escalation_level,
-        contact_info: stakeholderData.contact_info || {}
-      };
-
-      const { data, error: createError } = await supabase
-        .from('stakeholders')
-        .insert([basicStakeholderData])
-        .select()
-        .single();
-
-      if (createError) {
-        throw createError;
-      }
-
-      // Map to full Stakeholder interface
-      const newStakeholder: Stakeholder = {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        organization: data.organization,
-        influence_level: data.influence_level,
-        project_id: data.project_id,
-        workspace_id: data.workspace_id,
-        escalation_level: data.escalation_level,
-        contact_info: typeof data.contact_info === 'object' && data.contact_info !== null ? data.contact_info as Record<string, any> : {},
-        department: stakeholderData.department || data.role || '',
-        phone: stakeholderData.phone || '',
-        communicationPreference: stakeholderData.communicationPreference || 'Email',
-        influence: stakeholderData.influence || data.influence_level || 'Medium',
-        interest: stakeholderData.interest || 'Medium',
-        availability: stakeholderData.availability || 'Available',
-        projects: stakeholderData.projects || [],
-        status: stakeholderData.status || 'Active',
-        lastContact: stakeholderData.lastContact || new Date().toISOString().split('T')[0],
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      };
-
-      setStakeholders(prev => [newStakeholder, ...prev]);
-      return newStakeholder;
-    } catch (err) {
-      console.error('Error creating stakeholder:', err);
-      throw err;
-    }
-  };
-
-  const updateStakeholder = async (id: string, updates: Partial<Stakeholder>): Promise<void> => {
-    try {
-      // Only send basic fields to the database
-      const basicUpdates = {
-        name: updates.name,
-        email: updates.email,
-        role: updates.role,
-        organization: updates.organization,
-        influence_level: updates.influence_level || updates.influence,
-        project_id: updates.project_id,
-        workspace_id: updates.workspace_id,
-        escalation_level: updates.escalation_level,
-        contact_info: updates.contact_info
-      };
-
-      // Remove undefined values
-      Object.keys(basicUpdates).forEach(key => {
-        if (basicUpdates[key as keyof typeof basicUpdates] === undefined) {
-          delete basicUpdates[key as keyof typeof basicUpdates];
-        }
-      });
-
-      const { error: updateError } = await supabase
-        .from('stakeholders')
-        .update(basicUpdates)
-        .eq('id', id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      setStakeholders(prev => 
-        prev.map(stakeholder => 
-          stakeholder.id === id ? { ...stakeholder, ...updates } : stakeholder
-        )
-      );
-    } catch (err) {
-      console.error('Error updating stakeholder:', err);
-      throw err;
-    }
-  };
-
-  const deleteStakeholder = async (id: string): Promise<void> => {
-    try {
-      const { error: deleteError } = await supabase
-        .from('stakeholders')
-        .delete()
-        .eq('id', id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
-      setStakeholders(prev => prev.filter(stakeholder => stakeholder.id !== id));
-    } catch (err) {
-      console.error('Error deleting stakeholder:', err);
-      throw err;
-    }
-  };
-
-  const refreshStakeholders = async () => {
-    await fetchStakeholders();
-  };
-
-  const addStakeholder = async (stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>): Promise<Stakeholder> => {
-    return createStakeholder(stakeholderData);
-  };
-
+  // Load stakeholders from localStorage on mount
   useEffect(() => {
-    fetchStakeholders();
+    const savedStakeholders = dataPersistence.getData<Stakeholder[]>('stakeholders');
+    if (savedStakeholders) {
+      // Ensure workspace association
+      const workspaceAwareStakeholders = savedStakeholders.map(s => ({
+        ...s,
+        workspaceId: s.workspaceId || currentWorkspace?.id || 'ws-1'
+      }));
+      setAllStakeholders(workspaceAwareStakeholders);
+    } else {
+      // Initialize with sample data
+      initializeSampleData();
+    }
   }, []);
 
-  const contextValue: StakeholderContextType = {
-    stakeholders,
-    loading,
-    error,
-    createStakeholder,
-    updateStakeholder,
-    deleteStakeholder,
-    refreshStakeholders,
-    addStakeholder
+  // Register with context synchronizer
+  useEffect(() => {
+    const unregister = contextSynchronizer.registerContext('stakeholders', (updatedStakeholders: Stakeholder[]) => {
+      setAllStakeholders(updatedStakeholders);
+    });
+
+    return unregister;
+  }, []);
+
+  const initializeSampleData = () => {
+    const workspaceId = currentWorkspace?.id || 'ws-1';
+    const sampleStakeholders: Stakeholder[] = [
+      {
+        id: 'john-doe',
+        name: 'John Doe',
+        role: 'Product Manager',
+        department: 'Product',
+        email: 'john.doe@company.com',
+        phone: '+1 (555) 111-1111',
+        influence: 'High',
+        interest: 'High',
+        communicationPreference: 'Email',
+        projects: ['proj-ecommerce-2024'],
+        lastContact: '2024-07-10',
+        status: 'Active',
+        workspaceId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'jane-smith',
+        name: 'Jane Smith',
+        role: 'Design Director',
+        department: 'Design',
+        email: 'jane.smith@company.com',
+        phone: '+1 (555) 222-2222',
+        influence: 'High',
+        interest: 'Medium',
+        communicationPreference: 'Slack',
+        projects: ['proj-ecommerce-2024'],
+        lastContact: '2024-07-08',
+        status: 'Active',
+        workspaceId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+    setAllStakeholders(sampleStakeholders);
+    dataPersistence.persistData('stakeholders', sampleStakeholders, 'stakeholder_context');
+  };
+
+  // Save stakeholders to localStorage whenever stakeholders change
+  useEffect(() => {
+    if (allStakeholders.length > 0) {
+      dataPersistence.persistData('stakeholders', allStakeholders, 'stakeholder_context');
+    }
+  }, [allStakeholders]);
+
+  const getStakeholder = (id: string): Stakeholder | null => {
+    return stakeholders.find(s => s.id === id) || null;
+  };
+
+  const updateStakeholder = (id: string, updates: Partial<Stakeholder>) => {
+    setAllStakeholders(prev => prev.map(s => s.id === id ? { 
+      ...s, 
+      ...updates,
+      updatedAt: new Date().toISOString()
+    } : s));
+
+    // Emit update event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_updated',
+      stakeholderId: id,
+      updates
+    }, 'stakeholder_context');
+  };
+
+  const addStakeholder = (stakeholder: Omit<Stakeholder, 'id'>) => {
+    const newStakeholder: Stakeholder = {
+      ...stakeholder,
+      id: `stakeholder-${Date.now()}`,
+      workspaceId: currentWorkspace?.id || 'ws-1',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setAllStakeholders(prev => [...prev, newStakeholder]);
+
+    // Emit creation event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_created',
+      stakeholder: newStakeholder
+    }, 'stakeholder_context');
+  };
+
+  const assignToProject = (stakeholderId: string, projectId: string) => {
+    setAllStakeholders(prev => prev.map(s => 
+      s.id === stakeholderId 
+        ? { 
+          ...s, 
+          projects: [...s.projects, projectId],
+          updatedAt: new Date().toISOString()
+        }
+        : s
+    ));
+
+    // Emit assignment event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_assigned',
+      stakeholderId,
+      projectId
+    }, 'stakeholder_context');
+  };
+
+  const removeFromProject = (stakeholderId: string, projectId: string) => {
+    setAllStakeholders(prev => prev.map(s => 
+      s.id === stakeholderId 
+        ? { 
+          ...s, 
+          projects: s.projects.filter(p => p !== projectId),
+          updatedAt: new Date().toISOString()
+        }
+        : s
+    ));
+
+    // Emit removal event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_unassigned',
+      stakeholderId,
+      projectId
+    }, 'stakeholder_context');
+  };
+
+  const getStakeholdersByProject = (projectId: string): Stakeholder[] => {
+    return stakeholders.filter(s => s.projects.includes(projectId));
+  };
+
+  const updateLastContact = (stakeholderId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    setAllStakeholders(prev => prev.map(s => 
+      s.id === stakeholderId 
+        ? { 
+          ...s, 
+          lastContact: today,
+          updatedAt: new Date().toISOString()
+        }
+        : s
+    ));
+
+    // Emit contact update event
+    eventBus.emit('context_updated', {
+      type: 'stakeholder_contact_updated',
+      stakeholderId,
+      lastContact: today
+    }, 'stakeholder_context');
   };
 
   return (
-    <StakeholderContext.Provider value={contextValue}>
+    <StakeholderContext.Provider value={{
+      stakeholders,
+      loading,
+      getStakeholder,
+      updateStakeholder,
+      addStakeholder,
+      assignToProject,
+      removeFromProject,
+      getStakeholdersByProject,
+      updateLastContact
+    }}>
       {children}
     </StakeholderContext.Provider>
   );
