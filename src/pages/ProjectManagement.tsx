@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
@@ -12,7 +11,6 @@ import ProjectReports from '@/components/project-management/ProjectReports';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target } from 'lucide-react';
-import { ProjectData } from '@/types/project';
 
 const ProjectManagement = () => {
   const { id } = useParams();
@@ -43,32 +41,6 @@ const ProjectManagement = () => {
       </div>
     );
   }
-
-  // Transform Project to ProjectData for components that expect it
-  const projectData: ProjectData = {
-    id: project.id,
-    name: project.name,
-    description: project.description || '',
-    status: project.status === 'active' ? 'In Progress' : 
-            project.status === 'completed' ? 'Completed' :
-            project.status === 'on_hold' ? 'On Hold' : 'Cancelled',
-    priority: (project.priority as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium',
-    progress: project.progress || 0,
-    health: {
-      status: (project.health_status as 'red' | 'yellow' | 'green') || 'green',
-      score: project.health_score || 100
-    },
-    startDate: project.start_date,
-    endDate: project.end_date,
-    teamSize: project.team_size || 0,
-    budget: project.budget || '$0',
-    tags: project.tags || [],
-    workspaceId: project.workspace_id || '',
-    resources: project.resources || [],
-    stakeholders: project.stakeholder_ids || [],
-    milestones: [],
-    tasks: []
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -118,7 +90,7 @@ const ProjectManagement = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <ProjectOverview project={projectData} />
+            <ProjectOverview project={project} />
           </TabsContent>
 
           <TabsContent value="gantt">

@@ -25,7 +25,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   // If no resources assigned, show resources from the project's resource list
   const displayResources = projectResources.length > 0 
     ? projectResources 
-    : (project?.resources || []).map(resourceId => resources.find(r => r.id === resourceId)).filter(Boolean) || [];
+    : project?.resources?.map(resourceId => resources.find(r => r.id === resourceId)).filter(Boolean) || [];
 
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
@@ -46,9 +46,9 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   const totalResources = displayResources.length;
   const availableResources = displayResources.filter(r => r.status === 'Available').length;
   const avgUtilization = totalResources > 0 
-    ? Math.round(displayResources.reduce((acc, r) => acc + (r.utilization || 0), 0) / totalResources)
+    ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / totalResources)
     : 0;
-  const totalHours = displayResources.reduce((acc, r) => acc + ((r.utilization || 0) * 40 / 100), 0);
+  const totalHours = displayResources.reduce((acc, r) => acc + (r.utilization * 40 / 100), 0);
 
   return (
     <div className="space-y-6">
@@ -126,8 +126,8 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                       <p className="text-sm text-muted-foreground">{resource.role}</p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className={getAvailabilityColor(resource.status || 'Available')}>
-                    {resource.status || 'Available'}
+                  <Badge variant="secondary" className={getAvailabilityColor(resource.status)}>
+                    {resource.status}
                   </Badge>
                 </div>
 
@@ -135,24 +135,24 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                   <div>
                     <p className="text-sm font-medium mb-2">Availability</p>
                     <div className="flex items-center gap-2">
-                      <Progress value={resource.availability || 100} className="flex-1" />
-                      <span className="text-sm font-medium">{resource.availability || 100}%</span>
+                      <Progress value={resource.availability} className="flex-1" />
+                      <span className="text-sm font-medium">{resource.availability}%</span>
                     </div>
                   </div>
                   
                   <div>
                     <p className="text-sm font-medium mb-2">Utilization Rate</p>
                     <div className="flex items-center gap-2">
-                      <Progress value={resource.utilization || 0} className="flex-1" />
-                      <span className={`text-sm font-medium ${getUtilizationColor(resource.utilization || 0)}`}>
-                        {resource.utilization || 0}%
+                      <Progress value={resource.utilization} className="flex-1" />
+                      <span className={`text-sm font-medium ${getUtilizationColor(resource.utilization)}`}>
+                        {resource.utilization}%
                       </span>
                     </div>
                   </div>
 
                   <div>
                     <p className="text-sm font-medium mb-2">Hourly Rate</p>
-                    <p className="text-lg font-semibold">{resource.hourlyRate || '$0/hr'}</p>
+                    <p className="text-lg font-semibold">{resource.hourlyRate}</p>
                   </div>
                 </div>
 
@@ -160,7 +160,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                   <div>
                     <p className="text-sm font-medium mb-2">Skills</p>
                     <div className="flex flex-wrap gap-2">
-                      {(resource.skills || []).map((skill, index) => (
+                      {resource.skills.map((skill, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
                           {skill}
                         </Badge>
@@ -168,7 +168,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                     </div>
                   </div>
                   
-                  {(resource.currentProjects || []).length > 0 && (
+                  {resource.currentProjects.length > 0 && (
                     <div>
                       <p className="text-sm font-medium mb-2">Current Projects</p>
                       <div className="flex flex-wrap gap-2">

@@ -1,20 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useProject } from '@/contexts/ProjectContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-import { useProject } from '@/contexts/ProjectContext';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Milestone {
-  id: string;
-  name: string;
-  due_date?: string;
-  status?: string;
-  progress?: number;
-  description?: string;
-}
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock, CheckCircle, AlertCircle, Target, Edit } from 'lucide-react';
 
 interface ProjectTimelineProps {
   projectId: string;
@@ -22,71 +12,70 @@ interface ProjectTimelineProps {
 
 const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   const { getProject } = useProject();
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [loading, setLoading] = useState(true);
-  
   const project = getProject(projectId);
 
-  useEffect(() => {
-    loadMilestones();
-  }, [projectId]);
+  if (!project) return <div>Project not found</div>;
 
-  const loadMilestones = async () => {
-    try {
-      setLoading(true);
-
-      // Load milestones
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('due_date');
-
-      if (milestonesError) throw milestonesError;
-
-      setMilestones(milestonesData || []);
-    } catch (error) {
-      console.error('Error loading project timeline data:', error);
-    } finally {
-      setLoading(false);
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'in-progress':
+        return <Clock className="h-5 w-5 text-blue-500" />;
+      case 'upcoming':
+        return <Target className="h-5 w-5 text-gray-400" />;
+      default:
+        return <AlertCircle className="h-5 w-5 text-red-500" />;
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed': return 'bg-green-500 text-white';
-      case 'in progress': return 'bg-blue-500 text-white';
-      case 'upcoming': return 'bg-gray-500 text-white';
-      case 'delayed': return 'bg-red-500 text-white';
-      default: return 'bg-gray-500 text-white';
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'upcoming':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-red-100 text-red-800';
     }
   };
 
-  const isDelayed = (milestone: Milestone) => {
-    if (!milestone.due_date) return false;
-    return new Date(milestone.due_date) < new Date() && milestone.status !== 'Completed';
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'in-progress':
+        return 'In Progress';
+      case 'upcoming':
+        return 'Upcoming';
+      default:
+        return 'Delayed';
+    }
   };
 
-  // Calculate metrics
-  const totalMilestones = milestones.length;
-  const completedMilestones = milestones.filter(m => m.status === 'Completed').length;
-  const inProgressMilestones = milestones.filter(m => m.status === 'In Progress').length;
-  const upcomingMilestones = milestones.filter(m => m.status === 'Upcoming' || (!m.status && m.due_date && new Date(m.due_date) > new Date())).length;
+  const getMilestoneTasks = (milestoneId: string) => {
+    return project.tasks.filter(task => task.milestoneId === milestoneId);
+  };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground mt-2">Loading timeline...</p>
-        </div>
-      </div>
-    );
-  }
+  const calculateMilestoneProgress = (milestoneId: string) => {
+    const tasks = getMilestoneTasks(milestoneId);
+    if (tasks.length === 0) return 0;
+    return Math.round(tasks.reduce((acc, task) => acc + task.progress, 0) / tasks.length);
+  };
+
+  // Calculate milestone statistics
+  const milestoneStats = {
+    completed: project.milestones.filter(m => m.status === 'completed').length,
+    inProgress: project.milestones.filter(m => m.status === 'in-progress').length,
+    upcoming: project.milestones.filter(m => m.status === 'upcoming').length,
+    total: project.milestones.length
+  };
 
   return (
     <div className="space-y-6">
-      {/* Milestone Metrics */}
+      {/* Timeline Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -94,7 +83,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <CheckCircle className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="font-semibold">{completedMilestones}</p>
+                <p className="font-semibold">{milestoneStats.completed}</p>
               </div>
             </div>
           </CardContent>
@@ -106,7 +95,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <Clock className="h-8 w-8 text-blue-500" />
               <div>
                 <p className="text-sm text-muted-foreground">In Progress</p>
-                <p className="font-semibold">{inProgressMilestones}</p>
+                <p className="font-semibold">{milestoneStats.inProgress}</p>
               </div>
             </div>
           </CardContent>
@@ -115,10 +104,10 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-gray-500" />
+              <Target className="h-8 w-8 text-gray-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Upcoming</p>
-                <p className="font-semibold">{upcomingMilestones}</p>
+                <p className="font-semibold">{milestoneStats.upcoming}</p>
               </div>
             </div>
           </CardContent>
@@ -127,70 +116,143 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-8 w-8 text-purple-500" />
+              <Calendar className="h-8 w-8 text-purple-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Milestones</p>
-                <p className="font-semibold">{totalMilestones}</p>
+                <p className="font-semibold">{milestoneStats.total}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Milestone Timeline */}
+      {/* Timeline */}
       <Card>
         <CardHeader>
-          <CardTitle>Project Milestones Timeline</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Project Timeline
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading milestones...</p>
-            </div>
-          ) : milestones.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No milestones found for this project</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {milestones.map((milestone) => (
-                <div key={milestone.id} className="border border-border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-lg">{milestone.name}</h4>
-                    <div className="flex items-center gap-2">
-                      {isDelayed(milestone) && (
-                        <Badge variant="destructive" className="text-xs">
-                          Delayed
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className={`text-xs ${getStatusColor(milestone.status || 'Upcoming')}`}>
-                        {milestone.status || 'Upcoming'}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  {milestone.description && (
-                    <p className="text-sm text-muted-foreground mb-3">{milestone.description}</p>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">Due Date:</span> {milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'Not set'}
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-8 top-0 bottom-0 w-px bg-border"></div>
+            
+            <div className="space-y-8">
+              {project.milestones.map((milestone, index) => {
+                const milestoneTasks = getMilestoneTasks(milestone.id);
+                const actualProgress = calculateMilestoneProgress(milestone.id);
+                const completedTasks = milestoneTasks.filter(t => t.status === 'Completed').length;
+                const isDelayed = new Date(milestone.date) > new Date(milestone.baselineDate);
+
+                return (
+                  <div key={milestone.id} className="relative flex items-start gap-6">
+                    {/* Timeline dot */}
+                    <div className="relative z-10 flex items-center justify-center w-16 h-16 bg-background border-2 border-border rounded-full">
+                      {getStatusIcon(milestone.status)}
                     </div>
                     
-                    {milestone.progress !== undefined && milestone.progress > 0 && (
-                      <div className="flex items-center gap-2 min-w-[200px]">
-                        <Progress value={milestone.progress} className="flex-1" />
-                        <span className="text-sm text-muted-foreground">{milestone.progress}%</span>
-                      </div>
-                    )}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <Card className={`border-l-4 ${milestone.status === 'completed' ? 'border-l-green-500' : milestone.status === 'in-progress' ? 'border-l-blue-500' : 'border-l-gray-400'}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h3 className="font-semibold text-lg">{milestone.name}</h3>
+                              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                Due: {new Date(milestone.date).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                                {isDelayed && (
+                                  <span className="text-orange-600">
+                                    (Originally: {new Date(milestone.baselineDate).toLocaleDateString()})
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className={getStatusColor(milestone.status)}>
+                                {getStatusText(milestone.status)}
+                              </Badge>
+                              {isDelayed && (
+                                <Badge variant="outline" className="bg-orange-100 text-orange-800">
+                                  Delayed
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-muted-foreground mb-3">
+                            {milestone.description}
+                          </p>
+                          
+                          <div className="flex items-center justify-between text-sm mb-3">
+                            <div className="flex items-center gap-4">
+                              <span className="text-muted-foreground">
+                                Tasks: {completedTasks}/{milestoneTasks.length}
+                              </span>
+                              <div className="w-24 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-blue-500 h-2 rounded-full transition-all"
+                                  style={{ width: `${actualProgress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-muted-foreground">
+                                {actualProgress}%
+                              </span>
+                            </div>
+                            
+                            {milestone.status === 'completed' && (
+                              <span className="text-green-600 text-xs font-medium">
+                                ✓ Completed
+                              </span>
+                            )}
+                            
+                            {milestone.status === 'in-progress' && (
+                              <span className="text-blue-600 text-xs font-medium">
+                                🔄 In progress
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Milestone Tasks */}
+                          {milestoneTasks.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-medium text-muted-foreground">Associated Tasks:</h4>
+                              <div className="grid grid-cols-1 gap-2">
+                                {milestoneTasks.map((task) => (
+                                  <div key={task.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full ${
+                                        task.status === 'Completed' ? 'bg-green-500' :
+                                        task.status === 'In Progress' ? 'bg-blue-500' :
+                                        task.status === 'On Hold' ? 'bg-yellow-500' : 'bg-gray-400'
+                                      }`} />
+                                      <span className="text-sm font-medium">{task.name}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {task.progress}%
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {new Date(task.startDate).toLocaleDateString()} - {new Date(task.endDate).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
@@ -200,9 +262,49 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
           <CardTitle>Critical Path Analysis</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Critical path analysis will be available once task dependencies are configured</p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Critical tasks and milestones that directly impact the project timeline
+            </p>
+            <div className="grid grid-cols-1 gap-4">
+              {project.tasks
+                .filter(task => {
+                  const isDelayed = new Date(task.endDate) > new Date(task.baselineEndDate);
+                  const hasDependents = project.tasks.some(t => t.dependencies.includes(task.id));
+                  return isDelayed || hasDependents || task.priority === 'High';
+                })
+                .slice(0, 4)
+                .map((task) => {
+                  const isDelayed = new Date(task.endDate) > new Date(task.baselineEndDate);
+                  return (
+                    <div key={task.id} className="p-4 border border-border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        {isDelayed ? (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                        <span className="font-medium">{task.name}</span>
+                        <Badge variant="outline" className={`text-xs ${
+                          task.priority === 'High' ? 'bg-red-100 text-red-800' : 
+                          task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {task.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {isDelayed 
+                          ? `Delay risk: High - Behind baseline by ${Math.ceil((new Date(task.endDate).getTime() - new Date(task.baselineEndDate).getTime()) / (24 * 60 * 60 * 1000))} days`
+                          : task.status === 'Completed' 
+                            ? 'On track - Completed successfully'
+                            : `Progress: ${task.progress}% - ${task.status}`
+                        }
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </CardContent>
       </Card>

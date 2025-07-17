@@ -845,8 +845,6 @@ export type Database = {
           budget: string | null
           created_at: string
           created_by: string | null
-          deleted_at: string | null
-          deleted_by: string | null
           description: string | null
           end_date: string | null
           health_score: number | null
@@ -871,8 +869,6 @@ export type Database = {
           budget?: string | null
           created_at?: string
           created_by?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
           description?: string | null
           end_date?: string | null
           health_score?: number | null
@@ -897,8 +893,6 @@ export type Database = {
           budget?: string | null
           created_at?: string
           created_by?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
           description?: string | null
           end_date?: string | null
           health_score?: number | null
@@ -1363,14 +1357,6 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
-      check_project_dependencies: {
-        Args: { project_id_param: string }
-        Returns: {
-          dependency_type: string
-          dependency_count: number
-          details: string
-        }[]
-      }
       check_task_dependencies: {
         Args: { task_id_param: string }
         Returns: {
@@ -1378,10 +1364,6 @@ export type Database = {
           dependent_task_name: string
           dependency_type: string
         }[]
-      }
-      cleanup_deleted_projects: {
-        Args: Record<PropertyKey, never>
-        Returns: number
       }
       create_milestone: {
         Args: {

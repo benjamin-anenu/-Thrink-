@@ -16,8 +16,7 @@ import {
   TrendingDown,
   AlertTriangle,
   CheckCircle,
-  Eye,
-  Trash2
+  Eye
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Resource } from '@/contexts/ResourceContext';
@@ -25,10 +24,9 @@ import { Resource } from '@/contexts/ResourceContext';
 interface ResourceCardProps {
   resource: Resource;
   onViewDetails: (resource: Resource) => void;
-  onDelete?: (resource: Resource) => void;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails, onDelete }) => {
+const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails }) => {
   const {
     id,
     name,
@@ -71,18 +69,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails, on
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">{name || 'Unknown'}</CardTitle>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={getStatusValue(status)} />
-            {onDelete && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => onDelete(resource)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          <StatusBadge status={getStatusValue(status)} />
         </div>
         <CardDescription>{role} • {department}</CardDescription>
       </CardHeader>

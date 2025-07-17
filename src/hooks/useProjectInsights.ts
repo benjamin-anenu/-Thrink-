@@ -66,7 +66,7 @@ export const useProjectInsights = (projectId?: string) => {
   // Filter projects by workspace if no specific projectId is provided
   const workspaceProjects = useMemo(() => {
     return projects.filter(project => 
-      project.workspace_id === currentWorkspace?.id &&
+      project.workspaceId === currentWorkspace?.id &&
       (!projectId || project.id === projectId)
     );
   }, [projects, currentWorkspace?.id, projectId]);
@@ -153,10 +153,10 @@ export const useProjectInsights = (projectId?: string) => {
 
         // Deadline analysis
         const today = new Date();
-        const projectEndDate = new Date(project.end_date);
+        const projectEndDate = new Date(project.endDate);
         const daysToDeadline = Math.ceil((projectEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-        if (project.status === 'completed') {
+        if (project.status === 'Completed') {
           onTrack++;
         } else if (daysToDeadline < 0) {
           overdue++;
@@ -180,7 +180,7 @@ export const useProjectInsights = (projectId?: string) => {
             actionable: true,
             projectId: project.id
           });
-        } else if ((project.progress || 0) > (1 - daysToDeadline / 100) * 100) {
+        } else if (project.progress > (1 - daysToDeadline / 100) * 100) {
           onTrack++;
         } else {
           atRisk++;

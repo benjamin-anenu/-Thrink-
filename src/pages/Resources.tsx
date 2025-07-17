@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -8,28 +7,20 @@ import AssignmentModal from '@/components/AssignmentModal';
 import ResourceOverview from '@/components/ResourceOverview';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
-import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { useResources, Resource } from '@/contexts/ResourceContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceDetailsModal, setShowResourceDetailsModal] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedResource, setSelectedResource] = useState<{ id: string; name: string } | null>(null);
   const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<Resource | null>(null);
-  const [resourceToDelete, setResourceToDelete] = useState<Resource | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [dependencies, setDependencies] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
   
   const { resources, addResource } = useResources();
-  const { toast } = useToast();
 
   const handleResourceSave = (resource: any) => {
     console.log('Saving resource:', resource);
@@ -50,88 +41,6 @@ const Resources = () => {
   const handleAssignTaskFromDetails = (resourceId: string, resourceName: string) => {
     setShowResourceDetailsModal(false);
     handleAssignTask(resourceId, resourceName);
-  };
-
-  const checkResourceDependencies = async (resourceId: string) => {
-    try {
-      // Check for active assignments
-      const { data: assignments, error: assignmentsError } = await supabase
-        .from('resource_assignments')
-        .select('task_id, project_tasks(name, status)')
-        .eq('resource_id', resourceId);
-
-      if (assignmentsError) throw assignmentsError;
-
-      const activeTasks = assignments?.filter(
-        (assignment: any) => assignment.project_tasks?.status !== 'Completed'
-      ) || [];
-
-      const deps: any[] = [];
-      if (activeTasks.length > 0) {
-        deps.push({
-          dependency_type: 'tasks',
-          dependency_count: activeTasks.length,
-          details: 'Active task assignments'
-        });
-      }
-
-      return deps;
-    } catch (error) {
-      console.error('Error checking resource dependencies:', error);
-      return [];
-    }
-  };
-
-  const handleDeleteResource = async (resource: Resource) => {
-    setResourceToDelete(resource);
-    
-    const deps = await checkResourceDependencies(resource.id);
-    setDependencies(deps);
-    
-    setShowDeleteDialog(true);
-  };
-
-  const confirmDeleteResource = async () => {
-    if (!resourceToDelete) return;
-    
-    setDeleteLoading(true);
-    try {
-      const { error } = await supabase
-        .from('resources')
-        .delete()
-        .eq('id', resourceToDelete.id);
-
-      if (error) throw error;
-
-      // Log the deletion
-      await supabase.from('audit_logs').insert({
-        action: 'resource_deleted',
-        resource_type: 'resource',
-        resource_id: resourceToDelete.id,
-        metadata: { resource_name: resourceToDelete.name }
-      });
-
-      toast({
-        title: 'Success',
-        description: 'Resource deleted successfully'
-      });
-
-      setShowDeleteDialog(false);
-      setResourceToDelete(null);
-      setDependencies([]);
-      
-      // Refresh the page or update state
-      window.location.reload();
-    } catch (error) {
-      console.error('Error deleting resource:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete resource',
-        variant: 'destructive'
-      });
-    } finally {
-      setDeleteLoading(false);
-    }
   };
 
   return (
@@ -161,7 +70,6 @@ const Resources = () => {
               resources={resources}
               onViewDetails={handleViewDetails}
               onShowResourceForm={() => setShowResourceForm(true)}
-              onDeleteResource={handleDeleteResource}
             />
           </TabsContent>
 
@@ -194,20 +102,6 @@ const Resources = () => {
         onClose={() => setShowAssignmentModal(false)}
         resourceId={selectedResource?.id}
         resourceName={selectedResource?.name}
-      />
-
-      <DeleteConfirmationDialog
-        isOpen={showDeleteDialog}
-        onClose={() => {
-          setShowDeleteDialog(false);
-          setResourceToDelete(null);
-          setDependencies([]);
-        }}
-        onConfirm={confirmDeleteResource}
-        itemName={resourceToDelete?.name || ''}
-        itemType="resource"
-        dependencies={dependencies}
-        isLoading={deleteLoading}
       />
 
       <TinkAssistant />

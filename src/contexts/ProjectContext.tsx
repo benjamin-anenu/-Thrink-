@@ -1,43 +1,31 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { ProjectData, ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
+import { PerformanceTracker } from '@/services/PerformanceTracker';
+import { EmailReminderService } from '@/services/EmailReminderService';
+import { NotificationIntegrationService } from '@/services/NotificationIntegrationService';
+import { eventBus } from '@/services/EventBus';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
-export interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  status: 'active' | 'completed' | 'on_hold' | 'cancelled';
-  start_date: string;
-  end_date: string;
-  created_at: string;
-  updated_at: string;
-  workspace_id: string;
-  stakeholder_ids: string[];
-  deleted_at: string | null;
-  // Additional UI properties
-  progress?: number;
-  priority?: string;
-  team_size?: number;
-  budget?: string;
-  tags?: string[];
-  resources?: string[];
-  health_status?: string;
-  health_score?: number;
-}
+import { ProjectCreationService } from '@/services/ProjectCreationService';
 
 interface ProjectContextType {
-  projects: Project[];
+  projects: ProjectData[];
+  currentProject: ProjectData | null;
   loading: boolean;
-  currentProject: string | null;
+  getProject: (id: string) => ProjectData | null;
+  addProject: (project: Omit<ProjectData, 'id'>) => Promise<void>;
+  updateProject: (id: string, updates: Partial<ProjectData>) => Promise<void>;
+  addTask: (projectId: string, task: Omit<ProjectTask, 'id'>) => Promise<void>;
+  updateTask: (projectId: string, taskId: string, updates: Partial<ProjectTask>) => Promise<void>;
+  deleteTask: (projectId: string, taskId: string) => Promise<void>;
+  addMilestone: (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => Promise<void>;
+  updateMilestone: (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => Promise<void>;
+  rebaselineTasks: (projectId: string, request: RebaselineRequest) => Promise<void>;
   setCurrentProject: (projectId: string) => void;
-  addProject: (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'deleted_at'>) => Promise<void>;
-  updateProject: (id: string, projectData: Partial<Project>) => Promise<void>;
-  deleteProject: (id: string) => Promise<void>;
-  softDeleteProject: (id: string) => Promise<void>;
-  restoreProject: (id: string) => Promise<void>;
-  getProject: (id: string) => Project | undefined;
-  loadProjects: () => Promise<void>;
-  checkProjectDependencies: (id: string) => Promise<any[]>;
+  completeTask: (projectId: string, taskId: string) => Promise<void>;
+  assignTaskToResource: (projectId: string, taskId: string, resourceId: string) => Promise<void>;
+  refreshProjects: () => Promise<void>;
+  retryAIProcessing: (projectId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -51,272 +39,812 @@ export const useProject = () => {
 };
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProject, setCurrentProject] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [allProjects, setAllProjects] = useState<ProjectData[]>([]);
+  const [currentProject, setCurrentProjectState] = useState<ProjectData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { currentWorkspace } = useWorkspace();
 
-  const loadProjects = async () => {
+  // Filter projects by current workspace
+  const projects = allProjects.filter(project => 
+    currentWorkspace ? project.workspaceId === currentWorkspace.id : true
+  );
+
+  // Set up real-time updates for project changes
+  useEffect(() => {
+    if (!currentWorkspace) return;
+
+    const channel = supabase
+      .channel('project-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        (payload) => {
+          console.log('Project updated:', payload);
+          // Update the project in our state
+          setAllProjects(prev => prev.map(project => 
+            project.id === payload.new.id 
+              ? { ...project, 
+                  aiProcessingStatus: payload.new.ai_processing_status,
+                  aiProcessingStartedAt: payload.new.ai_processing_started_at,
+                  aiProcessingCompletedAt: payload.new.ai_processing_completed_at
+                }
+              : project
+          ));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentWorkspace]);
+
+  // Initialize services
+  const performanceTracker = PerformanceTracker.getInstance();
+  const emailService = EmailReminderService.getInstance();
+  const notificationService = NotificationIntegrationService.getInstance();
+
+  // Load projects from Supabase when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      refreshProjects();
+    }
+  }, [currentWorkspace]);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!currentWorkspace) return;
+
+    const channel = supabase
+      .channel('project_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        () => {
+          refreshProjects();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentWorkspace]);
+
+  // Set up event listeners for tasks and deadlines
+  useEffect(() => {
+    const unsubscribeTaskCompleted = eventBus.subscribe('task_completed', (event) => {
+      const { taskId, projectId, resourceId } = event.payload;
+      handleTaskCompletionEffects(projectId, taskId, resourceId);
+    });
+
+    const unsubscribeDeadlineCheck = eventBus.subscribe('deadline_approaching', (event) => {
+      const { taskId, projectId, daysRemaining } = event.payload;
+      handleDeadlineAlert(projectId, taskId, daysRemaining);
+    });
+
+    return () => {
+      unsubscribeTaskCompleted();
+      unsubscribeDeadlineCheck();
+    };
+  }, [allProjects]);
+
+  // Monitor deadlines
+  useEffect(() => {
+    const checkDeadlines = () => {
+      const now = new Date();
+      projects.forEach(project => {
+        project.tasks.forEach(task => {
+          if (task.status !== 'Completed' && task.status !== 'Not Started') {
+            const deadline = new Date(task.endDate);
+            const daysRemaining = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysRemaining <= 7 && daysRemaining >= 0) {
+              eventBus.emit('deadline_approaching', {
+                taskId: task.id,
+                taskName: task.name,
+                projectId: project.id,
+                projectName: project.name,
+                daysRemaining
+              }, 'ProjectContext');
+            }
+          }
+        });
+      });
+    };
+
+    const interval = setInterval(checkDeadlines, 60000); // Check every minute
+    checkDeadlines(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [projects]);
+
+  const refreshProjects = async () => {
+    if (!currentWorkspace) return;
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      console.log('[ProjectContext] Loading projects...');
-      
-      // Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        console.log('[ProjectContext] No authenticated user, skipping project load');
-        setProjects([]);
-        setLoading(false);
-        return;
-      }
-      
-      console.log('[ProjectContext] User authenticated:', session.user.id);
-
-      // First, let's check what workspaces the user has access to
-      const { data: workspaceData, error: workspaceError } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active');
-
-      if (workspaceError) {
-        console.error('[ProjectContext] Error fetching user workspaces:', workspaceError);
-        toast.error('Failed to load user workspaces');
-        setLoading(false);
-        return;
-      }
-
-      console.log('[ProjectContext] User workspaces:', workspaceData);
-
-      if (!workspaceData || workspaceData.length === 0) {
-        console.log('[ProjectContext] User has no active workspace memberships');
-        setProjects([]);
-        setLoading(false);
-        return;
-      }
-
-      const workspaceIds = workspaceData.map(w => w.workspace_id);
-
-      // Now fetch projects from user's workspaces, explicitly checking for non-deleted projects
-      const { data, error } = await supabase
+      const { data: projectsData, error } = await supabase
         .from('projects')
-        .select('*')
-        .in('workspace_id', workspaceIds)
-        .is('deleted_at', null)  // Explicitly check for null instead of eq('deleted_at', null)
+        .select(`
+          *,
+          milestones (
+            id,
+            name,
+            description,
+            due_date,
+            baseline_date,
+            status,
+            progress,
+            task_ids
+          ),
+          stakeholders (
+            id,
+            name,
+            email,
+            role,
+            organization,
+            influence_level,
+            contact_info,
+            escalation_level
+          )
+        `)
+        .eq('workspace_id', currentWorkspace.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('[ProjectContext] Error loading projects:', error);
-        toast.error('Failed to load projects: ' + error.message);
-        setProjects([]);
-        setLoading(false);
-        return;
-      }
+      if (error) throw error;
 
-      console.log('[ProjectContext] Raw projects from database:', data);
+      // Transform the data to match our ProjectData interface
+      const transformedProjects: ProjectData[] = (projectsData || []).map(project => ({
+        id: project.id,
+        name: project.name,
+        description: project.description || '',
+        status: project.status as any,
+        priority: project.priority as any,
+        progress: project.progress || 0,
+        health: {
+          status: project.health_status as any,
+          score: project.health_score || 100
+        },
+        startDate: project.start_date || '',
+        endDate: project.end_date || '',
+        teamSize: project.team_size || 0,
+        budget: project.budget || '',
+        tags: project.tags || [],
+        workspaceId: project.workspace_id,
+        resources: project.resources || [],
+        stakeholders: project.stakeholder_ids || [],
+        milestones: (project.milestones || []).map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          description: m.description || '',
+          date: m.due_date || '',
+          baselineDate: m.baseline_date || '',
+          status: m.status || 'upcoming',
+          tasks: m.task_ids || [],
+          progress: m.progress || 0
+        })),
+        tasks: [], // Tasks will be loaded separately when needed
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        aiProcessingStatus: (project.ai_processing_status as 'pending' | 'processing' | 'completed' | 'failed') || 'pending',
+        aiProcessingStartedAt: project.ai_processing_started_at,
+        aiProcessingCompletedAt: project.ai_processing_completed_at
+      }));
 
-      // Transform the database data to match our interface
-      const transformedProjects: Project[] = (data || []).map(project => {
-        console.log('[ProjectContext] Transforming project:', project.name, 'Status:', project.status);
-        return {
-          ...project,
-          status: project.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-          stakeholder_ids: project.stakeholder_ids || [],
-          progress: project.progress || 0,
-          priority: project.priority || 'Medium',
-          team_size: project.team_size || 0,
-          budget: project.budget || '',
-          tags: project.tags || [],
-          resources: project.resources || [],
-          health_status: project.health_status || 'green',
-          health_score: project.health_score || 100
-        };
-      });
-
-      console.log('[ProjectContext] Transformed projects:', transformedProjects.length, 'projects loaded');
-      setProjects(transformedProjects);
+      setAllProjects(transformedProjects);
     } catch (error) {
-      console.error('[ProjectContext] Unexpected error loading projects:', error);
-      toast.error('Failed to load projects');
-      setProjects([]);
+      console.error('Error fetching projects:', error);
+      // Fallback to demo data if there's an error
+      initializeRealisticProject();
     } finally {
       setLoading(false);
     }
   };
 
-  const addProject = async (projectData: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'deleted_at'>) => {
+  const initializeRealisticProject = () => {
+    if (!currentWorkspace) return;
+    
+    const realisticProject: ProjectData = {
+      id: 'proj-ecommerce-2024',
+      name: 'E-commerce Platform Redesign',
+      description: 'Complete overhaul of the user interface and user experience for our main e-commerce platform to improve conversion rates and user satisfaction.',
+      status: 'In Progress',
+      priority: 'High',
+      progress: 45,
+      health: { status: 'green', score: 88 },
+      startDate: '2024-07-01',
+      endDate: '2024-10-31',
+      teamSize: 6,
+      budget: '$185,000',
+      tags: ['Frontend', 'UX/UI', 'E-commerce', 'React'],
+      workspaceId: currentWorkspace.id,
+      resources: ['sarah', 'michael', 'emily', 'david'],
+      stakeholders: ['john-doe', 'jane-smith'],
+      milestones: [
+        {
+          id: 'milestone-discovery',
+          name: 'Discovery & Planning',
+          description: 'User research, competitive analysis, and technical planning',
+          date: '2024-07-31',
+          baselineDate: '2024-07-31',
+          status: 'completed',
+          tasks: ['task-research', 'task-analysis'],
+          progress: 100
+        },
+        {
+          id: 'milestone-design',
+          name: 'Design Phase',
+          description: 'UI/UX design, prototyping, and stakeholder approval',
+          date: '2024-08-31',
+          baselineDate: '2024-08-31',
+          status: 'completed',
+          tasks: ['task-wireframes', 'task-prototypes'],
+          progress: 100
+        },
+        {
+          id: 'milestone-development',
+          name: 'Development Sprint 1',
+          description: 'Core components and checkout flow implementation',
+          date: '2024-09-30',
+          baselineDate: '2024-09-30',
+          status: 'in-progress',
+          tasks: ['task-components', 'task-checkout'],
+          progress: 60
+        },
+        {
+          id: 'milestone-testing',
+          name: 'Testing & Launch',
+          description: 'QA testing, performance optimization, and production deployment',
+          date: '2024-10-31',
+          baselineDate: '2024-10-31',
+          status: 'upcoming',
+          tasks: ['task-testing', 'task-deployment'],
+          progress: 0
+        }
+      ],
+      tasks: [
+        {
+          id: 'task-research',
+          name: 'User Research & Analytics Review',
+          description: 'Conduct user interviews and analyze current platform analytics to identify pain points',
+          startDate: '2024-07-01',
+          endDate: '2024-07-15',
+          baselineStartDate: '2024-07-01',
+          baselineEndDate: '2024-07-15',
+          progress: 100,
+          assignedResources: ['emily'],
+          assignedStakeholders: ['jane-smith'],
+          dependencies: [],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-discovery',
+          duration: 14,
+          hierarchyLevel: 0,
+          sortOrder: 100
+        },
+        {
+          id: 'task-analysis',
+          name: 'Technical Architecture Analysis',
+          description: 'Review current tech stack and plan migration strategy',
+          startDate: '2024-07-16',
+          endDate: '2024-07-31',
+          baselineStartDate: '2024-07-16',
+          baselineEndDate: '2024-07-31',
+          progress: 100,
+          assignedResources: ['michael', 'david'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-research'],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-discovery',
+          duration: 15,
+          hierarchyLevel: 0,
+          sortOrder: 200
+        },
+        {
+          id: 'task-wireframes',
+          name: 'Wireframe & User Flow Design',
+          description: 'Create detailed wireframes and user journey maps for new experience',
+          startDate: '2024-08-01',
+          endDate: '2024-08-15',
+          baselineStartDate: '2024-08-01',
+          baselineEndDate: '2024-08-15',
+          progress: 100,
+          assignedResources: ['emily'],
+          assignedStakeholders: ['jane-smith'],
+          dependencies: ['task-analysis'],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-design',
+          duration: 14,
+          hierarchyLevel: 0,
+          sortOrder: 300
+        },
+        {
+          id: 'task-prototypes',
+          name: 'Interactive Prototypes',
+          description: 'Build clickable prototypes for stakeholder review and user testing',
+          startDate: '2024-08-16',
+          endDate: '2024-08-31',
+          baselineStartDate: '2024-08-16',
+          baselineEndDate: '2024-08-31',
+          progress: 100,
+          assignedResources: ['emily', 'sarah'],
+          assignedStakeholders: ['jane-smith', 'john-doe'],
+          dependencies: ['task-wireframes'],
+          priority: 'High',
+          status: 'Completed',
+          milestoneId: 'milestone-design',
+          duration: 15,
+          hierarchyLevel: 0,
+          sortOrder: 400
+        },
+        {
+          id: 'task-components',
+          name: 'React Component Library',
+          description: 'Develop reusable React components based on approved designs',
+          startDate: '2024-09-01',
+          endDate: '2024-09-20',
+          baselineStartDate: '2024-09-01',
+          baselineEndDate: '2024-09-20',
+          progress: 75,
+          assignedResources: ['sarah', 'michael'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-prototypes'],
+          priority: 'High',
+          status: 'In Progress',
+          milestoneId: 'milestone-development',
+          duration: 19,
+          hierarchyLevel: 0,
+          sortOrder: 500
+        },
+        {
+          id: 'task-checkout',
+          name: 'Checkout Flow Implementation',
+          description: 'Build and integrate the new streamlined checkout process',
+          startDate: '2024-09-10',
+          endDate: '2024-09-30',
+          baselineStartDate: '2024-09-10',
+          baselineEndDate: '2024-09-30',
+          progress: 35,
+          assignedResources: ['michael'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-components'],
+          priority: 'High',
+          status: 'In Progress',
+          milestoneId: 'milestone-development',
+          duration: 20,
+          hierarchyLevel: 0,
+          sortOrder: 600
+        },
+        {
+          id: 'task-testing',
+          name: 'QA Testing & Bug Fixes',
+          description: 'Comprehensive testing across devices and browsers, performance optimization',
+          startDate: '2024-10-01',
+          endDate: '2024-10-20',
+          baselineStartDate: '2024-10-01',
+          baselineEndDate: '2024-10-20',
+          progress: 0,
+          assignedResources: ['sarah', 'emily'],
+          assignedStakeholders: ['jane-smith'],
+          dependencies: ['task-checkout'],
+          priority: 'High',
+          status: 'Not Started',
+          milestoneId: 'milestone-testing',
+          duration: 19,
+          hierarchyLevel: 0,
+          sortOrder: 700
+        },
+        {
+          id: 'task-deployment',
+          name: 'Production Deployment',
+          description: 'Deploy to production with monitoring and rollback capability',
+          startDate: '2024-10-21',
+          endDate: '2024-10-31',
+          baselineStartDate: '2024-10-21',
+          baselineEndDate: '2024-10-31',
+          progress: 0,
+          assignedResources: ['michael', 'david'],
+          assignedStakeholders: ['john-doe'],
+          dependencies: ['task-testing'],
+          priority: 'High',
+          status: 'Not Started',
+          milestoneId: 'milestone-testing',
+          duration: 10,
+          hierarchyLevel: 0,
+          sortOrder: 800
+        }
+      ]
+    };
+    
+    setAllProjects([realisticProject]);
+    
+    // Schedule reminders for active tasks
+    realisticProject.tasks.forEach(task => {
+      if (task.status !== 'Completed') {
+        scheduleTaskReminders(task, realisticProject);
+      }
+    });
+
+    console.log('[ProjectContext] Initialized with realistic project data');
+  };
+
+  const scheduleTaskReminders = (task: ProjectTask, project: ProjectData) => {
+    // Get resource info for email scheduling
+    const resource = { 
+      id: task.assignedResources[0] || 'unknown',
+      name: task.assignedResources[0] || 'Unknown',
+      email: `${task.assignedResources[0] || 'unknown'}@company.com`
+    };
+    
+    emailService.scheduleTaskReminders(
+      { ...task, deadline: task.endDate, dueDate: task.endDate },
+      resource,
+      project
+    );
+  };
+
+  const handleTaskCompletionEffects = (projectId: string, taskId: string, resourceId: string) => {
+    const project = allProjects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (project && task) {
+      performanceTracker.trackPositiveActivity(
+        resourceId,
+        'task_completion',
+        8,
+        `Completed task: ${task.name}`,
+        projectId,
+        taskId
+      );
+
+      notificationService.onTaskCompleted(
+        taskId,
+        task.name,
+        projectId,
+        project.name,
+        resourceId,
+        resourceId
+      );
+
+      const milestone = project.milestones.find(m => m.tasks.includes(taskId));
+      if (milestone) {
+        const milestoneComplete = milestone.tasks.every(tId => {
+          const t = project.tasks.find(task => task.id === tId);
+          return t?.status === 'Completed';
+        });
+
+        if (milestoneComplete && milestone.status !== 'completed') {
+          updateMilestone(projectId, milestone.id, { status: 'completed', progress: 100 });
+          notificationService.onProjectMilestone(milestone.id, milestone.name, projectId, project.name, true);
+        }
+      }
+    }
+  };
+
+  const handleDeadlineAlert = (projectId: string, taskId: string, daysRemaining: number) => {
+    const project = allProjects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (project && task) {
+      notificationService.onDeadlineApproaching(taskId, task.name, projectId, project.name, daysRemaining);
+    }
+  };
+
+  const getProject = (id: string): ProjectData | null => {
+    return projects.find(p => p.id === id) || null;
+  };
+
+  const setCurrentProject = (projectId: string) => {
+    const project = getProject(projectId);
+    setCurrentProjectState(project);
+  };
+
+  const addProject = async (projectData: Omit<ProjectData, 'id'>) => {
+    if (!currentWorkspace) throw new Error('No workspace selected');
+    
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: project, error } = await supabase
         .from('projects')
-        .insert([{
+        .insert({
           name: projectData.name,
           description: projectData.description,
-          status: projectData.status,
-          start_date: projectData.start_date,
-          end_date: projectData.end_date,
-          workspace_id: projectData.workspace_id,
-          stakeholder_ids: projectData.stakeholder_ids,
-          progress: projectData.progress || 0,
+          workspace_id: currentWorkspace.id,
           priority: projectData.priority || 'Medium',
-          team_size: projectData.team_size || 0,
-          budget: projectData.budget || '',
+          start_date: projectData.startDate,
+          end_date: projectData.endDate,
+          budget: projectData.budget,
           tags: projectData.tags || [],
           resources: projectData.resources || [],
-          health_status: projectData.health_status || 'green',
-          health_score: projectData.health_score || 100
-        }])
+          status: projectData.status || 'Planning',
+          progress: projectData.progress || 0,
+          health_status: projectData.health?.status || 'green',
+          health_score: projectData.health?.score || 100,
+          team_size: projectData.teamSize || 0,
+          stakeholder_ids: projectData.stakeholders || [],
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
         .select()
         .single();
 
       if (error) throw error;
-
-      const transformedProject: Project = {
-        ...data,
-        status: data.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-        stakeholder_ids: data.stakeholder_ids || [],
-        progress: data.progress || 0,
-        priority: data.priority || 'Medium',
-        team_size: data.team_size || 0,
-        budget: data.budget || '',
-        tags: data.tags || [],
-        resources: data.resources || [],
-        health_status: data.health_status || 'green',
-        health_score: data.health_score || 100
-      };
-
-      setProjects(prev => [...prev, transformedProject]);
-      toast.success('Project added successfully');
+      
+      await refreshProjects();
     } catch (error) {
       console.error('Error adding project:', error);
-      toast.error('Failed to add project');
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateProject = async (id: string, projectData: Partial<Project>) => {
+  const updateProject = async (id: string, updates: Partial<ProjectData>) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('projects')
-        .update(projectData)
-        .eq('id', id)
-        .select()
-        .single();
+        .update({
+          name: updates.name,
+          description: updates.description,
+          priority: updates.priority,
+          start_date: updates.startDate,
+          end_date: updates.endDate,
+          budget: updates.budget,
+          tags: updates.tags,
+          resources: updates.resources,
+          status: updates.status,
+          progress: updates.progress,
+          health_status: updates.health?.status,
+          health_score: updates.health?.score,
+          team_size: updates.teamSize,
+          stakeholder_ids: updates.stakeholders
+        })
+        .eq('id', id);
 
       if (error) throw error;
-
-      const transformedProject: Project = {
-        ...data,
-        status: data.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-        stakeholder_ids: data.stakeholder_ids || [],
-        progress: data.progress || 0,
-        priority: data.priority || 'Medium',
-        team_size: data.team_size || 0,
-        budget: data.budget || '',
-        tags: data.tags || [],
-        resources: data.resources || [],
-        health_status: data.health_status || 'green',
-        health_score: data.health_score || 100
-      };
-
-      setProjects(prev =>
-        prev.map(project => (project.id === id ? { ...project, ...transformedProject } : project))
-      );
-      toast.success('Project updated successfully');
+      
+      await refreshProjects();
+      eventBus.emit('project_updated', { projectId: id, updates }, 'ProjectContext');
     } catch (error) {
       console.error('Error updating project:', error);
-      toast.error('Failed to update project');
+      throw error;
     }
   };
 
-  const softDeleteProject = async (id: string) => {
+  const addTask = async (projectId: string, task: Omit<ProjectTask, 'id'>) => {
+    const newTask: ProjectTask = {
+      ...task,
+      id: `task-${Date.now()}`
+    };
+    
+    setAllProjects(prev => prev.map(p => 
+      p.id === projectId 
+        ? { ...p, tasks: [...p.tasks, newTask] }
+        : p
+    ));
+
+    // Schedule email reminders for new task
+    const project = getProject(projectId);
+    if (project) {
+      scheduleTaskReminders(newTask, project);
+    }
+
+    eventBus.emit('task_created', { taskId: newTask.id, projectId, task: newTask }, 'ProjectContext');
+  };
+
+  const updateTask = async (projectId: string, taskId: string, updates: Partial<ProjectTask>) => {
+    setAllProjects(prev => prev.map(p => 
+      p.id === projectId
+        ? {
+            ...p,
+            tasks: p.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
+          }
+        : p
+    ));
+
+    eventBus.emit('task_updated', { taskId, projectId, updates }, 'ProjectContext');
+  };
+
+  const deleteTask = async (projectId: string, taskId: string) => {
+    setAllProjects(prev => prev.map(p => 
+      p.id === projectId
+        ? {
+            ...p,
+            tasks: p.tasks.filter(t => t.id !== taskId)
+          }
+        : p
+    ));
+  };
+
+  const completeTask = async (projectId: string, taskId: string) => {
+    const project = allProjects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (task && task.assignedResources.length > 0) {
+      updateTask(projectId, taskId, { status: 'Completed', progress: 100 });
+      
+      // Emit completion event
+      eventBus.emit('task_completed', {
+        taskId,
+        projectId,
+        resourceId: task.assignedResources[0]
+      }, 'ProjectContext');
+    }
+  };
+
+  const assignTaskToResource = async (projectId: string, taskId: string, resourceId: string) => {
+    const project = allProjects.find(p => p.id === projectId);
+    const task = project?.tasks.find(t => t.id === taskId);
+    
+    if (project && task) {
+      updateTask(projectId, taskId, { 
+        assignedResources: [...task.assignedResources, resourceId] 
+      });
+
+      notificationService.onResourceAssigned(resourceId, resourceId, projectId, project.name, task.name);
+      
+      eventBus.emit('resource_assigned', {
+        resourceId,
+        taskId,
+        projectId
+      }, 'ProjectContext');
+    }
+  };
+
+  const addMilestone = async (projectId: string, milestone: Omit<ProjectMilestone, 'id'>) => {
     try {
       const { error } = await supabase
-        .from('projects')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .from('milestones')
+        .insert({
+          project_id: projectId,
+          name: milestone.name,
+          description: milestone.description,
+          due_date: milestone.date,
+          baseline_date: milestone.baselineDate,
+          status: milestone.status,
+          task_ids: milestone.tasks,
+          progress: milestone.progress || 0
+        });
 
       if (error) throw error;
-
-      setProjects(prev => prev.filter(project => project.id !== id));
-      toast.success('Project moved to archive');
+      await refreshProjects();
     } catch (error) {
-      console.error('Error deleting project:', error);
-      toast.error('Failed to archive project');
+      console.error('Error adding milestone:', error);
+      throw error;
     }
   };
 
-  const restoreProject = async (id: string) => {
+  const updateMilestone = async (projectId: string, milestoneId: string, updates: Partial<ProjectMilestone>) => {
     try {
       const { error } = await supabase
-        .from('projects')
-        .update({ deleted_at: null })
-        .eq('id', id);
+        .from('milestones')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          due_date: updates.date,
+          baseline_date: updates.baselineDate,
+          status: updates.status,
+          task_ids: updates.tasks,
+          progress: updates.progress
+        })
+        .eq('id', milestoneId);
 
       if (error) throw error;
-
-      await loadProjects(); // Refresh the list
-      toast.success('Project restored successfully');
+      
+      await refreshProjects();
+      eventBus.emit('milestone_reached', { milestoneId, projectId, updates }, 'ProjectContext');
     } catch (error) {
-      console.error('Error restoring project:', error);
-      toast.error('Failed to restore project');
+      console.error('Error updating milestone:', error);
+      throw error;
     }
   };
 
-  const deleteProject = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProjects(prev => prev.filter(project => project.id !== id));
-      toast.success('Project deleted successfully');
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      toast.error('Failed to delete project');
-    }
+  const rebaselineTasks = async (projectId: string, request: RebaselineRequest) => {
+    setAllProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      
+      const updatedTasks = p.tasks.map(task => {
+        if (task.id === request.taskId) {
+          return {
+            ...task,
+            startDate: request.newStartDate,
+            endDate: request.newEndDate
+          };
+        }
+        
+        // Update dependent tasks
+        if (request.affectedTasks.includes(task.id)) {
+          const daysDiff = new Date(request.newEndDate).getTime() - new Date(task.baselineEndDate).getTime();
+          const daysToAdd = Math.ceil(daysDiff / (1000 * 60 * 60 * 24));
+          
+          const newStartDate = new Date(task.startDate);
+          newStartDate.setDate(newStartDate.getDate() + daysToAdd);
+          
+          const newEndDate = new Date(task.endDate);
+          newEndDate.setDate(newEndDate.getDate() + daysToAdd);
+          
+          return {
+            ...task,
+            startDate: newStartDate.toISOString().split('T')[0],
+            endDate: newEndDate.toISOString().split('T')[0]
+          };
+        }
+        
+        return task;
+      });
+      
+      return { ...p, tasks: updatedTasks };
+    }));
   };
 
-  const checkProjectDependencies = async (id: string) => {
+  // Retry AI processing function
+  const retryAIProcessing = async (projectId: string) => {
     try {
-      const { data, error } = await supabase.rpc('check_project_dependencies', {
-        project_id_param: id
+      // Update status to processing
+      await supabase
+        .from('projects')
+        .update({ 
+          ai_processing_status: 'processing',
+          ai_processing_started_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+
+      // Trigger background AI processing
+      const { error } = await supabase.functions.invoke('process-project-ai', {
+        body: { projectId }
       });
 
       if (error) throw error;
-      return data || [];
+      
+      await refreshProjects();
     } catch (error) {
-      console.error('Error checking project dependencies:', error);
-      return [];
+      console.error('Error retrying AI processing:', error);
+      
+      // Update status to failed
+      await supabase
+        .from('projects')
+        .update({ 
+          ai_processing_status: 'failed',
+          ai_processing_completed_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+        
+      throw error;
     }
   };
 
-  const getProject = (id: string): Project | undefined => {
-    return projects.find(project => project.id === id);
-  };
-
-  useEffect(() => {
-    console.log('[ProjectContext] Component mounted, loading projects...');
-    loadProjects();
-  }, []);
-
-  const value: ProjectContextType = {
-    projects,
-    loading,
-    currentProject,
-    setCurrentProject: (projectId: string) => setCurrentProject(projectId),
-    addProject,
-    updateProject,
-    deleteProject: softDeleteProject,
-    softDeleteProject,
-    restoreProject,
-    getProject,
-    loadProjects,
-    checkProjectDependencies,
-  };
-
   return (
-    <ProjectContext.Provider value={value}>
+    <ProjectContext.Provider value={{
+      projects,
+      currentProject,
+      loading,
+      getProject,
+      addProject,
+      updateProject,
+      addTask,
+      updateTask,
+      deleteTask,
+      addMilestone,
+      updateMilestone,
+      rebaselineTasks,
+      setCurrentProject,
+      completeTask,
+      assignTaskToResource,
+      refreshProjects,
+      retryAIProcessing
+    }}>
       {children}
     </ProjectContext.Provider>
   );
