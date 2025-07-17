@@ -9,7 +9,14 @@ export interface Resource {
   email?: string;
   role?: string;
   department?: string;
+  phone?: string;
+  location?: string;
+  skills?: string[];
   availability?: number;
+  currentProjects?: string[];
+  hourlyRate?: string;
+  utilization?: number;
+  status?: string;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +28,7 @@ interface ResourceContextType {
   updateResource: (id: string, resourceData: Partial<Resource>) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   refreshResources: () => Promise<void>;
+  getResourcesByProject: (projectId: string) => Resource[];
 }
 
 const ResourceContext = createContext<ResourceContextType | undefined>(undefined);
@@ -47,7 +55,20 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       if (error) throw error;
 
-      setResources(data || []);
+      // Transform database data to match our interface with default values
+      const transformedResources: Resource[] = (data || []).map(resource => ({
+        ...resource,
+        phone: resource.phone || '',
+        location: resource.location || '',
+        skills: resource.skills || [],
+        currentProjects: resource.current_projects || [],
+        hourlyRate: resource.hourly_rate || '$0/hr',
+        utilization: resource.utilization || 0,
+        status: resource.status || 'Available',
+        availability: resource.availability || 100
+      }));
+
+      setResources(transformedResources);
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');
@@ -60,13 +81,31 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const { data, error } = await supabase
         .from('resources')
-        .insert([resourceData])
+        .insert([{
+          name: resourceData.name,
+          email: resourceData.email,
+          role: resourceData.role,
+          department: resourceData.department,
+          availability: resourceData.availability
+        }])
         .select()
         .single();
 
       if (error) throw error;
 
-      setResources(prev => [...prev, data]);
+      const transformedResource: Resource = {
+        ...data,
+        phone: '',
+        location: '',
+        skills: [],
+        currentProjects: [],
+        hourlyRate: '$0/hr',
+        utilization: 0,
+        status: 'Available',
+        availability: data.availability || 100
+      };
+
+      setResources(prev => [...prev, transformedResource]);
       toast.success('Resource added successfully');
     } catch (error) {
       console.error('Error adding resource:', error);
@@ -79,15 +118,33 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const { data, error } = await supabase
         .from('resources')
-        .update(resourceData)
+        .update({
+          name: resourceData.name,
+          email: resourceData.email,
+          role: resourceData.role,
+          department: resourceData.department,
+          availability: resourceData.availability
+        })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
 
+      const transformedResource: Resource = {
+        ...data,
+        phone: resourceData.phone || '',
+        location: resourceData.location || '',
+        skills: resourceData.skills || [],
+        currentProjects: resourceData.currentProjects || [],
+        hourlyRate: resourceData.hourlyRate || '$0/hr',
+        utilization: resourceData.utilization || 0,
+        status: resourceData.status || 'Available',
+        availability: data.availability || 100
+      };
+
       setResources(prev => prev.map(resource => 
-        resource.id === id ? { ...resource, ...data } : resource
+        resource.id === id ? { ...resource, ...transformedResource } : resource
       ));
       toast.success('Resource updated successfully');
     } catch (error) {
@@ -113,6 +170,12 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
       toast.error('Failed to delete resource');
       throw error;
     }
+  };
+
+  const getResourcesByProject = (projectId: string): Resource[] => {
+    return resources.filter(resource => 
+      resource.currentProjects?.includes(projectId)
+    );
   };
 
   useEffect(() => {
@@ -145,7 +208,8 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
     addResource,
     updateResource,
     deleteResource,
-    refreshResources: loadResources
+    refreshResources: loadResources,
+    getResourcesByProject
   };
 
   return (

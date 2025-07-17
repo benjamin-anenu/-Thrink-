@@ -34,7 +34,7 @@ const ProjectDisplay = () => {
 
   // Filter projects by current workspace
   const workspaceProjects = projects.filter(project => 
-    !currentWorkspace || project.workspaceId === currentWorkspace.id
+    !currentWorkspace || project.workspace_id === currentWorkspace.id
   );
 
   // Load tasks for all projects
@@ -79,10 +79,10 @@ const ProjectDisplay = () => {
 
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
-      case 'Completed': return 'default';
-      case 'In Progress': return 'outline';
-      case 'On Hold': return 'secondary';
-      case 'Cancelled': return 'destructive';
+      case 'completed': return 'default';
+      case 'active': return 'outline';
+      case 'on_hold': return 'secondary';
+      case 'cancelled': return 'destructive';
       default: return 'default';
     }
   };
@@ -122,15 +122,15 @@ const ProjectDisplay = () => {
           name: project.name,
           description: project.description,
           status: project.status,
-          priority: project.priority,
-          progress: project.progress,
-          start_date: project.startDate,
-          end_date: project.endDate,
-          budget: project.budget,
-          health_status: project.healthStatus || project.health?.status,
-          health_score: project.healthScore || project.health?.score,
-          team_size: project.teamSize,
-          workspace_id: project.workspaceId
+          priority: 'Medium', // Default priority
+          progress: 0, // Default progress
+          start_date: project.start_date,
+          end_date: project.end_date,
+          budget: '0', // Default budget
+          health_status: 'green', // Default health
+          health_score: 100, // Default health score
+          team_size: 0, // Default team size
+          workspace_id: project.workspace_id
         },
         projectTasks[project.id] || [],
         [], // team members will be loaded in modal
@@ -149,9 +149,9 @@ const ProjectDisplay = () => {
         description: project.description || '',
         status: 'Planning',
         priority: 'Medium',
-        progress: project.progress || 0,
-        startDate: project.startDate || new Date().toISOString().split('T')[0],
-        endDate: project.endDate || new Date().toISOString().split('T')[0],
+        progress: 0,
+        startDate: project.start_date || new Date().toISOString().split('T')[0],
+        endDate: project.end_date || new Date().toISOString().split('T')[0],
         budget: 0,
         spent: 0,
         team: [],
@@ -197,8 +197,8 @@ const ProjectDisplay = () => {
                       <Badge variant={getStatusVariant(project.status)}>
                         {project.status}
                       </Badge>
-                      <Badge variant="outline" className={getPriorityColor(project.priority)}>
-                        {project.priority}
+                      <Badge variant="outline" className="text-yellow-600">
+                        Medium
                       </Badge>
                     </div>
                   </div>
@@ -226,7 +226,7 @@ const ProjectDisplay = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-blue-500" />
-                    <span>{project.teamSize || 0} Members</span>
+                    <span>0 Members</span>
                   </div>
                   {stats.overdueTasks > 0 && (
                     <div className="flex items-center gap-2 col-span-2">
@@ -240,20 +240,17 @@ const ProjectDisplay = () => {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span>
-                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'} - 
-                    {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                    {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'Not set'} - 
+                    {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Not set'}
                   </span>
                 </div>
 
                 {/* Health Indicator */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      project.health?.status === 'green' ? 'bg-green-500' :
-                      project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
-                    }`} />
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
                     <span className="text-sm text-muted-foreground">
-                      Health: {project.health?.score || 100}%
+                      Health: 100%
                     </span>
                   </div>
                 </div>

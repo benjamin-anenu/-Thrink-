@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -44,7 +45,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   const loadProjects = async () => {
     try {
@@ -57,7 +57,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
 
-      setProjects(data || []);
+      // Transform the data to match our interface
+      const transformedProjects: Project[] = (data || []).map(project => ({
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        status: project.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
+        start_date: project.start_date,
+        end_date: project.end_date,
+        created_at: project.created_at,
+        updated_at: project.updated_at,
+        workspace_id: project.workspace_id,
+        stakeholder_ids: project.stakeholder_ids || [],
+        deleted_at: project.deleted_at
+      }));
+
+      setProjects(transformedProjects);
     } catch (error) {
       console.error('Error loading projects:', error);
       toast.error('Failed to load projects');
@@ -76,7 +91,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
 
-      setProjects(prev => [...prev, data]);
+      const transformedProject: Project = {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        status: data.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
+        start_date: data.start_date,
+        end_date: data.end_date,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        workspace_id: data.workspace_id,
+        stakeholder_ids: data.stakeholder_ids || [],
+        deleted_at: data.deleted_at
+      };
+
+      setProjects(prev => [...prev, transformedProject]);
       toast.success('Project added successfully');
     } catch (error) {
       console.error('Error adding project:', error);
@@ -95,8 +124,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
 
+      const transformedProject: Project = {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        status: data.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
+        start_date: data.start_date,
+        end_date: data.end_date,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        workspace_id: data.workspace_id,
+        stakeholder_ids: data.stakeholder_ids || [],
+        deleted_at: data.deleted_at
+      };
+
       setProjects(prev =>
-        prev.map(project => (project.id === id ? { ...project, ...data } : project))
+        prev.map(project => (project.id === id ? { ...project, ...transformedProject } : project))
       );
       toast.success('Project updated successfully');
     } catch (error) {

@@ -1,120 +1,78 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MetricCard } from '@/components/ui/metric-card';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
-import { useStakeholders } from '@/contexts/StakeholderContext';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { Users, ListChecks, BarChart3, PieChart as LucidePieChart } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Clock } from 'lucide-react';
 
 const AnalyticsMetrics = () => {
   const { projects } = useProject();
   const { resources } = useResources();
-  const { stakeholders } = useStakeholders();
 
-  // Calculate metrics
+  // Calculate project metrics
+  const activeProjects = projects.filter(p => p.status === 'active').length;
+  const completedProjects = projects.filter(p => p.status === 'completed').length;
   const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'In Progress' || p.status === 'Planning').length;
-  const completedProjects = projects.filter(p => p.status === 'Completed').length;
-  const totalResources = resources.length;
-  const totalStakeholders = stakeholders.length;
 
-  // Calculate resource utilization safely
+  // Calculate resource metrics with safe defaults
   const avgUtilization = resources.length > 0 
     ? Math.round(resources.reduce((acc, r) => acc + (r.utilization || 0), 0) / resources.length)
     : 0;
 
-  // Calculate workspace distribution safely
-  const workspaceDistribution = resources.reduce((acc: Record<string, number>, resource) => {
-    const workspaceId = resource.workspaceId || 'Unknown';
-    acc[workspaceId] = (acc[workspaceId] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Prepare data for the pie chart
-  const workspaceData = Object.entries(workspaceDistribution).map(([name, value], index) => ({
-    name,
-    value,
-    color: `hsl(${index * 60}, 70%, 50%)` // Generate distinct colors
-  }));
+  // Calculate workspace metrics
+  const totalWorkspaces = 1; // Simplified for now
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <MetricCard
-        title="Total Projects"
-        value={totalProjects}
-        icon={ListChecks}
-        description="Number of projects in the workspace"
-      />
-      <MetricCard
-        title="Active Projects"
-        value={activeProjects}
-        icon={BarChart3}
-        description="Projects currently in progress"
-      />
-      <MetricCard
-        title="Completed Projects"
-        value={completedProjects}
-        icon={ListChecks}
-        description="Projects successfully completed"
-      />
-      <MetricCard
-        title="Total Resources"
-        value={totalResources}
-        icon={Users}
-        description="Number of resources available"
-      />
-      <MetricCard
-        title="Total Stakeholders"
-        value={totalStakeholders}
-        icon={Users}
-        description="Number of stakeholders involved"
-      />
-      <MetricCard
-        title="Avg. Resource Utilization"
-        value={`${avgUtilization}%`}
-        icon={BarChart3}
-        description="Average utilization of resources"
-      />
-
-      {/* Workspace Distribution Chart */}
-      <Card className="bg-card border-border col-span-2">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LucidePieChart className="h-5 w-5" />
-            Workspace Distribution
-          </CardTitle>
-          <CardDescription>
-            Distribution of resources across workspaces
-          </CardDescription>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+          <Calendar className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={workspaceData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                innerRadius={30}
-                label
-              >
-                {workspaceData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px'
-                }}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="text-2xl font-bold">{totalProjects}</div>
+          <p className="text-xs text-muted-foreground">
+            {activeProjects} active, {completedProjects} completed
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Resources</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{resources.length}</div>
+          <p className="text-xs text-muted-foreground">
+            Across all workspaces
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Avg Utilization</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{avgUtilization}%</div>
+          <p className="text-xs text-muted-foreground">
+            Resource utilization rate
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Workspaces</CardTitle>
+          <Clock className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{totalWorkspaces}</div>
+          <p className="text-xs text-muted-foreground">
+            Active workspaces
+          </p>
         </CardContent>
       </Card>
     </div>
