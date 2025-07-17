@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
@@ -127,6 +126,8 @@ export const TaskStatusCell: React.FC<TaskStatusCellProps> = ({
   onUpdateTask, 
   densityClass = 'py-3 px-4' 
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  
   const statusOptions = [
     { value: 'Not Started', label: 'Not Started' },
     { value: 'In Progress', label: 'In Progress' },
@@ -145,21 +146,34 @@ export const TaskStatusCell: React.FC<TaskStatusCellProps> = ({
     }
   };
 
+  if (isEditing) {
+    return (
+      <TableCell className={`table-cell ${densityClass}`}>
+        <InlineSelectEdit
+          value={task.status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled'}
+          options={statusOptions}
+          onSave={(value) => {
+            onUpdateTask(task.id, { status: value });
+            setIsEditing(false);
+          }}
+        />
+      </TableCell>
+    );
+  }
+
   return (
     <TableCell className={`table-cell ${densityClass}`}>
-      <InlineSelectEdit
-        value={task.status}
-        options={statusOptions}
-        onSave={(value) => onUpdateTask(task.id, { status: value })}
-        renderValue={(value) => (
-          <Badge 
-            variant="outline" 
-            className={`${getStatusColor(value)} text-xs px-2 py-1`}
-          >
-            {value}
-          </Badge>
-        )}
-      />
+      <div 
+        className="cursor-pointer"
+        onClick={() => setIsEditing(true)}
+      >
+        <Badge 
+          variant="outline" 
+          className={`${getStatusColor(task.status)} text-xs px-2 py-1`}
+        >
+          {task.status}
+        </Badge>
+      </div>
     </TableCell>
   );
 };
@@ -176,6 +190,8 @@ export const TaskPriorityCell: React.FC<TaskPriorityCellProps> = ({
   onUpdateTask, 
   densityClass = 'py-3 px-4' 
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  
   const priorityOptions = [
     { value: 'Low', label: 'Low' },
     { value: 'Medium', label: 'Medium' },
@@ -192,21 +208,34 @@ export const TaskPriorityCell: React.FC<TaskPriorityCellProps> = ({
     }
   };
 
+  if (isEditing) {
+    return (
+      <TableCell className={`table-cell ${densityClass}`}>
+        <InlineSelectEdit
+          value={task.priority as 'Low' | 'Medium' | 'High' | 'Critical'}
+          options={priorityOptions}
+          onSave={(value) => {
+            onUpdateTask(task.id, { priority: value });
+            setIsEditing(false);
+          }}
+        />
+      </TableCell>
+    );
+  }
+
   return (
     <TableCell className={`table-cell ${densityClass}`}>
-      <InlineSelectEdit
-        value={task.priority}
-        options={priorityOptions}
-        onSave={(value) => onUpdateTask(task.id, { priority: value })}
-        renderValue={(value) => (
-          <Badge 
-            variant="outline" 
-            className={`${getPriorityColor(value)} text-xs px-2 py-1`}
-          >
-            {value}
-          </Badge>
-        )}
-      />
+      <div 
+        className="cursor-pointer"
+        onClick={() => setIsEditing(true)}
+      >
+        <Badge 
+          variant="outline" 
+          className={`${getPriorityColor(task.priority)} text-xs px-2 py-1`}
+        >
+          {task.priority}
+        </Badge>
+      </div>
     </TableCell>
   );
 };
@@ -233,7 +262,7 @@ export const TaskResourcesCell: React.FC<TaskResourcesCellProps> = ({
   return (
     <TableCell className={`table-cell ${densityClass}`}>
       <InlineMultiSelectEdit
-        values={task.assignedResources}
+        values={task.assignedResources || []}
         options={resourceOptions}
         onSave={(values) => onUpdateTask(task.id, { assignedResources: values })}
         renderValues={(values) => (
@@ -372,7 +401,7 @@ export const TaskDependenciesCell: React.FC<TaskDependenciesCellProps> = ({
   return (
     <TableCell className={`table-cell ${densityClass}`}>
       <InlineMultiSelectEdit
-        values={task.dependencies}
+        values={task.dependencies || []}
         options={dependencyOptions}
         onSave={(values) => onUpdateTask(task.id, { dependencies: values })}
         renderValues={(values) => (
@@ -409,27 +438,47 @@ export const TaskMilestoneCell: React.FC<TaskMilestoneCellProps> = ({
   onUpdateTask, 
   densityClass = 'py-3 px-4' 
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  
   const milestoneOptions = [
     { value: '', label: 'No Milestone' },
     ...milestones.map(m => ({ value: m.id, label: m.name }))
   ];
 
+  if (isEditing) {
+    return (
+      <TableCell className={`table-cell ${densityClass}`}>
+        <InlineSelectEdit
+          value={task.milestoneId || ''}
+          options={milestoneOptions}
+          onSave={(value) => {
+            onUpdateTask(task.id, { milestoneId: value || undefined });
+            setIsEditing(false);
+          }}
+        />
+      </TableCell>
+    );
+  }
+
   return (
     <TableCell className={`table-cell ${densityClass}`}>
-      <InlineSelectEdit
-        value={task.milestoneId || ''}
-        options={milestoneOptions}
-        onSave={(value) => onUpdateTask(task.id, { milestoneId: value || undefined })}
-        renderValue={(value) => {
-          if (!value) return <span className="text-muted-foreground text-sm">None</span>;
-          const milestone = milestones.find(m => m.id === value);
-          return milestone ? (
-            <Badge variant="outline" className="text-xs px-2 py-1">
-              {milestone.name}
-            </Badge>
-          ) : <span className="text-muted-foreground text-sm">None</span>;
-        }}
-      />
+      <div 
+        className="cursor-pointer"
+        onClick={() => setIsEditing(true)}
+      >
+        {task.milestoneId ? (
+          (() => {
+            const milestone = milestones.find(m => m.id === task.milestoneId);
+            return milestone ? (
+              <Badge variant="outline" className="text-xs px-2 py-1">
+                {milestone.name}
+              </Badge>
+            ) : <span className="text-muted-foreground text-sm">None</span>;
+          })()
+        ) : (
+          <span className="text-muted-foreground text-sm">None</span>
+        )}
+      </div>
     </TableCell>
   );
 };
@@ -445,6 +494,10 @@ export const TaskVarianceCell: React.FC<TaskVarianceCellProps> = ({
   densityClass = 'py-3 px-4' 
 }) => {
   const calculateVariance = () => {
+    if (!task.baselineStartDate || !task.baselineEndDate) {
+      return { text: 'No baseline', color: 'text-gray-600' };
+    }
+    
     const startVariance = new Date(task.startDate).getTime() - new Date(task.baselineStartDate).getTime();
     const endVariance = new Date(task.endDate).getTime() - new Date(task.baselineEndDate).getTime();
     const startDays = Math.round(startVariance / (1000 * 60 * 60 * 24));
