@@ -39,6 +39,39 @@ export interface DatabaseMilestone {
   updated_at: string;
 }
 
+// Helper function to validate and convert UUID
+const validateUUID = (value: string | null | undefined): string | null => {
+  if (!value || value === '' || value === 'undefined' || value === 'null') {
+    return null;
+  }
+  
+  // UUID regex pattern
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  
+  if (uuidPattern.test(value)) {
+    return value;
+  }
+  
+  // If not a valid UUID, return null
+  console.warn(`Invalid UUID format: ${value}`);
+  return null;
+};
+
+// Helper function to validate project ID
+const validateProjectId = (projectId: string): string => {
+  if (!projectId || projectId === '') {
+    throw new Error('Project ID is required');
+  }
+  
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  
+  if (!uuidPattern.test(projectId)) {
+    throw new Error(`Invalid project ID format: ${projectId}`);
+  }
+  
+  return projectId;
+};
+
 export const useTaskManagement = (projectId: string) => {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
@@ -189,9 +222,24 @@ export const useTaskManagement = (projectId: string) => {
   // Create task with proper UUID handling and baseline initialization
   const createTask = async (taskData: Omit<ProjectTask, 'id'>) => {
     try {
+      // Validate and format project ID
+      const validatedProjectId = validateProjectId(projectId);
+      
+      // Validate and convert milestone ID
+      const validatedMilestoneId = validateUUID(taskData.milestoneId);
+      
+      // Validate assigned resources and stakeholders arrays
+      const validatedAssignedResources = Array.isArray(taskData.assignedResources) 
+        ? taskData.assignedResources.filter(id => validateUUID(id) !== null)
+        : [];
+        
+      const validatedAssignedStakeholders = Array.isArray(taskData.assignedStakeholders)
+        ? taskData.assignedStakeholders.filter(id => validateUUID(id) !== null)
+        : [];
+
       // Ensure proper UUID formatting and null handling
       const dbTaskData = {
-        project_id: projectId,
+        project_id: validatedProjectId,
         name: taskData.name,
         description: taskData.description,
         start_date: taskData.startDate,
@@ -201,13 +249,15 @@ export const useTaskManagement = (projectId: string) => {
         status: taskData.status,
         priority: taskData.priority,
         // Handle milestoneId properly - convert empty string to null for UUID field
-        milestone_id: taskData.milestoneId && taskData.milestoneId !== '' ? taskData.milestoneId : null,
-        duration: taskData.duration,
+        milestone_id: validatedMilestoneId,
+        duration: typeof taskData.duration === 'number' ? taskData.duration : 1,
         progress: taskData.progress,
         dependencies: taskData.dependencies,
-        assigned_resources: taskData.assignedResources,
-        assigned_stakeholders: taskData.assignedStakeholders
+        assigned_resources: validatedAssignedResources,
+        assigned_stakeholders: validatedAssignedStakeholders
       };
+
+      console.log('Creating task with data:', dbTaskData);
 
       const { data, error } = await supabase
         .from('project_tasks')
@@ -215,14 +265,25 @@ export const useTaskManagement = (projectId: string) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error creating task:', error);
+        throw error;
+      }
 
       const newTask = transformTask(data);
       setTasks(prev => [...prev, newTask]);
       return newTask;
     } catch (error) {
       console.error('Error creating task:', error);
-      toast.error('Failed to create task');
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid project ID') || error.message.includes('uuid')) {
+          toast.error('Invalid project or milestone ID format');
+        } else {
+          toast.error(`Failed to create task: ${error.message}`);
+        }
+      } else {
+        toast.error('Failed to create task');
+      }
       throw error;
     }
   };
@@ -230,6 +291,12 @@ export const useTaskManagement = (projectId: string) => {
   // Enhanced update task with dependency date adjustment
   const updateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
     try {
+      // Validate task ID
+      const validatedTaskId = validateUUID(taskId);
+      if (!validatedTaskId) {
+        throw new Error('Invalid task ID format');
+      }
+
       // Validate and adjust dependencies
       const adjustedUpdates = await validateAndAdjustDependencies(taskId, updates);
 
@@ -241,7 +308,9 @@ export const useTaskManagement = (projectId: string) => {
       if (adjustedUpdates.endDate) dbUpdates.end_date = adjustedUpdates.endDate;
       if (adjustedUpdates.status) dbUpdates.status = adjustedUpdates.status;
       if (adjustedUpdates.priority) dbUpdates.priority = adjustedUpdates.priority;
-      if (adjustedUpdates.milestoneId !== undefined) dbUpdates.milestone_id = adjustedUpdates.milestoneId;
+      if (adjustedUpdates.milestoneId !== undefined) {
+        dbUpdates.milestone_id = validateUUID(adjustedUpdates.milestoneId);
+      }
       if (adjustedUpdates.duration) dbUpdates.duration = adjustedUpdates.duration;
       if (adjustedUpdates.progress !== undefined) dbUpdates.progress = adjustedUpdates.progress;
       if (adjustedUpdates.dependencies) {
@@ -249,13 +318,21 @@ export const useTaskManagement = (projectId: string) => {
         await validateDependencies(taskId, adjustedUpdates.dependencies);
         dbUpdates.dependencies = adjustedUpdates.dependencies;
       }
-      if (adjustedUpdates.assignedResources) dbUpdates.assigned_resources = adjustedUpdates.assignedResources;
-      if (adjustedUpdates.assignedStakeholders) dbUpdates.assigned_stakeholders = adjustedUpdates.assignedStakeholders;
+      if (adjustedUpdates.assignedResources) {
+        // Validate assigned resources UUIDs
+        const validatedResources = adjustedUpdates.assignedResources.filter(id => validateUUID(id) !== null);
+        dbUpdates.assigned_resources = validatedResources;
+      }
+      if (adjustedUpdates.assignedStakeholders) {
+        // Validate assigned stakeholders UUIDs
+        const validatedStakeholders = adjustedUpdates.assignedStakeholders.filter(id => validateUUID(id) !== null);
+        dbUpdates.assigned_stakeholders = validatedStakeholders;
+      }
 
       const { data, error } = await supabase
         .from('project_tasks')
         .update(dbUpdates)
-        .eq('id', taskId)
+        .eq('id', validatedTaskId)
         .select()
         .single();
 
@@ -264,9 +341,9 @@ export const useTaskManagement = (projectId: string) => {
       const updatedTask = transformTask(data);
       setTasks(prev => prev.map(task => task.id === taskId ? updatedTask : task));
       
-      // Handle resource assignments
+      // Handle resource assignments with validated UUIDs
       if (adjustedUpdates.assignedResources) {
-        await updateResourceAssignments(taskId, adjustedUpdates.assignedResources);
+        await updateResourceAssignments(validatedTaskId, adjustedUpdates.assignedResources.filter(id => validateUUID(id) !== null));
       }
 
       // If dates were automatically adjusted, show notification
@@ -279,6 +356,8 @@ export const useTaskManagement = (projectId: string) => {
       console.error('Error updating task:', error);
       if (error instanceof Error && error.message.includes('Circular dependency')) {
         toast.error('Cannot create circular dependency between tasks');
+      } else if (error instanceof Error && error.message.includes('Invalid')) {
+        toast.error(`Invalid data format: ${error.message}`);
       } else {
         toast.error('Failed to update task');
       }
