@@ -12,9 +12,9 @@ export const useAIDashboardData = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Calculate real metrics
-  const activeProjects = projects.filter(p => p.status === 'In Progress' || p.status === 'Planning');
-  const completedProjects = projects.filter(p => p.status === 'Completed');
+  // Calculate real metrics using correct status values
+  const activeProjects = projects.filter(p => p.status === 'active');
+  const completedProjects = projects.filter(p => p.status === 'completed');
   const totalProjects = projects.length;
   
   // Safe arithmetic operations with proper type checking
@@ -38,7 +38,7 @@ export const useAIDashboardData = () => {
       ? Math.round(activeProjects.reduce((acc, p) => acc + calculateProgress(p), 0) / activeProjects.length)
       : 100,
     riskScore: Math.max(0, Math.min(100, 
-      (projects.filter(p => calculateProgress(p) < 50 && (p.status === 'In Progress' || p.status === 'Planning')).length / Math.max(1, totalProjects)) * 100
+      (projects.filter(p => calculateProgress(p) < 50 && p.status === 'active').length / Math.max(1, totalProjects)) * 100
     ))
   };
 

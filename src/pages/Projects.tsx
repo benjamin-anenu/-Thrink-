@@ -35,7 +35,7 @@ const Projects = () => {
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (project.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getPriorityColor = (priority: string) => {
@@ -50,24 +50,23 @@ const Projects = () => {
   const handleProjectCreated = (projectData: any) => {
     console.log('Creating new project:', projectData);
     
-    // Transform wizard data to ProjectData format
+    // Transform wizard data to Project format
     const newProject = {
       name: projectData.name || 'New Project',
       description: projectData.description || '',
-      status: 'Planning' as const,
-      priority: 'Medium' as const,
+      status: 'active' as const,
+      start_date: projectData.resources?.timeline?.start || new Date().toISOString().split('T')[0],
+      end_date: projectData.resources?.timeline?.end || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      workspace_id: currentWorkspace?.id || '',
+      stakeholder_ids: projectData.stakeholders?.map((s: any) => s.id) || [],
       progress: 0,
-      health: { status: 'green' as const, score: 100 },
-      startDate: projectData.resources?.timeline?.start || new Date().toISOString().split('T')[0],
-      endDate: projectData.resources?.timeline?.end || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      teamSize: projectData.resources?.teamMembers?.length || 1,
+      priority: 'Medium',
+      team_size: projectData.resources?.teamMembers?.length || 1,
       budget: projectData.resources?.budget || '$0',
       tags: projectData.tags || ['New'],
-      workspaceId: currentWorkspace?.id || 'ws-1',
       resources: projectData.resources?.teamMembers?.map((m: any) => m.id) || [],
-      stakeholders: projectData.stakeholders?.map((s: any) => s.id) || [],
-      milestones: projectData.milestones || [],
-      tasks: []
+      health_status: 'green',
+      health_score: 100
     };
 
     addProject(newProject);
@@ -195,12 +194,12 @@ const Projects = () => {
                         <CardDescription className="line-clamp-2">{project.description}</CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
-                          {project.priority}
+                        <Badge variant="outline" className={`${getPriorityColor(project.priority || 'Medium')} text-white`}>
+                          {project.priority || 'Medium'}
                         </Badge>
                         <HealthIndicator 
-                          health={project.health.status} 
-                          score={project.health.score}
+                          health={project.health_status || 'green'} 
+                          score={project.health_score || 100}
                         />
                       </div>
                     </div>
@@ -210,9 +209,9 @@ const Projects = () => {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Progress</span>
-                        <span>{project.progress}%</span>
+                        <span>{project.progress || 0}%</span>
                       </div>
-                      <Progress value={project.progress} className="h-2" />
+                      <Progress value={project.progress || 0} className="h-2" />
                     </div>
 
                     {/* Project Details */}
@@ -222,7 +221,7 @@ const Projects = () => {
                         <div>
                           <p className="font-medium">Timeline</p>
                           <p className="text-muted-foreground text-xs">
-                            {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                            {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
@@ -231,7 +230,7 @@ const Projects = () => {
                         <Users className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium">Team</p>
-                          <p className="text-muted-foreground text-xs">{project.teamSize} members</p>
+                          <p className="text-muted-foreground text-xs">{project.team_size || 0} members</p>
                         </div>
                       </div>
                       
@@ -239,7 +238,7 @@ const Projects = () => {
                         <Target className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium">Budget</p>
-                          <p className="text-muted-foreground text-xs">{project.budget}</p>
+                          <p className="text-muted-foreground text-xs">{project.budget || '$0'}</p>
                         </div>
                       </div>
                       
@@ -250,7 +249,7 @@ const Projects = () => {
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-2">
-                      {project.tags.map((tag, index) => (
+                      {(project.tags || []).map((tag, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
                           {tag}
                         </Badge>
@@ -328,22 +327,22 @@ const Projects = () => {
                           <Badge variant="secondary">{project.status}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
-                            {project.priority}
+                          <Badge variant="outline" className={`${getPriorityColor(project.priority || 'Medium')} text-white`}>
+                            {project.priority || 'Medium'}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Progress value={project.progress} className="h-2 w-16" />
-                            <span className="text-sm">{project.progress}%</span>
+                            <Progress value={project.progress || 0} className="h-2 w-16" />
+                            <span className="text-sm">{project.progress || 0}%</span>
                           </div>
                         </TableCell>
-                        <TableCell>{project.teamSize}</TableCell>
-                        <TableCell>{project.budget}</TableCell>
+                        <TableCell>{project.team_size || 0}</TableCell>
+                        <TableCell>{project.budget || '$0'}</TableCell>
                         <TableCell>
                           <HealthIndicator 
-                            health={project.health.status} 
-                            score={project.health.score}
+                            health={project.health_status || 'green'} 
+                            score={project.health_score || 100}
                           />
                         </TableCell>
                         <TableCell>

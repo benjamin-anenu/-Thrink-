@@ -1,10 +1,33 @@
 
-import React from 'react';
-import { useProject } from '@/contexts/ProjectContext';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, CheckCircle, AlertCircle, Target, Edit } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar, CheckCircle, Clock, AlertTriangle, Plus } from 'lucide-react';
+import { useProject } from '@/contexts/ProjectContext';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Task {
+  id: string;
+  name: string;
+  status: string;
+  start_date?: string;
+  end_date?: string;
+  progress?: number;
+  assignee_id?: string;
+  priority?: string;
+}
+
+interface Milestone {
+  id: string;
+  name: string;
+  due_date?: string;
+  status?: string;
+  progress?: number;
+  description?: string;
+}
 
 interface ProjectTimelineProps {
   projectId: string;
@@ -12,78 +35,129 @@ interface ProjectTimelineProps {
 
 const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   const { getProject } = useProject();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const project = getProject(projectId);
 
-  if (!project) return <div>Project not found</div>;
+  useEffect(() => {
+    loadProjectData();
+  }, [projectId]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'in-progress':
-        return <Clock className="h-5 w-5 text-blue-500" />;
-      case 'upcoming':
-        return <Target className="h-5 w-5 text-gray-400" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+  const loadProjectData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load tasks
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('start_date');
+
+      if (tasksError) throw tasksError;
+
+      // Load milestones
+      const { data: milestonesData, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('due_date');
+
+      if (milestonesError) throw milestonesError;
+
+      setTasks(tasksData || []);
+      setMilestones(milestonesData || []);
+    } catch (error) {
+      console.error('Error loading project timeline data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'in-progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'upcoming':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-red-100 text-red-800';
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'bg-green-500';
+      case 'in progress': return 'bg-blue-500';
+      case 'pending': return 'bg-yellow-500';
+      case 'overdue': return 'bg-red-500';
+      default: return 'bg-gray-500';
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'in-progress':
-        return 'In Progress';
-      case 'upcoming':
-        return 'Upcoming';
-      default:
-        return 'Delayed';
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case 'high': return 'text-red-600';
+      case 'medium': return 'text-yellow-600';
+      case 'low': return 'text-green-600';
+      default: return 'text-gray-600';
     }
   };
 
-  const getMilestoneTasks = (milestoneId: string) => {
-    return project.tasks.filter(task => task.milestoneId === milestoneId);
-  };
+  // Timeline view data
+  const timelineItems = [
+    ...tasks.map(task => ({
+      id: task.id,
+      name: task.name,
+      type: 'task' as const,
+      date: task.start_date || '',
+      endDate: task.end_date,
+      status: task.status,
+      progress: task.progress || 0,
+      priority: task.priority
+    })),
+    ...milestones.map(milestone => ({
+      id: milestone.id,
+      name: milestone.name,
+      type: 'milestone' as const,
+      date: milestone.due_date || '',
+      status: milestone.status || 'Upcoming',
+      progress: milestone.progress || 0
+    }))
+  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const calculateMilestoneProgress = (milestoneId: string) => {
-    const tasks = getMilestoneTasks(milestoneId);
-    if (tasks.length === 0) return 0;
-    return Math.round(tasks.reduce((acc, task) => acc + task.progress, 0) / tasks.length);
-  };
+  // Calculate project timeline metrics
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+  const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
+  const overdueTasks = tasks.filter(t => {
+    if (!t.end_date) return false;
+    return new Date(t.end_date) < new Date() && t.status !== 'Completed';
+  }).length;
 
-  // Calculate milestone statistics
-  const milestoneStats = {
-    completed: project.milestones.filter(m => m.status === 'completed').length,
-    inProgress: project.milestones.filter(m => m.status === 'in-progress').length,
-    upcoming: project.milestones.filter(m => m.status === 'upcoming').length,
-    total: project.milestones.length
-  };
+  const totalMilestones = milestones.length;
+  const completedMilestones = milestones.filter(m => m.status === 'Completed').length;
+  const upcomingMilestones = milestones.filter(m => {
+    if (!m.due_date) return false;
+    const dueDate = new Date(m.due_date);
+    const today = new Date();
+    const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilDue <= 7 && daysUntilDue >= 0 && m.status !== 'Completed';
+  }).length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-2">Loading timeline...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Timeline Overview */}
+      {/* Timeline Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <CheckCircle className="h-8 w-8 text-green-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="font-semibold">{milestoneStats.completed}</p>
+                <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                <p className="font-semibold">{completedTasks}/{totalTasks}</p>
               </div>
             </div>
           </CardContent>
@@ -95,7 +169,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <Clock className="h-8 w-8 text-blue-500" />
               <div>
                 <p className="text-sm text-muted-foreground">In Progress</p>
-                <p className="font-semibold">{milestoneStats.inProgress}</p>
+                <p className="font-semibold">{inProgressTasks}</p>
               </div>
             </div>
           </CardContent>
@@ -104,10 +178,10 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Target className="h-8 w-8 text-gray-500" />
+              <AlertTriangle className="h-8 w-8 text-red-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Upcoming</p>
-                <p className="font-semibold">{milestoneStats.upcoming}</p>
+                <p className="text-sm text-muted-foreground">Overdue</p>
+                <p className="font-semibold">{overdueTasks}</p>
               </div>
             </div>
           </CardContent>
@@ -118,196 +192,197 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
             <div className="flex items-center gap-3">
               <Calendar className="h-8 w-8 text-purple-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Milestones</p>
-                <p className="font-semibold">{milestoneStats.total}</p>
+                <p className="text-sm text-muted-foreground">Milestones</p>
+                <p className="font-semibold">{completedMilestones}/{totalMilestones}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Project Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-8 top-0 bottom-0 w-px bg-border"></div>
-            
-            <div className="space-y-8">
-              {project.milestones.map((milestone, index) => {
-                const milestoneTasks = getMilestoneTasks(milestone.id);
-                const actualProgress = calculateMilestoneProgress(milestone.id);
-                const completedTasks = milestoneTasks.filter(t => t.status === 'Completed').length;
-                const isDelayed = new Date(milestone.date) > new Date(milestone.baselineDate);
+      {/* Timeline Tabs */}
+      <Tabs defaultValue="timeline" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="timeline">Timeline View</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="milestones">Milestones</TabsTrigger>
+        </TabsList>
 
-                return (
-                  <div key={milestone.id} className="relative flex items-start gap-6">
-                    {/* Timeline dot */}
-                    <div className="relative z-10 flex items-center justify-center w-16 h-16 bg-background border-2 border-border rounded-full">
-                      {getStatusIcon(milestone.status)}
-                    </div>
+        <TabsContent value="timeline">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Project Timeline</CardTitle>
+                <Button size="sm" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {timelineItems.length > 0 ? (
+                  <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
                     
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <Card className={`border-l-4 ${milestone.status === 'completed' ? 'border-l-green-500' : milestone.status === 'in-progress' ? 'border-l-blue-500' : 'border-l-gray-400'}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h3 className="font-semibold text-lg">{milestone.name}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                Due: {new Date(milestone.date).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                                {isDelayed && (
-                                  <span className="text-orange-600">
-                                    (Originally: {new Date(milestone.baselineDate).toLocaleDateString()})
-                                  </span>
-                                )}
-                              </p>
-                            </div>
+                    {timelineItems.map((item, index) => (
+                      <div key={item.id} className="relative flex items-start gap-4 pb-6">
+                        {/* Timeline dot */}
+                        <div className={`relative z-10 w-3 h-3 rounded-full ${getStatusColor(item.status)} border-2 border-background`}></div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant={item.type === 'milestone' ? 'default' : 'secondary'}>
+                              {item.type}
+                            </Badge>
+                            {item.type === 'task' && item.priority && (
+                              <span className={`text-xs font-medium ${getPriorityColor(item.priority)}`}>
+                                {item.priority} Priority
+                              </span>
+                            )}
+                          </div>
+                          
+                          <h4 className="font-medium mb-1">{item.name}</h4>
+                          
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                            <span>{new Date(item.date).toLocaleDateString()}</span>
+                            {item.endDate && (
+                              <span>- {new Date(item.endDate).toLocaleDateString()}</span>
+                            )}
+                            <Badge variant="outline" className={getStatusColor(item.status)}>
+                              {item.status}
+                            </Badge>
+                          </div>
+                          
+                          {item.progress > 0 && (
                             <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className={getStatusColor(milestone.status)}>
-                                {getStatusText(milestone.status)}
-                              </Badge>
-                              {isDelayed && (
-                                <Badge variant="outline" className="bg-orange-100 text-orange-800">
-                                  Delayed
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {milestone.description}
-                          </p>
-                          
-                          <div className="flex items-center justify-between text-sm mb-3">
-                            <div className="flex items-center gap-4">
-                              <span className="text-muted-foreground">
-                                Tasks: {completedTasks}/{milestoneTasks.length}
-                              </span>
-                              <div className="w-24 bg-muted rounded-full h-2">
-                                <div 
-                                  className="bg-blue-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${actualProgress}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-muted-foreground">
-                                {actualProgress}%
-                              </span>
-                            </div>
-                            
-                            {milestone.status === 'completed' && (
-                              <span className="text-green-600 text-xs font-medium">
-                                ✓ Completed
-                              </span>
-                            )}
-                            
-                            {milestone.status === 'in-progress' && (
-                              <span className="text-blue-600 text-xs font-medium">
-                                🔄 In progress
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Milestone Tasks */}
-                          {milestoneTasks.length > 0 && (
-                            <div className="space-y-2">
-                              <h4 className="text-sm font-medium text-muted-foreground">Associated Tasks:</h4>
-                              <div className="grid grid-cols-1 gap-2">
-                                {milestoneTasks.map((task) => (
-                                  <div key={task.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-2 h-2 rounded-full ${
-                                        task.status === 'Completed' ? 'bg-green-500' :
-                                        task.status === 'In Progress' ? 'bg-blue-500' :
-                                        task.status === 'On Hold' ? 'bg-yellow-500' : 'bg-gray-400'
-                                      }`} />
-                                      <span className="text-sm font-medium">{task.name}</span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {task.progress}%
-                                      </Badge>
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {new Date(task.startDate).toLocaleDateString()} - {new Date(task.endDate).toLocaleDateString()}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                              <Progress value={item.progress} className="flex-1 max-w-xs" />
+                              <span className="text-sm text-muted-foreground">{item.progress}%</span>
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Critical Path Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Critical Path Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Critical tasks and milestones that directly impact the project timeline
-            </p>
-            <div className="grid grid-cols-1 gap-4">
-              {project.tasks
-                .filter(task => {
-                  const isDelayed = new Date(task.endDate) > new Date(task.baselineEndDate);
-                  const hasDependents = project.tasks.some(t => t.dependencies.includes(task.id));
-                  return isDelayed || hasDependents || task.priority === 'High';
-                })
-                .slice(0, 4)
-                .map((task) => {
-                  const isDelayed = new Date(task.endDate) > new Date(task.baselineEndDate);
-                  return (
-                    <div key={task.id} className="p-4 border border-border rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        {isDelayed ? (
-                          <AlertCircle className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        )}
-                        <span className="font-medium">{task.name}</span>
-                        <Badge variant="outline" className={`text-xs ${
-                          task.priority === 'High' ? 'bg-red-100 text-red-800' : 
-                          task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {task.priority}
-                        </Badge>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {isDelayed 
-                          ? `Delay risk: High - Behind baseline by ${Math.ceil((new Date(task.endDate).getTime() - new Date(task.baselineEndDate).getTime()) / (24 * 60 * 60 * 1000))} days`
-                          : task.status === 'Completed' 
-                            ? 'On track - Completed successfully'
-                            : `Progress: ${task.progress}% - ${task.status}`
-                        }
-                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No timeline items found for this project</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tasks">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Project Tasks</CardTitle>
+                <Button size="sm" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Task
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {tasks.length > 0 ? tasks.map((task) => (
+                  <div key={task.id} className="border border-border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">{task.name}</h4>
+                      <Badge variant="outline" className={getStatusColor(task.status)}>
+                        {task.status}
+                      </Badge>
                     </div>
-                  );
-                })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
+                      <div>
+                        <span className="font-medium">Start:</span> {task.start_date ? new Date(task.start_date).toLocaleDateString() : 'Not set'}
+                      </div>
+                      <div>
+                        <span className="font-medium">End:</span> {task.end_date ? new Date(task.end_date).toLocaleDateString() : 'Not set'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Priority:</span> {task.priority || 'Normal'}
+                      </div>
+                    </div>
+
+                    {task.progress !== undefined && task.progress > 0 && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2">
+                          <Progress value={task.progress} className="flex-1" />
+                          <span className="text-sm text-muted-foreground">{task.progress}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No tasks found for this project</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="milestones">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Project Milestones</CardTitle>
+                <Button size="sm" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Milestone
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {milestones.length > 0 ? milestones.map((milestone) => (
+                  <div key={milestone.id} className="border border-border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">{milestone.name}</h4>
+                      <Badge variant="outline" className={getStatusColor(milestone.status || 'Upcoming')}>
+                        {milestone.status || 'Upcoming'}
+                      </Badge>
+                    </div>
+                    
+                    {milestone.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{milestone.description}</p>
+                    )}
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div>
+                        <span className="font-medium">Due Date:</span> {milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'Not set'}
+                      </div>
+                    </div>
+
+                    {milestone.progress !== undefined && milestone.progress > 0 && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2">
+                          <Progress value={milestone.progress} className="flex-1" />
+                          <span className="text-sm text-muted-foreground">{milestone.progress}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No milestones found for this project</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

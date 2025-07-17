@@ -85,8 +85,7 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
           name: resourceData.name,
           email: resourceData.email,
           role: resourceData.role,
-          department: resourceData.department,
-          availability: resourceData.availability
+          department: resourceData.department
         }])
         .select()
         .single();
@@ -102,7 +101,7 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
         hourlyRate: '$0/hr',
         utilization: 0,
         status: 'Available',
-        availability: data.availability || 100
+        availability: 100
       };
 
       setResources(prev => [...prev, transformedResource]);
@@ -122,8 +121,7 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
           name: resourceData.name,
           email: resourceData.email,
           role: resourceData.role,
-          department: resourceData.department,
-          availability: resourceData.availability
+          department: resourceData.department
         })
         .eq('id', id)
         .select()
@@ -140,7 +138,7 @@ export const ResourceProvider: React.FC<{ children: ReactNode }> = ({ children }
         hourlyRate: resourceData.hourlyRate || '$0/hr',
         utilization: resourceData.utilization || 0,
         status: resourceData.status || 'Available',
-        availability: data.availability || 100
+        availability: 100
       };
 
       setResources(prev => prev.map(resource => 

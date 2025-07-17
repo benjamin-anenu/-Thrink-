@@ -15,6 +15,15 @@ export interface Project {
   workspace_id: string;
   stakeholder_ids: string[];
   deleted_at: string | null;
+  // Additional UI properties
+  progress?: number;
+  priority?: string;
+  team_size?: number;
+  budget?: string;
+  tags?: string[];
+  resources?: string[];
+  health_status?: string;
+  health_score?: number;
 }
 
 interface ProjectContextType {
@@ -29,6 +38,7 @@ interface ProjectContextType {
   restoreProject: (id: string) => Promise<void>;
   getProject: (id: string) => Project | undefined;
   loadProjects: () => Promise<void>;
+  checkProjectDependencies: (id: string) => Promise<any[]>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -57,19 +67,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
 
-      // Transform the data to match our interface
+      // Transform the database data to match our interface
       const transformedProjects: Project[] = (data || []).map(project => ({
-        id: project.id,
-        name: project.name,
-        description: project.description,
+        ...project,
         status: project.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-        start_date: project.start_date,
-        end_date: project.end_date,
-        created_at: project.created_at,
-        updated_at: project.updated_at,
-        workspace_id: project.workspace_id,
         stakeholder_ids: project.stakeholder_ids || [],
-        deleted_at: project.deleted_at
+        progress: project.progress || 0,
+        priority: project.priority || 'Medium',
+        team_size: project.team_size || 0,
+        budget: project.budget || '',
+        tags: project.tags || [],
+        resources: project.resources || [],
+        health_status: project.health_status || 'green',
+        health_score: project.health_score || 100
       }));
 
       setProjects(transformedProjects);
@@ -85,24 +95,40 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const { data, error } = await supabase
         .from('projects')
-        .insert([projectData])
+        .insert([{
+          name: projectData.name,
+          description: projectData.description,
+          status: projectData.status,
+          start_date: projectData.start_date,
+          end_date: projectData.end_date,
+          workspace_id: projectData.workspace_id,
+          stakeholder_ids: projectData.stakeholder_ids,
+          progress: projectData.progress || 0,
+          priority: projectData.priority || 'Medium',
+          team_size: projectData.team_size || 0,
+          budget: projectData.budget || '',
+          tags: projectData.tags || [],
+          resources: projectData.resources || [],
+          health_status: projectData.health_status || 'green',
+          health_score: projectData.health_score || 100
+        }])
         .select()
         .single();
 
       if (error) throw error;
 
       const transformedProject: Project = {
-        id: data.id,
-        name: data.name,
-        description: data.description,
+        ...data,
         status: data.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-        start_date: data.start_date,
-        end_date: data.end_date,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        workspace_id: data.workspace_id,
         stakeholder_ids: data.stakeholder_ids || [],
-        deleted_at: data.deleted_at
+        progress: data.progress || 0,
+        priority: data.priority || 'Medium',
+        team_size: data.team_size || 0,
+        budget: data.budget || '',
+        tags: data.tags || [],
+        resources: data.resources || [],
+        health_status: data.health_status || 'green',
+        health_score: data.health_score || 100
       };
 
       setProjects(prev => [...prev, transformedProject]);
@@ -125,17 +151,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
 
       const transformedProject: Project = {
-        id: data.id,
-        name: data.name,
-        description: data.description,
+        ...data,
         status: data.status as 'active' | 'completed' | 'on_hold' | 'cancelled',
-        start_date: data.start_date,
-        end_date: data.end_date,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        workspace_id: data.workspace_id,
         stakeholder_ids: data.stakeholder_ids || [],
-        deleted_at: data.deleted_at
+        progress: data.progress || 0,
+        priority: data.priority || 'Medium',
+        team_size: data.team_size || 0,
+        budget: data.budget || '',
+        tags: data.tags || [],
+        resources: data.resources || [],
+        health_status: data.health_status || 'green',
+        health_score: data.health_score || 100
       };
 
       setProjects(prev =>
@@ -157,9 +183,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
 
-      setProjects(prev => prev.map(project =>
-        project.id === id ? { ...project, deleted_at: new Date().toISOString() } : project
-      ));
+      setProjects(prev => prev.filter(project => project.id !== id));
       toast.success('Project moved to archive');
     } catch (error) {
       console.error('Error deleting project:', error);
@@ -176,9 +200,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
 
-      setProjects(prev => prev.map(project =>
-        project.id === id ? { ...project, deleted_at: null } : project
-      ));
+      await loadProjects(); // Refresh the list
       toast.success('Project restored successfully');
     } catch (error) {
       console.error('Error restoring project:', error);
@@ -203,6 +225,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const checkProjectDependencies = async (id: string) => {
+    try {
+      const { data, error } = await supabase.rpc('check_project_dependencies', {
+        project_id_param: id
+      });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error checking project dependencies:', error);
+      return [];
+    }
+  };
+
   const getProject = (id: string): Project | undefined => {
     return projects.find(project => project.id === id);
   };
@@ -223,6 +259,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     restoreProject,
     getProject,
     loadProjects,
+    checkProjectDependencies,
   };
 
   return (
