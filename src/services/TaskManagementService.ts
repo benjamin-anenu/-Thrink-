@@ -12,6 +12,10 @@ export interface TaskCreationData {
   startDate: string;
   endDate: string;
   dependencies: string[];
+  // New hierarchy fields
+  parentTaskId?: string;
+  hierarchyLevel?: number;
+  sortOrder?: number;
 }
 
 export class TaskManagementService {
@@ -184,6 +188,189 @@ export class TaskManagementService {
       // This would require updating the milestones table to include task_ids array
     } catch (error) {
       console.error('Error linking tasks to milestone:', error);
+      throw error;
+    }
+  }
+
+  // New hierarchy-related methods
+  static async moveTaskToParent(
+    taskId: string, 
+    newParentId: string | null, 
+    newSortOrder?: number
+  ): Promise<void> {
+    try {
+      // Calculate new hierarchy level
+      let newHierarchyLevel = 0;
+      if (newParentId) {
+        const { data: parentTask, error: parentError } = await supabase
+          .from('project_tasks')
+          .select('hierarchy_level')
+          .eq('id', newParentId)
+          .single();
+
+        if (parentError) throw parentError;
+        newHierarchyLevel = (parentTask?.hierarchy_level || 0) + 1;
+      }
+
+      // Get current sort order if not provided
+      let finalSortOrder = newSortOrder;
+      if (finalSortOrder === undefined) {
+        const { data: siblings, error: siblingsError } = await supabase
+          .from('project_tasks')
+          .select('sort_order')
+          .eq('parent_task_id', newParentId || null)
+          .order('sort_order', { ascending: false })
+          .limit(1);
+
+        if (siblingsError) throw siblingsError;
+        finalSortOrder = siblings.length > 0 ? siblings[0].sort_order + 100 : 100;
+      }
+
+      // Update the task
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({
+          parent_task_id: newParentId,
+          hierarchy_level: newHierarchyLevel,
+          sort_order: finalSortOrder
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      // Update all descendants' hierarchy levels
+      await this.updateDescendantHierarchyLevels(taskId, newHierarchyLevel);
+    } catch (error) {
+      console.error('Error moving task to parent:', error);
+      throw error;
+    }
+  }
+
+  static async promoteTask(taskId: string): Promise<void> {
+    try {
+      // Get current task
+      const { data: task, error: taskError } = await supabase
+        .from('project_tasks')
+        .select('parent_task_id, hierarchy_level, project_id')
+        .eq('id', taskId)
+        .single();
+
+      if (taskError) throw taskError;
+      if (!task?.parent_task_id) {
+        throw new Error('Task is already at root level');
+      }
+
+      // Get parent's parent (grandparent)
+      const { data: parentTask, error: parentError } = await supabase
+        .from('project_tasks')
+        .select('parent_task_id, sort_order')
+        .eq('id', task.parent_task_id)
+        .single();
+
+      if (parentError) throw parentError;
+
+      // Move task to same level as its current parent
+      await this.moveTaskToParent(taskId, parentTask?.parent_task_id || null);
+    } catch (error) {
+      console.error('Error promoting task:', error);
+      throw error;
+    }
+  }
+
+  static async demoteTask(taskId: string, newParentId?: string): Promise<void> {
+    try {
+      if (!newParentId) {
+        // Find previous sibling to make it the parent
+        const { data: task, error: taskError } = await supabase
+          .from('project_tasks')
+          .select('parent_task_id, sort_order, project_id')
+          .eq('id', taskId)
+          .single();
+
+        if (taskError) throw taskError;
+
+        // Get siblings with lower sort order
+        const { data: previousSiblings, error: siblingsError } = await supabase
+          .from('project_tasks')
+          .select('id, sort_order')
+          .eq('parent_task_id', task?.parent_task_id || null)
+          .eq('project_id', task?.project_id)
+          .lt('sort_order', task?.sort_order || 0)
+          .order('sort_order', { ascending: false })
+          .limit(1);
+
+        if (siblingsError) throw siblingsError;
+        if (previousSiblings.length === 0) {
+          throw new Error('No previous sibling found to demote under');
+        }
+
+        newParentId = previousSiblings[0].id;
+      }
+
+      await this.moveTaskToParent(taskId, newParentId);
+    } catch (error) {
+      console.error('Error demoting task:', error);
+      throw error;
+    }
+  }
+
+  static async reorderTasks(taskIds: string[], parentId: string | null): Promise<void> {
+    try {
+      // Update sort order for each task
+      const updates = taskIds.map((taskId, index) => 
+        supabase
+          .from('project_tasks')
+          .update({ sort_order: (index + 1) * 100 })
+          .eq('id', taskId)
+      );
+
+      await Promise.all(updates);
+    } catch (error) {
+      console.error('Error reordering tasks:', error);
+      throw error;
+    }
+  }
+
+  static async getTaskHierarchy(projectId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_task_hierarchy', { p_project_id: projectId });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting task hierarchy:', error);
+      throw error;
+    }
+  }
+
+  private static async updateDescendantHierarchyLevels(
+    parentTaskId: string, 
+    parentHierarchyLevel: number
+  ): Promise<void> {
+    try {
+      // Get all descendants
+      const { data: descendants, error } = await supabase
+        .from('project_tasks')
+        .select('id, hierarchy_level')
+        .eq('parent_task_id', parentTaskId);
+
+      if (error) throw error;
+
+      // Update each descendant
+      for (const descendant of descendants || []) {
+        const newLevel = parentHierarchyLevel + 1;
+        
+        await supabase
+          .from('project_tasks')
+          .update({ hierarchy_level: newLevel })
+          .eq('id', descendant.id);
+
+        // Recursively update their children
+        await this.updateDescendantHierarchyLevels(descendant.id, newLevel);
+      }
+    } catch (error) {
+      console.error('Error updating descendant hierarchy levels:', error);
       throw error;
     }
   }
