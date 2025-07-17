@@ -20,7 +20,7 @@ const Stakeholders = () => {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeeholder] = useState<any>(undefined);
+  const [editingStakeholder, setEditingStakeholder] = useState<any>(undefined);
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

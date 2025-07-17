@@ -78,16 +78,6 @@ const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
           </div>
         </div>
         
-        {stakeholder.escalation_level && (
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Escalation Level</span>
-            <div className="flex items-center space-x-1">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
-              <span className="text-sm">Level {stakeholder.escalation_level}</span>
-            </div>
-          </div>
-        )}
-        
         <div className="pt-2">
           <span className="text-sm text-muted-foreground">Projects ({(stakeholder.projects || []).length})</span>
           <div className="flex flex-wrap gap-1 mt-1">
