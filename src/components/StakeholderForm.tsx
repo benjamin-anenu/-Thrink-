@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
+import { useProjects } from '@/hooks/useProjects';
+import { useDepartments } from '@/hooks/useDepartments';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface Stakeholder {
   id?: string;
@@ -48,6 +52,10 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
   });
 
   const [newProject, setNewProject] = useState('');
+
+  const { currentWorkspace } = useWorkspace();
+  const { projects } = useProjects();
+  const { departments } = useDepartments();
 
   useEffect(() => {
     if (stakeholder) {
@@ -124,11 +132,19 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
+              <Select
                 value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              />
+                onValueChange={value => setFormData({ ...formData, department: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(dept => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
@@ -225,17 +241,68 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
 
           <div className="space-y-2">
             <Label>Associated Projects</Label>
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Enter project name"
-                value={newProject}
-                onChange={(e) => setNewProject(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addProject())}
-              />
-              <Button type="button" onClick={addProject}>Add</Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.projects.map((project, index) => (
+            {projects.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-10 px-3 py-2 text-base rounded-md border border-input bg-background text-foreground justify-between font-normal"
+                  >
+                    {formData.projects.length > 0
+                      ? `${formData.projects.length} project(s) selected`
+                      : 'Select projects'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={4}
+                  className="w-full min-w-[200px] max-w-full max-h-60 overflow-y-auto p-0 border border-input rounded-md bg-background text-foreground shadow-md z-50"
+                  style={{ minWidth: '100%' }}
+                >
+                  {Array.from(new Set(projects.map(p => p.name))).length === 0 ? (
+                    <div className="px-4 py-2 text-muted-foreground text-sm">No projects available</div>
+                  ) : (
+                    Array.from(new Set(projects.map(p => p.name))).map((projectName, idx) => (
+                      <DropdownMenuCheckboxItem
+                        key={projectName + idx}
+                        checked={formData.projects.includes(projectName)}
+                        onCheckedChange={checked => {
+                          if (checked) {
+                            if (!formData.projects.includes(projectName)) {
+                              setFormData({
+                                ...formData,
+                                projects: [...formData.projects, projectName]
+                              });
+                            }
+                          } else {
+                            setFormData({
+                              ...formData,
+                              projects: formData.projects.filter(p => p !== projectName)
+                            });
+                          }
+                        }}
+                        className="text-base px-3 py-2 flex items-center gap-2"
+                      >
+                        <span className="ml-6">{projectName}</span>
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Enter project name"
+                  value={newProject}
+                  onChange={(e) => setNewProject(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addProject())}
+                />
+                <Button type="button" onClick={addProject}>Add</Button>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+              {(formData.projects ?? []).map((project, index) => (
                 <Badge key={index} variant="secondary" className="flex items-center space-x-1">
                   <span>{project}</span>
                   <X className="h-3 w-3 cursor-pointer" onClick={() => removeProject(project)} />
