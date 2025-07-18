@@ -9,6 +9,7 @@ import ResourceOverview from '@/components/ResourceOverview';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import { useResources } from '@/hooks/useResources';
+import { Resource as ContextResource } from '@/contexts/ResourceContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
@@ -18,7 +19,7 @@ const Resources = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceDetailsModal, setShowResourceDetailsModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState<{ id: string; name: string } | null>(null);
-  const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<any>(null);
+  const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<ContextResource | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
   const { resources, createResource } = useResources();
@@ -34,7 +35,7 @@ const Resources = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleViewDetails = (resource: any) => {
+  const handleViewDetails = (resource: ContextResource) => {
     setSelectedResourceForDetails(resource);
     setShowResourceDetailsModal(true);
   };
@@ -44,15 +45,26 @@ const Resources = () => {
     handleAssignTask(resourceId, resourceName);
   };
 
-  // Map resources to match the expected interface
-  const mappedResources = resources.map(resource => ({
-    ...resource,
-    department: resource.department || '',
-    phone: '',
-    location: '',
+  // Convert database resources to context resources format
+  const mappedResources: ContextResource[] = resources.map(resource => ({
+    id: resource.id,
+    name: resource.name,
+    role: resource.role || '',
+    department: '', // Database doesn't have department, so default to empty
+    email: resource.email || '',
+    phone: '', // Database doesn't have phone, so default to empty
+    location: '', // Database doesn't have location, so default to empty
+    skills: resource.skills || [],
+    availability: typeof resource.availability === 'string' ? 100 : resource.availability || 100,
     currentProjects: [],
-    completedProjects: 0,
-    satisfaction: 85,
+    hourlyRate: '$0/hr', // Default hourly rate
+    utilization: 0, // Default utilization
+    status: resource.status === 'active' ? 'Available' : 
+            resource.status === 'pending' ? 'Busy' : 'Overallocated',
+    workspaceId: resource.workspace_id || '',
+    createdAt: resource.created_at,
+    updatedAt: resource.updated_at,
+    lastActive: resource.updated_at
   }));
 
   return (
