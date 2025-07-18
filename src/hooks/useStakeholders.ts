@@ -45,15 +45,16 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const createStakeholder = async (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const dbData: any = {
-        ...stakeholder,
+      // Only send fields that exist in the database
+      const dbData = {
+        name: stakeholder.name,
+        email: stakeholder.email,
+        role: stakeholder.role,
+        workspace_id: stakeholder.workspace_id,
         influence_level: stakeholder.influence,
-        // Remove interface-only fields that don't exist in DB
+        // Only include these fields if they exist in the form data
+        ...(stakeholder.notes && { notes: stakeholder.notes }),
       };
-      delete dbData.influence;
-      delete dbData.interest;
-      delete dbData.status;
-      delete dbData.notes;
       
       const { data, error } = await supabase
         .from('stakeholders')
@@ -81,15 +82,14 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
     try {
-      const dbUpdates: any = { ...updates };
-      if (updates.influence) {
-        dbUpdates.influence_level = updates.influence; // Map influence to influence_level for database
-        delete dbUpdates.influence;
-      }
-      // Remove interface-only fields
-      delete dbUpdates.interest;
-      delete dbUpdates.status;
-      delete dbUpdates.notes;
+      // Only send fields that exist in the database
+      const dbUpdates: any = {};
+      
+      if (updates.name) dbUpdates.name = updates.name;
+      if (updates.email) dbUpdates.email = updates.email;
+      if (updates.role) dbUpdates.role = updates.role;
+      if (updates.influence) dbUpdates.influence_level = updates.influence;
+      if (updates.notes) dbUpdates.notes = updates.notes;
       
       const { error } = await supabase
         .from('stakeholders')
