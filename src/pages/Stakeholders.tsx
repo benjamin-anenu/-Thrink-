@@ -25,10 +25,10 @@ const Stakeholders = () => {
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (stakeholder as any).department?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = filterDepartment === 'all' || (stakeholder as any).department === filterDepartment;
-    const matchesInfluence = filterInfluence === 'all' || (stakeholder.influence?.toLowerCase?.() ?? '') === filterInfluence;
+                         stakeholder.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         stakeholder.organization?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = filterDepartment === 'all' || stakeholder.organization === filterDepartment;
+    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence?.toLowerCase() === filterInfluence;
     return matchesSearch && matchesDepartment && matchesInfluence;
   });
 
@@ -54,7 +54,7 @@ const Stakeholders = () => {
     }
   };
 
-  const departments = [...new Set(stakeholders.map(s => (s as any).department))];
+  const departments = [...new Set(stakeholders.map(s => s.organization).filter(Boolean))];
 
   if (loading) {
     return (
@@ -136,6 +136,7 @@ const Stakeholders = () => {
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -163,7 +164,7 @@ const Stakeholders = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">High Influence</p>
-                      <p className="text-2xl font-bold">{stakeholders.filter(s => s.influence === 'High').length}</p>
+                      <p className="text-2xl font-bold">{stakeholders.filter(s => s.influence === 'high').length}</p>
                     </div>
                     <AlertTriangle className="h-8 w-8 text-red-500" />
                   </div>
@@ -173,7 +174,7 @@ const Stakeholders = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Departments</p>
+                      <p className="text-sm font-medium text-muted-foreground">Organizations</p>
                       <p className="text-2xl font-bold">{departments.length}</p>
                     </div>
                     <Badge className="h-8 w-8 rounded-full" />
@@ -184,8 +185,8 @@ const Stakeholders = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
-                      <p className="text-2xl font-bold">{[...new Set(stakeholders.flatMap(s => s.projects))].length}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Active Status</p>
+                      <p className="text-2xl font-bold">{stakeholders.filter(s => s.status === 'active').length}</p>
                     </div>
                     <MessageSquare className="h-8 w-8 text-green-500" />
                   </div>
@@ -239,33 +240,33 @@ const Stakeholders = () => {
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'Email').length}
+                          {stakeholders.filter(s => s.email).length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Prefer Email</div>
+                        <div className="text-sm text-muted-foreground">Email Available</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'Slack').length}
+                          {stakeholders.filter(s => s.role).length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Prefer Slack</div>
+                        <div className="text-sm text-muted-foreground">Role Defined</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'In-person').length}
+                          {stakeholders.filter(s => s.organization).length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Prefer In-person</div>
+                        <div className="text-sm text-muted-foreground">Organization Set</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.communicationPreference === 'Phone').length}
+                          {stakeholders.filter(s => s.escalation_level).length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Prefer Phone</div>
+                        <div className="text-sm text-muted-foreground">Escalation Level</div>
                       </CardContent>
                     </Card>
                   </div>

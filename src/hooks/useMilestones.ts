@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,9 +17,16 @@ export const useMilestones = (projectId?: string) => {
       if (projectId) {
         query = query.eq('project_id', projectId);
       }
-      const { data, error } = await query.order('date');
+      const { data, error } = await query.order('due_date');
       if (error) throw error;
-      setMilestones(data || []);
+      
+      // Map database fields to interface fields
+      const mappedData = (data || []).map(item => ({
+        ...item,
+        date: item.due_date, // Map due_date to date
+      }));
+      
+      setMilestones(mappedData);
     } catch (error) {
       console.error('Error loading milestones:', error);
       toast.error('Failed to load milestones');
@@ -31,12 +39,22 @@ export const useMilestones = (projectId?: string) => {
     try {
       const { data, error } = await supabase
         .from('milestones')
-        .insert([{ ...milestone }])
+        .insert([{ 
+          ...milestone,
+          due_date: milestone.date, // Map date to due_date for database
+        }])
         .select();
       if (error) throw error;
       toast.success('Milestone created');
       loadMilestones();
-      return data?.[0] as Milestone;
+      
+      // Map response back to interface
+      const mappedResult = data?.[0] ? {
+        ...data[0],
+        date: data[0].due_date,
+      } : null;
+      
+      return mappedResult as Milestone;
     } catch (error) {
       console.error('Error creating milestone:', error);
       toast.error('Failed to create milestone');
@@ -46,9 +64,15 @@ export const useMilestones = (projectId?: string) => {
 
   const updateMilestone = async (id: string, updates: Partial<Milestone>) => {
     try {
+      const dbUpdates = { ...updates };
+      if (updates.date) {
+        dbUpdates.due_date = updates.date;
+        delete dbUpdates.date;
+      }
+      
       const { error } = await supabase
         .from('milestones')
-        .update({ ...updates })
+        .update(dbUpdates)
         .eq('id', id);
       if (error) throw error;
       toast.success('Milestone updated');
@@ -107,4 +131,4 @@ export const useMilestones = (projectId?: string) => {
     updateMilestone,
     deleteMilestone
   };
-}; 
+};

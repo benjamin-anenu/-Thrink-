@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -12,13 +13,24 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
       setLoading(true);
       let query = supabase
         .from('workspace_members')
-        .select('*');
+        .select(`
+          *,
+          profiles!inner(email, full_name)
+        `);
       if (workspaceId) {
         query = query.eq('workspace_id', workspaceId);
       }
       const { data, error } = await query.order('joined_at');
       if (error) throw error;
-      setMembers(data || []);
+      
+      // Map database fields to interface fields
+      const mappedData = (data || []).map(item => ({
+        ...item,
+        email: item.profiles?.email || '',
+        name: item.profiles?.full_name || 'Unknown User',
+      }));
+      
+      setMembers(mappedData);
     } catch (error) {
       console.error('Error loading workspace members:', error);
       toast.error('Failed to load workspace members');
@@ -32,11 +44,21 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
       const { data, error } = await supabase
         .from('workspace_members')
         .insert([{ ...member }])
-        .select();
+        .select(`
+          *,
+          profiles!inner(email, full_name)
+        `);
       if (error) throw error;
       toast.success('Workspace member added');
       loadMembers();
-      return data?.[0] as WorkspaceMember;
+      
+      const mappedResult = data?.[0] ? {
+        ...data[0],
+        email: data[0].profiles?.email || '',
+        name: data[0].profiles?.full_name || 'Unknown User',
+      } : null;
+      
+      return mappedResult as WorkspaceMember;
     } catch (error) {
       console.error('Error adding workspace member:', error);
       toast.error('Failed to add workspace member');
@@ -46,9 +68,14 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
 
   const updateMember = async (id: string, updates: Partial<WorkspaceMember>) => {
     try {
+      // Remove fields that don't exist in the database table
+      const dbUpdates = { ...updates };
+      delete dbUpdates.email;
+      delete dbUpdates.name;
+      
       const { error } = await supabase
         .from('workspace_members')
-        .update({ ...updates })
+        .update(dbUpdates)
         .eq('id', id);
       if (error) throw error;
       toast.success('Workspace member updated');
@@ -107,4 +134,4 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
     updateMember,
     deleteMember
   };
-}; 
+};

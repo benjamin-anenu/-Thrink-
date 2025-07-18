@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,7 +16,18 @@ export const useResources = () => {
         .select('*')
         .order('name');
       if (error) throw error;
-      setResources(data || []);
+      
+      // Map database fields to interface fields
+      const mappedData = (data || []).map(item => ({
+        ...item,
+        type: 'human' as 'human' | 'equipment' | 'material', // Default value
+        status: 'available' as 'available' | 'busy' | 'offline', // Default value
+        skills: [] as string[], // Default empty array
+        availability: 100, // Default availability
+        cost: 0, // Default cost
+      }));
+      
+      setResources(mappedData);
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');
@@ -26,14 +38,34 @@ export const useResources = () => {
 
   const createResource = async (resource: Omit<Resource, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Map to database fields
+      const dbData = {
+        name: resource.name,
+        email: resource.email,
+        role: resource.role,
+        department: resource.department,
+        workspace_id: resource.workspace_id,
+      };
+      
       const { data, error } = await supabase
         .from('resources')
-        .insert([{ ...resource }])
+        .insert([dbData])
         .select();
       if (error) throw error;
       toast.success('Resource created');
       loadResources();
-      return data?.[0] as Resource;
+      
+      // Map response back to interface
+      const mappedResult = data?.[0] ? {
+        ...data[0],
+        type: 'human' as 'human' | 'equipment' | 'material',
+        status: 'available' as 'available' | 'busy' | 'offline',
+        skills: [] as string[],
+        availability: 100,
+        cost: 0,
+      } : null;
+      
+      return mappedResult as Resource;
     } catch (error) {
       console.error('Error creating resource:', error);
       toast.error('Failed to create resource');
@@ -43,9 +75,24 @@ export const useResources = () => {
 
   const updateResource = async (id: string, updates: Partial<Resource>) => {
     try {
+      // Only update fields that exist in database
+      const dbUpdates = {
+        name: updates.name,
+        email: updates.email,
+        role: updates.role,
+        department: updates.department,
+      };
+      
+      // Remove undefined values
+      Object.keys(dbUpdates).forEach(key => {
+        if (dbUpdates[key] === undefined) {
+          delete dbUpdates[key];
+        }
+      });
+      
       const { error } = await supabase
         .from('resources')
-        .update({ ...updates })
+        .update(dbUpdates)
         .eq('id', id);
       if (error) throw error;
       toast.success('Resource updated');

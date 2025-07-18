@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,14 +12,23 @@ export const useTasks = (projectId?: string) => {
     try {
       setLoading(true);
       let query = supabase
-        .from('tasks')
+        .from('project_tasks')
         .select('*');
       if (projectId) {
         query = query.eq('project_id', projectId);
       }
       const { data, error } = await query.order('start_date');
       if (error) throw error;
-      setTasks(data || []);
+      
+      // Map database fields to interface fields and ensure priority is correct type
+      const mappedData = (data || []).map(item => ({
+        ...item,
+        priority: (['High', 'Medium', 'Low', 'Critical'].includes(item.priority) 
+          ? item.priority 
+          : 'Medium') as 'High' | 'Medium' | 'Low' | 'Critical',
+      }));
+      
+      setTasks(mappedData);
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast.error('Failed to load tasks');
@@ -30,13 +40,21 @@ export const useTasks = (projectId?: string) => {
   const createTask = async (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .insert([{ ...task }])
         .select();
       if (error) throw error;
       toast.success('Task created');
       loadTasks();
-      return data?.[0] as Task;
+      
+      const mappedResult = data?.[0] ? {
+        ...data[0],
+        priority: (['High', 'Medium', 'Low', 'Critical'].includes(data[0].priority) 
+          ? data[0].priority 
+          : 'Medium') as 'High' | 'Medium' | 'Low' | 'Critical',
+      } : null;
+      
+      return mappedResult as Task;
     } catch (error) {
       console.error('Error creating task:', error);
       toast.error('Failed to create task');
@@ -47,7 +65,7 @@ export const useTasks = (projectId?: string) => {
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
       const { error } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .update({ ...updates })
         .eq('id', id);
       if (error) throw error;
@@ -64,7 +82,7 @@ export const useTasks = (projectId?: string) => {
   const deleteTask = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .delete()
         .eq('id', id);
       if (error) throw error;
@@ -87,7 +105,7 @@ export const useTasks = (projectId?: string) => {
         {
           event: '*',
           schema: 'public',
-          table: 'tasks'
+          table: 'project_tasks'
         },
         () => {
           loadTasks();
@@ -107,4 +125,4 @@ export const useTasks = (projectId?: string) => {
     updateTask,
     deleteTask
   };
-}; 
+};
