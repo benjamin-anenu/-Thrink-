@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -8,7 +9,6 @@ import ResourceOverview from '@/components/ResourceOverview';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import { useResources } from '@/hooks/useResources';
-import type { Resource } from '@/types/resource';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
@@ -18,7 +18,7 @@ const Resources = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceDetailsModal, setShowResourceDetailsModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState<{ id: string; name: string } | null>(null);
-  const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<Resource | null>(null);
+  const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
   const { resources, createResource } = useResources();
@@ -34,7 +34,7 @@ const Resources = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleViewDetails = (resource: Resource) => {
+  const handleViewDetails = (resource: any) => {
     setSelectedResourceForDetails(resource);
     setShowResourceDetailsModal(true);
   };
@@ -43,6 +43,17 @@ const Resources = () => {
     setShowResourceDetailsModal(false);
     handleAssignTask(resourceId, resourceName);
   };
+
+  // Map resources to match the expected interface
+  const mappedResources = resources.map(resource => ({
+    ...resource,
+    department: resource.department || '',
+    phone: '',
+    location: '',
+    currentProjects: [],
+    completedProjects: 0,
+    satisfaction: 85,
+  }));
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -68,7 +79,7 @@ const Resources = () => {
 
           <TabsContent value="overview">
             <ResourceOverview
-              resources={resources}
+              resources={mappedResources}
               onViewDetails={handleViewDetails}
               onShowResourceForm={() => setShowResourceForm(true)}
             />

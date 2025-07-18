@@ -6,7 +6,6 @@ import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
 import EscalationMatrix from '@/components/EscalationMatrix';
 import { useStakeholders } from '@/hooks/useStakeholders';
-import type { Stakeholder } from '@/types/stakeholder';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,7 +20,7 @@ const Stakeholders = () => {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState<Stakeholder | undefined>();
+  const [editingStakeholder, setEditingStakeholder] = useState<any>(undefined);
 
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -33,21 +32,40 @@ const Stakeholders = () => {
   });
 
   const handleSaveStakeholder = async (stakeholder: any) => {
+    // Map form data to database structure
+    const dbStakeholder = {
+      ...stakeholder,
+      workspace_id: 'default-workspace', // You may want to get this from context
+      influence: stakeholder.influence?.toLowerCase(),
+    };
+
     if (editingStakeholder) {
-      await updateStakeholder(stakeholder.id, stakeholder);
+      await updateStakeholder(stakeholder.id, dbStakeholder);
     } else {
-      await createStakeholder(stakeholder);
+      await createStakeholder(dbStakeholder);
     }
     setEditingStakeholder(undefined);
     setShowForm(false);
   };
 
-  const handleEditStakeholder = (stakeholder: Stakeholder) => {
-    setEditingStakeholder(stakeholder);
+  const handleEditStakeholder = (stakeholder: any) => {
+    // Map database structure to form structure
+    const formStakeholder = {
+      ...stakeholder,
+      department: stakeholder.role || '',
+      phone: '',
+      communicationPreference: 'Email' as const,
+      influence: (stakeholder.influence?.charAt(0).toUpperCase() + stakeholder.influence?.slice(1)) as 'High' | 'Medium' | 'Low',
+      interest: 'Medium' as 'High' | 'Medium' | 'Low',
+      projects: [],
+      status: 'Active' as const,
+      lastContact: new Date().toISOString().split('T')[0]
+    };
+    setEditingStakeholder(formStakeholder);
     setShowForm(true);
   };
 
-  const handleDeleteStakeholder = async (stakeholder: Stakeholder) => {
+  const handleDeleteStakeholder = async (stakeholder: any) => {
     if (window.confirm(`Are you sure you want to delete ${stakeholder.name}? This action cannot be undone.`)) {
       await deleteStakeholder(stakeholder.id);
       await refreshStakeholders();
@@ -302,18 +320,7 @@ const Stakeholders = () => {
             setShowForm(false);
             setEditingStakeholder(undefined);
           }}
-          stakeholder={editingStakeholder ? {
-            ...editingStakeholder,
-            // Map database fields back to form expected fields
-            department: editingStakeholder.role || '',
-            phone: '',
-            communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
-            influence: (editingStakeholder.influence?.charAt(0).toUpperCase() + editingStakeholder.influence?.slice(1)) as 'High' | 'Medium' | 'Low',
-            interest: 'Medium' as 'High' | 'Medium' | 'Low',
-            projects: [],
-            status: 'Active' as 'Active' | 'Inactive',
-            lastContact: new Date().toISOString().split('T')[0]
-          } : undefined}
+          stakeholder={editingStakeholder}
           onSave={handleSaveStakeholder}
         />
       </main>

@@ -28,7 +28,9 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
         role: (['owner', 'admin', 'member', 'viewer'].includes(item.role || '')) 
           ? item.role as 'owner' | 'admin' | 'member' | 'viewer'
           : 'member' as const,
-        status: item.status || 'active',
+        status: (['active', 'inactive', 'pending'].includes(item.status || ''))
+          ? item.status as 'active' | 'inactive' | 'pending'
+          : 'active' as const,
         workspace_id: item.workspace_id || '',
         user_id: item.user_id || '',
         created_at: item.created_at || '',
@@ -61,6 +63,9 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
         role: (['owner', 'admin', 'member', 'viewer'].includes(data[0].role || '')) 
           ? data[0].role as 'owner' | 'admin' | 'member' | 'viewer'
           : 'member' as const,
+        status: (['active', 'inactive', 'pending'].includes(data[0].status || ''))
+          ? data[0].status as 'active' | 'inactive' | 'pending'
+          : 'active' as const,
       } : null;
       
       return mappedResult as WorkspaceMember;

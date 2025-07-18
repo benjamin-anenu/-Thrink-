@@ -70,9 +70,9 @@ export const useMilestones = (projectId?: string) => {
 
   const updateMilestone = async (id: string, updates: Partial<Milestone>) => {
     try {
-      const dbUpdates = { ...updates };
+      const dbUpdates: any = { ...updates };
       if (updates.date) {
-        dbUpdates.due_date = updates.date;
+        dbUpdates.due_date = updates.date; // Map date to due_date for database
         delete dbUpdates.date;
       }
       

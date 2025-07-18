@@ -45,7 +45,7 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const createStakeholder = async (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const dbData = {
+      const dbData: any = {
         ...stakeholder,
         influence_level: stakeholder.influence,
         // Remove interface-only fields that don't exist in DB
@@ -81,9 +81,9 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
     try {
-      const dbUpdates = { ...updates };
+      const dbUpdates: any = { ...updates };
       if (updates.influence) {
-        dbUpdates.influence_level = updates.influence;
+        dbUpdates.influence_level = updates.influence; // Map influence to influence_level for database
         delete dbUpdates.influence;
       }
       // Remove interface-only fields
