@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Search, Filter, UserCheck, AlertTriangle, MessageSquare } from 'lucide-react';
 
 const Stakeholders = () => {
-  const { stakeholders, createStakeholder, updateStakeholder, deleteStakeholder, loading, refreshStakeholders } = useStakeholders();
+  const { stakeholders, createStakeholder, updateStakeholder, loading } = useStakeholders();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
@@ -45,13 +45,6 @@ const Stakeholders = () => {
   const handleEditStakeholder = (stakeholder: Stakeholder) => {
     setEditingStakeholder(stakeholder);
     setShowForm(true);
-  };
-
-  const handleDeleteStakeholder = async (stakeholder: Stakeholder) => {
-    if (window.confirm(`Are you sure you want to delete ${stakeholder.name}? This action cannot be undone.`)) {
-      await deleteStakeholder(stakeholder.id);
-      await refreshStakeholders();
-    }
   };
 
   const departments = [...new Set(stakeholders.map(s => (s as any).department))];
@@ -200,7 +193,6 @@ const Stakeholders = () => {
                   key={stakeholder.id}
                   stakeholder={stakeholder}
                   onEdit={handleEditStakeholder}
-                  onDelete={handleDeleteStakeholder}
                 />
               ))}
             </div>
