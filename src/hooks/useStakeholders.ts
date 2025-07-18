@@ -23,9 +23,15 @@ export const useStakeholders = (workspaceId?: string) => {
       // Map database fields to interface fields
       const mappedData = (data || []).map(item => ({
         ...item,
-        influence: item.influence_level as 'low' | 'medium' | 'high' | 'critical' || 'medium',
+        influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical', // Default value since not in DB
         status: 'active' as 'active' | 'inactive' | 'pending', // Default value since not in DB
+        workspace_id: item.workspace_id || '',
+        name: item.name || '',
+        email: item.email || '',
+        role: item.role || '',
+        created_at: item.created_at || '',
+        updated_at: item.updated_at || '',
       }));
       
       setStakeholders(mappedData);
@@ -60,7 +66,7 @@ export const useStakeholders = (workspaceId?: string) => {
       // Map response back to interface
       const mappedResult = data?.[0] ? {
         ...data[0],
-        influence: data[0].influence_level as 'low' | 'medium' | 'high' | 'critical' || 'medium',
+        influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
       } : null;

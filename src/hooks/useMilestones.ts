@@ -20,10 +20,13 @@ export const useMilestones = (projectId?: string) => {
       const { data, error } = await query.order('due_date');
       if (error) throw error;
       
-      // Map database fields to interface fields
+      // Map database fields to interface fields with proper type casting
       const mappedData = (data || []).map(item => ({
         ...item,
-        date: item.due_date, // Map due_date to date
+        date: item.due_date || '', // Map due_date to date
+        status: (['upcoming', 'in-progress', 'completed', 'overdue'].includes(item.status || '')) 
+          ? item.status as 'upcoming' | 'in-progress' | 'completed' | 'overdue'
+          : 'upcoming' as const,
       }));
       
       setMilestones(mappedData);
@@ -51,7 +54,10 @@ export const useMilestones = (projectId?: string) => {
       // Map response back to interface
       const mappedResult = data?.[0] ? {
         ...data[0],
-        date: data[0].due_date,
+        date: data[0].due_date || '',
+        status: (['upcoming', 'in-progress', 'completed', 'overdue'].includes(data[0].status || '')) 
+          ? data[0].status as 'upcoming' | 'in-progress' | 'completed' | 'overdue'
+          : 'upcoming' as const,
       } : null;
       
       return mappedResult as Milestone;

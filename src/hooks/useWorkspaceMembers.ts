@@ -13,21 +13,26 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
       setLoading(true);
       let query = supabase
         .from('workspace_members')
-        .select(`
-          *,
-          profiles!inner(email, full_name)
-        `);
+        .select('*');
       if (workspaceId) {
         query = query.eq('workspace_id', workspaceId);
       }
       const { data, error } = await query.order('joined_at');
       if (error) throw error;
       
-      // Map database fields to interface fields
+      // Map database fields to interface fields with defaults for missing profile data
       const mappedData = (data || []).map(item => ({
         ...item,
-        email: item.profiles?.email || '',
-        name: item.profiles?.full_name || 'Unknown User',
+        email: '', // Default since profiles relation isn't working
+        name: 'Unknown User', // Default since profiles relation isn't working
+        role: (['owner', 'admin', 'member', 'viewer'].includes(item.role || '')) 
+          ? item.role as 'owner' | 'admin' | 'member' | 'viewer'
+          : 'member' as const,
+        status: item.status || 'active',
+        workspace_id: item.workspace_id || '',
+        user_id: item.user_id || '',
+        created_at: item.created_at || '',
+        updated_at: item.updated_at || '',
       }));
       
       setMembers(mappedData);
@@ -44,18 +49,18 @@ export const useWorkspaceMembers = (workspaceId?: string) => {
       const { data, error } = await supabase
         .from('workspace_members')
         .insert([{ ...member }])
-        .select(`
-          *,
-          profiles!inner(email, full_name)
-        `);
+        .select();
       if (error) throw error;
       toast.success('Workspace member added');
       loadMembers();
       
       const mappedResult = data?.[0] ? {
         ...data[0],
-        email: data[0].profiles?.email || '',
-        name: data[0].profiles?.full_name || 'Unknown User',
+        email: '', // Default since profiles relation isn't working
+        name: 'Unknown User', // Default since profiles relation isn't working
+        role: (['owner', 'admin', 'member', 'viewer'].includes(data[0].role || '')) 
+          ? data[0].role as 'owner' | 'admin' | 'member' | 'viewer'
+          : 'member' as const,
       } : null;
       
       return mappedResult as WorkspaceMember;

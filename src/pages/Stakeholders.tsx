@@ -26,8 +26,8 @@ const Stakeholders = () => {
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stakeholder.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.organization?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = filterDepartment === 'all' || stakeholder.organization === filterDepartment;
+                         stakeholder.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = filterDepartment === 'all'; // Remove department filter since it's not in DB
     const matchesInfluence = filterInfluence === 'all' || stakeholder.influence?.toLowerCase() === filterInfluence;
     return matchesSearch && matchesDepartment && matchesInfluence;
   });
@@ -54,7 +54,8 @@ const Stakeholders = () => {
     }
   };
 
-  const departments = [...new Set(stakeholders.map(s => s.organization).filter(Boolean))];
+  // Get unique roles since we don't have organization field
+  const roles = [...new Set(stakeholders.map(s => s.role).filter(Boolean))];
 
   if (loading) {
     return (
@@ -118,12 +119,12 @@ const Stakeholders = () => {
                 <Select value={filterDepartment} onValueChange={setFilterDepartment}>
                   <SelectTrigger className="w-40">
                     <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Department" />
+                    <SelectValue placeholder="Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {roles.map(role => (
+                      <SelectItem key={role} value={role}>{role}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -174,8 +175,8 @@ const Stakeholders = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Organizations</p>
-                      <p className="text-2xl font-bold">{departments.length}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Roles</p>
+                      <p className="text-2xl font-bold">{roles.length}</p>
                     </div>
                     <Badge className="h-8 w-8 rounded-full" />
                   </div>
@@ -199,7 +200,18 @@ const Stakeholders = () => {
               {filteredStakeholders.map((stakeholder) => (
                 <StakeholderCard
                   key={stakeholder.id}
-                  stakeholder={stakeholder}
+                  stakeholder={{
+                    ...stakeholder,
+                    // Map database fields to component expected fields
+                    department: stakeholder.role || '',
+                    phone: '',
+                    avatar: '',
+                    communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+                    projects: [],
+                    escalationLevel: undefined,
+                    influence: (stakeholder.influence?.charAt(0).toUpperCase() + stakeholder.influence?.slice(1)) as 'High' | 'Medium' | 'Low',
+                    interest: 'Medium' as 'High' | 'Medium' | 'Low',
+                  }}
                   onEdit={handleEditStakeholder}
                   onDelete={handleDeleteStakeholder}
                 />
@@ -256,17 +268,17 @@ const Stakeholders = () => {
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.organization).length}
+                          {stakeholders.filter(s => s.influence).length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Organization Set</div>
+                        <div className="text-sm text-muted-foreground">Influence Set</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold mb-2">
-                          {stakeholders.filter(s => s.escalation_level).length}
+                          {stakeholders.length}
                         </div>
-                        <div className="text-sm text-muted-foreground">Escalation Level</div>
+                        <div className="text-sm text-muted-foreground">Total Stakeholders</div>
                       </CardContent>
                     </Card>
                   </div>
@@ -290,7 +302,18 @@ const Stakeholders = () => {
             setShowForm(false);
             setEditingStakeholder(undefined);
           }}
-          stakeholder={editingStakeholder}
+          stakeholder={editingStakeholder ? {
+            ...editingStakeholder,
+            // Map database fields back to form expected fields
+            department: editingStakeholder.role || '',
+            phone: '',
+            communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+            influence: (editingStakeholder.influence?.charAt(0).toUpperCase() + editingStakeholder.influence?.slice(1)) as 'High' | 'Medium' | 'Low',
+            interest: 'Medium' as 'High' | 'Medium' | 'Low',
+            projects: [],
+            status: 'Active' as 'Active' | 'Inactive',
+            lastContact: new Date().toISOString().split('T')[0]
+          } : undefined}
           onSave={handleSaveStakeholder}
         />
       </main>

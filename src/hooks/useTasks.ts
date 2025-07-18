@@ -20,12 +20,18 @@ export const useTasks = (projectId?: string) => {
       const { data, error } = await query.order('start_date');
       if (error) throw error;
       
-      // Map database fields to interface fields and ensure priority is correct type
+      // Map database fields to interface fields and ensure types are correct
       const mappedData = (data || []).map(item => ({
         ...item,
-        priority: (['High', 'Medium', 'Low', 'Critical'].includes(item.priority) 
-          ? item.priority 
-          : 'Medium') as 'High' | 'Medium' | 'Low' | 'Critical',
+        priority: (['High', 'Medium', 'Low', 'Critical'].includes(item.priority || '')) 
+          ? item.priority as 'High' | 'Medium' | 'Low' | 'Critical'
+          : 'Medium' as const,
+        status: (['Not Started', 'In Progress', 'Completed', 'On Hold', 'Cancelled'].includes(item.status || '')) 
+          ? item.status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled'
+          : 'Not Started' as const,
+        assigned_resources: item.assigned_resources || [],
+        assigned_stakeholders: item.assigned_stakeholders || [],
+        dependencies: item.dependencies || [],
       }));
       
       setTasks(mappedData);
@@ -49,9 +55,12 @@ export const useTasks = (projectId?: string) => {
       
       const mappedResult = data?.[0] ? {
         ...data[0],
-        priority: (['High', 'Medium', 'Low', 'Critical'].includes(data[0].priority) 
-          ? data[0].priority 
-          : 'Medium') as 'High' | 'Medium' | 'Low' | 'Critical',
+        priority: (['High', 'Medium', 'Low', 'Critical'].includes(data[0].priority || '')) 
+          ? data[0].priority as 'High' | 'Medium' | 'Low' | 'Critical'
+          : 'Medium' as const,
+        status: (['Not Started', 'In Progress', 'Completed', 'On Hold', 'Cancelled'].includes(data[0].status || '')) 
+          ? data[0].status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled'
+          : 'Not Started' as const,
       } : null;
       
       return mappedResult as Task;

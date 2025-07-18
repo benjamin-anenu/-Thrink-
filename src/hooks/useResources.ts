@@ -20,11 +20,18 @@ export const useResources = () => {
       // Map database fields to interface fields
       const mappedData = (data || []).map(item => ({
         ...item,
-        type: 'human' as 'human' | 'equipment' | 'material', // Default value
-        status: 'available' as 'available' | 'busy' | 'offline', // Default value
+        type: 'human' as 'human' | 'ai' | 'external', // Map to correct type
+        status: 'active' as 'active' | 'inactive' | 'pending', // Map to correct status
         skills: [] as string[], // Default empty array
-        availability: 100, // Default availability
+        availability: '100%', // Default availability string
         cost: 0, // Default cost
+        workspace_id: item.workspace_id || '',
+        name: item.name || '',
+        email: item.email || '',
+        role: item.role || '',
+        department: item.department || '',
+        created_at: item.created_at || '',
+        updated_at: item.updated_at || '',
       }));
       
       setResources(mappedData);
@@ -38,12 +45,11 @@ export const useResources = () => {
 
   const createResource = async (resource: Omit<Resource, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Map to database fields
+      // Map to database fields - only include fields that exist in DB
       const dbData = {
         name: resource.name,
         email: resource.email,
         role: resource.role,
-        department: resource.department,
         workspace_id: resource.workspace_id,
       };
       
@@ -58,11 +64,12 @@ export const useResources = () => {
       // Map response back to interface
       const mappedResult = data?.[0] ? {
         ...data[0],
-        type: 'human' as 'human' | 'equipment' | 'material',
-        status: 'available' as 'available' | 'busy' | 'offline',
+        type: 'human' as 'human' | 'ai' | 'external',
+        status: 'active' as 'active' | 'inactive' | 'pending',
         skills: [] as string[],
-        availability: 100,
+        availability: '100%',
         cost: 0,
+        department: data[0].department || '',
       } : null;
       
       return mappedResult as Resource;
@@ -80,7 +87,6 @@ export const useResources = () => {
         name: updates.name,
         email: updates.email,
         role: updates.role,
-        department: updates.department,
       };
       
       // Remove undefined values
