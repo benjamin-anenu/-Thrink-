@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Trash2, Users, Shield, AlertTriangle, Clock } from 'lucide-react';
+import { useStakeholders } from '@/hooks/useStakeholders';
 
 interface Stakeholder {
   id: string;
@@ -55,6 +56,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ d
       riskAlerts: true
     }
   });
+
+  const { deleteStakeholder } = useStakeholders();
 
   const roles = [
     'Project Sponsor',
@@ -133,7 +136,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ d
     }
   };
 
-  const removeStakeholder = (id: string) => {
+  const removeStakeholder = async (id: string) => {
+    await deleteStakeholder(id);
     const updatedStakeholders = stakeholders.filter(s => s.id !== id);
     setStakeholders(updatedStakeholders);
     onDataChange({
@@ -350,12 +354,13 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ d
                       )}
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => removeStakeholder(stakeholder.id)}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive border-destructive hover:text-destructive hover:border-destructive flex items-center gap-1"
                     >
                       <Trash2 size={16} />
+                      Delete
                     </Button>
                   </div>
                 </CardContent>

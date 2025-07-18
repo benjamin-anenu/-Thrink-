@@ -5,8 +5,8 @@ import TinkAssistant from '@/components/TinkAssistant';
 import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderForm from '@/components/StakeholderForm';
 import EscalationMatrix from '@/components/EscalationMatrix';
-import { useStakeholders } from '@/contexts/StakeholderContext';
-import type { Stakeholder } from '@/contexts/StakeholderContext';
+import { useStakeholders } from '@/hooks/useStakeholders';
+import type { Stakeholder } from '@/types/stakeholder';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Search, Filter, UserCheck, AlertTriangle, MessageSquare } from 'lucide-react';
 
 const Stakeholders = () => {
-  const { stakeholders, addStakeholder, updateStakeholder, loading } = useStakeholders();
+  const { stakeholders, createStakeholder, updateStakeholder, deleteStakeholder, loading, refreshStakeholders } = useStakeholders();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterInfluence, setFilterInfluence] = useState('all');
@@ -26,19 +26,17 @@ const Stakeholders = () => {
   const filteredStakeholders = stakeholders.filter(stakeholder => {
     const matchesSearch = stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         stakeholder.department.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = filterDepartment === 'all' || stakeholder.department === filterDepartment;
-    const matchesInfluence = filterInfluence === 'all' || stakeholder.influence.toLowerCase() === filterInfluence;
-    
+                         (stakeholder as any).department?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = filterDepartment === 'all' || (stakeholder as any).department === filterDepartment;
+    const matchesInfluence = filterInfluence === 'all' || (stakeholder.influence?.toLowerCase?.() ?? '') === filterInfluence;
     return matchesSearch && matchesDepartment && matchesInfluence;
   });
 
-  const handleSaveStakeholder = (stakeholder: any) => {
+  const handleSaveStakeholder = async (stakeholder: any) => {
     if (editingStakeholder) {
-      updateStakeholder(stakeholder.id, stakeholder);
+      await updateStakeholder(stakeholder.id, stakeholder);
     } else {
-      const { id, ...stakeholderData } = stakeholder;
-      addStakeholder(stakeholderData);
+      await createStakeholder(stakeholder);
     }
     setEditingStakeholder(undefined);
     setShowForm(false);
@@ -49,7 +47,14 @@ const Stakeholders = () => {
     setShowForm(true);
   };
 
-  const departments = [...new Set(stakeholders.map(s => s.department))];
+  const handleDeleteStakeholder = async (stakeholder: Stakeholder) => {
+    if (window.confirm(`Are you sure you want to delete ${stakeholder.name}? This action cannot be undone.`)) {
+      await deleteStakeholder(stakeholder.id);
+      await refreshStakeholders();
+    }
+  };
+
+  const departments = [...new Set(stakeholders.map(s => (s as any).department))];
 
   if (loading) {
     return (
@@ -195,6 +200,7 @@ const Stakeholders = () => {
                   key={stakeholder.id}
                   stakeholder={stakeholder}
                   onEdit={handleEditStakeholder}
+                  onDelete={handleDeleteStakeholder}
                 />
               ))}
             </div>
