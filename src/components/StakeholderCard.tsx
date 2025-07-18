@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Phone, MessageSquare, Edit, AlertTriangle, Users } from 'lucide-react';
+import { Mail, Phone, MessageSquare, Edit, AlertTriangle, Users, Trash2 } from 'lucide-react';
 
 interface Stakeholder {
   id: string;
@@ -47,6 +47,12 @@ const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps
     }
   };
 
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(stakeholder);
+    }
+  };
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -67,15 +73,12 @@ const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps
             </Button>
             {onDelete && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                onClick={() => onDelete(stakeholder)}
-                className="text-destructive border-destructive hover:text-destructive hover:border-destructive flex items-center gap-1"
+                onClick={handleDelete}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Delete
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>

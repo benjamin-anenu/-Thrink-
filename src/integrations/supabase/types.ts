@@ -50,6 +50,85 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          all_day: boolean | null
+          attendees: Json | null
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string
+          event_type: string | null
+          id: string
+          location: string | null
+          project_id: string | null
+          recurrence_rule: string | null
+          start_date: string
+          task_id: string | null
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          attendees?: Json | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date: string
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          project_id?: string | null
+          recurrence_rule?: string | null
+          start_date: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          all_day?: boolean | null
+          attendees?: Json | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          project_id?: string | null
+          recurrence_rule?: string | null
+          start_date?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_satisfaction: {
         Row: {
           client_email: string | null
@@ -153,6 +232,50 @@ export type Database = {
           },
         ]
       }
+      critical_path_analysis: {
+        Row: {
+          analysis_data: Json | null
+          analysis_date: string
+          created_at: string
+          created_by: string
+          critical_path_tasks: string[] | null
+          id: string
+          project_id: string
+          slack_days: number | null
+          total_duration_days: number | null
+        }
+        Insert: {
+          analysis_data?: Json | null
+          analysis_date?: string
+          created_at?: string
+          created_by: string
+          critical_path_tasks?: string[] | null
+          id?: string
+          project_id: string
+          slack_days?: number | null
+          total_duration_days?: number | null
+        }
+        Update: {
+          analysis_data?: Json | null
+          analysis_date?: string
+          created_at?: string
+          created_by?: string
+          critical_path_tasks?: string[] | null
+          id?: string
+          project_id?: string
+          slack_days?: number | null
+          total_duration_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "critical_path_analysis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_processing_activities: {
         Row: {
           activity_name: string
@@ -205,6 +328,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "data_processing_activities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_calendar_integrations: {
+        Row: {
+          access_token: string | null
+          account_email: string
+          created_at: string
+          created_by: string
+          id: string
+          last_sync_at: string | null
+          provider: string
+          refresh_token: string | null
+          sync_enabled: boolean | null
+          sync_errors: Json | null
+          token_expires_at: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_email: string
+          created_at?: string
+          created_by: string
+          id?: string
+          last_sync_at?: string | null
+          provider: string
+          refresh_token?: string | null
+          sync_enabled?: boolean | null
+          sync_errors?: Json | null
+          token_expires_at?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          access_token?: string | null
+          account_email?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_sync_at?: string | null
+          provider?: string
+          refresh_token?: string | null
+          sync_enabled?: boolean | null
+          sync_errors?: Json | null
+          token_expires_at?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_calendar_integrations_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1006,6 +1185,7 @@ export type Database = {
           name: string
           role: string | null
           updated_at: string
+          workspace_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1015,6 +1195,7 @@ export type Database = {
           name: string
           role?: string | null
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1024,8 +1205,17 @@ export type Database = {
           name?: string
           role?: string | null
           updated_at?: string
+          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "resources_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stakeholders: {
         Row: {
@@ -1083,6 +1273,227 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_dependencies: {
+        Row: {
+          created_at: string
+          dependency_type: string | null
+          depends_on_task_id: string
+          id: string
+          lag_days: number | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          dependency_type?: string | null
+          depends_on_task_id: string
+          id?: string
+          lag_days?: number | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          dependency_type?: string | null
+          depends_on_task_id?: string
+          id?: string
+          lag_days?: number | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_dependencies_depends_on_task_id_fkey"
+            columns: ["depends_on_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reminders: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          message: string | null
+          reminder_time: string
+          reminder_type: string | null
+          sent: boolean | null
+          sent_at: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          message?: string | null
+          reminder_time: string
+          reminder_type?: string | null
+          sent?: boolean | null
+          sent_at?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          message?: string | null
+          reminder_time?: string
+          reminder_type?: string | null
+          sent?: boolean | null
+          sent_at?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reminders_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_time_tracking: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          end_time: string | null
+          id: string
+          start_time: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          start_time: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_time_tracking_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_resources: string[] | null
+          assigned_stakeholders: string[] | null
+          baseline_end_date: string | null
+          baseline_start_date: string | null
+          created_at: string
+          dependencies: string[] | null
+          description: string | null
+          duration: number | null
+          end_date: string | null
+          hierarchy_level: number | null
+          id: string
+          milestone_id: string | null
+          name: string
+          parent_task_id: string | null
+          priority: string
+          progress: number | null
+          project_id: string
+          sort_order: number | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_resources?: string[] | null
+          assigned_stakeholders?: string[] | null
+          baseline_end_date?: string | null
+          baseline_start_date?: string | null
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string | null
+          duration?: number | null
+          end_date?: string | null
+          hierarchy_level?: number | null
+          id?: string
+          milestone_id?: string | null
+          name: string
+          parent_task_id?: string | null
+          priority?: string
+          progress?: number | null
+          project_id: string
+          sort_order?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_resources?: string[] | null
+          assigned_stakeholders?: string[] | null
+          baseline_end_date?: string | null
+          baseline_start_date?: string | null
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string | null
+          duration?: number | null
+          end_date?: string | null
+          hierarchy_level?: number | null
+          id?: string
+          milestone_id?: string | null
+          name?: string
+          parent_task_id?: string | null
+          priority?: string
+          progress?: number | null
+          project_id?: string
+          sort_order?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1363,6 +1774,10 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
+      calculate_task_duration: {
+        Args: { task_uuid: string }
+        Returns: number
+      }
       check_project_dependencies: {
         Args: { project_id_param: string }
         Returns: {
@@ -1399,6 +1814,10 @@ export type Database = {
           workspace_slug?: string
         }
         Returns: string
+      }
+      get_critical_path: {
+        Args: { project_uuid: string }
+        Returns: string[]
       }
       get_task_hierarchy: {
         Args: { p_project_id: string }
