@@ -3,78 +3,77 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Brain, Users, Zap, Crown } from 'lucide-react';
 
+const plans = [
+  {
+    name: "Leader Starter",
+    price: "Free",
+    description: "For small teams and new leaders exploring AI-powered project management.",
+    features: [
+      "Up to 5 team members",
+      "2 active projects",
+      "Basic AI workflow analysis",
+      "Automated task coordination",
+      "Email support",
+      "Tink AI assistant (basic)"
+    ],
+    buttonText: "Start Free",
+    buttonVariant: "outline",
+    popular: false,
+    icon: <Users className="h-6 w-6" />
+  },
+  {
+    name: "Executive Pro",
+    price: "$39",
+    period: "per user/month",
+    description: "Advanced AI insights and automation for growing organizations and leadership teams.",
+    features: [
+      "Unlimited team members",
+      "Unlimited projects",
+      "AI risk prediction & mitigation",
+      "Real-time executive dashboards",
+      "Automated reporting",
+      "Priority support",
+      "Tink AI assistant (pro)"
+    ],
+    buttonText: "Start 14-day trial",
+    buttonVariant: "default",
+    popular: true,
+    icon: <Brain className="h-6 w-6" />
+  },
+  {
+    name: "Enterprise Visionary",
+    price: "Custom",
+    description: "Full AI-powered project intelligence, custom integrations, and white-glove support for large enterprises.",
+    features: [
+      "Unlimited everything",
+      "Custom AI model training",
+      "Advanced compliance & security",
+      "Dedicated infrastructure",
+      "White-label solutions",
+      "Custom integrations",
+      "Dedicated account manager",
+      "24/7 premium support",
+      "Tink AI assistant (enterprise)"
+    ],
+    buttonText: "Contact Sales",
+    buttonVariant: "outline",
+    popular: false,
+    icon: <Crown className="h-6 w-6" />
+  }
+];
+
 const Pricing = () => {
-  const plans = [
-    {
-      name: "Team Starter",
-      price: "Free",
-      description: "Perfect for small teams getting started with AI project management",
-      features: [
-        "Up to 5 team members",
-        "3 active projects",
-        "Basic AI insights",
-        "Standard task automation",
-        "Email support",
-        "Project health monitoring"
-      ],
-      buttonText: "Start Free",
-      buttonVariant: "outline",
-      popular: false,
-      icon: <Users className="h-6 w-6" />
-    },
-    {
-      name: "Professional",
-      price: "$29",
-      period: "per user/month",
-      description: "Advanced AI features for growing development teams",
-      features: [
-        "Unlimited team members",
-        "Unlimited projects",
-        "Advanced AI predictions",
-        "Smart resource allocation",
-        "Risk prediction & alerts",
-        "Custom workflow automation",
-        "Priority support",
-        "Advanced analytics dashboard"
-      ],
-      buttonText: "Start 14-day trial",
-      buttonVariant: "default",
-      popular: true,
-      icon: <Brain className="h-6 w-6" />
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      description: "Full AI-powered project intelligence for large organizations",
-      features: [
-        "Unlimited everything",
-        "Custom AI model training",
-        "Advanced compliance tools",
-        "Dedicated infrastructure",
-        "White-label solutions",
-        "Custom integrations",
-        "Dedicated account manager",
-        "24/7 premium support"
-      ],
-      buttonText: "Contact Sales",
-      buttonVariant: "outline",
-      popular: false,
-      icon: <Crown className="h-6 w-6" />
-    }
-  ];
-  
   return (
     <section id="pricing" className="w-full py-20 px-6 md:px-12 bg-card/30">
       <div className="max-w-7xl mx-auto space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-bold tracking-tighter bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-            Transparent pricing for every team size
+            Transparent pricing for every leader
           </h2>
           <p className="text-muted-foreground text-xl leading-relaxed">
-            Scale your AI-powered project management with plans that grow with your team
+            Scale your leadership impact with AI-powered project management plans for every stage of growth.
           </p>
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <div 
@@ -90,7 +89,6 @@ const Pricing = () => {
                   Most Popular
                 </div>
               )}
-              
               <div className="mb-auto">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -98,14 +96,11 @@ const Pricing = () => {
                   </div>
                   <h3 className="text-2xl font-bold tracking-tight text-foreground">{plan.name}</h3>
                 </div>
-                
                 <div className="mb-6">
                   <div className="text-4xl font-bold tracking-tight text-foreground">{plan.price}</div>
                   {plan.period && <div className="text-sm text-muted-foreground">{plan.period}</div>}
                 </div>
-                
                 <p className="text-muted-foreground mb-8 leading-relaxed">{plan.description}</p>
-                
                 <div className="space-y-4 mb-8">
                   {plan.features.map((feature, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -117,7 +112,6 @@ const Pricing = () => {
                   ))}
                 </div>
               </div>
-              
               <div className="mt-8">
                 <Button 
                   className={
@@ -133,7 +127,6 @@ const Pricing = () => {
             </div>
           ))}
         </div>
-        
         <div className="text-center">
           <p className="text-muted-foreground mb-4">
             Need a custom solution? <a href="#" className="text-primary hover:underline font-medium">Talk to our AI specialists</a>
