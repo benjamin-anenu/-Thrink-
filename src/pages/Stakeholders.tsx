@@ -8,7 +8,7 @@ import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderListView from '@/components/StakeholderListView';
 import ViewToggle from '@/components/ViewToggle';
 import { useStakeholders } from '@/hooks/useStakeholders';
-import { useWorkspace } from '@/hooks/useWorkspaceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +31,7 @@ const Stakeholders = () => {
     
     const stakeholderToSave = {
       ...stakeholderData,
-      workspace_id: currentWorkspace?.id || crypto.randomUUID()
+      workspace_id: currentWorkspace?.id || ''
     };
 
     if (selectedStakeholder) {

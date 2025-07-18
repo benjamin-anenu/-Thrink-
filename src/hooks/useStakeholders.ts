@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Stakeholder } from '@/types/stakeholder';
-import { useWorkspace } from './useWorkspaceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export const useStakeholders = (workspaceId?: string) => {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
@@ -30,14 +31,15 @@ export const useStakeholders = (workspaceId?: string) => {
       
       // Map database fields to interface fields
       const mappedData = (data || []).map(item => ({
-        ...item,
-        influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-        status: 'active' as 'active' | 'inactive' | 'pending',
+        id: item.id,
         workspace_id: item.workspace_id || '',
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
+        influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        notes: item.notes || '',
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
       }));
@@ -67,7 +69,7 @@ export const useStakeholders = (workspaceId?: string) => {
         role: stakeholder.role,
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
-        ...(stakeholder.notes && { notes: stakeholder.notes }),
+        notes: stakeholder.notes || '',
       };
       
       const { data, error } = await supabase
@@ -80,10 +82,17 @@ export const useStakeholders = (workspaceId?: string) => {
       
       // Map response back to interface
       const mappedResult = data?.[0] ? {
-        ...data[0],
+        id: data[0].id,
+        workspace_id: data[0].workspace_id,
+        name: data[0].name,
+        email: data[0].email,
+        role: data[0].role,
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
+        notes: data[0].notes || '',
+        created_at: data[0].created_at,
+        updated_at: data[0].updated_at,
       } : null;
       
       return mappedResult as Stakeholder;
@@ -103,7 +112,7 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.role) dbUpdates.role = updates.role;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
-      if (updates.notes) dbUpdates.notes = updates.notes;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       
       const { error } = await supabase
         .from('stakeholders')
@@ -163,46 +172,7 @@ export const useStakeholders = (workspaceId?: string) => {
     loading,
     refreshStakeholders: loadStakeholders,
     createStakeholder,
-    updateStakeholder: async (id: string, updates: Partial<Stakeholder>) => {
-      try {
-        // Only send fields that exist in the database
-        const dbUpdates: any = {};
-        
-        if (updates.name) dbUpdates.name = updates.name;
-        if (updates.email) dbUpdates.email = updates.email;
-        if (updates.role) dbUpdates.role = updates.role;
-        if (updates.influence) dbUpdates.influence_level = updates.influence;
-        if (updates.notes) dbUpdates.notes = updates.notes;
-        
-        const { error } = await supabase
-          .from('stakeholders')
-          .update(dbUpdates)
-          .eq('id', id);
-        if (error) throw error;
-        toast.success('Stakeholder updated');
-        loadStakeholders();
-        return true;
-      } catch (error) {
-        console.error('Error updating stakeholder:', error);
-        toast.error('Failed to update stakeholder');
-        return false;
-      }
-    },
-    deleteStakeholder: async (id: string) => {
-      try {
-        const { error } = await supabase
-          .from('stakeholders')
-          .delete()
-          .eq('id', id);
-        if (error) throw error;
-        toast.success('Stakeholder deleted');
-        loadStakeholders();
-        return true;
-      } catch (error) {
-        console.error('Error deleting stakeholder:', error);
-        toast.error('Failed to delete stakeholder');
-        return false;
-      }
-    }
+    updateStakeholder,
+    deleteStakeholder
   };
 };

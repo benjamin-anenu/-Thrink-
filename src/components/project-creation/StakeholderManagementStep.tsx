@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, X, Users, AlertTriangle } from 'lucide-react';
 import { useStakeholders } from '@/hooks/useStakeholders';
 import { useEscalationMatrix } from '@/hooks/useEscalationMatrix';
-import { useWorkspace } from '@/hooks/useWorkspaceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { toast } from 'sonner';
 
 interface StakeholderManagementStepProps {
@@ -55,7 +55,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
     const stakeholder = {
       ...newStakeholder,
       id: `temp-${Date.now()}`,
-      workspace_id: currentWorkspace?.id || crypto.randomUUID(),
+      workspace_id: currentWorkspace?.id || '',
       status: 'active' as const,
       interest: 'medium' as const
     };
@@ -139,9 +139,10 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           email: stakeholder.email,
           role: stakeholder.role,
           influence: stakeholder.influence,
-          workspace_id: currentWorkspace?.id || crypto.randomUUID(),
+          workspace_id: currentWorkspace?.id || '',
           status: 'active',
-          interest: 'medium'
+          interest: 'medium',
+          notes: ''
         });
       }
     }
