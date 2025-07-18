@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-export interface Stakeholder {
-  id: string;
-  name: string;
-  email?: string;
-  role?: string;
-  organization?: string;
-  influence_level?: string;
-  project_id?: string;
-  workspace_id?: string;
-  created_at: string;
-  updated_at: string;
-}
+import type { Stakeholder } from '@/types/stakeholder';
 
 export const useStakeholders = (workspaceId?: string) => {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
@@ -25,15 +13,11 @@ export const useStakeholders = (workspaceId?: string) => {
       let query = supabase
         .from('stakeholders')
         .select('*');
-
       if (workspaceId) {
         query = query.eq('workspace_id', workspaceId);
       }
-
       const { data, error } = await query.order('name');
-
       if (error) throw error;
-
       setStakeholders(data || []);
     } catch (error) {
       console.error('Error loading stakeholders:', error);
@@ -43,10 +27,59 @@ export const useStakeholders = (workspaceId?: string) => {
     }
   };
 
+  const createStakeholder = async (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('stakeholders')
+        .insert([{ ...stakeholder }])
+        .select();
+      if (error) throw error;
+      toast.success('Stakeholder created');
+      loadStakeholders();
+      return data?.[0] as Stakeholder;
+    } catch (error) {
+      console.error('Error creating stakeholder:', error);
+      toast.error('Failed to create stakeholder');
+      return null;
+    }
+  };
+
+  const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
+    try {
+      const { error } = await supabase
+        .from('stakeholders')
+        .update({ ...updates })
+        .eq('id', id);
+      if (error) throw error;
+      toast.success('Stakeholder updated');
+      loadStakeholders();
+      return true;
+    } catch (error) {
+      console.error('Error updating stakeholder:', error);
+      toast.error('Failed to update stakeholder');
+      return false;
+    }
+  };
+
+  const deleteStakeholder = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('stakeholders')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      toast.success('Stakeholder deleted');
+      loadStakeholders();
+      return true;
+    } catch (error) {
+      console.error('Error deleting stakeholder:', error);
+      toast.error('Failed to delete stakeholder');
+      return false;
+    }
+  };
+
   useEffect(() => {
     loadStakeholders();
-
-    // Set up real-time subscription
     const subscription = supabase
       .channel('stakeholders_changes')
       .on(
@@ -61,7 +94,6 @@ export const useStakeholders = (workspaceId?: string) => {
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(subscription);
     };
@@ -70,6 +102,9 @@ export const useStakeholders = (workspaceId?: string) => {
   return {
     stakeholders,
     loading,
-    refreshStakeholders: loadStakeholders
+    refreshStakeholders: loadStakeholders,
+    createStakeholder,
+    updateStakeholder,
+    deleteStakeholder
   };
 };

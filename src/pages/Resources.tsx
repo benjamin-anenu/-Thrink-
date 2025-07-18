@@ -7,7 +7,8 @@ import AssignmentModal from '@/components/AssignmentModal';
 import ResourceOverview from '@/components/ResourceOverview';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
-import { useResources, Resource } from '@/contexts/ResourceContext';
+import { useResources } from '@/hooks/useResources';
+import type { Resource } from '@/types/resource';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
@@ -20,11 +21,11 @@ const Resources = () => {
   const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<Resource | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
-  const { resources, addResource } = useResources();
+  const { resources, createResource } = useResources();
 
-  const handleResourceSave = (resource: any) => {
+  const handleResourceSave = async (resource: any) => {
     console.log('Saving resource:', resource);
-    addResource(resource);
+    await createResource(resource);
     setShowResourceForm(false);
   };
 
