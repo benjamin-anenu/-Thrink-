@@ -354,12 +354,13 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ d
                       )}
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => removeStakeholder(stakeholder.id)}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive border-destructive hover:text-destructive hover:border-destructive flex items-center gap-1"
                     >
                       <Trash2 size={16} />
+                      Delete
                     </Button>
                   </div>
                 </CardContent>
