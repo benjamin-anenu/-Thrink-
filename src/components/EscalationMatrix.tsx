@@ -1,139 +1,276 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { AlertTriangle, Clock, Users, ArrowUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useEscalationMatrix, EscalationMatrixEntry } from '@/hooks/useEscalationMatrix';
+import { Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface EscalationRule {
-  level: number;
-  title: string;
-  timeframe: string;
-  stakeholders: Array<{
-    name: string;
-    role: string;
-    avatar?: string;
-  }>;
-  conditions: string[];
+interface EscalationMatrixProps {
+  projectId?: string;
 }
 
-const escalationRules: EscalationRule[] = [
-  {
+const EscalationMatrix: React.FC<EscalationMatrixProps> = ({ projectId }) => {
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<EscalationMatrixEntry | null>(null);
+  const [formData, setFormData] = useState({
     level: 1,
-    title: "Team Lead Escalation",
-    timeframe: "Within 2 hours",
-    stakeholders: [
-      { name: "Sarah Johnson", role: "Project Manager", avatar: "/placeholder.svg" },
-      { name: "Mike Chen", role: "Tech Lead", avatar: "/placeholder.svg" }
-    ],
-    conditions: ["Task overdue by 1 day", "Resource unavailable", "Minor blockers"]
-  },
-  {
-    level: 2,
-    title: "Management Escalation",
-    timeframe: "Within 4 hours",
-    stakeholders: [
-      { name: "David Wilson", role: "Engineering Manager", avatar: "/placeholder.svg" },
-      { name: "Lisa Park", role: "Product Manager", avatar: "/placeholder.svg" }
-    ],
-    conditions: ["Task overdue by 3 days", "Budget variance >10%", "Resource conflicts"]
-  },
-  {
-    level: 3,
-    title: "Director Escalation",
-    timeframe: "Within 8 hours",
-    stakeholders: [
-      { name: "James Rodriguez", role: "Director of Engineering", avatar: "/placeholder.svg" },
-      { name: "Anna Kim", role: "Director of Product", avatar: "/placeholder.svg" }
-    ],
-    conditions: ["Project delayed by 1 week", "Budget variance >25%", "Client complaints"]
-  },
-  {
-    level: 4,
-    title: "Executive Escalation",
-    timeframe: "Within 24 hours",
-    stakeholders: [
-      { name: "Robert Chen", role: "CTO", avatar: "/placeholder.svg" },
-      { name: "Maria Garcia", role: "CEO", avatar: "/placeholder.svg" }
-    ],
-    conditions: ["Project at risk of failure", "Budget variance >50%", "Legal/compliance issues"]
-  }
-];
+    contact_name: '',
+    contact_email: '',
+    contact_role: '',
+    issue_types: [] as string[]
+  });
 
-const EscalationMatrix = () => {
-  const getLevelColor = (level: number) => {
-    switch (level) {
-      case 1: return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800';
-      case 2: return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800';
-      case 3: return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800';
-      case 4: return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
+  const { escalationMatrix, loading, createEscalationEntry, updateEscalationEntry, deleteEscalationEntry } = useEscalationMatrix(projectId);
+
+  const handleEdit = (entry?: EscalationMatrixEntry) => {
+    if (entry) {
+      setEditingEntry(entry);
+      setFormData({
+        level: entry.level,
+        contact_name: entry.contact_name,
+        contact_email: entry.contact_email,
+        contact_role: entry.contact_role,
+        issue_types: entry.issue_types || []
+      });
+    } else {
+      setEditingEntry(null);
+      setFormData({
+        level: Math.max(...escalationMatrix.map(e => e.level), 0) + 1,
+        contact_name: '',
+        contact_email: '',
+        contact_role: '',
+        issue_types: []
+      });
+    }
+    setShowEditDialog(true);
+  };
+
+  const handleSave = async () => {
+    if (!projectId) {
+      toast.error('Project ID required');
+      return;
+    }
+
+    if (!formData.contact_name || !formData.contact_email) {
+      toast.error('Contact name and email are required');
+      return;
+    }
+
+    const entryData = {
+      ...formData,
+      project_id: projectId
+    };
+
+    if (editingEntry) {
+      await updateEscalationEntry(editingEntry.id, entryData);
+    } else {
+      await createEscalationEntry(entryData);
+    }
+
+    setShowEditDialog(false);
+    setEditingEntry(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this escalation entry?')) {
+      await deleteEscalationEntry(id);
     }
   };
 
+  const addIssueType = (issueType: string) => {
+    if (issueType && !formData.issue_types.includes(issueType)) {
+      setFormData({
+        ...formData,
+        issue_types: [...formData.issue_types, issueType]
+      });
+    }
+  };
+
+  const removeIssueType = (issueType: string) => {
+    setFormData({
+      ...formData,
+      issue_types: formData.issue_types.filter(type => type !== issueType)
+    });
+  };
+
+  if (!projectId) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">Select a project to view escalation matrix</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2 mb-6">
-        <AlertTriangle className="h-6 w-6 text-orange-500" />
-        <h2 className="text-2xl font-bold">Escalation Matrix</h2>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Escalation Matrix</h2>
+          <p className="text-muted-foreground">Define escalation procedures for different issue types</p>
+        </div>
+        <Button onClick={() => handleEdit()}>
+          <Plus size={16} className="mr-2" />
+          Add Level
+        </Button>
       </div>
-      
-      <div className="grid gap-4">
-        {escalationRules.map((rule) => (
-          <Card key={rule.level} className={`border-2 ${getLevelColor(rule.level)}`}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <ArrowUp className="h-5 w-5" />
-                    <CardTitle className="text-lg">Level {rule.level}</CardTitle>
+
+      {loading ? (
+        <div className="text-center py-8">Loading escalation matrix...</div>
+      ) : escalationMatrix.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-8">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-4">No escalation levels defined</p>
+            <Button onClick={() => handleEdit()}>
+              <Plus size={16} className="mr-2" />
+              Create First Level
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {escalationMatrix.sort((a, b) => a.level - b.level).map((entry) => (
+            <Card key={entry.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      Level {entry.level}
+                      <Badge variant="outline">{entry.contact_role}</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Contact: {entry.contact_name} ({entry.contact_email})
+                    </CardDescription>
                   </div>
-                  <Badge variant="outline" className="font-normal">
-                    {rule.title}
-                  </Badge>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(entry)}
+                    >
+                      <Edit size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(entry.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>{rule.timeframe}</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center space-x-2 mb-3">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-medium text-sm">Responsible Stakeholders</h4>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {rule.stakeholders.map((stakeholder, index) => (
-                    <div key={index} className="flex items-center space-x-2 bg-background/50 rounded-lg p-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={stakeholder.avatar} />
-                        <AvatarFallback>{stakeholder.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{stakeholder.name}</p>
-                        <p className="text-xs text-muted-foreground">{stakeholder.role}</p>
-                      </div>
+              </CardHeader>
+              <CardContent>
+                {entry.issue_types && entry.issue_types.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Issue Types:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {entry.issue_types.map((type, index) => (
+                        <Badge key={index} variant="secondary">
+                          {type}
+                        </Badge>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingEntry ? 'Edit Escalation Level' : 'Add Escalation Level'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="level">Level</Label>
+              <Input
+                id="level"
+                type="number"
+                value={formData.level}
+                onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 1 })}
+                min={1}
+              />
+            </div>
+            <div>
+              <Label htmlFor="contact_name">Contact Name</Label>
+              <Input
+                id="contact_name"
+                value={formData.contact_name}
+                onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="contact_email">Contact Email</Label>
+              <Input
+                id="contact_email"
+                type="email"
+                value={formData.contact_email}
+                onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="contact_role">Contact Role</Label>
+              <Input
+                id="contact_role"
+                value={formData.contact_role}
+                onChange={(e) => setFormData({ ...formData, contact_role: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Issue Types</Label>
+              <div className="flex gap-2 mb-2">
+                <Select onValueChange={addIssueType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Add issue type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Technical">Technical</SelectItem>
+                    <SelectItem value="Budget">Budget</SelectItem>
+                    <SelectItem value="Schedule">Schedule</SelectItem>
+                    <SelectItem value="Quality">Quality</SelectItem>
+                    <SelectItem value="Resource">Resource</SelectItem>
+                    <SelectItem value="Stakeholder">Stakeholder</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <div>
-                <h4 className="font-medium text-sm mb-2">Escalation Conditions</h4>
-                <div className="flex flex-wrap gap-2">
-                  {rule.conditions.map((condition, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {condition}
-                    </Badge>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.issue_types.map((type, index) => (
+                  <Badge key={index} variant="secondary" className="cursor-pointer" onClick={() => removeIssueType(type)}>
+                    {type} ×
+                  </Badge>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              {editingEntry ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

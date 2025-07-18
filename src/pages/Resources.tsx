@@ -6,13 +6,16 @@ import ResourceForm from '@/components/ResourceForm';
 import SkillsMatrix from '@/components/SkillsMatrix';
 import AssignmentModal from '@/components/AssignmentModal';
 import ResourceOverview from '@/components/ResourceOverview';
+import ResourceListView from '@/components/ResourceListView';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
+import ViewToggle from '@/components/ViewToggle';
 import { useResources } from '@/hooks/useResources';
 import { Resource as ContextResource } from '@/contexts/ResourceContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
@@ -21,6 +24,8 @@ const Resources = () => {
   const [selectedResource, setSelectedResource] = useState<{ id: string; name: string } | null>(null);
   const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<ContextResource | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const { resources, createResource } = useResources();
 
@@ -50,22 +55,27 @@ const Resources = () => {
     id: resource.id,
     name: resource.name,
     role: resource.role || '',
-    department: '', // Database doesn't have department, so default to empty
+    department: resource.department || '',
     email: resource.email || '',
-    phone: '', // Database doesn't have phone, so default to empty
-    location: '', // Database doesn't have location, so default to empty
-    skills: resource.skills || [],
-    availability: typeof resource.availability === 'string' ? 100 : resource.availability || 100,
+    phone: '',
+    location: '',
+    skills: [],
+    availability: 100,
     currentProjects: [],
-    hourlyRate: '$0/hr', // Default hourly rate
-    utilization: 0, // Default utilization
-    status: resource.status === 'active' ? 'Available' : 
-            resource.status === 'pending' ? 'Busy' : 'Overallocated',
+    hourlyRate: '$0/hr',
+    utilization: 0,
+    status: 'Available',
     workspaceId: resource.workspace_id || '',
     createdAt: resource.created_at,
     updatedAt: resource.updated_at,
     lastActive: resource.updated_at
   }));
+
+  const filteredResources = mappedResources.filter(resource =>
+    resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    resource.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    resource.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -90,11 +100,34 @@ const Resources = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <ResourceOverview
-              resources={mappedResources}
-              onViewDetails={handleViewDetails}
-              onShowResourceForm={() => setShowResourceForm(true)}
-            />
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                  <Input
+                    placeholder="Search resources..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <ViewToggle view={viewMode} onViewChange={setViewMode} />
+              </div>
+
+              {viewMode === 'grid' ? (
+                <ResourceOverview
+                  resources={filteredResources}
+                  onViewDetails={handleViewDetails}
+                  onShowResourceForm={() => setShowResourceForm(true)}
+                />
+              ) : (
+                <ResourceListView
+                  resources={filteredResources}
+                  onViewDetails={handleViewDetails}
+                  onAssignTask={handleAssignTask}
+                />
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="skills">
