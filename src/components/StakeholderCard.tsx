@@ -24,9 +24,10 @@ interface Stakeholder {
 interface StakeholderCardProps {
   stakeholder: Stakeholder;
   onEdit: (stakeholder: Stakeholder) => void;
+  onDelete?: (stakeholder: Stakeholder) => void;
 }
 
-const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
+const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps) => {
   const getInfluenceColor = (influence: string) => {
     switch (influence.toLowerCase()) {
       case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
@@ -60,9 +61,24 @@ const StakeholderCard = ({ stakeholder, onEdit }: StakeholderCardProps) => {
               <p className="text-sm text-muted-foreground">{stakeholder.role}</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => onEdit(stakeholder)}>
-            <Edit className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => onEdit(stakeholder)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            {onDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onDelete(stakeholder)}
+                className="text-destructive border-destructive hover:text-destructive hover:border-destructive flex items-center gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Delete
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
