@@ -54,8 +54,10 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
   const [newProject, setNewProject] = useState('');
 
   const { currentWorkspace } = useWorkspace();
-  const { projects } = useProjects();
-  const { departments } = useDepartments();
+  const { departments: rawDepartments, loading: departmentsLoading } = useDepartments();
+  const { projects: rawProjects, loading: projectsLoading } = useProjects();
+  const departments = rawDepartments || [];
+  const projects = rawProjects || [];
 
   useEffect(() => {
     if (stakeholder) {
@@ -77,11 +79,6 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
     }
   }, [stakeholder, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
   const addProject = () => {
     if (newProject.trim() && !formData.projects.includes(newProject.trim())) {
       setFormData({
@@ -97,6 +94,12 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
       ...formData,
       projects: formData.projects.filter(p => p !== project)
     });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+    onClose();
   };
 
   return (
@@ -241,7 +244,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
 
           <div className="space-y-2">
             <Label>Associated Projects</Label>
-            {projects.length > 0 ? (
+            {(projects && projects.length > 0) ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -260,7 +263,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
                   className="w-full min-w-[200px] max-w-full max-h-60 overflow-y-auto p-0 border border-input rounded-md bg-background text-foreground shadow-md z-50"
                   style={{ minWidth: '100%' }}
                 >
-                  {Array.from(new Set(projects.map(p => p.name))).length === 0 ? (
+                  {(projects && projects.length === 0) ? (
                     <div className="px-4 py-2 text-muted-foreground text-sm">No projects available</div>
                   ) : (
                     Array.from(new Set(projects.map(p => p.name))).map((projectName, idx) => (

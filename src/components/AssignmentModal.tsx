@@ -12,6 +12,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock, User } from 'lucide-react';
+import { useProjects } from '@/hooks/useProjects';
+import { useTasks } from '@/hooks/useTasks';
 
 interface AssignmentModalProps {
   isOpen: boolean;
@@ -28,13 +30,8 @@ const AssignmentModal = ({ isOpen, onClose, resourceId, resourceName }: Assignme
   const [deadline, setDeadline] = useState<Date>();
   const [description, setDescription] = useState('');
 
-  const projects = [
-    'E-commerce Redesign',
-    'Mobile App Development',
-    'Infrastructure Upgrade',
-    'Marketing Campaign Q2',
-    'Security Audit'
-  ];
+  const { projects, loading: projectsLoading } = useProjects();
+  const { tasks, loading: tasksLoading } = useTasks(project);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +97,7 @@ const AssignmentModal = ({ isOpen, onClose, resourceId, resourceName }: Assignme
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map(proj => (
-                    <SelectItem key={proj} value={proj}>{proj}</SelectItem>
+                    <SelectItem key={proj.id} value={proj.id}>{proj.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -164,6 +161,47 @@ const AssignmentModal = ({ isOpen, onClose, resourceId, resourceName }: Assignme
               rows={4}
             />
           </div>
+
+          {/* After project selection, show tasks table */}
+          {project && (
+            <div className="mt-6">
+              <h4 className="font-medium mb-2">Tasks for this Project</h4>
+              {tasksLoading ? (
+                <div>Loading tasks...</div>
+              ) : tasks.length === 0 ? (
+                <div>No tasks found for this project.</div>
+              ) : (
+                <table className="w-full text-sm border rounded">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="p-2 text-left">Task</th>
+                      <th className="p-2 text-left">Start</th>
+                      <th className="p-2 text-left">End</th>
+                      <th className="p-2 text-left">Assigned</th>
+                      <th className="p-2 text-left">Status</th>
+                      <th className="p-2 text-left">Assign</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasks.map(task => (
+                      <tr key={task.id} className={(!task.assigned_resource_id ? 'bg-yellow-50 dark:bg-yellow-900/10' : '')}>
+                        <td className="p-2 font-medium">{task.name}</td>
+                        <td className="p-2">{task.start_date ? new Date(task.start_date).toLocaleDateString() : '-'}</td>
+                        <td className="p-2">{task.end_date ? new Date(task.end_date).toLocaleDateString() : '-'}</td>
+                        <td className="p-2">{task.assigned_resource_id ? task.assigned_resource_id : <span className="text-orange-600">Unassigned</span>}</td>
+                        <td className="p-2">{task.status || '-'}</td>
+                        <td className="p-2">
+                          {!task.assigned_resource_id && resourceId && (
+                            <Button size="sm" onClick={() => {/* TODO: implement assign logic */}}>Assign</Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
 
           {/* Task Preview */}
           <div className="p-4 border rounded-lg bg-muted/50">
