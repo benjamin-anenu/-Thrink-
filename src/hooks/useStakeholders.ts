@@ -38,7 +38,7 @@ export const useStakeholders = (workspaceId?: string) => {
         role: item.role || '',
         department: item.department || '',
         phone: item.phone || '',
-        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
         projects: item.projects || [],
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
@@ -73,10 +73,11 @@ export const useStakeholders = (workspaceId?: string) => {
         role: stakeholder.role,
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
-        department: stakeholder.department,
-        phone: stakeholder.phone,
-        projects: stakeholder.projects,
+        department: stakeholder.department || '',
+        phone: stakeholder.phone || '',
+        projects: stakeholder.projects || [],
         notes: stakeholder.notes || '',
+        communication_preference: stakeholder.communicationPreference || 'Email',
       };
       
       const { data, error } = await supabase
@@ -96,7 +97,7 @@ export const useStakeholders = (workspaceId?: string) => {
         role: data[0].role,
         department: data[0].department || '',
         phone: data[0].phone || '',
-        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        communicationPreference: (data[0].communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
         projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
@@ -127,6 +128,7 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.projects) dbUpdates.projects = updates.projects;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      if (updates.communicationPreference) dbUpdates.communication_preference = updates.communicationPreference;
       
       const { error } = await supabase
         .from('stakeholders')

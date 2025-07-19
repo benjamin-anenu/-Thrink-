@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import Header from '@/components/Header';
@@ -186,7 +185,6 @@ const Stakeholders = () => {
                         stakeholder={stakeholder}
                         onEdit={handleEditStakeholder}
                         onDelete={handleDeleteStakeholder}
-                        onContact={handleContactStakeholder}
                       />
                     ))}
                   </div>
@@ -194,7 +192,12 @@ const Stakeholders = () => {
                   <StakeholderListView
                     stakeholders={filteredStakeholders}
                     onEdit={handleEditStakeholder}
-                    onDelete={handleDeleteStakeholder}
+                    onDelete={(id: string) => {
+                      const stakeholder = filteredStakeholders.find(s => s.id === id);
+                      if (stakeholder) {
+                        handleDeleteStakeholder(stakeholder);
+                      }
+                    }}
                     onContact={handleContactStakeholder}
                   />
                 )}
