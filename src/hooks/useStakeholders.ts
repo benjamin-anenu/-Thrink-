@@ -29,21 +29,21 @@ export const useStakeholders = (workspaceId?: string) => {
       const { data, error } = await query.order('name');
       if (error) throw error;
       
-      // Map database fields to interface fields
+      // Map database fields to interface fields, using defaults for missing fields
       const mappedData = (data || []).map(item => ({
         id: item.id,
         workspace_id: item.workspace_id || '',
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
-        department: item.department || '',
-        phone: item.phone || '',
+        department: item.department || '', // Default empty string
+        phone: item.phone || '', // Default empty string
         communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-        projects: item.projects || [],
+        projects: item.projects || [], // Default empty array
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: item.notes || '',
+        notes: item.notes || '', // Default empty string
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
       }));
@@ -123,8 +123,8 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.name) dbUpdates.name = updates.name;
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.role) dbUpdates.role = updates.role;
-      if (updates.department) dbUpdates.department = updates.department;
-      if (updates.phone) dbUpdates.phone = updates.phone;
+      if (updates.department !== undefined) dbUpdates.department = updates.department;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
       if (updates.projects) dbUpdates.projects = updates.projects;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
