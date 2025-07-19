@@ -1,97 +1,110 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Save, FolderOpen } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
-import { ProjectDraftService, ProjectDraft } from '@/services/ProjectDraftService';
-import { DraftManagementModal } from './DraftManagementModal';
-import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
-import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
-import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
-import ResourcePlanningStep from '@/components/project-creation/ResourcePlanningStep';
-import StakeholderManagementStep from '@/components/project-creation/StakeholderManagementStep';
-import MilestonePlanningStep from '@/components/project-creation/MilestonePlanningStep';
-import AIReviewStep from '@/components/project-creation/AIReviewStep';
-import ProjectInitiationStep from '@/components/project-creation/ProjectInitiationStep';
+
+// Step components
+import ProjectDetailsStep from './project-creation/ProjectDetailsStep';
+import ResourceAllocationStep from './project-creation/ResourceAllocationStep';
+import StakeholderManagementStep from './project-creation/StakeholderManagementStep';
+import TimelineStep from './project-creation/TimelineStep';
+import BudgetStep from './project-creation/BudgetStep';
+import ReviewStep from './project-creation/ReviewStep';
+
+export interface ProjectCreationData {
+  name: string;
+  description: string;
+  objectives: string[];
+  deliverables: string[];
+  resources: {
+    teamMembers: Array<{
+      id: string;
+      name: string;
+      role: string;
+      allocation: number;
+    }>;
+    skills: string[];
+    budget: number;
+    timeline: {
+      start: string;
+      end: string;
+    };
+  };
+  stakeholders: Array<{
+    id: string;
+    name: string;
+    role: string;
+    influence: string;
+    interest: string;
+  }>;
+  risks: Array<{
+    id: string;
+    description: string;
+    impact: string;
+    probability: string;
+    mitigation: string;
+  }>;
+  milestones: Array<{
+    id: string;
+    name: string;
+    date: string;
+    description: string;
+  }>;
+  tags: string[];
+}
 
 interface ProjectCreationWizardProps {
-  isOpen: boolean;
+  onProjectCreated: (data: ProjectCreationData) => void;
   onClose: () => void;
-  onProjectCreated: (project: any) => void;
 }
 
 const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
-  isOpen,
+  onProjectCreated,
   onClose,
-  onProjectCreated
 }) => {
+  const navigate = useNavigate();
+  const { currentWorkspace } = useWorkspace();
   const [currentStep, setCurrentStep] = useState(1);
-  const [isCreating, setIsCreating] = useState(false);
-  const [currentDraft, setCurrentDraft] = useState<ProjectDraft | null>(null);
-  const [showDraftModal, setShowDraftModal] = useState(false);
-  const [autoSaving, setAutoSaving] = useState(false);
-  const [projectData, setProjectData] = useState<ProjectCreationData>({
+  const [data, setData] = useState<ProjectCreationData>({
     name: '',
     description: '',
-    workspaceId: '',
-    kickoffData: {
-      meetingMinutes: '',
-      objectives: [],
-      documents: []
-    },
-    requirements: {
-      functional: [],
-      nonFunctional: [],
-      constraints: [],
-      stakeholderSignoffs: []
-    },
+    objectives: [],
+    deliverables: [],
     resources: {
       teamMembers: [],
-      budget: '',
-      timeline: { start: '', end: '' }
+      skills: [],
+      budget: 0,
+      timeline: {
+        start: '',
+        end: '',
+      },
     },
     stakeholders: [],
-    escalationMatrix: [],
+    risks: [],
     milestones: [],
-    aiGenerated: {
-      projectPlan: '',
-      riskAssessment: '',
-      recommendations: []
-    },
-    initiation: {
-      document: '',
-      signatures: [],
-      approved: false
-    }
+    tags: [],
   });
 
-  const { toast } = useToast();
-  const { currentWorkspace } = useWorkspace();
-
-  // Set workspace ID when component mounts or workspace changes
-  React.useEffect(() => {
-    if (currentWorkspace) {
-      setProjectData(prev => ({ ...prev, workspaceId: currentWorkspace.id }));
-    }
-  }, [currentWorkspace]);
-
   const steps = [
-    { number: 1, title: 'Project Details', component: ProjectDetailsStep },
-    { number: 2, title: 'Kickoff Session', component: KickoffSessionStep },
-    { number: 3, title: 'Requirements Gathering', component: RequirementsGatheringStep },
-    { number: 4, title: 'Resource Planning', component: ResourcePlanningStep },
-    { number: 5, title: 'Stakeholder Management', component: StakeholderManagementStep },
-    { number: 6, title: 'Milestone Planning', component: MilestonePlanningStep },
-    { number: 7, title: 'AI Review & Planning', component: AIReviewStep },
-    { number: 8, title: 'Project Initiation', component: ProjectInitiationStep }
+    { id: 1, title: 'Project Details', component: ProjectDetailsStep },
+    { id: 2, title: 'Resource Allocation', component: ResourceAllocationStep },
+    { id: 3, title: 'Stakeholder Management', component: StakeholderManagementStep },
+    { id: 4, title: 'Timeline & Milestones', component: TimelineStep },
+    { id: 5, title: 'Budget Planning', component: BudgetStep },
+    { id: 6, title: 'Review & Create', component: ReviewStep },
   ];
 
-  const currentStepData = steps[currentStep - 1];
-  const StepComponent = currentStepData.component;
-  const progress = (currentStep / steps.length) * 100;
+  const currentStepData = steps.find(step => step.id === currentStep);
+  const CurrentStepComponent = currentStepData?.component;
+
+  const handleDataChange = (stepData: Partial<ProjectCreationData>) => {
+    setData(prev => ({ ...prev, ...stepData }));
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length) {
@@ -99,292 +112,132 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }
   };
 
-  const handleBack = () => {
+  const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  const handleStepData = (stepData: any) => {
-    const newData = { ...projectData, ...stepData };
-    setProjectData(newData);
-    
-    // Auto-save if we have a current workspace and project data
-    if (currentWorkspace && (newData.name || currentDraft)) {
-      autoSaveDraft(newData);
-    }
-  };
-
-  const autoSaveDraft = async (data: ProjectCreationData) => {
-    if (!currentWorkspace || autoSaving) return;
-    
-    const draftName = data.name || currentDraft?.draft_name || `Draft ${new Date().toLocaleString()}`;
-    
-    setAutoSaving(true);
-    try {
-      const draft = await ProjectDraftService.autoSaveDraft(
-        draftName,
-        currentWorkspace.id,
-        data,
-        currentStep,
-        currentDraft?.id
-      );
-      setCurrentDraft(draft);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    } finally {
-      setAutoSaving(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "Error",
-        description: "Please select a workspace first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const draftName = projectData.name || `Draft ${new Date().toLocaleString()}`;
-    
-    try {
-      const draft = await ProjectDraftService.saveDraft(
-        draftName,
-        currentWorkspace.id,
-        projectData,
-        currentStep,
-        currentDraft?.id
-      );
-      setCurrentDraft(draft);
-      toast({
-        title: "Success",
-        description: "Draft saved successfully"
-      });
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save draft",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleLoadDraft = (draft: ProjectDraft) => {
-    setProjectData(draft.draft_data);
-    setCurrentStep(draft.current_step);
-    setCurrentDraft(draft);
-    toast({
-      title: "Success",
-      description: "Draft loaded successfully"
-    });
-  };
-
-  const resetWizard = () => {
-    setCurrentStep(1);
-    setProjectData({
-      name: '',
-      description: '',
+  const handleSubmit = () => {
+    const projectData = {
+      name: data.name,
+      description: data.description,
+      status: 'Planning' as const,
+      priority: 'Medium' as const,
+      startDate: data.resources.timeline.start,
+      endDate: data.resources.timeline.end,
+      budget: data.resources.budget.toString(),
+      teamSize: data.resources.teamMembers.length,
+      healthStatus: 'green',
+      healthScore: 100,
+      skills: data.resources.skills,
+      resources: data.resources.teamMembers.map(m => m.id),
+      stakeholders: data.stakeholders.map(s => s.id),
       workspaceId: currentWorkspace?.id || '',
-      kickoffData: {
-        meetingMinutes: '',
-        objectives: [],
-        documents: []
+      tasks: [],
+      milestones: data.milestones,
+      progress: 0,
+      tags: data.tags,
+      health: {
+        status: 'green' as const,
+        score: 100,
       },
-      requirements: {
-        functional: [],
-        nonFunctional: [],
-        constraints: [],
-        stakeholderSignoffs: []
-      },
-      resources: {
-        teamMembers: [],
-        budget: '',
-        timeline: { start: '', end: '' }
-      },
-      stakeholders: [],
-      escalationMatrix: [],
-      milestones: [],
-      aiGenerated: {
-        projectPlan: '',
-        riskAssessment: '',
-        recommendations: []
-      },
-      initiation: {
-        document: '',
-        signatures: [],
-        approved: false
-      }
-    });
-    setCurrentDraft(null);
-    setIsCreating(false);
-  };
-
-  const handleFinish = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "Error",
-        description: "No workspace selected. Please select a workspace first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCreating(true);
-    
-    try {
-      const project = await ProjectCreationService.createProject({
-        ...projectData,
-        workspaceId: currentWorkspace.id
-      });
-
-      toast({
-        title: "Success!",
-        description: `Project "${project.name}" has been created successfully.`,
-      });
-
-      onProjectCreated(project);
-      
-      // Delete the draft if it exists since project was created
-      if (currentDraft) {
-        try {
-          await ProjectDraftService.deleteDraft(currentDraft.id);
-        } catch (error) {
-          console.error('Error deleting draft after project creation:', error);
-        }
-      }
-      
-      resetWizard();
-      onClose();
-    } catch (error) {
-      console.error('Error creating project:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create project. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  // Clear auto-save when component unmounts or dialog closes
-  useEffect(() => {
-    return () => {
-      if (currentDraft) {
-        ProjectDraftService.clearAutoSave(currentDraft.id);
-      }
     };
-  }, [currentDraft]);
 
-  // Reset when dialog opens
-  useEffect(() => {
-    if (isOpen && !currentDraft) {
-      resetWizard();
-    }
-  }, [isOpen]);
+    onProjectCreated(projectData);
+  };
+
+  const progress = (currentStep / steps.length) * 100;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
-              <p id="project-creation-description" className="text-muted-foreground">
-                Follow this guided wizard to set up your new project with all necessary details and configurations.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {autoSaving && (
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                  Saving...
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDraftModal(true)}
-              >
-                <FolderOpen className="h-4 w-4 mr-1" />
-                Load Draft
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveDraft}
-                disabled={!currentWorkspace}
-              >
-                <Save className="h-4 w-4 mr-1" />
-                Save Draft
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Step {currentStep} of {steps.length}: {currentStepData.title}</span>
-              <span>{Math.round(progress)}% Complete</span>
-            </div>
-            <Progress value={progress} className="w-full" />
-          </div>
+          <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          <StepComponent
-            data={projectData}
-            onDataChange={handleStepData}
-          />
-        </div>
+        <div className="space-y-6">
+          {/* Progress */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Step {currentStep} of {steps.length}</span>
+              <span>{Math.round(progress)}% Complete</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
 
-        <div className="flex justify-between pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 1 || isCreating}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft size={16} />
-            Back
-          </Button>
-
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            {currentStep < steps.length ? (
-              <Button 
-                onClick={handleNext} 
-                className="flex items-center gap-2"
-                disabled={isCreating}
+          {/* Step Navigation */}
+          <div className="flex justify-between items-center text-sm">
+            {steps.map((step) => (
+              <div
+                key={step.id}
+                className={`flex items-center ${
+                  step.id === currentStep
+                    ? 'text-primary font-medium'
+                    : step.id < currentStep
+                    ? 'text-green-600'
+                    : 'text-muted-foreground'
+                }`}
               >
-                Next
-                <ArrowRight size={16} />
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${
+                    step.id === currentStep
+                      ? 'bg-primary text-primary-foreground'
+                      : step.id < currentStep
+                      ? 'bg-green-600 text-white'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {step.id}
+                </div>
+                <span className="hidden sm:inline">{step.title}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Step Content */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{currentStepData?.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {CurrentStepComponent && (
+                <CurrentStepComponent
+                  data={data}
+                  onDataChange={handleDataChange}
+                  onNext={handleNext}
+                  onPrevious={handlePrevious}
+                  onUpdate={handleDataChange}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Navigation */}
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 1}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft size={16} />
+              Previous
+            </Button>
+
+            {currentStep === steps.length ? (
+              <Button onClick={handleSubmit} className="flex items-center gap-2">
+                Create Project
               </Button>
             ) : (
-              <Button 
-                onClick={handleFinish} 
-                className="bg-primary"
-                disabled={isCreating || !projectData.name}
-              >
-                {isCreating ? 'Creating Project...' : 'Create Project'}
+              <Button onClick={handleNext} className="flex items-center gap-2">
+                Next
+                <ArrowRight size={16} />
               </Button>
             )}
           </div>
         </div>
       </DialogContent>
-
-      <DraftManagementModal
-        isOpen={showDraftModal}
-        onClose={() => setShowDraftModal(false)}
-        onLoadDraft={handleLoadDraft}
-      />
     </Dialog>
   );
 };

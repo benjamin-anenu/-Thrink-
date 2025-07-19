@@ -1,36 +1,33 @@
 
 import React from 'react';
 import ProjectCalendar from '@/components/calendar/ProjectCalendar';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  description: string;
-  type: 'call' | 'meeting' | 'deadline' | 'milestone' | 'review';
-  date: Date;
-  startTime?: string;
-  endTime?: string;
-  location?: string;
-  projectId: string;
-  projectName: string;
-}
+const CalendarTab: React.FC = () => {
+  const { events, isLoading, createCalendarEvent } = useCalendarSync();
 
-interface CalendarTabProps {
-  events: CalendarEvent[];
-  onCreateEvent: (event: Omit<CalendarEvent, 'id'>) => void;
-  onEventClick: (event: CalendarEvent) => void;
-}
+  const handleCreateEvent = async (eventData: any) => {
+    await createCalendarEvent(eventData);
+  };
 
-const CalendarTab: React.FC<CalendarTabProps> = ({
-  events,
-  onCreateEvent,
-  onEventClick
-}) => {
+  const handleEventClick = (event: any) => {
+    console.log('Event clicked:', event);
+    // Handle event click - could open details modal, navigate to project, etc.
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-pulse text-muted-foreground">Loading calendar...</div>
+      </div>
+    );
+  }
+
   return (
     <ProjectCalendar
       events={events}
-      onCreateEvent={onCreateEvent}
-      onEventClick={onEventClick}
+      onCreateEvent={handleCreateEvent}
+      onEventClick={handleEventClick}
     />
   );
 };
