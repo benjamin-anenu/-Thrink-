@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,8 +55,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       ...newStakeholder,
       id: `temp-${Date.now()}`,
       workspace_id: currentWorkspace?.id || '',
-      status: 'active' as const,
-      interest: 'medium' as const
+      influence_level: newStakeholder.influence,
+      notes: ''
     };
 
     onUpdate({
@@ -138,11 +137,9 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           name: stakeholder.name,
           email: stakeholder.email,
           role: stakeholder.role,
-          influence: stakeholder.influence,
+          influence_level: stakeholder.influence || stakeholder.influence_level,
           workspace_id: currentWorkspace?.id || '',
-          status: 'active',
-          interest: 'medium',
-          notes: ''
+          notes: stakeholder.notes || ''
         });
       }
     }

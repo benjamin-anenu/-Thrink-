@@ -1,8 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { useResources } from '@/hooks/useResources';
+import { useResources } from '@/contexts/ResourceContext';
 import { useProjects } from '@/hooks/useProjects';
-import { useTasks } from '@/hooks/useTasks';
 
 export interface ResourceMetrics {
   totalResources: number;
@@ -41,10 +40,11 @@ export const useResourceAssignments = () => {
     
     // Calculate utilization based on current assignments
     const resourceUtilization = resources.map(resource => {
-      // Simulate utilization calculation based on assignments
-      const currentProjects = projects.filter(project => 
-        project.resources?.includes(resource.id) || false
-      );
+      // Get projects that include this resource
+      const currentProjects = projects.filter(project => {
+        // Check if project has a resources array and includes this resource's ID
+        return Array.isArray(project.resources) && project.resources.includes(resource.id);
+      });
       
       const utilization = Math.min(currentProjects.length * 30, 100); // 30% per project, max 100%
       
@@ -75,7 +75,7 @@ export const useResourceAssignments = () => {
 
     const suggestions: AssignmentSuggestion[] = [];
     
-    // Simulate AI suggestions based on resource skills and availability
+    // Generate AI suggestions based on resource skills and availability
     resources.forEach(resource => {
       // Find unassigned tasks that might match this resource
       const mockSuggestion: AssignmentSuggestion = {

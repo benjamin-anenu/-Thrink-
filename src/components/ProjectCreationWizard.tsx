@@ -333,10 +333,19 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
-          <StepComponent
-            data={projectData}
-            onDataChange={handleStepData}
-          />
+          {currentStep === 5 ? (
+            <StakeholderManagementStep
+              data={projectData}
+              onUpdate={handleStepData}
+              onNext={handleNext}
+              onPrevious={handleBack}
+            />
+          ) : (
+            <StepComponent
+              data={projectData}
+              onDataChange={handleStepData}
+            />
+          )}
         </div>
 
         <div className="flex justify-between pt-4 border-t">
