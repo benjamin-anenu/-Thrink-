@@ -72,9 +72,9 @@ const Stakeholders = () => {
     setShowStakeholderForm(true);
   };
 
-  const handleDeleteStakeholder = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this stakeholder?')) {
-      await deleteStakeholder(id);
+  const handleDeleteStakeholder = async (stakeholder: any) => {
+    if (window.confirm(`Are you sure you want to delete ${stakeholder.name}?`)) {
+      await deleteStakeholder(stakeholder.id);
     }
   };
 

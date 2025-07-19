@@ -36,6 +36,10 @@ export const useStakeholders = (workspaceId?: string) => {
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
+        department: item.department || '',
+        phone: item.phone || '',
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        projects: item.projects || [],
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
@@ -69,6 +73,9 @@ export const useStakeholders = (workspaceId?: string) => {
         role: stakeholder.role,
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
+        department: stakeholder.department,
+        phone: stakeholder.phone,
+        projects: stakeholder.projects,
         notes: stakeholder.notes || '',
       };
       
@@ -87,6 +94,10 @@ export const useStakeholders = (workspaceId?: string) => {
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
+        department: data[0].department || '',
+        phone: data[0].phone || '',
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
@@ -111,6 +122,9 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.name) dbUpdates.name = updates.name;
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.role) dbUpdates.role = updates.role;
+      if (updates.department) dbUpdates.department = updates.department;
+      if (updates.phone) dbUpdates.phone = updates.phone;
+      if (updates.projects) dbUpdates.projects = updates.projects;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       

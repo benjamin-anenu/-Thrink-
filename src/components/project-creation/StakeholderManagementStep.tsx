@@ -28,6 +28,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
     name: '',
     email: '',
     role: '',
+    department: '',
+    phone: '',
     influence: 'medium' as 'low' | 'medium' | 'high' | 'critical'
   });
   const [newEscalationEntry, setNewEscalationEntry] = useState({
@@ -55,7 +57,10 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       ...newStakeholder,
       id: `temp-${Date.now()}`,
       workspace_id: currentWorkspace?.id || '',
-      influence_level: newStakeholder.influence,
+      communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+      projects: [] as string[],
+      interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+      status: 'active' as 'active' | 'inactive' | 'pending',
       notes: ''
     };
 
@@ -68,6 +73,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       name: '',
       email: '',
       role: '',
+      department: '',
+      phone: '',
       influence: 'medium'
     });
   };
@@ -137,7 +144,13 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           name: stakeholder.name,
           email: stakeholder.email,
           role: stakeholder.role,
-          influence_level: stakeholder.influence || stakeholder.influence_level,
+          department: stakeholder.department || '',
+          phone: stakeholder.phone || '',
+          communicationPreference: stakeholder.communicationPreference || 'Email',
+          projects: stakeholder.projects || [],
+          influence: stakeholder.influence,
+          interest: stakeholder.interest || 'medium',
+          status: stakeholder.status || 'active',
           workspace_id: currentWorkspace?.id || '',
           notes: stakeholder.notes || ''
         });
@@ -168,7 +181,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <Label htmlFor="stakeholder-name">Name</Label>
               <Input
@@ -195,6 +208,15 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
                 value={newStakeholder.role}
                 onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
                 placeholder="Project Manager"
+              />
+            </div>
+            <div>
+              <Label htmlFor="stakeholder-department">Department</Label>
+              <Input
+                id="stakeholder-department"
+                value={newStakeholder.department}
+                onChange={(e) => setNewStakeholder({ ...newStakeholder, department: e.target.value })}
+                placeholder="Engineering"
               />
             </div>
             <div>
