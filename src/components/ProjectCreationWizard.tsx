@@ -140,40 +140,33 @@ const ProjectCreationWizard = () => {
     const newProject = {
       name: data.name,
       description: data.description,
-      status: data.status || 'Planning',
-      priority: data.priority || 'Medium',
+      status: data.status as 'Planning' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled' || 'Planning',
+      priority: data.priority as 'Low' | 'Medium' | 'High' | 'Critical' || 'Medium',
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
-      budget: data.budget || 50000,
+      budget: data.budget?.toString() || '$0',
       teamSize: data.teamSize || 5,
-      healthStatus: data.healthStatus || 'green',
-      healthScore: data.healthScore || 85,
+      health: { 
+        status: (data.healthStatus as 'red' | 'yellow' | 'green') || 'green',
+        score: data.healthScore || 85
+      },
+      progress: data.progress || 0,
       skills: data.skills || [],
       resources: data.resources || [],
       stakeholders: data.stakeholders || [],
 			workspaceId: currentWorkspace?.id || 'ws-1',
       tasks: data.tasks || [],
       milestones: data.milestones || [],
-      progress: data.progress || 0,
-      tags: data.tags || [],
-      health: data.health || 'green'
+      tags: data.tags || ['New']
     };
 
     try {
-      const result = await addProject(newProject);
-      if (result) {
-        toast({
-          title: "Success",
-          description: "Project created successfully.",
-        })
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to create project.",
-          variant: "destructive",
-        })
-      }
+      addProject(newProject);
+      toast({
+        title: "Success",
+        description: "Project created successfully.",
+      })
+      navigate('/dashboard');
     } catch (error) {
       toast({
         title: "Error",

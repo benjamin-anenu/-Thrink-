@@ -194,7 +194,7 @@ const Stakeholders = () => {
                   <StakeholderListView
                     stakeholders={filteredStakeholders}
                     onEdit={handleEditStakeholder}
-                    onDelete={handleDeleteStakeholder}
+                    onDelete={(stakeholder) => handleDeleteStakeholder(stakeholder)}
                     onContact={handleContactStakeholder}
                   />
                 )}

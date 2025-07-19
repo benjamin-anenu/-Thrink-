@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -46,6 +45,7 @@ export const useStakeholders = (workspaceId?: string) => {
         notes: item.notes || '',
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
+        lastContact: item.last_contact || undefined,
       }));
       
       setStakeholders(mappedData);

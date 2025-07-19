@@ -22,7 +22,7 @@ const Projects = () => {
   const { projects, addProject } = useProject();
   const { currentWorkspace } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCreationWizard, setShowCreationWizard] = useState(false);
+  const [showCreationWizard, setShowProjectCreationWizard] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
@@ -66,7 +66,7 @@ const Projects = () => {
     };
 
     addProject(newProject);
-    setShowCreationWizard(false);
+    setShowProjectCreationWizard(false);
   };
 
   const handleBulkImport = (data: any) => {
@@ -106,7 +106,7 @@ const Projects = () => {
             </Button>
             <Button 
               className="flex items-center gap-2"
-              onClick={() => setShowCreationWizard(true)}
+              onClick={() => setShowProjectCreationWizard(true)}
             >
               <Plus size={16} />
               New Project
@@ -247,7 +247,7 @@ const Projects = () => {
             {filteredProjects.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
-                <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
+                <Button onClick={() => setShowProjectCreationWizard(true)}>Create New Project</Button>
               </div>
             )}
           </TabsContent>
@@ -328,7 +328,7 @@ const Projects = () => {
             {filteredProjects.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No projects found matching your search.</p>
-                <Button onClick={() => setShowCreationWizard(true)}>Create New Project</Button>
+                <Button onClick={() => setShowProjectCreationWizard(true)}>Create New Project</Button>
               </div>
             )}
           </TabsContent>
@@ -338,11 +338,7 @@ const Projects = () => {
       <TinkAssistant />
 
       {showCreationWizard && (
-        <ProjectCreationWizard
-          isOpen={showCreationWizard}
-          onClose={() => setShowCreationWizard(false)}
-          onProjectCreated={handleProjectCreated}
-        />
+        <ProjectCreationWizard />
       )}
 
       {showBulkImport && (

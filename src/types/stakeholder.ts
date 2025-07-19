@@ -1,6 +1,8 @@
+
 export interface Stakeholder {
   id: string;
   workspace_id: string;
+  workspaceId?: string; // Optional for compatibility
   name: string;
   email: string;
   role: string;
@@ -14,4 +16,9 @@ export interface Stakeholder {
   notes?: string;
   created_at: string;
   updated_at: string;
-} 
+  lastContact?: string; // Add missing property
+  organization?: string;
+  influenceLevel?: string;
+  escalationLevel?: number;
+  contactInfo?: any;
+}
