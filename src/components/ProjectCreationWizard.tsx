@@ -1,401 +1,443 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Save, FolderOpen } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
-import { ProjectDraftService, ProjectDraft } from '@/services/ProjectDraftService';
-import { DraftManagementModal } from './DraftManagementModal';
-import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
-import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
-import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
-import ResourcePlanningStep from '@/components/project-creation/ResourcePlanningStep';
-import StakeholderManagementStep from '@/components/project-creation/StakeholderManagementStep';
-import MilestonePlanningStep from '@/components/project-creation/MilestonePlanningStep';
-import AIReviewStep from '@/components/project-creation/AIReviewStep';
-import ProjectInitiationStep from '@/components/project-creation/ProjectInitiationStep';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from "@/hooks/use-toast"
 
 interface ProjectCreationWizardProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectCreated: (project: any) => void;
 }
 
-const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
-  isOpen,
-  onClose,
-  onProjectCreated
-}) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isCreating, setIsCreating] = useState(false);
-  const [currentDraft, setCurrentDraft] = useState<ProjectDraft | null>(null);
-  const [showDraftModal, setShowDraftModal] = useState(false);
-  const [autoSaving, setAutoSaving] = useState(false);
-  const [projectData, setProjectData] = useState<ProjectCreationData>({
-    name: '',
-    description: '',
-    workspaceId: '',
-    kickoffData: {
-      meetingMinutes: '',
-      objectives: [],
-      documents: []
-    },
-    requirements: {
-      functional: [],
-      nonFunctional: [],
-      constraints: [],
-      stakeholderSignoffs: []
-    },
-    resources: {
-      teamMembers: [],
-      budget: '',
-      timeline: { start: '', end: '' }
-    },
-    stakeholders: [],
-    escalationMatrix: [],
-    milestones: [],
-    aiGenerated: {
-      projectPlan: '',
-      riskAssessment: '',
-      recommendations: []
-    },
-    initiation: {
-      document: '',
-      signatures: [],
-      approved: false
-    }
-  });
+interface ProjectDetailsStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const { toast } = useToast();
-  const { currentWorkspace } = useWorkspace();
+interface RequirementsGatheringStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  // Set workspace ID when component mounts or workspace changes
-  React.useEffect(() => {
-    if (currentWorkspace) {
-      setProjectData(prev => ({ ...prev, workspaceId: currentWorkspace.id }));
-    }
-  }, [currentWorkspace]);
+interface StakeholderManagementStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onUpdate: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const steps = [
-    { number: 1, title: 'Project Details', component: ProjectDetailsStep },
-    { number: 2, title: 'Kickoff Session', component: KickoffSessionStep },
-    { number: 3, title: 'Requirements Gathering', component: RequirementsGatheringStep },
-    { number: 4, title: 'Resource Planning', component: ResourcePlanningStep },
-    { number: 5, title: 'Stakeholder Management', component: StakeholderManagementStep },
-    { number: 6, title: 'Milestone Planning', component: MilestonePlanningStep },
-    { number: 7, title: 'AI Review & Planning', component: AIReviewStep },
-    { number: 8, title: 'Project Initiation', component: ProjectInitiationStep }
-  ];
+interface ResourcePlanningStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const currentStepData = steps[currentStep - 1];
-  const StepComponent = currentStepData.component;
-  const progress = (currentStep / steps.length) * 100;
+interface MilestonePlanningStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const handleNext = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
+interface AIReviewStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
+interface ProjectInitiationStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const handleStepData = (stepData: any) => {
-    const newData = { ...projectData, ...stepData };
-    setProjectData(newData);
-    
-    // Auto-save if we have a current workspace and project data
-    if (currentWorkspace && (newData.name || currentDraft)) {
-      autoSaveDraft(newData);
-    }
-  };
+interface KickoffSessionStepProps {
+  data: any;
+  onDataChange: (data: any) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
 
-  const autoSaveDraft = async (data: ProjectCreationData) => {
-    if (!currentWorkspace || autoSaving) return;
-    
-    const draftName = data.name || currentDraft?.draft_name || `Draft ${new Date().toLocaleString()}`;
-    
-    setAutoSaving(true);
-    try {
-      const draft = await ProjectDraftService.autoSaveDraft(
-        draftName,
-        currentWorkspace.id,
-        data,
-        currentStep,
-        currentDraft?.id
-      );
-      setCurrentDraft(draft);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    } finally {
-      setAutoSaving(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "Error",
-        description: "Please select a workspace first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const draftName = projectData.name || `Draft ${new Date().toLocaleString()}`;
-    
-    try {
-      const draft = await ProjectDraftService.saveDraft(
-        draftName,
-        currentWorkspace.id,
-        projectData,
-        currentStep,
-        currentDraft?.id
-      );
-      setCurrentDraft(draft);
-      toast({
-        title: "Success",
-        description: "Draft saved successfully"
-      });
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save draft",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleLoadDraft = (draft: ProjectDraft) => {
-    setProjectData(draft.draft_data);
-    setCurrentStep(draft.current_step);
-    setCurrentDraft(draft);
-    toast({
-      title: "Success",
-      description: "Draft loaded successfully"
-    });
-  };
-
-  const resetWizard = () => {
-    setCurrentStep(1);
-    setProjectData({
-      name: '',
-      description: '',
-      workspaceId: currentWorkspace?.id || '',
-      kickoffData: {
-        meetingMinutes: '',
-        objectives: [],
-        documents: []
-      },
-      requirements: {
-        functional: [],
-        nonFunctional: [],
-        constraints: [],
-        stakeholderSignoffs: []
-      },
-      resources: {
-        teamMembers: [],
-        budget: '',
-        timeline: { start: '', end: '' }
-      },
-      stakeholders: [],
-      escalationMatrix: [],
-      milestones: [],
-      aiGenerated: {
-        projectPlan: '',
-        riskAssessment: '',
-        recommendations: []
-      },
-      initiation: {
-        document: '',
-        signatures: [],
-        approved: false
-      }
-    });
-    setCurrentDraft(null);
-    setIsCreating(false);
-  };
-
-  const handleFinish = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "Error",
-        description: "No workspace selected. Please select a workspace first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCreating(true);
-    
-    try {
-      const project = await ProjectCreationService.createProject({
-        ...projectData,
-        workspaceId: currentWorkspace.id
-      });
-
-      toast({
-        title: "Success!",
-        description: `Project "${project.name}" has been created successfully.`,
-      });
-
-      onProjectCreated(project);
-      
-      // Delete the draft if it exists since project was created
-      if (currentDraft) {
-        try {
-          await ProjectDraftService.deleteDraft(currentDraft.id);
-        } catch (error) {
-          console.error('Error deleting draft after project creation:', error);
-        }
-      }
-      
-      resetWizard();
-      onClose();
-    } catch (error) {
-      console.error('Error creating project:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create project. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  // Clear auto-save when component unmounts or dialog closes
-  useEffect(() => {
-    return () => {
-      if (currentDraft) {
-        ProjectDraftService.clearAutoSave(currentDraft.id);
-      }
-    };
-  }, [currentDraft]);
-
-  // Reset when dialog opens
-  useEffect(() => {
-    if (isOpen && !currentDraft) {
-      resetWizard();
-    }
-  }, [isOpen]);
-
+const ProjectDetailsStep: React.FC<ProjectDetailsStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
-              <p id="project-creation-description" className="text-muted-foreground">
-                Follow this guided wizard to set up your new project with all necessary details and configurations.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {autoSaving && (
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                  Saving...
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDraftModal(true)}
-              >
-                <FolderOpen className="h-4 w-4 mr-1" />
-                Load Draft
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveDraft}
-                disabled={!currentWorkspace}
-              >
-                <Save className="h-4 w-4 mr-1" />
-                Save Draft
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Step {currentStep} of {steps.length}: {currentStepData.title}</span>
-              <span>{Math.round(progress)}% Complete</span>
-            </div>
-            <Progress value={progress} className="w-full" />
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto py-4">
-          {currentStep === 5 ? (
-            <StakeholderManagementStep
-              data={projectData}
-              onUpdate={handleStepData}
-              onNext={handleNext}
-              onPrevious={handleBack}
+    <Tabs defaultValue="details" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="details">Details</TabsTrigger>
+        <TabsTrigger value="team">Team</TabsTrigger>
+      </TabsList>
+      <TabsContent value="details">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="project-name">Project Name</Label>
+            <Input
+              id="project-name"
+              placeholder="Enter project name"
+              value={data.projectName || ''}
+              onChange={(e) => onDataChange({ projectName: e.target.value })}
             />
-          ) : (
-            <StepComponent
-              data={projectData}
-              onDataChange={handleStepData}
+          </div>
+          <div>
+            <Label htmlFor="project-description">Description</Label>
+            <Input
+              id="project-description"
+              placeholder="Enter project description"
+              value={data.projectDescription || ''}
+              onChange={(e) => onDataChange({ projectDescription: e.target.value })}
             />
-          )}
-        </div>
-
-        <div className="flex justify-between pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 1 || isCreating}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft size={16} />
-            Back
-          </Button>
-
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              disabled={isCreating}
-            >
-              Cancel
+          </div>
+          <div className="flex justify-between">
+            <Button type="button" variant="secondary" onClick={onPrevious} disabled>
+              Previous
             </Button>
-            {currentStep < steps.length ? (
-              <Button 
-                onClick={handleNext} 
-                className="flex items-center gap-2"
-                disabled={isCreating}
-              >
-                Next
-                <ArrowRight size={16} />
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleFinish} 
-                className="bg-primary"
-                disabled={isCreating || !projectData.name}
-              >
-                {isCreating ? 'Creating Project...' : 'Create Project'}
-              </Button>
-            )}
+            <Button type="button" onClick={onNext}>
+              Next
+            </Button>
           </div>
         </div>
-      </DialogContent>
-
-      <DraftManagementModal
-        isOpen={showDraftModal}
-        onClose={() => setShowDraftModal(false)}
-        onLoadDraft={handleLoadDraft}
-      />
-    </Dialog>
+      </TabsContent>
+      <TabsContent value="team">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="team-name">Team Name</Label>
+            <Input
+              id="team-name"
+              placeholder="Enter team name"
+              value={data.teamName || ''}
+              onChange={(e) => onDataChange({ teamName: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="team-description">Description</Label>
+            <Input
+              id="team-description"
+              placeholder="Enter team description"
+              value={data.teamDescription || ''}
+              onChange={(e) => onDataChange({ teamDescription: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-between">
+            <Button type="button" variant="secondary" onClick={onPrevious} disabled>
+              Previous
+            </Button>
+            <Button type="button" onClick={onNext}>
+              Next
+            </Button>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 
-export default ProjectCreationWizard;
+const RequirementsGatheringStep: React.FC<RequirementsGatheringStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="requirements">Requirements</Label>
+        <Input
+          id="requirements"
+          placeholder="Enter requirements"
+          value={data.requirements || ''}
+          onChange={(e) => onDataChange({ requirements: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ data, onDataChange, onUpdate, onNext, onPrevious }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="stakeholders">Stakeholders</Label>
+        <Input
+          id="stakeholders"
+          placeholder="Enter stakeholders"
+          value={data.stakeholders || ''}
+          onChange={(e) => onDataChange({ stakeholders: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const ResourcePlanningStep: React.FC<ResourcePlanningStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="resources">Resources</Label>
+        <Input
+          id="resources"
+          placeholder="Enter resources"
+          value={data.resources || ''}
+          onChange={(e) => onDataChange({ resources: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const MilestonePlanningStep: React.FC<MilestonePlanningStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="milestones">Milestones</Label>
+        <Input
+          id="milestones"
+          placeholder="Enter milestones"
+          value={data.milestones || ''}
+          onChange={(e) => onDataChange({ milestones: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const AIReviewStep: React.FC<AIReviewStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="ai-review">AI Review</Label>
+        <Input
+          id="ai-review"
+          placeholder="Enter AI review"
+          value={data.aiReview || ''}
+          onChange={(e) => onDataChange({ aiReview: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const ProjectInitiationStep: React.FC<ProjectInitiationStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="project-initiation">Project Initiation</Label>
+        <Input
+          id="project-initiation"
+          placeholder="Enter project initiation"
+          value={data.projectInitiation || ''}
+          onChange={(e) => onDataChange({ projectInitiation: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const KickoffSessionStep: React.FC<KickoffSessionStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  const { toast } = useToast()
+
+  const handleSubmit = () => {
+    toast({
+      title: "Project Created",
+      description: "Your project has been created.",
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="kickoff-session">Kickoff Session</Label>
+        <Input
+          id="kickoff-session"
+          placeholder="Enter kickoff session"
+          value={data.kickoffSession || ''}
+          onChange={(e) => onDataChange({ kickoffSession: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="secondary" onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button type="button" onClick={handleSubmit}>
+          Submit
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default function ProjectCreationWizard({ isOpen, onClose }: ProjectCreationWizardProps) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [data, setData] = useState({});
+  const totalSteps = 8;
+
+  const handleStepUpdate = (stepData: any) => {
+    setData(prev => ({ ...prev, ...stepData }));
+  };
+
+  const handleNext = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <ProjectDetailsStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 2:
+        return (
+          <RequirementsGatheringStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 3:
+        return (
+          <StakeholderManagementStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onUpdate={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 4:
+        return (
+          <ResourcePlanningStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 5:
+        return (
+          <MilestonePlanningStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 6:
+        return (
+          <AIReviewStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 7:
+        return (
+          <ProjectInitiationStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      case 8:
+        return (
+          <KickoffSessionStep
+            data={data}
+            onDataChange={handleStepUpdate}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Create Project</DialogTitle>
+          <DialogDescription>
+            Step {currentStep} of {totalSteps}
+          </DialogDescription>
+        </DialogHeader>
+        {renderStep()}
+        {currentStep !== 1 && currentStep !== totalSteps && (
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={handlePrevious}>
+              Previous
+            </Button>
+            <Button type="button" onClick={handleNext}>
+              Next
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
