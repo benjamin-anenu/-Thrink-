@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,8 +29,6 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
     name: '',
     email: '',
     role: '',
-    department: '',
-    phone: '',
     influence: 'medium' as 'low' | 'medium' | 'high' | 'critical'
   });
   const [newEscalationEntry, setNewEscalationEntry] = useState({
@@ -57,11 +56,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       ...newStakeholder,
       id: `temp-${Date.now()}`,
       workspace_id: currentWorkspace?.id || '',
-      communication_preference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
-      projects: [] as string[],
-      interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-      status: 'active' as 'active' | 'inactive' | 'pending',
-      notes: ''
+      status: 'active' as const,
+      interest: 'medium' as const
     };
 
     onUpdate({
@@ -73,8 +69,6 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       name: '',
       email: '',
       role: '',
-      department: '',
-      phone: '',
       influence: 'medium'
     });
   };
@@ -144,15 +138,11 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           name: stakeholder.name,
           email: stakeholder.email,
           role: stakeholder.role,
-          department: stakeholder.department || '',
-          phone: stakeholder.phone || '',
-          communication_preference: stakeholder.communication_preference || 'Email',
-          projects: stakeholder.projects || [],
           influence: stakeholder.influence,
-          interest: stakeholder.interest || 'medium',
-          status: stakeholder.status || 'active',
           workspace_id: currentWorkspace?.id || '',
-          notes: stakeholder.notes || ''
+          status: 'active',
+          interest: 'medium',
+          notes: ''
         });
       }
     }
@@ -181,7 +171,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="stakeholder-name">Name</Label>
               <Input
@@ -208,15 +198,6 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
                 value={newStakeholder.role}
                 onChange={(e) => setNewStakeholder({ ...newStakeholder, role: e.target.value })}
                 placeholder="Project Manager"
-              />
-            </div>
-            <div>
-              <Label htmlFor="stakeholder-department">Department</Label>
-              <Input
-                id="stakeholder-department"
-                value={newStakeholder.department}
-                onChange={(e) => setNewStakeholder({ ...newStakeholder, department: e.target.value })}
-                placeholder="Engineering"
               />
             </div>
             <div>

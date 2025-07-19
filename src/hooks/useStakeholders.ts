@@ -2,66 +2,47 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-export interface Stakeholder {
-  id: string;
-  name: string;
-  email: string;
-  role?: string;
-  organization?: string;
-  department?: string;
-  phone?: string;
-  influence?: string;
-  interest?: string;
-  communication_preference?: string;
-  notes?: string;
-  projects?: string[];
-  avatar?: string;
-  workspace_id: string;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-}
+import type { Stakeholder } from '@/types/stakeholder';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export const useStakeholders = (workspaceId?: string) => {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [loading, setLoading] = useState(true);
+  const { currentWorkspace } = useWorkspace();
 
   const loadStakeholders = async () => {
     try {
       setLoading(true);
+      const targetWorkspaceId = workspaceId || currentWorkspace?.id;
+      
+      if (!targetWorkspaceId) {
+        console.log('No workspace ID available, skipping stakeholder load');
+        setStakeholders([]);
+        return;
+      }
+
       let query = supabase
         .from('stakeholders')
-        .select('*');
-      if (workspaceId) {
-        query = query.eq('workspace_id', workspaceId);
-      }
-      const { data, error } = await query.order('created_at');
+        .select('*')
+        .eq('workspace_id', targetWorkspaceId);
+        
+      const { data, error } = await query.order('name');
       if (error) throw error;
       
       // Map database fields to interface fields
-      const mappedData = (data || []).map(item => {
-        const contactInfo = item.contact_info as any || {};
-        return {
-          id: item.id,
-          name: item.name,
-          email: item.email || '',
-          role: item.role,
-          organization: item.organization,
-          department: contactInfo.department || item.department || '',
-          phone: contactInfo.phone || item.phone || '',
-          influence: item.influence || item.influence_level || 'medium',
-          interest: item.interest || 'medium',
-          communication_preference: item.communication_preference || 'Email',
-          notes: item.notes || '',
-          projects: item.projects || [],
-          avatar: item.avatar || '',
-          workspace_id: item.workspace_id,
-          status: 'active',
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        };
-      });
+      const mappedData = (data || []).map(item => ({
+        id: item.id,
+        workspace_id: item.workspace_id || '',
+        name: item.name || '',
+        email: item.email || '',
+        role: item.role || '',
+        influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        notes: item.notes || '',
+        created_at: item.created_at || '',
+        updated_at: item.updated_at || '',
+      }));
       
       setStakeholders(mappedData);
     } catch (error) {
@@ -74,53 +55,47 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const createStakeholder = async (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Prepare data for database insertion
-      const stakeholderData = {
+      const targetWorkspaceId = stakeholder.workspace_id || currentWorkspace?.id;
+      
+      if (!targetWorkspaceId || targetWorkspaceId === 'default-workspace') {
+        toast.error('Valid workspace required to create stakeholder');
+        return null;
+      }
+
+      // Only send fields that exist in the database
+      const dbData = {
         name: stakeholder.name,
         email: stakeholder.email,
         role: stakeholder.role,
-        organization: stakeholder.organization,
-        influence: stakeholder.influence,
-        interest: stakeholder.interest,
-        communication_preference: stakeholder.communication_preference,
-        notes: stakeholder.notes,
-        projects: stakeholder.projects,
-        avatar: stakeholder.avatar,
-        workspace_id: stakeholder.workspace_id,
-        department: stakeholder.department,
-        phone: stakeholder.phone,
-        contact_info: {
-          department: stakeholder.department || '',
-          phone: stakeholder.phone || ''
-        }
+        workspace_id: targetWorkspaceId,
+        influence_level: stakeholder.influence,
+        notes: stakeholder.notes || '',
       };
-
+      
       const { data, error } = await supabase
         .from('stakeholders')
-        .insert([stakeholderData])
+        .insert([dbData])
         .select();
       if (error) throw error;
-      toast.success('Stakeholder created successfully');
+      toast.success('Stakeholder created');
       loadStakeholders();
-      return data?.[0] ? {
+      
+      // Map response back to interface
+      const mappedResult = data?.[0] ? {
         id: data[0].id,
-        name: data[0].name,
-        email: data[0].email || '',
-        role: data[0].role,
-        organization: data[0].organization,
-        department: (data[0].contact_info as any)?.department || data[0].department || '',
-        phone: (data[0].contact_info as any)?.phone || data[0].phone || '',
-        influence: data[0].influence || data[0].influence_level || 'medium',
-        interest: data[0].interest || 'medium',
-        communication_preference: data[0].communication_preference || 'Email',
-        notes: data[0].notes || '',
-        projects: data[0].projects || [],
-        avatar: data[0].avatar || '',
         workspace_id: data[0].workspace_id,
-        status: 'active',
+        name: data[0].name,
+        email: data[0].email,
+        role: data[0].role,
+        influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        notes: data[0].notes || '',
         created_at: data[0].created_at,
         updated_at: data[0].updated_at,
       } : null;
+      
+      return mappedResult as Stakeholder;
     } catch (error) {
       console.error('Error creating stakeholder:', error);
       toast.error('Failed to create stakeholder');
@@ -130,23 +105,21 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
     try {
-      // Prepare updates for database
-      const updateData: any = { ...updates };
+      // Only send fields that exist in the database
+      const dbUpdates: any = {};
       
-      // Handle contact_info fields
-      if (updates.department || updates.phone) {
-        updateData.contact_info = {
-          department: updates.department || '',
-          phone: updates.phone || ''
-        };
-      }
-
+      if (updates.name) dbUpdates.name = updates.name;
+      if (updates.email) dbUpdates.email = updates.email;
+      if (updates.role) dbUpdates.role = updates.role;
+      if (updates.influence) dbUpdates.influence_level = updates.influence;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      
       const { error } = await supabase
         .from('stakeholders')
-        .update(updateData)
+        .update(dbUpdates)
         .eq('id', id);
       if (error) throw error;
-      toast.success('Stakeholder updated successfully');
+      toast.success('Stakeholder updated');
       loadStakeholders();
       return true;
     } catch (error) {
@@ -163,7 +136,7 @@ export const useStakeholders = (workspaceId?: string) => {
         .delete()
         .eq('id', id);
       if (error) throw error;
-      toast.success('Stakeholder deleted successfully');
+      toast.success('Stakeholder deleted');
       loadStakeholders();
       return true;
     } catch (error) {
@@ -192,7 +165,7 @@ export const useStakeholders = (workspaceId?: string) => {
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [workspaceId]);
+  }, [workspaceId, currentWorkspace?.id]);
 
   return {
     stakeholders,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,22 +13,17 @@ export function useSkills() {
   useEffect(() => {
     async function fetchSkills() {
       setLoading(true);
-      // For now, return mock data until skills table is created
-      const mockSkills: Skill[] = [
-        { id: '1', name: 'React' },
-        { id: '2', name: 'TypeScript' },
-        { id: '3', name: 'Node.js' },
-        { id: '4', name: 'Python' },
-        { id: '5', name: 'UI/UX Design' },
-        { id: '6', name: 'Project Management' },
-        { id: '7', name: 'Agile' },
-        { id: '8', name: 'DevOps' }
-      ];
-      setSkills(mockSkills);
+      const { data, error } = await supabase
+        .from('skills')
+        .select('id, name')
+        .order('name');
+      if (!error && data) {
+        setSkills(data);
+      }
       setLoading(false);
     }
     fetchSkills();
   }, []);
 
   return { skills, loading };
-}
+} 

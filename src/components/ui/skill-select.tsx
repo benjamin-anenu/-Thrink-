@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Search, Check } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 
 export interface Skill {
@@ -32,23 +32,17 @@ export function SkillSelect({ selectedSkills, onSkillsChange, placeholder = "Sea
   const [isAddingNew, setIsAddingNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mock skills data until database tables are created
+  // Fetch skills from database
   useEffect(() => {
     async function fetchSkills() {
       setLoading(true);
-      const mockSkills: Skill[] = [
-        { id: '1', name: 'React' },
-        { id: '2', name: 'TypeScript' },
-        { id: '3', name: 'Node.js' },
-        { id: '4', name: 'Python' },
-        { id: '5', name: 'UI/UX Design' },
-        { id: '6', name: 'Project Management' },
-        { id: '7', name: 'Agile' },
-        { id: '8', name: 'DevOps' },
-        { id: '9', name: 'Figma' },
-        { id: '10', name: 'SEO' }
-      ];
-      setSkills(mockSkills);
+      const { data, error } = await supabase
+        .from('skills')
+        .select('id, name')
+        .order('name');
+      if (!error && data) {
+        setSkills(data);
+      }
       setLoading(false);
     }
     fetchSkills();
@@ -70,22 +64,24 @@ export function SkillSelect({ selectedSkills, onSkillsChange, placeholder = "Sea
     if (!searchTerm.trim()) return;
     
     setLoading(true);
-    // For now, create a mock skill
-    const newSkill: Skill = {
-      id: `custom-${Date.now()}`,
-      name: searchTerm.trim()
-    };
+    const { data, error } = await supabase
+      .from('skills')
+      .insert([{ name: searchTerm.trim() }])
+      .select();
     
-    setSkills([...skills, newSkill]);
-    onSkillsChange([...selectedSkills, {
-      skill_id: newSkill.id,
-      skill_name: newSkill.name,
-      proficiency: 3,
-      years_experience: 0
-    }]);
-    setSearchTerm('');
-    setIsAddingNew(false);
-    setShowDropdown(false);
+    if (!error && data && data.length > 0) {
+      const newSkill = data[0];
+      setSkills([...skills, newSkill]);
+      onSkillsChange([...selectedSkills, {
+        skill_id: newSkill.id,
+        skill_name: newSkill.name,
+        proficiency: 3,
+        years_experience: 0
+      }]);
+      setSearchTerm('');
+      setIsAddingNew(false);
+      setShowDropdown(false);
+    }
     setLoading(false);
   };
 
@@ -256,4 +252,4 @@ export function SkillSelect({ selectedSkills, onSkillsChange, placeholder = "Sea
       )}
     </div>
   );
-}
+} 

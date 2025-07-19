@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { useResourceSkills } from '@/hooks/useResourceSkills';
+import { supabase } from '@/integrations/supabase/client';
 import { SkillSelect, SelectedSkill } from '@/components/ui/skill-select';
 
 interface Resource {
@@ -43,25 +47,49 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
     status: resource?.status || 'Available',
   });
 
+  const { resourceSkills, loading: resourceSkillsLoading } = useResourceSkills(resource?.id || '');
   const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
 
   const departments = ['Engineering', 'Design', 'Marketing', 'Operations', 'Sales', 'HR'];
+  const commonSkills = ['React', 'TypeScript', 'Node.js', 'Python', 'Figma', 'UI/UX', 'Project Management', 'Agile', 'SEO', 'Content Marketing'];
+
+  // Sync resourceSkills to selectedSkills on edit
+  React.useEffect(() => {
+    if (resource && resourceSkills) {
+      setSelectedSkills(resourceSkills.map(rs => ({
+        skill_id: rs.skill_id,
+        skill_name: rs.skill_name,
+        proficiency: rs.proficiency || 3,
+        years_experience: rs.years_experience || 0
+      })));
+    }
+  }, [resource, resourceSkills]);
 
   // Handle skills change from SkillSelect component
   const handleSkillsChange = (skills: SelectedSkill[]) => {
     setSelectedSkills(skills);
-    // Update formData skills with skill names
-    setFormData({
-      ...formData,
-      skills: skills.map(skill => skill.skill_name)
-    });
   };
 
+  // On save, upsert resource_skills
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Save resource (existing logic)
     onSave({ ...formData });
+    // Upsert resource_skills
+    if (formData.id) {
+      for (const skill of selectedSkills) {
+        await supabase.from('resource_skills').upsert({
+          resource_id: formData.id,
+          skill_id: skill.skill_id,
+          proficiency: skill.proficiency,
+          years_experience: skill.years_experience
+        }, { onConflict: 'resource_id,skill_id' });
+      }
+    }
     onClose();
   };
+
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

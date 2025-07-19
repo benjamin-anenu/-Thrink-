@@ -72,9 +72,9 @@ const Stakeholders = () => {
     setShowStakeholderForm(true);
   };
 
-  const handleDeleteStakeholder = async (stakeholder: any) => {
-    if (window.confirm(`Are you sure you want to delete ${stakeholder.name}?`)) {
-      await deleteStakeholder(stakeholder.id);
+  const handleDeleteStakeholder = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this stakeholder?')) {
+      await deleteStakeholder(id);
     }
   };
 
@@ -105,9 +105,8 @@ const Stakeholders = () => {
   // Analytics calculations
   const totalStakeholders = stakeholders.length;
   const highInfluenceCount = stakeholders.filter(s => s.influence === 'high' || s.influence === 'critical').length;
-  const activeStakeholders = stakeholders.length; // All stakeholders are considered active
+  const activeStakeholders = stakeholders.filter(s => s.status === 'active').length;
   const recentlyAddedCount = stakeholders.filter(s => {
-    if (!s.created_at) return false;
     const createdDate = new Date(s.created_at);
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -184,32 +183,18 @@ const Stakeholders = () => {
                     {filteredStakeholders.map((stakeholder) => (
                       <StakeholderCard
                         key={stakeholder.id}
-                        stakeholder={{
-                          ...stakeholder,
-                          communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-                          status: 'active' as 'active' | 'inactive' | 'pending',
-                          workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
-                        }}
+                        stakeholder={stakeholder}
                         onEdit={handleEditStakeholder}
                         onDelete={handleDeleteStakeholder}
+                        onContact={handleContactStakeholder}
                       />
                     ))}
                   </div>
                 ) : (
                   <StakeholderListView
-                    stakeholders={filteredStakeholders.map(stakeholder => ({
-                      ...stakeholder,
-                      communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-                      status: 'active' as 'active' | 'inactive' | 'pending',
-                      workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
-                    }))}
+                    stakeholders={filteredStakeholders}
                     onEdit={handleEditStakeholder}
-                    onDelete={(id: string) => {
-                      const stakeholder = filteredStakeholders.find(s => s.id === id);
-                      if (stakeholder) {
-                        handleDeleteStakeholder(stakeholder);
-                      }
-                    }}
+                    onDelete={handleDeleteStakeholder}
                     onContact={handleContactStakeholder}
                   />
                 )}
