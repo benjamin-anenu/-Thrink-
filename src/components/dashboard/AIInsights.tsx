@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Users, AlertTriangle, Sparkles, Target } from 'lucide-react';
 import { useAIDashboardData } from '@/hooks/useAIDashboardData';
+import AIConfigStatus from '@/components/AIConfigStatus';
 
 const AIInsights = () => {
   const { aiInsights, clientSatisfactionTrend, realTimeData } = useAIDashboardData();
@@ -30,6 +31,9 @@ const AIInsights = () => {
 
   return (
     <div className="space-y-6">
+      {/* AI Configuration Status */}
+      <AIConfigStatus showDetails={false} />
+
       {/* AI Insights */}
       <Card className="bg-card border-border">
         <CardHeader>
