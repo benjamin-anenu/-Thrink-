@@ -18,6 +18,7 @@ export interface Stakeholder {
   projects?: string[];
   avatar?: string;
   workspace_id: string;
+  status?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -56,6 +57,7 @@ export const useStakeholders = (workspaceId?: string) => {
           projects: item.projects || [],
           avatar: item.avatar || '',
           workspace_id: item.workspace_id,
+          status: 'active',
           created_at: item.created_at,
           updated_at: item.updated_at,
         };
@@ -115,6 +117,7 @@ export const useStakeholders = (workspaceId?: string) => {
         projects: data[0].projects || [],
         avatar: data[0].avatar || '',
         workspace_id: data[0].workspace_id,
+        status: 'active',
         created_at: data[0].created_at,
         updated_at: data[0].updated_at,
       } : null;

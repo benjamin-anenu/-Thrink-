@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import Header from '@/components/Header';
@@ -186,6 +187,7 @@ const Stakeholders = () => {
                         stakeholder={{
                           ...stakeholder,
                           communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+                          status: 'active' as 'active' | 'inactive' | 'pending',
                           workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
                         }}
                         onEdit={handleEditStakeholder}
@@ -197,7 +199,8 @@ const Stakeholders = () => {
                   <StakeholderListView
                     stakeholders={filteredStakeholders.map(stakeholder => ({
                       ...stakeholder,
-                      communication_preference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+                      communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+                      status: 'active' as 'active' | 'inactive' | 'pending',
                       workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
                     }))}
                     onEdit={handleEditStakeholder}
