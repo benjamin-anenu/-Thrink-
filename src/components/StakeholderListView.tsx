@@ -56,7 +56,7 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
                         {stakeholder.influence} influence
                       </Badge>
                       <Badge variant="secondary">
-                        {stakeholder.status}
+                        Active
                       </Badge>
                     </div>
                   </div>
