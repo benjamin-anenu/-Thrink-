@@ -1,21 +1,27 @@
 
 import React, { useState, useCallback } from 'react';
 import TaskCard, { Task } from './TaskCard';
+import TaskAssignmentModal from './TaskAssignmentModal';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
-import { Filter, Plus, Search } from 'lucide-react';
+import { Filter, Plus, Search, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useTasks } from '@/hooks/useTasks';
 
 interface TaskBoardProps {
   tasks: Task[];
   onTaskUpdate: (taskId: string, newStatus: string) => void;
+  projectId?: string;
 }
 
-const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
+const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate, projectId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+  const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<Task | null>(null);
+
+  const { assignResourceToTask } = useTasks(projectId);
 
   const columns = [
     { id: 'todo', title: 'To Do' },
@@ -47,10 +53,14 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
     setDraggedTask(null);
   }, [draggedTask, onTaskUpdate]);
 
+  const handleAssignResource = async (taskId: string, resourceId: string) => {
+    return await assignResourceToTask(taskId, resourceId);
+  };
+
   const filteredTasks = tasks.filter(task => {
-    const searchMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const priorityMatch = selectedPriority === 'all' || task.tag.label === selectedPriority;
+    const searchMatch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        task.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const priorityMatch = selectedPriority === 'all' || task.tag?.label === selectedPriority;
     const projectMatch = selectedProject === 'all' || task.project === selectedProject;
 
     return searchMatch && priorityMatch && projectMatch;
@@ -154,13 +164,30 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
                   {filteredTasks
                     .filter(task => task.status === column.id)
                     .map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
-                        onStatusChange={onTaskUpdate}
-                      />
+                      <div key={task.id} className="relative group">
+                        <TaskCard
+                          task={task}
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                          onStatusChange={onTaskUpdate}
+                        />
+                        {!task.assignees && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setSelectedTaskForAssignment({
+                              id: task.id,
+                              name: task.title,
+                              project_id: projectId || '',
+                              assignee_id: undefined
+                            })}
+                          >
+                            <Users className="h-3 w-3 mr-1" />
+                            Assign
+                          </Button>
+                        )}
+                      </div>
                     ))}
                 </div>
               </div>
@@ -168,6 +195,16 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate }) => {
           ))}
         </div>
       </div>
+
+      {/* Task Assignment Modal */}
+      {selectedTaskForAssignment && (
+        <TaskAssignmentModal
+          isOpen={!!selectedTaskForAssignment}
+          onClose={() => setSelectedTaskForAssignment(null)}
+          task={selectedTaskForAssignment}
+          onAssignResource={handleAssignResource}
+        />
+      )}
     </div>
   );
 };

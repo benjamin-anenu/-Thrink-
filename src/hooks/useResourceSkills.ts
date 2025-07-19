@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,25 +16,45 @@ export function useResourceSkills(resourceId: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!resourceId) return;
+    if (!resourceId) {
+      setLoading(false);
+      return;
+    }
+    
     async function fetchResourceSkills() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('resource_skills')
-        .select('id, resource_id, skill_id, proficiency, years_experience, skills(name)')
-        .eq('resource_id', resourceId);
-      if (!error && data) {
-        setResourceSkills(data.map((row: any) => ({
-          ...row,
-          skill_name: row.skills?.name || '',
-        })));
+      try {
+        const { data, error } = await supabase
+          .from('resource_skills')
+          .select(`
+            id, 
+            resource_id, 
+            skill_id, 
+            proficiency, 
+            years_experience,
+            skills!inner(name)
+          `)
+          .eq('resource_id', resourceId);
+          
+        if (!error && data) {
+          setResourceSkills(data.map((row: any) => ({
+            id: row.id,
+            resource_id: row.resource_id,
+            skill_id: row.skill_id,
+            proficiency: row.proficiency,
+            years_experience: row.years_experience,
+            skill_name: row.skills?.name || '',
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching resource skills:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
+    
     fetchResourceSkills();
   }, [resourceId]);
 
-  // Add, update, and remove functions can be added here as needed
-
   return { resourceSkills, loading };
-} 
+}

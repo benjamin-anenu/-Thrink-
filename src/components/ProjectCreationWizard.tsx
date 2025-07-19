@@ -1,391 +1,857 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Save, FolderOpen } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/router';
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { Slider } from "@/components/ui/slider"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
-import { ProjectDraftService, ProjectDraft } from '@/services/ProjectDraftService';
-import { DraftManagementModal } from './DraftManagementModal';
-import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
-import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
-import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
-import ResourcePlanningStep from '@/components/project-creation/ResourcePlanningStep';
-import StakeholderManagementStep from '@/components/project-creation/StakeholderManagementStep';
-import MilestonePlanningStep from '@/components/project-creation/MilestonePlanningStep';
-import AIReviewStep from '@/components/project-creation/AIReviewStep';
-import ProjectInitiationStep from '@/components/project-creation/ProjectInitiationStep';
+import { useProject } from '@/contexts/ProjectContext';
+import { useResources } from '@/contexts/ResourceContext';
+import { useSkills } from '@/hooks/useSkills';
+import SkillSelect from '@/components/ui/skill-select';
+import { addDays } from 'date-fns';
+import { Stakeholder } from '@/types/project';
+import { supabase } from '@/integrations/supabase/client';
 
-interface ProjectCreationWizardProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onProjectCreated: (project: any) => void;
+interface ProjectData {
+  name: string;
+  description: string;
+  status: string;
+  priority: string;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  budget: number;
+  teamSize: number;
+  healthStatus: string;
+  healthScore: number;
+  skills: string[];
+  resources: string[];
+  stakeholders: string[];
 }
 
-const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
-  isOpen,
-  onClose,
-  onProjectCreated
-}) => {
+const ProjectCreationWizard = () => {
+  const router = useRouter();
+  const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1);
-  const [isCreating, setIsCreating] = useState(false);
-  const [currentDraft, setCurrentDraft] = useState<ProjectDraft | null>(null);
-  const [showDraftModal, setShowDraftModal] = useState(false);
-  const [autoSaving, setAutoSaving] = useState(false);
-  const [projectData, setProjectData] = useState<ProjectCreationData>({
+  const [data, setData] = useState<Partial<ProjectData>>({
     name: '',
     description: '',
-    workspaceId: '',
-    kickoffData: {
-      meetingMinutes: '',
-      objectives: [],
-      documents: []
-    },
-    requirements: {
-      functional: [],
-      nonFunctional: [],
-      constraints: [],
-      stakeholderSignoffs: []
-    },
-    resources: {
-      teamMembers: [],
-      budget: '',
-      timeline: { start: '', end: '' }
-    },
-    stakeholders: [],
-    escalationMatrix: [],
-    milestones: [],
-    aiGenerated: {
-      projectPlan: '',
-      riskAssessment: '',
-      recommendations: []
-    },
-    initiation: {
-      document: '',
-      signatures: [],
-      approved: false
-    }
+    status: 'Planning',
+    priority: 'Medium',
+    startDate: undefined,
+    endDate: undefined,
+    budget: 50000,
+    teamSize: 5,
+    healthStatus: 'green',
+    healthScore: 85,
+    skills: [],
+    resources: [],
+    stakeholders: []
   });
-
-  const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+	const { addProject } = useProject();
+  const { resources } = useResources();
+  const { skills } = useSkills();
+  const [availableStakeholders, setAvailableStakeholders] = useState<Stakeholder[]>([]);
 
-  // Set workspace ID when component mounts or workspace changes
-  React.useEffect(() => {
-    if (currentWorkspace) {
-      setProjectData(prev => ({ ...prev, workspaceId: currentWorkspace.id }));
-    }
-  }, [currentWorkspace]);
-
-  const steps = [
-    { number: 1, title: 'Project Details', component: ProjectDetailsStep },
-    { number: 2, title: 'Kickoff Session', component: KickoffSessionStep },
-    { number: 3, title: 'Requirements Gathering', component: RequirementsGatheringStep },
-    { number: 4, title: 'Resource Planning', component: ResourcePlanningStep },
-    { number: 5, title: 'Stakeholder Management', component: StakeholderManagementStep },
-    { number: 6, title: 'Milestone Planning', component: MilestonePlanningStep },
-    { number: 7, title: 'AI Review & Planning', component: AIReviewStep },
-    { number: 8, title: 'Project Initiation', component: ProjectInitiationStep }
-  ];
-
-  const currentStepData = steps[currentStep - 1];
-  const StepComponent = currentStepData.component;
-  const progress = (currentStep / steps.length) * 100;
-
-  const handleNext = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleStepData = (stepData: any) => {
-    const newData = { ...projectData, ...stepData };
-    setProjectData(newData);
-    
-    // Auto-save if we have a current workspace and project data
-    if (currentWorkspace && (newData.name || currentDraft)) {
-      autoSaveDraft(newData);
-    }
-  };
-
-  const autoSaveDraft = async (data: ProjectCreationData) => {
-    if (!currentWorkspace || autoSaving) return;
-    
-    const draftName = data.name || currentDraft?.draft_name || `Draft ${new Date().toLocaleString()}`;
-    
-    setAutoSaving(true);
-    try {
-      const draft = await ProjectDraftService.autoSaveDraft(
-        draftName,
-        currentWorkspace.id,
-        data,
-        currentStep,
-        currentDraft?.id
-      );
-      setCurrentDraft(draft);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    } finally {
-      setAutoSaving(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "Error",
-        description: "Please select a workspace first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const draftName = projectData.name || `Draft ${new Date().toLocaleString()}`;
-    
-    try {
-      const draft = await ProjectDraftService.saveDraft(
-        draftName,
-        currentWorkspace.id,
-        projectData,
-        currentStep,
-        currentDraft?.id
-      );
-      setCurrentDraft(draft);
-      toast({
-        title: "Success",
-        description: "Draft saved successfully"
-      });
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save draft",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleLoadDraft = (draft: ProjectDraft) => {
-    setProjectData(draft.draft_data);
-    setCurrentStep(draft.current_step);
-    setCurrentDraft(draft);
-    toast({
-      title: "Success",
-      description: "Draft loaded successfully"
-    });
-  };
-
-  const resetWizard = () => {
-    setCurrentStep(1);
-    setProjectData({
-      name: '',
-      description: '',
-      workspaceId: currentWorkspace?.id || '',
-      kickoffData: {
-        meetingMinutes: '',
-        objectives: [],
-        documents: []
-      },
-      requirements: {
-        functional: [],
-        nonFunctional: [],
-        constraints: [],
-        stakeholderSignoffs: []
-      },
-      resources: {
-        teamMembers: [],
-        budget: '',
-        timeline: { start: '', end: '' }
-      },
-      stakeholders: [],
-      escalationMatrix: [],
-      milestones: [],
-      aiGenerated: {
-        projectPlan: '',
-        riskAssessment: '',
-        recommendations: []
-      },
-      initiation: {
-        document: '',
-        signatures: [],
-        approved: false
-      }
-    });
-    setCurrentDraft(null);
-    setIsCreating(false);
-  };
-
-  const handleFinish = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "Error",
-        description: "No workspace selected. Please select a workspace first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCreating(true);
-    
-    try {
-      const project = await ProjectCreationService.createProject({
-        ...projectData,
-        workspaceId: currentWorkspace.id
-      });
-
-      toast({
-        title: "Success!",
-        description: `Project "${project.name}" has been created successfully.`,
-      });
-
-      onProjectCreated(project);
-      
-      // Delete the draft if it exists since project was created
-      if (currentDraft) {
-        try {
-          await ProjectDraftService.deleteDraft(currentDraft.id);
-        } catch (error) {
-          console.error('Error deleting draft after project creation:', error);
-        }
-      }
-      
-      resetWizard();
-      onClose();
-    } catch (error) {
-      console.error('Error creating project:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create project. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  // Clear auto-save when component unmounts or dialog closes
   useEffect(() => {
-    return () => {
-      if (currentDraft) {
-        ProjectDraftService.clearAutoSave(currentDraft.id);
+    const fetchStakeholders = async () => {
+      try {
+        const { data: stakeholders, error } = await supabase
+          .from('stakeholders')
+          .select('*')
+          .eq('workspace_id', currentWorkspace?.id);
+
+        if (error) {
+          console.error("Error fetching stakeholders:", error);
+          return;
+        }
+
+        if (stakeholders) {
+          setAvailableStakeholders(stakeholders);
+        }
+      } catch (error) {
+        console.error("Error fetching stakeholders:", error);
       }
     };
-  }, [currentDraft]);
 
-  // Reset when dialog opens
-  useEffect(() => {
-    if (isOpen && !currentDraft) {
-      resetWizard();
+    fetchStakeholders();
+  }, [currentWorkspace?.id]);
+
+  const totalSteps = 7;
+
+  const onDataChange = (newData: Partial<ProjectData>) => {
+    setData({ ...data, ...newData });
+  };
+
+  const handleCreateProject = async () => {
+    if (!data.name || !data.description || !data.startDate || !data.endDate) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      })
+      return;
     }
-  }, [isOpen]);
+
+    const newProject = {
+      name: data.name,
+      description: data.description,
+      status: data.status || 'Planning',
+      priority: data.priority || 'Medium',
+      startDate: data.startDate.toISOString(),
+      endDate: data.endDate.toISOString(),
+      budget: data.budget || 50000,
+      teamSize: data.teamSize || 5,
+      healthStatus: data.healthStatus || 'green',
+      healthScore: data.healthScore || 85,
+      skills: data.skills || [],
+      resources: data.resources || [],
+      stakeholders: data.stakeholders || [],
+			workspaceId: currentWorkspace?.id || 'ws-1'
+    };
+
+    const success = await addProject(newProject);
+    if (success) {
+      toast({
+        title: "Success",
+        description: "Project created successfully.",
+      })
+      router.push('/dashboard');
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to create project.",
+        variant: "destructive",
+      })
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
-              <p id="project-creation-description" className="text-muted-foreground">
-                Follow this guided wizard to set up your new project with all necessary details and configurations.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {autoSaving && (
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                  Saving...
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDraftModal(true)}
-              >
-                <FolderOpen className="h-4 w-4 mr-1" />
-                Load Draft
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveDraft}
-                disabled={!currentWorkspace}
-              >
-                <Save className="h-4 w-4 mr-1" />
-                Save Draft
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Step {currentStep} of {steps.length}: {currentStepData.title}</span>
-              <span>{Math.round(progress)}% Complete</span>
-            </div>
-            <Progress value={progress} className="w-full" />
-          </div>
-        </DialogHeader>
+    <div className="flex flex-col min-h-screen bg-background">
+      <header className="py-4 px-6 border-b border-border">
+        <div className="container mx-auto">
+          <h1 className="text-2xl font-bold">Create New Project</h1>
+        </div>
+      </header>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          <StepComponent
-            data={projectData}
-            onDataChange={handleStepData}
-          />
+      <main className="flex-1 container mx-auto p-6">
+        <div className="mb-8">
+          <Progress value={(currentStep / totalSteps) * 100} className="h-2" />
+          <p className="text-sm text-muted-foreground mt-2">
+            Step {currentStep} of {totalSteps}
+          </p>
         </div>
 
-        <div className="flex justify-between pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 1 || isCreating}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft size={16} />
-            Back
-          </Button>
+        {currentStep === 1 && (
+          <ProjectDetailsStep
+            data={data}
+            onDataChange={onDataChange}
+            onNext={() => setCurrentStep(2)}
+          />
+        )}
 
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            {currentStep < steps.length ? (
-              <Button 
-                onClick={handleNext} 
-                className="flex items-center gap-2"
-                disabled={isCreating}
+        {currentStep === 2 && (
+          <TimelineSetupStep
+            data={data}
+            onDataChange={onDataChange}
+            onNext={() => setCurrentStep(3)}
+            onPrevious={() => setCurrentStep(1)}
+          />
+        )}
+
+        {currentStep === 3 && (
+          <BudgetAllocationStep
+            data={data}
+            onDataChange={onDataChange}
+            onNext={() => setCurrentStep(4)}
+            onPrevious={() => setCurrentStep(2)}
+          />
+        )}
+
+        {currentStep === 4 && (
+          <TeamConfigurationStep
+            data={data}
+            onDataChange={onDataChange}
+            onNext={() => setCurrentStep(5)}
+            onPrevious={() => setCurrentStep(3)}
+            availableResources={resources.map(resource => ({
+              id: resource.id,
+              name: resource.name,
+              role: resource.role
+            }))}
+          />
+        )}
+
+        {currentStep === 5 && (
+          <SkillsIdentificationStep
+            data={data}
+            onDataChange={onDataChange}
+            onNext={() => setCurrentStep(6)}
+            onPrevious={() => setCurrentStep(4)}
+            availableSkills={skills.map(skill => ({
+              id: skill.id,
+              name: skill.name
+            }))}
+          />
+        )}
+
+        {currentStep === 6 && (
+          <StakeholderManagementStep 
+            data={data} 
+            onDataChange={onDataChange}
+            onUpdate={(stepData) => onDataChange(stepData)}
+            onNext={() => setCurrentStep(7)}
+            onPrevious={() => setCurrentStep(5)}
+          />
+        )}
+
+        {currentStep === 7 && (
+          <ConfirmationStep
+            data={data}
+            onPrevious={() => setCurrentStep(6)}
+            onCreate={handleCreateProject}
+          />
+        )}
+      </main>
+
+      <footer className="py-4 px-6 border-t border-border">
+        <div className="container mx-auto flex justify-between items-center">
+          <Button variant="ghost" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <div>
+            {currentStep > 1 && (
+              <Button
+                variant="secondary"
+                className="mr-2"
+                onClick={() => setCurrentStep(currentStep - 1)}
               >
+                Previous
+              </Button>
+            )}
+            {currentStep < totalSteps ? (
+              <Button onClick={() => setCurrentStep(currentStep + 1)}>
                 Next
-                <ArrowRight size={16} />
               </Button>
             ) : (
-              <Button 
-                onClick={handleFinish} 
-                className="bg-primary"
-                disabled={isCreating || !projectData.name}
-              >
-                {isCreating ? 'Creating Project...' : 'Create Project'}
+              <Button onClick={handleCreateProject}>
+                Create Project
               </Button>
             )}
           </div>
         </div>
-      </DialogContent>
+      </footer>
+    </div>
+  );
+};
 
-      <DraftManagementModal
-        isOpen={showDraftModal}
-        onClose={() => setShowDraftModal(false)}
-        onLoadDraft={handleLoadDraft}
-      />
-    </Dialog>
+interface ProjectDetailsStepProps {
+  data: Partial<ProjectData>;
+  onDataChange: (newData: Partial<ProjectData>) => void;
+  onNext: () => void;
+}
+
+const ProjectDetailsStep: React.FC<ProjectDetailsStepProps> = ({ data, onDataChange, onNext }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    onDataChange({ ...data, [e.target.name]: e.target.value });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Project Details</CardTitle>
+        <CardDescription>
+          Enter basic information about your project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Project Name</Label>
+          <Input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Project Name"
+            value={data.name || ''}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            name="description"
+            placeholder="Project Description"
+            value={data.description || ''}
+            onChange={handleChange}
+          />
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={onNext}>Next</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface TimelineSetupStepProps {
+  data: Partial<ProjectData>;
+  onDataChange: (newData: Partial<ProjectData>) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
+
+const TimelineSetupStep: React.FC<TimelineSetupStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  const handleStartDateChange = (date: Date | undefined) => {
+    onDataChange({ ...data, startDate: date });
+  };
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    onDataChange({ ...data, endDate: date });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Timeline Setup</CardTitle>
+        <CardDescription>
+          Define the start and end dates for your project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label>Start Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal",
+                    !data.startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {data.startDate ? (
+                    format(data.startDate, "PPP")
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={data.startDate}
+                  onSelect={handleStartDateChange}
+                  disabled={(date) =>
+                    date < new Date()
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>End Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal",
+                    !data.endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {data.endDate ? (
+                    format(data.endDate, "PPP")
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={data.endDate}
+                  onSelect={handleEndDateChange}
+                  disabled={(date) =>
+                    date < new Date() || (data.startDate && date < data.startDate)
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="secondary" onClick={onPrevious}>Previous</Button>
+        <Button onClick={onNext}>Next</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface BudgetAllocationStepProps {
+  data: Partial<ProjectData>;
+  onDataChange: (newData: Partial<ProjectData>) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
+
+const BudgetAllocationStep: React.FC<BudgetAllocationStepProps> = ({ data, onDataChange, onNext, onPrevious }) => {
+  const handleBudgetChange = (value: number[]) => {
+    onDataChange({ ...data, budget: value[0] });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Budget Allocation</CardTitle>
+        <CardDescription>
+          Set the budget for your project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="budget">Budget</Label>
+          <Slider
+            defaultValue={[data.budget || 50000]}
+            max={100000}
+            step={1000}
+            onValueChange={handleBudgetChange}
+          />
+          <p className="text-sm text-muted-foreground">
+            ${data.budget || 50000}
+          </p>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="secondary" onClick={onPrevious}>Previous</Button>
+        <Button onClick={onNext}>Next</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface TeamConfigurationStepProps {
+  data: Partial<ProjectData>;
+  onDataChange: (newData: Partial<ProjectData>) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  availableResources: Array<{ id: string; name: string; role: string }>;
+}
+
+const TeamConfigurationStep: React.FC<TeamConfigurationStepProps> = ({ data, onDataChange, onNext, onPrevious, availableResources }) => {
+  const handleTeamSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    onDataChange({ ...data, teamSize: value });
+  };
+
+  const handleResourceToggle = (resourceId: string) => {
+    const currentResources = data.resources || [];
+    if (currentResources.includes(resourceId)) {
+      onDataChange({
+        ...data,
+        resources: currentResources.filter((id) => id !== resourceId),
+      });
+    } else {
+      onDataChange({
+        ...data,
+        resources: [...currentResources, resourceId],
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Team Configuration</CardTitle>
+        <CardDescription>
+          Configure the team size and assign resources to your project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="teamSize">Team Size</Label>
+          <Input
+            type="number"
+            id="teamSize"
+            name="teamSize"
+            placeholder="Team Size"
+            value={data.teamSize?.toString() || ''}
+            onChange={handleTeamSizeChange}
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Assign Resources</Label>
+          <div className="flex flex-wrap gap-2">
+            {availableResources.map((resource) => (
+              <div key={resource.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`resource-${resource.id}`}
+                  checked={data.resources?.includes(resource.id) || false}
+                  onCheckedChange={() => handleResourceToggle(resource.id)}
+                />
+                <Label htmlFor={`resource-${resource.id}`}>
+                  {resource.name} ({resource.role})
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="secondary" onClick={onPrevious}>Previous</Button>
+        <Button onClick={onNext}>Next</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface SkillsIdentificationStepProps {
+  data: Partial<ProjectData>;
+  onDataChange: (newData: Partial<ProjectData>) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  availableSkills: Array<{ id: string; name: string }>;
+}
+
+const SkillsIdentificationStep: React.FC<SkillsIdentificationStepProps> = ({ data, onDataChange, onNext, onPrevious, availableSkills }) => {
+  const handleSkillToggle = (skillId: string) => {
+    const currentSkills = data.skills || [];
+    if (currentSkills.includes(skillId)) {
+      onDataChange({
+        ...data,
+        skills: currentSkills.filter((id) => id !== skillId),
+      });
+    } else {
+      onDataChange({
+        ...data,
+        skills: [...currentSkills, skillId],
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Skills Identification</CardTitle>
+        <CardDescription>
+          Identify the required skills for your project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label>Required Skills</Label>
+          <div className="flex flex-wrap gap-2">
+            {availableSkills.map((skill) => (
+              <div key={skill.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`skill-${skill.id}`}
+                  checked={data.skills?.includes(skill.id) || false}
+                  onCheckedChange={() => handleSkillToggle(skill.id)}
+                />
+                <Label htmlFor={`skill-${skill.id}`}>
+                  {skill.name}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="secondary" onClick={onPrevious}>Previous</Button>
+        <Button onClick={onNext}>Next</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface StakeholderManagementStepProps {
+  data: Partial<ProjectData>;
+  onDataChange: (newData: Partial<ProjectData>) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  onUpdate: (stepData: Partial<ProjectData>) => void;
+}
+
+const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ data, onDataChange, onNext, onPrevious, onUpdate }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: '',
+    influence: 'medium' as 'low' | 'medium' | 'high'
+  });
+	const { currentWorkspace } = useWorkspace();
+  const [availableStakeholders, setAvailableStakeholders] = useState<Stakeholder[]>([]);
+
+  useEffect(() => {
+    const fetchStakeholders = async () => {
+      try {
+        const { data: stakeholders, error } = await supabase
+          .from('stakeholders')
+          .select('*')
+          .eq('workspace_id', currentWorkspace?.id);
+
+        if (error) {
+          console.error("Error fetching stakeholders:", error);
+          return;
+        }
+
+        if (stakeholders) {
+          setAvailableStakeholders(stakeholders);
+        }
+      } catch (error) {
+        console.error("Error fetching stakeholders:", error);
+      }
+    };
+
+    fetchStakeholders();
+  }, [currentWorkspace?.id]);
+
+  const addStakeholder = async (newStakeholder: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('stakeholders')
+        .insert([newStakeholder])
+        .select();
+
+      if (error) {
+        console.error("Error adding stakeholder:", error);
+        return false;
+      }
+
+      if (data) {
+        setAvailableStakeholders(prev => [...prev, data[0]]);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error adding stakeholder:", error);
+      return false;
+    }
+  };
+
+  const handleStakeholderToggle = (stakeholderId: string) => {
+    const currentStakeholders = data.stakeholders || [];
+    if (currentStakeholders.includes(stakeholderId)) {
+      onDataChange({
+        ...data,
+        stakeholders: currentStakeholders.filter((id) => id !== stakeholderId),
+      });
+    } else {
+      onDataChange({
+        ...data,
+        stakeholders: [...currentStakeholders, stakeholderId],
+      });
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (formData.name && formData.email && formData.role && formData.influence) {
+      const newStakeholder = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        influence: formData.influence,
+        workspace_id: currentWorkspace?.id || '',
+        interest: 'medium' as const,
+        notes: '',
+        projects: [],
+        phone: '',
+        department: '',
+        communicationPreference: 'Email' as const,
+        organization: '',
+        influenceLevel: formData.influence,
+        escalationLevel: 1,
+        contactInfo: {}
+      };
+
+      const success = await addStakeholder(newStakeholder);
+      if (success) {
+        setFormData({
+          name: '',
+          email: '',
+          role: '',
+          influence: 'medium'
+        });
+      }
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Stakeholder Management</CardTitle>
+        <CardDescription>
+          Manage stakeholders involved in your project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="stakeholderName">Stakeholder Name</Label>
+            <Input
+              type="text"
+              id="stakeholderName"
+              name="name"
+              placeholder="Stakeholder Name"
+              value={formData.name}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stakeholderEmail">Stakeholder Email</Label>
+            <Input
+              type="email"
+              id="stakeholderEmail"
+              name="email"
+              placeholder="Stakeholder Email"
+              value={formData.email}
+              onChange={handleInputChange}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="stakeholderRole">Stakeholder Role</Label>
+            <Input
+              type="text"
+              id="stakeholderRole"
+              name="role"
+              placeholder="Stakeholder Role"
+              value={formData.role}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stakeholderInfluence">Influence Level</Label>
+            <Select name="influence" value={formData.influence} onValueChange={(value) => setFormData({ ...formData, influence: value as 'low' | 'medium' | 'high' })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Influence Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button onClick={handleSubmit}>Add Stakeholder</Button>
+
+        <div className="grid gap-2">
+          <Label>Project Stakeholders</Label>
+          <div className="flex flex-wrap gap-2">
+            {availableStakeholders.map((stakeholder) => (
+              <div key={stakeholder.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`stakeholder-${stakeholder.id}`}
+                  checked={data.stakeholders?.includes(stakeholder.id) || false}
+                  onCheckedChange={() => handleStakeholderToggle(stakeholder.id)}
+                />
+                <Label htmlFor={`stakeholder-${stakeholder.id}`}>
+                  {stakeholder.name} ({stakeholder.role})
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="secondary" onClick={onPrevious}>Previous</Button>
+        <Button onClick={onNext}>Next</Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+interface ConfirmationStepProps {
+  data: Partial<ProjectData>;
+  onPrevious: () => void;
+  onCreate: () => void;
+}
+
+const ConfirmationStep: React.FC<ConfirmationStepProps> = ({ data, onPrevious, onCreate }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Confirmation</CardTitle>
+        <CardDescription>
+          Review your project details and confirm to create the project.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label>Project Name</Label>
+          <p>{data.name}</p>
+        </div>
+        <div className="grid gap-2">
+          <Label>Description</Label>
+          <p>{data.description}</p>
+        </div>
+        <div className="grid gap-2">
+          <Label>Start Date</Label>
+          <p>{data.startDate?.toLocaleDateString()}</p>
+        </div>
+        <div className="grid gap-2">
+          <Label>End Date</Label>
+          <p>{data.endDate?.toLocaleDateString()}</p>
+        </div>
+        <div className="grid gap-2">
+          <Label>Budget</Label>
+          <p>${data.budget}</p>
+        </div>
+        <div className="grid gap-2">
+          <Label>Team Size</Label>
+          <p>{data.teamSize}</p>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="secondary" onClick={onPrevious}>Previous</Button>
+        <Button onClick={onCreate}>Create Project</Button>
+      </CardFooter>
+    </Card>
   );
 };
 

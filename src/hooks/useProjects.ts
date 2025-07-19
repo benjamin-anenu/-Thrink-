@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ProjectOption {
   id: string;
   name: string;
+  resources?: string[];
 }
 
 export function useProjects() {
@@ -15,10 +17,14 @@ export function useProjects() {
       setLoading(true);
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id, name, resources')
         .order('name');
       if (!error && data) {
-        setProjects(data);
+        setProjects(data.map(project => ({
+          id: project.id,
+          name: project.name,
+          resources: project.resources || []
+        })));
       }
       setLoading(false);
     }
@@ -26,4 +32,4 @@ export function useProjects() {
   }, []);
 
   return { projects, loading };
-} 
+}
