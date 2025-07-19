@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,14 +13,11 @@ export interface Stakeholder {
   influence?: string;
   interest?: string;
   communication_preference?: string;
-  escalation_level?: number;
   notes?: string;
   projects?: string[];
   avatar?: string;
-  influence_level?: string;
-  contact_info?: any;
-  project_id?: string;
   workspace_id?: string;
+  status?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -42,26 +38,23 @@ export const useStakeholders = (workspaceId?: string) => {
       const { data, error } = await query.order('created_at');
       if (error) throw error;
       
-      // Map database fields to interface fields
+      // Map database fields to interface fields - using actual database fields
       const mappedData = (data || []).map(item => ({
         id: item.id,
         name: item.name,
         email: item.email,
         role: item.role,
         organization: item.organization,
-        department: item.department,
-        phone: item.phone,
-        influence: item.influence,
-        interest: item.interest,
-        communication_preference: item.communication_preference,
-        escalation_level: item.escalation_level,
-        notes: item.notes,
-        projects: item.projects,
-        avatar: item.avatar,
-        influence_level: item.influence_level,
-        contact_info: item.contact_info,
-        project_id: item.project_id,
+        department: item.department, // Direct field from database
+        phone: item.phone, // Direct field from database
+        influence: item.influence, // Direct field from database
+        interest: item.interest, // Direct field from database
+        communication_preference: item.communication_preference, // Direct field from database
+        notes: item.notes, // Direct field from database
+        projects: item.projects, // Direct field from database
+        avatar: item.avatar, // Direct field from database
         workspace_id: item.workspace_id,
+        status: 'active', // Default value for compatibility
         created_at: item.created_at,
         updated_at: item.updated_at,
       }));
@@ -90,19 +83,16 @@ export const useStakeholders = (workspaceId?: string) => {
         email: data[0].email,
         role: data[0].role,
         organization: data[0].organization,
-        department: data[0].department,
-        phone: data[0].phone,
-        influence: data[0].influence,
-        interest: data[0].interest,
-        communication_preference: data[0].communication_preference,
-        escalation_level: data[0].escalation_level,
-        notes: data[0].notes,
-        projects: data[0].projects,
-        avatar: data[0].avatar,
-        influence_level: data[0].influence_level,
-        contact_info: data[0].contact_info,
-        project_id: data[0].project_id,
+        department: data[0].department, // Direct field from database
+        phone: data[0].phone, // Direct field from database
+        influence: data[0].influence, // Direct field from database
+        interest: data[0].interest, // Direct field from database
+        communication_preference: data[0].communication_preference, // Direct field from database
+        notes: data[0].notes, // Direct field from database
+        projects: data[0].projects, // Direct field from database
+        avatar: data[0].avatar, // Direct field from database
         workspace_id: data[0].workspace_id,
+        status: 'active', // Default value for compatibility
         created_at: data[0].created_at,
         updated_at: data[0].updated_at,
       } : null;

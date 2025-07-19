@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 interface ProjectCreationWizardProps {
   isOpen: boolean;
   onClose: () => void;
+  onProjectCreated?: (projectData: any) => void;
 }
 
 interface ProjectDetailsStepProps {
@@ -316,7 +317,7 @@ const KickoffSessionStep: React.FC<KickoffSessionStepProps> = ({ data, onDataCha
   );
 };
 
-export default function ProjectCreationWizard({ isOpen, onClose }: ProjectCreationWizardProps) {
+export default function ProjectCreationWizard({ isOpen, onClose, onProjectCreated }: ProjectCreationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState({});
   const totalSteps = 8;

@@ -104,8 +104,9 @@ const Stakeholders = () => {
   // Analytics calculations
   const totalStakeholders = stakeholders.length;
   const highInfluenceCount = stakeholders.filter(s => s.influence === 'high' || s.influence === 'critical').length;
-  const activeStakeholders = stakeholders.filter(s => s.status === 'active').length;
+  const activeStakeholders = stakeholders.filter(s => s.status === 'active' || !s.status).length; // Default to active if status not set
   const recentlyAddedCount = stakeholders.filter(s => {
+    if (!s.created_at) return false;
     const createdDate = new Date(s.created_at);
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -182,7 +183,11 @@ const Stakeholders = () => {
                     {filteredStakeholders.map((stakeholder) => (
                       <StakeholderCard
                         key={stakeholder.id}
-                        stakeholder={stakeholder}
+                        stakeholder={{
+                          ...stakeholder,
+                          communicationPreference: stakeholder.communication_preference || 'Email',
+                          status: stakeholder.status || 'active'
+                        }}
                         onEdit={handleEditStakeholder}
                         onDelete={handleDeleteStakeholder}
                       />
@@ -190,7 +195,11 @@ const Stakeholders = () => {
                   </div>
                 ) : (
                   <StakeholderListView
-                    stakeholders={filteredStakeholders}
+                    stakeholders={filteredStakeholders.map(stakeholder => ({
+                      ...stakeholder,
+                      communicationPreference: stakeholder.communication_preference || 'Email',
+                      status: stakeholder.status || 'active'
+                    }))}
                     onEdit={handleEditStakeholder}
                     onDelete={(id: string) => {
                       const stakeholder = filteredStakeholders.find(s => s.id === id);
