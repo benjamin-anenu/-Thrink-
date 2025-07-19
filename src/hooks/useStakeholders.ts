@@ -29,24 +29,27 @@ export const useStakeholders = (workspaceId?: string) => {
       const { data, error } = await query.order('name');
       if (error) throw error;
       
-      // Map database fields to interface fields, using defaults for missing fields
-      const mappedData = (data || []).map(item => ({
-        id: item.id,
-        workspace_id: item.workspace_id || '',
-        name: item.name || '',
-        email: item.email || '',
-        role: item.role || '',
-        department: item.department || '', // Use existing field or default
-        phone: item.phone || '', // Use existing field or default
-        communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-        projects: item.projects || [], // Use existing field or default
-        influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-        status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: item.notes || '', // Use existing field or default
-        created_at: item.created_at || '',
-        updated_at: item.updated_at || '',
-      }));
+      // Map database fields to interface fields, extracting info from contact_info jsonb
+      const mappedData = (data || []).map(item => {
+        const contactInfo = item.contact_info || {};
+        return {
+          id: item.id,
+          workspace_id: item.workspace_id || '',
+          name: item.name || '',
+          email: item.email || '',
+          role: item.role || '',
+          department: contactInfo.department || '',
+          phone: contactInfo.phone || '',
+          communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+          projects: item.projects || [],
+          influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+          interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+          status: 'active' as 'active' | 'inactive' | 'pending',
+          notes: item.notes || '',
+          created_at: item.created_at || '',
+          updated_at: item.updated_at || '',
+        };
+      });
       
       setStakeholders(mappedData);
     } catch (error) {
@@ -66,18 +69,20 @@ export const useStakeholders = (workspaceId?: string) => {
         return null;
       }
 
-      // Only send fields that exist in the database
+      // Map interface fields to database fields
       const dbData = {
         name: stakeholder.name,
         email: stakeholder.email,
         role: stakeholder.role,
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
-        department: stakeholder.department || '',
-        phone: stakeholder.phone || '',
         projects: stakeholder.projects || [],
         notes: stakeholder.notes || '',
         communication_preference: stakeholder.communicationPreference || 'Email',
+        contact_info: {
+          department: stakeholder.department || '',
+          phone: stakeholder.phone || ''
+        }
       };
       
       const { data, error } = await supabase
@@ -95,8 +100,8 @@ export const useStakeholders = (workspaceId?: string) => {
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
-        department: data[0].department || '',
-        phone: data[0].phone || '',
+        department: data[0].contact_info?.department || '',
+        phone: data[0].contact_info?.phone || '',
         communicationPreference: (data[0].communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
         projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
@@ -117,18 +122,33 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
     try {
-      // Only send fields that exist in the database
+      // Map interface fields to database fields
       const dbUpdates: any = {};
       
       if (updates.name) dbUpdates.name = updates.name;
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.role) dbUpdates.role = updates.role;
-      if (updates.department !== undefined) dbUpdates.department = updates.department;
-      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
       if (updates.projects) dbUpdates.projects = updates.projects;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       if (updates.communicationPreference) dbUpdates.communication_preference = updates.communicationPreference;
+      
+      // Handle contact_info updates
+      if (updates.department !== undefined || updates.phone !== undefined) {
+        // Get current contact_info first
+        const { data: current } = await supabase
+          .from('stakeholders')
+          .select('contact_info')
+          .eq('id', id)
+          .single();
+        
+        const currentContactInfo = current?.contact_info || {};
+        dbUpdates.contact_info = {
+          ...currentContactInfo,
+          ...(updates.department !== undefined && { department: updates.department }),
+          ...(updates.phone !== undefined && { phone: updates.phone })
+        };
+      }
       
       const { error } = await supabase
         .from('stakeholders')
