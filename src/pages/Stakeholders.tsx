@@ -185,8 +185,9 @@ const Stakeholders = () => {
                         key={stakeholder.id}
                         stakeholder={{
                           ...stakeholder,
-                          communicationPreference: stakeholder.communication_preference || 'Email',
-                          status: stakeholder.status || 'active'
+                          communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+                          status: (stakeholder.status as 'active' | 'inactive' | 'pending') || 'active',
+                          workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
                         }}
                         onEdit={handleEditStakeholder}
                         onDelete={handleDeleteStakeholder}
@@ -197,8 +198,9 @@ const Stakeholders = () => {
                   <StakeholderListView
                     stakeholders={filteredStakeholders.map(stakeholder => ({
                       ...stakeholder,
-                      communicationPreference: stakeholder.communication_preference || 'Email',
-                      status: stakeholder.status || 'active'
+                      communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+                      status: (stakeholder.status as 'active' | 'inactive' | 'pending') || 'active',
+                      workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
                     }))}
                     onEdit={handleEditStakeholder}
                     onDelete={(id: string) => {
