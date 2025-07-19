@@ -14,12 +14,19 @@ interface TaskBoardProps {
   projectId?: string;
 }
 
+interface TaskForAssignment {
+  id: string;
+  name: string;
+  project_id: string;
+  assignee_id?: string;
+}
+
 const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate, projectId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
-  const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<Task | null>(null);
+  const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<TaskForAssignment | null>(null);
 
   const { assignResourceToTask } = useTasks(projectId);
 
@@ -178,7 +185,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskUpdate, projectId })
                             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => setSelectedTaskForAssignment({
                               id: task.id,
-                              name: task.title,
+                              name: task.title || 'Untitled Task',
                               project_id: projectId || '',
                               assignee_id: undefined
                             })}

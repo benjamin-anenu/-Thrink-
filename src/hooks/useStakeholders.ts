@@ -36,8 +36,12 @@ export const useStakeholders = (workspaceId?: string) => {
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
+        department: item.department || '',
+        phone: item.phone || '',
+        communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+        projects: item.projects || [],
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        interest: (item.interest as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         status: 'active' as 'active' | 'inactive' | 'pending',
         notes: item.notes || '',
         created_at: item.created_at || '',
@@ -69,6 +73,11 @@ export const useStakeholders = (workspaceId?: string) => {
         role: stakeholder.role,
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
+        interest: stakeholder.interest,
+        communication_preference: stakeholder.communicationPreference,
+        department: stakeholder.department,
+        phone: stakeholder.phone,
+        projects: stakeholder.projects,
         notes: stakeholder.notes || '',
       };
       
@@ -87,8 +96,12 @@ export const useStakeholders = (workspaceId?: string) => {
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
+        department: data[0].department || '',
+        phone: data[0].phone || '',
+        communicationPreference: (data[0].communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+        projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        interest: (data[0].interest as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         status: 'active' as 'active' | 'inactive' | 'pending',
         notes: data[0].notes || '',
         created_at: data[0].created_at,
@@ -111,7 +124,12 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.name) dbUpdates.name = updates.name;
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.role) dbUpdates.role = updates.role;
+      if (updates.department) dbUpdates.department = updates.department;
+      if (updates.phone) dbUpdates.phone = updates.phone;
+      if (updates.communicationPreference) dbUpdates.communication_preference = updates.communicationPreference;
+      if (updates.projects) dbUpdates.projects = updates.projects;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
+      if (updates.interest) dbUpdates.interest = updates.interest;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       
       const { error } = await supabase

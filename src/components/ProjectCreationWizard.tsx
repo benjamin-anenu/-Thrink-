@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast"
 import {
   Card,
@@ -36,7 +36,6 @@ import { useResources } from '@/contexts/ResourceContext';
 import { useSkills } from '@/hooks/useSkills';
 import SkillSelect from '@/components/ui/skill-select';
 import { addDays } from 'date-fns';
-import { Stakeholder } from '@/types/project';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectData {
@@ -53,10 +52,23 @@ interface ProjectData {
   skills: string[];
   resources: string[];
   stakeholders: string[];
+  tasks: any[];
+  milestones: any[];
+  progress: number;
+  tags: string[];
+  health: string;
+}
+
+interface DatabaseStakeholder {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  workspace_id: string;
 }
 
 const ProjectCreationWizard = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<Partial<ProjectData>>({
@@ -72,13 +84,18 @@ const ProjectCreationWizard = () => {
     healthScore: 85,
     skills: [],
     resources: [],
-    stakeholders: []
+    stakeholders: [],
+    tasks: [],
+    milestones: [],
+    progress: 0,
+    tags: [],
+    health: 'green'
   });
   const { currentWorkspace } = useWorkspace();
 	const { addProject } = useProject();
   const { resources } = useResources();
   const { skills } = useSkills();
-  const [availableStakeholders, setAvailableStakeholders] = useState<Stakeholder[]>([]);
+  const [availableStakeholders, setAvailableStakeholders] = useState<DatabaseStakeholder[]>([]);
 
   useEffect(() => {
     const fetchStakeholders = async () => {
@@ -134,17 +151,30 @@ const ProjectCreationWizard = () => {
       skills: data.skills || [],
       resources: data.resources || [],
       stakeholders: data.stakeholders || [],
-			workspaceId: currentWorkspace?.id || 'ws-1'
+			workspaceId: currentWorkspace?.id || 'ws-1',
+      tasks: data.tasks || [],
+      milestones: data.milestones || [],
+      progress: data.progress || 0,
+      tags: data.tags || [],
+      health: data.health || 'green'
     };
 
-    const success = await addProject(newProject);
-    if (success) {
-      toast({
-        title: "Success",
-        description: "Project created successfully.",
-      })
-      router.push('/dashboard');
-    } else {
+    try {
+      const result = await addProject(newProject);
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Project created successfully.",
+        })
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create project.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create project.",
@@ -243,7 +273,7 @@ const ProjectCreationWizard = () => {
 
       <footer className="py-4 px-6 border-t border-border">
         <div className="container mx-auto flex justify-between items-center">
-          <Button variant="ghost" onClick={() => router.back()}>
+          <Button variant="ghost" onClick={() => navigate(-1)}>
             Cancel
           </Button>
           <div>
@@ -615,7 +645,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ d
     influence: 'medium' as 'low' | 'medium' | 'high'
   });
 	const { currentWorkspace } = useWorkspace();
-  const [availableStakeholders, setAvailableStakeholders] = useState<Stakeholder[]>([]);
+  const [availableStakeholders, setAvailableStakeholders] = useState<DatabaseStakeholder[]>([]);
 
   useEffect(() => {
     const fetchStakeholders = async () => {
@@ -693,18 +723,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({ d
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        influence: formData.influence,
-        workspace_id: currentWorkspace?.id || '',
-        interest: 'medium' as const,
-        notes: '',
-        projects: [],
-        phone: '',
-        department: '',
-        communicationPreference: 'Email' as const,
-        organization: '',
-        influenceLevel: formData.influence,
-        escalationLevel: 1,
-        contactInfo: {}
+        influence_level: formData.influence,
+        workspace_id: currentWorkspace?.id || ''
       };
 
       const success = await addStakeholder(newStakeholder);

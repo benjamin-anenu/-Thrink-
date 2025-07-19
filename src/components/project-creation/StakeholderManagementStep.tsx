@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -5,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/components/ui/use-toast"
-import { useStakeholders } from '@/contexts/StakeholderContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface StakeholderManagementStepProps {
   data: any;
@@ -29,7 +30,6 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
     role: '',
     influence: 'medium'
   });
-  const { addStakeholder } = useStakeholders();
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast()
 
@@ -48,27 +48,44 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        influence: formData.influence,
-        workspace_id: currentWorkspace?.id || '',
-        interest: 'medium' as const,
-        notes: '',
-        projects: [],
-        phone: '',
-        department: '',
-        communicationPreference: 'Email' as const,
-        organization: '',
-        influenceLevel: formData.influence,
-        escalationLevel: 1,
-        contactInfo: {}
+        influence_level: formData.influence,
+        workspace_id: currentWorkspace?.id || ''
       };
 
-      const success = await addStakeholder(newStakeholder);
-      if (success) {
-        setFormData({
-          name: '',
-          email: '',
-          role: '',
-          influence: 'medium'
+      try {
+        const { data: result, error } = await supabase
+          .from('stakeholders')
+          .insert([newStakeholder])
+          .select();
+
+        if (error) {
+          console.error("Error adding stakeholder:", error);
+          toast({
+            title: "Error",
+            description: "Failed to add stakeholder",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (result) {
+          setFormData({
+            name: '',
+            email: '',
+            role: '',
+            influence: 'medium'
+          });
+          toast({
+            title: "Success",
+            description: "Stakeholder added successfully"
+          });
+        }
+      } catch (error) {
+        console.error("Error adding stakeholder:", error);
+        toast({
+          title: "Error",
+          description: "Failed to add stakeholder",
+          variant: "destructive"
         });
       }
     }
