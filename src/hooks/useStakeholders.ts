@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 export interface Stakeholder {
   id: string;
   name: string;
-  email?: string;
+  email: string;
   role?: string;
   organization?: string;
   department?: string;
@@ -17,7 +17,7 @@ export interface Stakeholder {
   notes?: string;
   projects?: string[];
   avatar?: string;
-  workspace_id?: string;
+  workspace_id: string;
   status?: string;
   created_at?: string;
   updated_at?: string;
@@ -45,12 +45,12 @@ export const useStakeholders = (workspaceId?: string) => {
         return {
           id: item.id,
           name: item.name,
-          email: item.email,
+          email: item.email || '',
           role: item.role,
           organization: item.organization,
-          department: contactInfo.department || '',
-          phone: contactInfo.phone || '',
-          influence: item.influence || item.influence_level,
+          department: contactInfo.department || item.department || '',
+          phone: contactInfo.phone || item.phone || '',
+          influence: item.influence || item.influence_level || 'medium',
           interest: item.interest || 'medium',
           communication_preference: item.communication_preference || 'Email',
           notes: item.notes || '',
@@ -87,6 +87,8 @@ export const useStakeholders = (workspaceId?: string) => {
         projects: stakeholder.projects,
         avatar: stakeholder.avatar,
         workspace_id: stakeholder.workspace_id,
+        department: stakeholder.department,
+        phone: stakeholder.phone,
         contact_info: {
           department: stakeholder.department || '',
           phone: stakeholder.phone || ''
@@ -103,12 +105,12 @@ export const useStakeholders = (workspaceId?: string) => {
       return data?.[0] ? {
         id: data[0].id,
         name: data[0].name,
-        email: data[0].email,
+        email: data[0].email || '',
         role: data[0].role,
         organization: data[0].organization,
-        department: (data[0].contact_info as any)?.department || '',
-        phone: (data[0].contact_info as any)?.phone || '',
-        influence: data[0].influence || data[0].influence_level,
+        department: (data[0].contact_info as any)?.department || data[0].department || '',
+        phone: (data[0].contact_info as any)?.phone || data[0].phone || '',
+        influence: data[0].influence || data[0].influence_level || 'medium',
         interest: data[0].interest || 'medium',
         communication_preference: data[0].communication_preference || 'Email',
         notes: data[0].notes || '',
@@ -137,8 +139,6 @@ export const useStakeholders = (workspaceId?: string) => {
           department: updates.department || '',
           phone: updates.phone || ''
         };
-        delete updateData.department;
-        delete updateData.phone;
       }
 
       const { error } = await supabase

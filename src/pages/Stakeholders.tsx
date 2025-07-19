@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import Header from '@/components/Header';
@@ -104,7 +105,7 @@ const Stakeholders = () => {
   // Analytics calculations
   const totalStakeholders = stakeholders.length;
   const highInfluenceCount = stakeholders.filter(s => s.influence === 'high' || s.influence === 'critical').length;
-  const activeStakeholders = stakeholders.filter(s => s.status === 'active' || !s.status).length; // Default to active if status not set
+  const activeStakeholders = stakeholders.length; // All stakeholders are considered active
   const recentlyAddedCount = stakeholders.filter(s => {
     if (!s.created_at) return false;
     const createdDate = new Date(s.created_at);
@@ -186,7 +187,7 @@ const Stakeholders = () => {
                         stakeholder={{
                           ...stakeholder,
                           communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-                          status: (stakeholder.status as 'active' | 'inactive' | 'pending') || 'active',
+                          status: 'active' as 'active' | 'inactive' | 'pending',
                           workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
                         }}
                         onEdit={handleEditStakeholder}
@@ -199,7 +200,7 @@ const Stakeholders = () => {
                     stakeholders={filteredStakeholders.map(stakeholder => ({
                       ...stakeholder,
                       communicationPreference: (stakeholder.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-                      status: (stakeholder.status as 'active' | 'inactive' | 'pending') || 'active',
+                      status: 'active' as 'active' | 'inactive' | 'pending',
                       workspace_id: stakeholder.workspace_id || currentWorkspace?.id || ''
                     }))}
                     onEdit={handleEditStakeholder}
