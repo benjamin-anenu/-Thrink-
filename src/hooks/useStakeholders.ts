@@ -29,9 +29,9 @@ export const useStakeholders = (workspaceId?: string) => {
       const { data, error } = await query.order('name');
       if (error) throw error;
       
-      // Map database fields to interface fields, extracting info from contact_info jsonb
+      // Map database fields to interface fields
       const mappedData = (data || []).map(item => {
-        const contactInfo = item.contact_info || {};
+        const contactInfo = (item.contact_info as { department?: string; phone?: string }) || {};
         return {
           id: item.id,
           workspace_id: item.workspace_id || '',
@@ -100,8 +100,8 @@ export const useStakeholders = (workspaceId?: string) => {
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
-        department: data[0].contact_info?.department || '',
-        phone: data[0].contact_info?.phone || '',
+        department: ((data[0].contact_info as { department?: string }) || {}).department || '',
+        phone: ((data[0].contact_info as { phone?: string }) || {}).phone || '',
         communicationPreference: (data[0].communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
         projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
@@ -142,7 +142,7 @@ export const useStakeholders = (workspaceId?: string) => {
           .eq('id', id)
           .single();
         
-        const currentContactInfo = current?.contact_info || {};
+        const currentContactInfo = (current?.contact_info as { department?: string; phone?: string }) || {};
         dbUpdates.contact_info = {
           ...currentContactInfo,
           ...(updates.department !== undefined && { department: updates.department }),
