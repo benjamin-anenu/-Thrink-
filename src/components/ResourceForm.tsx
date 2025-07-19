@@ -1,157 +1,227 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { useResourceSkills } from '@/hooks/useResourceSkills';
+import { supabase } from '@/integrations/supabase/client';
+import { SkillSelect, SelectedSkill } from '@/components/ui/skill-select';
+
+interface Resource {
+  id?: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  location: string;
+  skills: string[];
+  availability: number;
+  hourlyRate: string;
+  status: 'Available' | 'Busy' | 'Overallocated';
+}
 
 interface ResourceFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (resource: any) => Promise<void>;
-  resource?: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    workspaceId: string;
-  };
-}
-
-interface FormData {
-  name: string;
-  email: string;
-  role: string;
-  workspace_id: string;
+  onSave: (resource: Resource) => void;
+  resource?: Resource;
 }
 
 const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) => {
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    role: '',
-    workspace_id: ''
+  const [formData, setFormData] = useState<Resource>({
+    name: resource?.name || '',
+    role: resource?.role || '',
+    department: resource?.department || '',
+    email: resource?.email || '',
+    phone: resource?.phone || '',
+    location: resource?.location || '',
+    skills: resource?.skills || [],
+    availability: resource?.availability || 100,
+    hourlyRate: resource?.hourlyRate || '',
+    status: resource?.status || 'Available',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { currentWorkspace } = useWorkspace();
 
-  useEffect(() => {
-    if (currentWorkspace) {
-      setFormData(prev => ({ ...prev, workspace_id: currentWorkspace.id }));
+  const { resourceSkills, loading: resourceSkillsLoading } = useResourceSkills(resource?.id || '');
+  const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
+
+  const departments = ['Engineering', 'Design', 'Marketing', 'Operations', 'Sales', 'HR'];
+  const commonSkills = ['React', 'TypeScript', 'Node.js', 'Python', 'Figma', 'UI/UX', 'Project Management', 'Agile', 'SEO', 'Content Marketing'];
+
+  // Sync resourceSkills to selectedSkills on edit
+  React.useEffect(() => {
+    if (resource && resourceSkills) {
+      setSelectedSkills(resourceSkills.map(rs => ({
+        skill_id: rs.skill_id,
+        skill_name: rs.skill_name,
+        proficiency: rs.proficiency || 3,
+        years_experience: rs.years_experience || 0
+      })));
     }
-  }, [currentWorkspace]);
+  }, [resource, resourceSkills]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Handle skills change from SkillSelect component
+  const handleSkillsChange = (skills: SelectedSkill[]) => {
+    setSelectedSkills(skills);
   };
 
-  useEffect(() => {
-    if (resource) {
-      setFormData({
-        name: resource.name,
-        email: resource.email,
-        role: resource.role,
-        workspace_id: resource.workspaceId
-      });
-    }
-  }, [resource]);
-
+  // On save, upsert resource_skills
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      toast.error('Name is required');
-      return;
+    // Save resource (existing logic)
+    onSave({ ...formData });
+    // Upsert resource_skills
+    if (formData.id) {
+      for (const skill of selectedSkills) {
+        await supabase.from('resource_skills').upsert({
+          resource_id: formData.id,
+          skill_id: skill.skill_id,
+          proficiency: skill.proficiency,
+          years_experience: skill.years_experience
+        }, { onConflict: 'resource_id,skill_id' });
+      }
     }
-
-    setIsSubmitting(true);
-    
-    try {
-      await onSave({
-        ...formData,
-        workspace_id: formData.workspace_id
-      });
-      
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        role: '',
-        workspace_id: currentWorkspace?.id || ''
-      });
-      
-      toast.success(resource ? 'Resource updated successfully' : 'Resource created successfully');
-    } catch (error) {
-      console.error('Error saving resource:', error);
-      toast.error('Failed to save resource');
-    } finally {
-      setIsSubmitting(false);
-    }
+    onClose();
   };
+
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{resource ? 'Edit Resource' : 'Create New Resource'}</DialogTitle>
-          <DialogDescription>
-            {resource ? 'Update resource details here.' : 'Add a new team member to your workspace.'}
-          </DialogDescription>
+          <DialogTitle>{resource ? 'Edit Resource' : 'Add New Resource'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="col-span-3"
-              placeholder="Resource Name"
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <Input
+                id="role"
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="department">Department</Label>
+              <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(dept => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Available">Available</SelectItem>
+                  <SelectItem value="Busy">Busy</SelectItem>
+                  <SelectItem value="Overallocated">Overallocated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="hourlyRate">Hourly Rate</Label>
+              <Input
+                id="hourlyRate"
+                value={formData.hourlyRate}
+                onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                placeholder="$85/hr"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Availability ({formData.availability}%)</Label>
+            <Slider
+              value={[formData.availability]}
+              onValueChange={(value) => setFormData({ ...formData, availability: value[0] })}
+              max={100}
+              step={5}
+              className="mt-2"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">
-              Email
-            </Label>
-            <Input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="col-span-3"
-              placeholder="email@example.com"
+
+          <div>
+            <Label>Skills</Label>
+            <SkillSelect
+              selectedSkills={selectedSkills}
+              onSkillsChange={handleSkillsChange}
+              placeholder="Search or add skills..."
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="role" className="text-right">
-              Role
-            </Label>
-            <Input
-              type="text"
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="col-span-3"
-              placeholder="e.g. Software Engineer"
-            />
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              {resource ? 'Update Resource' : 'Add Resource'}
+            </Button>
           </div>
         </form>
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

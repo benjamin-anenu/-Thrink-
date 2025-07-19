@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import Header from '@/components/Header';
@@ -19,11 +20,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useProjects } from '@/hooks/useProjects';
 import { Label } from '@/components/ui/label';
-import type { Stakeholder } from '@/types/stakeholder';
 
 const Stakeholders = () => {
   const [showStakeholderForm, setShowStakeholderForm] = useState(false);
-  const [selectedStakeholder, setSelectedStakeholder] = useState<Stakeholder | null>(null);
+  const [selectedStakeholder, setSelectedStakeholder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -67,18 +67,18 @@ const Stakeholders = () => {
     setSelectedStakeholder(null);
   };
 
-  const handleEditStakeholder = (stakeholder: Stakeholder) => {
+  const handleEditStakeholder = (stakeholder: any) => {
     setSelectedStakeholder(stakeholder);
     setShowStakeholderForm(true);
   };
 
-  const handleDeleteStakeholder = async (stakeholder: Stakeholder) => {
+  const handleDeleteStakeholder = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this stakeholder?')) {
-      await deleteStakeholder(stakeholder.id);
+      await deleteStakeholder(id);
     }
   };
 
-  const handleContactStakeholder = (stakeholder: Stakeholder) => {
+  const handleContactStakeholder = (stakeholder: any) => {
     toast.info(`Opening contact for ${stakeholder.name}`);
     // TODO: Implement contact functionality
   };
@@ -194,7 +194,7 @@ const Stakeholders = () => {
                   <StakeholderListView
                     stakeholders={filteredStakeholders}
                     onEdit={handleEditStakeholder}
-                    onDelete={(stakeholder) => handleDeleteStakeholder(stakeholder)}
+                    onDelete={handleDeleteStakeholder}
                     onContact={handleContactStakeholder}
                   />
                 )}

@@ -10,7 +10,7 @@ import { Stakeholder } from '@/types/stakeholder';
 interface StakeholderListViewProps {
   stakeholders: Stakeholder[];
   onEdit: (stakeholder: Stakeholder) => void;
-  onDelete: (stakeholder: Stakeholder) => void;
+  onDelete: (id: string) => void;
   onContact: (stakeholder: Stakeholder) => void;
 }
 
@@ -92,7 +92,7 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onDelete(stakeholder)}
+                  onClick={() => onDelete(stakeholder.id)}
                   title="Delete stakeholder"
                   className="text-destructive hover:text-destructive"
                 >

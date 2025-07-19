@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -32,25 +33,15 @@ export const useStakeholders = (workspaceId?: string) => {
       const mappedData = (data || []).map(item => ({
         id: item.id,
         workspace_id: item.workspace_id || '',
-        workspaceId: item.workspace_id || '',
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
-        department: item.department || '',
-        phone: item.phone || '',
-        communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-        projects: item.projects || [],
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: (item.interest as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
         notes: item.notes || '',
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
-        lastContact: undefined,
-        organization: item.organization || '',
-        influenceLevel: item.influence_level || '',
-        escalationLevel: item.escalation_level || 0,
-        contactInfo: item.contact_info || {},
       }));
       
       setStakeholders(mappedData);
@@ -78,11 +69,6 @@ export const useStakeholders = (workspaceId?: string) => {
         role: stakeholder.role,
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
-        interest: stakeholder.interest,
-        communication_preference: stakeholder.communicationPreference,
-        department: stakeholder.department,
-        phone: stakeholder.phone,
-        projects: stakeholder.projects,
         notes: stakeholder.notes || '',
       };
       
@@ -98,24 +84,15 @@ export const useStakeholders = (workspaceId?: string) => {
       const mappedResult = data?.[0] ? {
         id: data[0].id,
         workspace_id: data[0].workspace_id,
-        workspaceId: data[0].workspace_id,
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
-        department: data[0].department || '',
-        phone: data[0].phone || '',
-        communicationPreference: (data[0].communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-        projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: (data[0].interest as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
         notes: data[0].notes || '',
         created_at: data[0].created_at,
         updated_at: data[0].updated_at,
-        organization: data[0].organization || '',
-        influenceLevel: data[0].influence_level || '',
-        escalationLevel: data[0].escalation_level || 0,
-        contactInfo: data[0].contact_info || {},
       } : null;
       
       return mappedResult as Stakeholder;
@@ -134,12 +111,7 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.name) dbUpdates.name = updates.name;
       if (updates.email) dbUpdates.email = updates.email;
       if (updates.role) dbUpdates.role = updates.role;
-      if (updates.department) dbUpdates.department = updates.department;
-      if (updates.phone) dbUpdates.phone = updates.phone;
-      if (updates.communicationPreference) dbUpdates.communication_preference = updates.communicationPreference;
-      if (updates.projects) dbUpdates.projects = updates.projects;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
-      if (updates.interest) dbUpdates.interest = updates.interest;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       
       const { error } = await supabase
