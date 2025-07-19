@@ -36,14 +36,14 @@ export const useStakeholders = (workspaceId?: string) => {
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
-        department: item.department || '', // Default empty string
-        phone: item.phone || '', // Default empty string
+        department: item.department || '', // Use existing field or default
+        phone: item.phone || '', // Use existing field or default
         communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
-        projects: item.projects || [], // Default empty array
+        projects: item.projects || [], // Use existing field or default
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: item.notes || '', // Default empty string
+        notes: item.notes || '', // Use existing field or default
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
       }));
