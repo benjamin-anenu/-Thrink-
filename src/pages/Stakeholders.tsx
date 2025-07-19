@@ -15,6 +15,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useProjects } from '@/hooks/useProjects';
+import { Label } from '@/components/ui/label';
 
 const Stakeholders = () => {
   const [showStakeholderForm, setShowStakeholderForm] = useState(false);
@@ -22,9 +27,27 @@ const Stakeholders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [filterDepartments, setFilterDepartments] = useState<string[]>([]);
+  const [filterInfluences, setFilterInfluences] = useState<string[]>([]);
+  const [filterProjects, setFilterProjects] = useState<string[]>([]);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+
+  // Add temp state for modal filters
+  const [tempFilterDepartments, setTempFilterDepartments] = useState<string[]>([]);
+  const [tempFilterInfluences, setTempFilterInfluences] = useState<string[]>([]);
+  const [tempFilterProjects, setTempFilterProjects] = useState<string[]>([]);
+
+  // When opening modal, sync temp state with main filter state
+  const openFilterModal = () => {
+    setTempFilterDepartments(filterDepartments);
+    setTempFilterInfluences(filterInfluences);
+    setTempFilterProjects(filterProjects);
+    setShowFilterModal(true);
+  };
 
   const { currentWorkspace } = useWorkspace();
   const { stakeholders, loading, createStakeholder, updateStakeholder, deleteStakeholder } = useStakeholders(currentWorkspace?.id);
+  const { projects } = useProjects();
 
   const handleSaveStakeholder = async (stakeholderData: any) => {
     console.log('Saving stakeholder:', stakeholderData);
@@ -60,11 +83,24 @@ const Stakeholders = () => {
     // TODO: Implement contact functionality
   };
 
-  const filteredStakeholders = stakeholders.filter(stakeholder =>
-    stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stakeholder.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtering logic
+  const filteredStakeholders = stakeholders.filter(stakeholder => {
+    const name = stakeholder.name?.toLowerCase() ?? '';
+    const role = stakeholder.role?.toLowerCase() ?? '';
+    const department = (stakeholder.department?.toLowerCase?.() ?? '');
+    const influence = (stakeholder.influence?.toLowerCase?.() ?? '');
+
+    const matchesSearch =
+      name.includes(searchTerm.toLowerCase()) ||
+      role.includes(searchTerm.toLowerCase()) ||
+      department.includes(searchTerm.toLowerCase());
+
+    const matchesDepartment = filterDepartments.length === 0 || filterDepartments.some(dept => department === dept.toLowerCase());
+    const matchesInfluence = filterInfluences.length === 0 || filterInfluences.some(inf => influence === inf.toLowerCase());
+    const matchesProjects = filterProjects.length === 0 || (Array.isArray(stakeholder.projects) && stakeholder.projects.some(proj => filterProjects.includes(proj)));
+
+    return matchesSearch && matchesDepartment && matchesInfluence && matchesProjects;
+  });
 
   // Analytics calculations
   const totalStakeholders = stakeholders.length;
@@ -101,14 +137,27 @@ const Stakeholders = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-                <Input
-                  placeholder="Search stakeholders..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+              <div className="flex flex-1 items-center gap-2 max-w-md">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                  <Input
+                    placeholder="Search stakeholders..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={openFilterModal}
+                  className="flex items-center gap-2 z-50 relative"
+                  type="button"
+                >
+                  <Filter size={16} /> Filters
+                  {(filterDepartments.length > 0 || filterInfluences.length > 0 || filterProjects.length > 0) && (
+                    <Badge variant="secondary" className="ml-1">Active</Badge>
+                  )}
+                </Button>
               </div>
               <ViewToggle view={viewMode} onViewChange={setViewMode} />
             </div>
@@ -241,6 +290,114 @@ const Stakeholders = () => {
       />
 
       <TinkAssistant />
+
+      <Dialog open={showFilterModal} onOpenChange={setShowFilterModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Filter Stakeholders</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Departments */}
+            <div>
+              <h4 className="font-medium mb-2">Department</h4>
+              <div className="flex flex-wrap gap-2">
+                {[...new Set(stakeholders.map(s => s.department).filter(Boolean))].map(dept => (
+                  <label key={dept} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={tempFilterDepartments.includes(dept)}
+                      onCheckedChange={checked => {
+                        setTempFilterDepartments(checked
+                          ? [...tempFilterDepartments, dept]
+                          : tempFilterDepartments.filter(d => d !== dept));
+                      }}
+                    />
+                    <span className="text-sm">{dept}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Influence */}
+            <div>
+              <h4 className="font-medium mb-2">Influence</h4>
+              <div className="flex flex-wrap gap-2">
+                {['high', 'medium', 'low', 'critical'].map(influence => (
+                  <label key={influence} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={tempFilterInfluences.includes(influence)}
+                      onCheckedChange={checked => {
+                        setTempFilterInfluences(checked
+                          ? [...tempFilterInfluences, influence]
+                          : tempFilterInfluences.filter(i => i !== influence));
+                      }}
+                    />
+                    <span className="text-sm">{influence.charAt(0).toUpperCase() + influence.slice(1)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Projects */}
+            <div>
+              <h4 className="font-medium mb-2">Projects</h4>
+              <div className="flex flex-wrap gap-2">
+                {projects.map(project => (
+                  <label key={project.id} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={tempFilterProjects.includes(project.name)}
+                      onCheckedChange={checked => {
+                        setTempFilterProjects(checked
+                          ? [...tempFilterProjects, project.name]
+                          : tempFilterProjects.filter(p => p !== project.name));
+                      }}
+                    />
+                    <span className="text-sm">{project.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Active Filter Badges */}
+            {(tempFilterDepartments.length > 0 || tempFilterInfluences.length > 0 || tempFilterProjects.length > 0) && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {tempFilterDepartments.map(dept => (
+                  <Badge key={dept} variant="secondary">{dept}</Badge>
+                ))}
+                {tempFilterInfluences.map(inf => (
+                  <Badge key={inf} variant="secondary">{inf.charAt(0).toUpperCase() + inf.slice(1)}</Badge>
+                ))}
+                {tempFilterProjects.map(proj => (
+                  <Badge key={proj} variant="secondary">{proj}</Badge>
+                ))}
+              </div>
+            )}
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilterDepartments([]);
+                  setFilterInfluences([]);
+                  setFilterProjects([]);
+                  setTempFilterDepartments([]);
+                  setTempFilterInfluences([]);
+                  setTempFilterProjects([]);
+                  setShowFilterModal(false);
+                }}
+              >
+                Clear All
+              </Button>
+              <Button
+                onClick={() => {
+                  setFilterDepartments(tempFilterDepartments);
+                  setFilterInfluences(tempFilterInfluences);
+                  setFilterProjects(tempFilterProjects);
+                  setShowFilterModal(false);
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

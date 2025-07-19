@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
-import { X, Plus } from 'lucide-react';
+import { useResourceSkills } from '@/hooks/useResourceSkills';
+import { supabase } from '@/integrations/supabase/client';
+import { SkillSelect, SelectedSkill } from '@/components/ui/skill-select';
 
 interface Resource {
   id?: string;
@@ -45,30 +47,49 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
     status: resource?.status || 'Available',
   });
 
-  const [newSkill, setNewSkill] = useState('');
+  const { resourceSkills, loading: resourceSkillsLoading } = useResourceSkills(resource?.id || '');
+  const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
 
   const departments = ['Engineering', 'Design', 'Marketing', 'Operations', 'Sales', 'HR'];
   const commonSkills = ['React', 'TypeScript', 'Node.js', 'Python', 'Figma', 'UI/UX', 'Project Management', 'Agile', 'SEO', 'Content Marketing'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Sync resourceSkills to selectedSkills on edit
+  React.useEffect(() => {
+    if (resource && resourceSkills) {
+      setSelectedSkills(resourceSkills.map(rs => ({
+        skill_id: rs.skill_id,
+        skill_name: rs.skill_name,
+        proficiency: rs.proficiency || 3,
+        years_experience: rs.years_experience || 0
+      })));
+    }
+  }, [resource, resourceSkills]);
+
+  // Handle skills change from SkillSelect component
+  const handleSkillsChange = (skills: SelectedSkill[]) => {
+    setSelectedSkills(skills);
+  };
+
+  // On save, upsert resource_skills
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // Save resource (existing logic)
+    onSave({ ...formData });
+    // Upsert resource_skills
+    if (formData.id) {
+      for (const skill of selectedSkills) {
+        await supabase.from('resource_skills').upsert({
+          resource_id: formData.id,
+          skill_id: skill.skill_id,
+          proficiency: skill.proficiency,
+          years_experience: skill.years_experience
+        }, { onConflict: 'resource_id,skill_id' });
+      }
+    }
     onClose();
   };
 
-  const addSkill = (skill: string) => {
-    if (skill && !formData.skills.includes(skill)) {
-      setFormData({ ...formData, skills: [...formData.skills, skill] });
-    }
-    setNewSkill('');
-  };
 
-  const removeSkill = (skillToRemove: string) => {
-    setFormData({
-      ...formData,
-      skills: formData.skills.filter(skill => skill !== skillToRemove)
-    });
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -185,52 +206,11 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
 
           <div>
             <Label>Skills</Label>
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  placeholder="Add a skill..."
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill(newSkill))}
-                />
-                <Button
-                  type="button"
-                  onClick={() => addSkill(newSkill)}
-                  size="sm"
-                >
-                  <Plus size={16} />
-                </Button>
-              </div>
-              
-              <div className="flex flex-wrap gap-1">
-                <span className="text-sm text-muted-foreground mr-2">Quick add:</span>
-                {commonSkills.filter(skill => !formData.skills.includes(skill)).map(skill => (
-                  <Button
-                    key={skill}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addSkill(skill)}
-                    className="text-xs"
-                  >
-                    + {skill}
-                  </Button>
-                ))}
-              </div>
-              
-              <div className="flex flex-wrap gap-1">
-                {formData.skills.map(skill => (
-                  <Badge key={skill} variant="secondary" className="flex items-center gap-1">
-                    {skill}
-                    <X
-                      size={12}
-                      className="cursor-pointer hover:text-destructive"
-                      onClick={() => removeSkill(skill)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            <SkillSelect
+              selectedSkills={selectedSkills}
+              onSkillsChange={handleSkillsChange}
+              placeholder="Search or add skills..."
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

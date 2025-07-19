@@ -16,8 +16,8 @@ interface Stakeholder {
   avatar?: string;
   communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
   escalationLevel?: number;
-  influence: 'High' | 'Medium' | 'Low';
-  interest: 'High' | 'Medium' | 'Low';
+  influence: 'low' | 'medium' | 'high' | 'critical';
+  interest: 'low' | 'medium' | 'high' | 'critical';
   projects: string[];
 }
 
@@ -28,8 +28,8 @@ interface StakeholderCardProps {
 }
 
 const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps) => {
-  const getInfluenceColor = (influence: string) => {
-    switch (influence.toLowerCase()) {
+  const getInfluenceColor = (influence: string | undefined) => {
+    switch ((influence?.toLowerCase?.() ?? '')) {
       case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
       case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
       case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
@@ -37,8 +37,8 @@ const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps
     }
   };
 
-  const getCommIcon = (preference: string) => {
-    switch (preference.toLowerCase()) {
+  const getCommIcon = (preference: string | undefined) => {
+    switch ((preference?.toLowerCase?.() ?? '')) {
       case 'email': return <Mail className="h-4 w-4" />;
       case 'phone': return <Phone className="h-4 w-4" />;
       case 'slack': return <MessageSquare className="h-4 w-4" />;
@@ -123,16 +123,16 @@ const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps
         )}
         
         <div className="pt-2">
-          <span className="text-sm text-muted-foreground">Projects ({stakeholder.projects.length})</span>
+          <span className="text-sm text-muted-foreground">Projects ({(stakeholder.projects?.length ?? 0)})</span>
           <div className="flex flex-wrap gap-1 mt-1">
-            {stakeholder.projects.slice(0, 3).map((project, index) => (
+            {(stakeholder.projects ?? []).slice(0, 3).map((project, index) => (
               <Badge key={index} variant="secondary" className="text-xs">
                 {project}
               </Badge>
             ))}
-            {stakeholder.projects.length > 3 && (
+            {(stakeholder.projects?.length ?? 0) > 3 && (
               <Badge variant="secondary" className="text-xs">
-                +{stakeholder.projects.length - 3} more
+                +{(stakeholder.projects?.length ?? 0) - 3} more
               </Badge>
             )}
           </div>

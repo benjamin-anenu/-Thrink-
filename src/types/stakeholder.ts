@@ -4,6 +4,10 @@ export interface Stakeholder {
   name: string;
   email: string;
   role: string;
+  department: string;
+  phone: string;
+  communicationPreference: 'Email' | 'Phone' | 'Slack' | 'In-person';
+  projects: string[];
   influence: 'low' | 'medium' | 'high' | 'critical';
   interest: 'low' | 'medium' | 'high' | 'critical';
   status: 'active' | 'inactive' | 'pending';
