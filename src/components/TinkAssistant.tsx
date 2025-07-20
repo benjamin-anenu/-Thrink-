@@ -17,7 +17,7 @@ const TinkAssistant = () => {
     {
       id: '1',
       type: 'tink',
-      content: "Hi there! I'm Tink, your intelligent project assistant. I'm actively tracking team performance and sending smart deadline reminders. I noticed Sarah completed her UI task ahead of schedule - excellent work! 🎯 Would you like me to show you the latest team insights?",
+      content: "Hi there! I'm Tink, your intelligent project assistant. I'm currently using local intelligence to track team performance and send smart deadline reminders. Real AI integration with OpenAI/Claude is coming soon! 🚀 For now, I'm providing smart responses based on your project data patterns.",
       timestamp: new Date()
     }
   ]);
@@ -160,8 +160,14 @@ The system sends reminders at 7 days, 3 days, 1 day before, day of, and overdue.
           >
             <MessageSquare className="h-6 w-6" />
             
+            {/* Coming Soon Badge */}
+            <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-primary/90 text-white text-xs rounded-full 
+                          border border-white/20 shadow-sm font-medium">
+              AI Soon
+            </div>
+            
             {/* Refined Performance Indicator */}
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning rounded-full 
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success rounded-full 
                           flex items-center justify-center animate-pulse shadow-sm"
                  style={{ animationDuration: '2s' }}>
               <TrendingUp className="h-2 w-2 text-warning-foreground" />

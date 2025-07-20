@@ -31,6 +31,28 @@ const AIInsights = () => {
 
   return (
     <div className="space-y-6">
+      {/* Coming Soon Banner */}
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-primary">Real AI Integration Coming Soon!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Connect OpenAI or Claude for advanced AI-powered insights and recommendations.
+                </p>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
+              Coming Soon
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* AI Configuration Status */}
       <AIConfigStatus showDetails={false} />
 
@@ -39,7 +61,7 @@ const AIInsights = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            AI-Powered Insights
+            AI-Powered Insights (Simulated)
           </CardTitle>
         </CardHeader>
         <CardContent>
