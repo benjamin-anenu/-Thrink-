@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import { ResourceProvider } from "@/contexts/ResourceContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
@@ -19,25 +20,27 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <WorkspaceProvider>
-        <ProjectProvider>
-          <ResourceProvider>
-            <Toaster />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/resources" element={<Resources />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/stakeholders" element={<Stakeholders />} />
-                <Route path="/recycle-bin" element={<RecycleBin />} />
-                <Route path="/project-management/:projectId" element={<ProjectManagement />} />
-                <Route path="/project/:projectId" element={<ProjectManagement />} />
-              </Routes>
-            </BrowserRouter>
-          </ResourceProvider>
-        </ProjectProvider>
-      </WorkspaceProvider>
+      <AuthProvider>
+        <WorkspaceProvider>
+          <ProjectProvider>
+            <ResourceProvider>
+              <Toaster />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/resources" element={<Resources />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/stakeholders" element={<Stakeholders />} />
+                  <Route path="/recycle-bin" element={<RecycleBin />} />
+                  <Route path="/project-management/:projectId" element={<ProjectManagement />} />
+                  <Route path="/project/:projectId" element={<ProjectManagement />} />
+                </Routes>
+              </BrowserRouter>
+            </ResourceProvider>
+          </ProjectProvider>
+        </WorkspaceProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
