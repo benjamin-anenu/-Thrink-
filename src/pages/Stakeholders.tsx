@@ -40,8 +40,8 @@ const Stakeholders = () => {
     setShowStakeholderForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteStakeholder(id);
+  const handleDelete = async (stakeholder: any) => {
+    await deleteStakeholder(stakeholder.id);
   };
 
   const handleContact = (stakeholder: any) => {

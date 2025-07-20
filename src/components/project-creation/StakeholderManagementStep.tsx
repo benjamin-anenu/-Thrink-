@@ -23,8 +23,8 @@ interface StakeholderFormData {
   name: string;
   email: string;
   role: string;
-  influence: string;
-  interest: string;
+  influence: 'low' | 'medium' | 'high' | 'critical';
+  interest: 'low' | 'medium' | 'high' | 'critical';
   notes: string;
 }
 
@@ -48,7 +48,11 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
   });
 
   const handleInputChange = (field: keyof StakeholderFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'influence' || field === 'interest') {
+      setFormData(prev => ({ ...prev, [field]: value as 'low' | 'medium' | 'high' | 'critical' }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleCreateStakeholder = async () => {
@@ -185,6 +189,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
                         <SelectItem value="low">Low</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -198,6 +203,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
                         <SelectItem value="low">Low</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
