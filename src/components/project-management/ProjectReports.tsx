@@ -23,14 +23,14 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
   const completedTasks = tasks.filter(task => task.status === 'Completed').length;
   const inProgressTasks = tasks.filter(task => task.status === 'In Progress').length;
   const overdueTasks = tasks.filter(task => {
-    if (!task.end_date) return false;
-    const endDate = new Date(task.end_date);
+    if (!task.endDate) return false;
+    const endDate = new Date(task.endDate);
     const today = new Date();
     return endDate < today && task.status !== 'Completed';
   }).length;
 
   const totalMilestones = milestones.length;
-  const completedMilestones = milestones.filter(m => m.status === 'Completed').length;
+  const completedMilestones = milestones.filter(m => m.status === 'completed').length;
   
   const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
@@ -39,7 +39,7 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
   
   // Calculate risk level based on overdue tasks and delayed milestones
   const delayedMilestones = milestones.filter(m => 
-    m.due_date && m.baseline_date && new Date(m.due_date) > new Date(m.baseline_date)
+    m.date && m.baselineDate && new Date(m.date) > new Date(m.baselineDate)
   ).length;
   
   let riskLevel = 'Low';
@@ -51,12 +51,12 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
 
   // Find next milestone
   const upcomingMilestones = milestones
-    .filter(m => m.status !== 'Completed' && m.due_date)
-    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+    .filter(m => m.status !== 'completed' && m.date)
+    .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
   
   const nextMilestone = upcomingMilestones[0];
-  const daysToMilestone = nextMilestone?.due_date 
-    ? Math.ceil((new Date(nextMilestone.due_date).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
+  const daysToMilestone = nextMilestone?.date 
+    ? Math.ceil((new Date(nextMilestone.date).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
     : 0;
 
   // Calculate budget used (placeholder - would come from actual budget tracking)

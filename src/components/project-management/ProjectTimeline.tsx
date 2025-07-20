@@ -18,11 +18,11 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Completed':
+      case 'completed':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'In Progress':
+      case 'in-progress':
         return <Clock className="h-5 w-5 text-blue-500" />;
-      case 'Not Started':
+      case 'upcoming':
         return <Target className="h-5 w-5 text-gray-400" />;
       default:
         return <AlertCircle className="h-5 w-5 text-red-500" />;
@@ -31,11 +31,11 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Completed':
+      case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'In Progress':
+      case 'in-progress':
         return 'bg-blue-100 text-blue-800';
-      case 'Not Started':
+      case 'upcoming':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-red-100 text-red-800';
@@ -54,9 +54,9 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
 
   // Calculate milestone statistics
   const milestoneStats = {
-    completed: milestones.filter(m => m.status === 'Completed').length,
-    inProgress: milestones.filter(m => m.status === 'In Progress').length,
-    upcoming: milestones.filter(m => m.status === 'Not Started').length,
+    completed: milestones.filter(m => m.status === 'completed').length,
+    inProgress: milestones.filter(m => m.status === 'in-progress').length,
+    upcoming: milestones.filter(m => m.status === 'upcoming').length,
     total: milestones.length
   };
 
@@ -131,8 +131,8 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                 const milestoneTasks = getMilestoneTasks(milestone.id);
                 const actualProgress = calculateMilestoneProgress(milestone.id);
                 const completedTasks = milestoneTasks.filter(t => t.status === 'Completed').length;
-                const isDelayed = milestone.due_date && milestone.baseline_date && 
-                                 new Date(milestone.due_date) > new Date(milestone.baseline_date);
+                const isDelayed = milestone.date && milestone.baselineDate && 
+                                 new Date(milestone.date) > new Date(milestone.baselineDate);
 
                 return (
                   <div key={milestone.id} className="relative flex items-start gap-6">
@@ -144,8 +144,8 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <Card className={`border-l-4 ${
-                        milestone.status === 'Completed' ? 'border-l-green-500' : 
-                        milestone.status === 'In Progress' ? 'border-l-blue-500' : 
+                        milestone.status === 'completed' ? 'border-l-green-500' : 
+                        milestone.status === 'in-progress' ? 'border-l-blue-500' : 
                         'border-l-gray-400'
                       }`}>
                         <CardContent className="p-4">
@@ -154,14 +154,14 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                               <h3 className="font-semibold text-lg">{milestone.name}</h3>
                               <p className="text-sm text-muted-foreground flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />
-                                Due: {milestone.due_date ? new Date(milestone.due_date).toLocaleDateString('en-US', {
+                                Due: {milestone.date ? new Date(milestone.date).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric'
                                 }) : 'No due date'}
-                                {isDelayed && milestone.baseline_date && (
+                                {isDelayed && milestone.baselineDate && (
                                   <span className="text-orange-600">
-                                    (Originally: {new Date(milestone.baseline_date).toLocaleDateString()})
+                                    (Originally: {new Date(milestone.baselineDate).toLocaleDateString()})
                                   </span>
                                 )}
                               </p>
@@ -200,13 +200,13 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                               </span>
                             </div>
                             
-                            {milestone.status === 'Completed' && (
+                            {milestone.status === 'completed' && (
                               <span className="text-green-600 text-xs font-medium">
                                 ✓ Completed
                               </span>
                             )}
                             
-                            {milestone.status === 'In Progress' && (
+                            {milestone.status === 'in-progress' && (
                               <span className="text-blue-600 text-xs font-medium">
                                 🔄 In progress
                               </span>
@@ -232,8 +232,8 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                                       </Badge>
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                      {task.start_date && task.end_date ? 
-                                        `${new Date(task.start_date).toLocaleDateString()} - ${new Date(task.end_date).toLocaleDateString()}` :
+                                      {task.startDate && task.endDate ? 
+                                        `${new Date(task.startDate).toLocaleDateString()} - ${new Date(task.endDate).toLocaleDateString()}` :
                                         'No dates set'
                                       }
                                     </div>
@@ -266,15 +266,15 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
             <div className="grid grid-cols-1 gap-4">
               {tasks
                 .filter(task => {
-                  const isDelayed = task.end_date && task.baseline_end_date && 
-                                   new Date(task.end_date) > new Date(task.baseline_end_date);
+                  const isDelayed = task.endDate && task.baselineEndDate && 
+                                   new Date(task.endDate) > new Date(task.baselineEndDate);
                   const hasDependents = tasks.some(t => t.dependencies.includes(task.id));
                   return isDelayed || hasDependents || task.priority === 'High' || task.priority === 'Critical';
                 })
                 .slice(0, 4)
                 .map((task) => {
-                  const isDelayed = task.end_date && task.baseline_end_date && 
-                                   new Date(task.end_date) > new Date(task.baseline_end_date);
+                  const isDelayed = task.endDate && task.baselineEndDate && 
+                                   new Date(task.endDate) > new Date(task.baselineEndDate);
                   return (
                     <div key={task.id} className="p-4 border border-border rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
@@ -293,8 +293,8 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {isDelayed && task.end_date && task.baseline_end_date
-                          ? `Delay risk: High - Behind baseline by ${Math.ceil((new Date(task.end_date).getTime() - new Date(task.baseline_end_date).getTime()) / (24 * 60 * 60 * 1000))} days`
+                        {isDelayed && task.endDate && task.baselineEndDate
+                          ? `Delay risk: High - Behind baseline by ${Math.ceil((new Date(task.endDate).getTime() - new Date(task.baselineEndDate).getTime()) / (24 * 60 * 60 * 1000))} days`
                           : task.status === 'Completed' 
                             ? 'On track - Completed successfully'
                             : `Progress: ${task.progress}% - ${task.status}`

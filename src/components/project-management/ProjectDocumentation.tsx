@@ -177,12 +177,12 @@ const ProjectDocumentation: React.FC<ProjectDocumentationProps> = ({ projectId }
       if (error) throw error;
 
       const url = URL.createObjectURL(data);
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.download = document.file_name;
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading file:', error);
