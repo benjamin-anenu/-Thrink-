@@ -1,9 +1,7 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Plus, Settings } from 'lucide-react';
@@ -25,7 +23,10 @@ const Workspaces = () => {
 
   const handleWorkspaceSelect = (workspace: any) => {
     setCurrentWorkspace(workspace);
-    toast.success(`Switched to ${workspace.name}`);
+    toast({
+      title: "Workspace switched",
+      description: `Switched to ${workspace.name}`
+    });
   };
 
   const handleOpenSettings = (workspace: any) => {
@@ -74,8 +75,8 @@ const Workspaces = () => {
       />
 
       <WorkspaceSettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        open={showSettings}
+        onOpenChange={setShowSettings}
         workspace={selectedWorkspace}
       />
     </div>

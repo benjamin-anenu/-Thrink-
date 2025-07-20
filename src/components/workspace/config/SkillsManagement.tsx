@@ -36,7 +36,7 @@ const SkillsManagement: React.FC<SkillsManagementProps> = ({ workspaceId }) => {
     try {
       const { data, error } = await supabase
         .from('skills')
-        .select('*')
+        .select('id, name, category, created_at')
         .eq('workspace_id', workspaceId)
         .order('name');
 

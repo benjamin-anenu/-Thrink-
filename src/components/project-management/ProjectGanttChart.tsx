@@ -44,7 +44,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         assignedResources: [],
         assignedStakeholders: [],
         dependencies: [],
-        project_id: projectId
+        projectId: projectId
       };
 
       await createTask(newTask);
