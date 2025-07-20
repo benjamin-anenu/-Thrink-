@@ -6,7 +6,7 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
-import AdvancedAnalyticsDashboard from '@/components/analytics/AdvancedAnalyticsDashboard';
+import SimpleAnalyticsDashboard from '@/components/analytics/SimpleAnalyticsDashboard';
 import SmartAnalyticsWidgets from '@/components/analytics/SmartAnalyticsWidgets';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
@@ -243,7 +243,7 @@ const Dashboard = () => {
 
           <TabsContent value="advanced-analytics">
             <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load advanced analytics</div>}>
-              <AdvancedAnalyticsDashboard />
+              <SimpleAnalyticsDashboard />
             </ErrorBoundary>
           </TabsContent>
 
