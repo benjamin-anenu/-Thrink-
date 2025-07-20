@@ -335,6 +335,110 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      document_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          parent_folder_id: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalation_triggers: {
+        Row: {
+          condition_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          threshold_unit: string | null
+          threshold_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          condition_type: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          threshold_unit?: string | null
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          condition_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          threshold_unit?: string | null
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       external_calendar_integrations: {
         Row: {
           access_token: string | null
@@ -633,6 +737,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      project_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          folder_name: string | null
+          id: string
+          project_id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          folder_name?: string | null
+          id?: string
+          project_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          folder_name?: string | null
+          id?: string
+          project_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
       }
       project_drafts: {
         Row: {
@@ -1222,6 +1365,7 @@ export type Database = {
         Row: {
           created_at: string
           department: string | null
+          department_id: string | null
           email: string | null
           id: string
           name: string
@@ -1232,6 +1376,7 @@ export type Database = {
         Insert: {
           created_at?: string
           department?: string | null
+          department_id?: string | null
           email?: string | null
           id?: string
           name: string
@@ -1242,6 +1387,7 @@ export type Database = {
         Update: {
           created_at?: string
           department?: string | null
+          department_id?: string | null
           email?: string | null
           id?: string
           name?: string
@@ -1250,6 +1396,13 @@ export type Database = {
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "resources_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "resources_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -1284,6 +1437,7 @@ export type Database = {
           contact_info: Json | null
           created_at: string
           department: string | null
+          department_id: string | null
           email: string | null
           escalation_level: number | null
           id: string
@@ -1306,6 +1460,7 @@ export type Database = {
           contact_info?: Json | null
           created_at?: string
           department?: string | null
+          department_id?: string | null
           email?: string | null
           escalation_level?: number | null
           id?: string
@@ -1328,6 +1483,7 @@ export type Database = {
           contact_info?: Json | null
           created_at?: string
           department?: string | null
+          department_id?: string | null
           email?: string | null
           escalation_level?: number | null
           id?: string
@@ -1345,6 +1501,13 @@ export type Database = {
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stakeholders_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stakeholders_project_id_fkey"
             columns: ["project_id"]
