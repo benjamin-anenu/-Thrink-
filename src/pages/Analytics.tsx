@@ -21,6 +21,8 @@ import CalendarTab from '@/components/analytics/CalendarTab';
 import SettingsTab from '@/components/analytics/SettingsTab';
 import ReportsExport from '@/components/analytics/ReportsExport';
 import SystemHealthDashboard from '@/components/analytics/SystemHealthDashboard';
+import AdvancedAnalyticsDashboard from '@/components/analytics/AdvancedAnalyticsDashboard';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface CalendarEvent {
   id: string;
@@ -131,13 +133,14 @@ const Analytics = () => {
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
             <TabsTrigger value="health">System</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsTrigger value="advanced">🚀 Advanced</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -176,6 +179,12 @@ const Analytics = () => {
               onCreateEvent={handleCreateEvent}
               onEventClick={handleEventClick}
             />
+          </TabsContent>
+
+          <TabsContent value="advanced" className="space-y-6">
+            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load advanced analytics</div>}>
+              <AdvancedAnalyticsDashboard />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
