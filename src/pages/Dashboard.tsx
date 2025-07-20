@@ -6,8 +6,6 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
-import AdvancedAnalyticsDashboard from '@/components/analytics/AdvancedAnalyticsDashboard';
-import SmartAnalyticsWidgets from '@/components/analytics/SmartAnalyticsWidgets';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
@@ -15,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users, Activity } from 'lucide-react';
+import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'lucide-react';
 
 const Dashboard = () => {
   const { projects } = useProject();
@@ -102,7 +100,7 @@ const Dashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
@@ -114,10 +112,6 @@ const Dashboard = () => {
             <TabsTrigger value="ai-insights" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               AI Insights
-            </TabsTrigger>
-            <TabsTrigger value="advanced-analytics" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Advanced Analytics
             </TabsTrigger>
             <TabsTrigger value="projects" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
@@ -222,11 +216,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
-            
-            {/* Smart Analytics Widgets */}
-            <ErrorBoundary fallback={null}>
-              <SmartAnalyticsWidgets />
-            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="analytics">
@@ -238,12 +227,6 @@ const Dashboard = () => {
           <TabsContent value="ai-insights">
             <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load AI insights</div>}>
               <AIInsights />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="advanced-analytics">
-            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load advanced analytics</div>}>
-              <AdvancedAnalyticsDashboard />
             </ErrorBoundary>
           </TabsContent>
 

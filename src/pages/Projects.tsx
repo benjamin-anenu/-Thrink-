@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
 import HealthIndicator from '@/components/HealthIndicator';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import BulkImportModal from '@/components/BulkImportModal';
 import ProjectDetailsModal from '@/components/ProjectDetailsModal';
-import SoftDeleteActions from '@/components/SoftDeleteActions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +16,11 @@ import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useProjectSoftDelete } from '@/hooks/useProjectSoftDelete';
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, addProject, refreshProjects } = useProject();
+  const { projects, addProject } = useProject();
   const { currentWorkspace } = useWorkspace();
-  const { softDeleteProject, getProjectStats } = useProjectSoftDelete();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -31,9 +28,7 @@ const Projects = () => {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
 
-  // Filter out deleted projects
-  const activeProjects = projects.filter(project => !project.deleted_at);
-  const filteredProjects = activeProjects.filter(project =>
+  const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     project.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -86,15 +81,6 @@ const Projects = () => {
 
   const handleOpenProject = (projectId: string) => {
     navigate(`/project/${projectId}`);
-  };
-
-  const handleDeleteProject = async (projectId: string) => {
-    const stats = await getProjectStats(projectId);
-    const success = await softDeleteProject(projectId);
-    if (success) {
-      await refreshProjects(); // Refresh the projects list
-    }
-    return success;
   };
 
   return (
@@ -176,16 +162,6 @@ const Projects = () => {
                         <HealthIndicator 
                           health={project.health.status} 
                           score={project.health.score}
-                        />
-                        <SoftDeleteActions
-                          type="project"
-                          item={{
-                            id: project.id,
-                            name: project.name,
-                            status: project.status,
-                            ongoingTasks: project.tasks?.filter((t: any) => t.status !== 'Completed').length || 0
-                          }}
-                          onDelete={handleDeleteProject}
                         />
                       </div>
                     </div>
@@ -340,16 +316,6 @@ const Projects = () => {
                             >
                               <ArrowRight className="h-4 w-4" />
                             </Button>
-                            <SoftDeleteActions
-                              type="project"
-                              item={{
-                                id: project.id,
-                                name: project.name,
-                                status: project.status,
-                                ongoingTasks: project.tasks?.filter((t: any) => t.status !== 'Completed').length || 0
-                              }}
-                              onDelete={handleDeleteProject}
-                            />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -373,8 +339,9 @@ const Projects = () => {
 
       {showCreationWizard && (
         <ProjectCreationWizard
-          onProjectCreated={handleProjectCreated}
+          isOpen={showCreationWizard}
           onClose={() => setShowCreationWizard(false)}
+          onProjectCreated={handleProjectCreated}
         />
       )}
 
