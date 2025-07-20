@@ -131,7 +131,7 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
                 <Label className="text-sm font-medium">Milestones</Label>
                 <div className="space-y-2">
                   {formData.milestones.map((milestone: any, index: number) => (
-                    <div key={milestone.id} className="p-3 border rounded-lg">
+                    <div key={milestone.id || index} className="p-3 border rounded-lg">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{milestone.name || `Milestone ${index + 1}`}</span>
                         <Badge variant="outline">{formatDate(milestone.date)}</Badge>
@@ -289,4 +289,4 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
   );
 };
 
-export default ReviewStep; 
+export default ReviewStep;
