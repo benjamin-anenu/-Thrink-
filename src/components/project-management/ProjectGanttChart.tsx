@@ -15,6 +15,8 @@ import MilestoneManagementDialog from './MilestoneManagementDialog';
 import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
 import TaskTableRow from './table/TaskTableRow';
 import TableControls from './table/TableControls';
+import InlineTaskEditor from './table/InlineTaskEditor';
+import InlineMilestoneEditor from './table/InlineMilestoneEditor';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
@@ -54,6 +56,10 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
+
+  // New state for inline editing
+  const [showInlineTaskEditor, setShowInlineTaskEditor] = useState(false);
+  const [showInlineMilestoneEditor, setShowInlineMilestoneEditor] = useState(false);
 
   // Load resources and stakeholders
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
@@ -149,17 +155,14 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     
     const groups: { [key: string]: { milestone: ProjectMilestone | null; tasks: ProjectTask[] } } = {};
     
-    // Initialize groups for each milestone
     milestones.forEach(milestone => {
       if (milestone && milestone.id) {
         groups[milestone.id] = { milestone, tasks: [] };
       }
     });
     
-    // Add group for tasks without milestone
     groups['no-milestone'] = { milestone: null, tasks: [] };
     
-    // Assign tasks to groups
     filteredTasks.forEach(task => {
       if (!task || !task.id) return;
       
@@ -229,11 +232,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         return;
       }
 
-      // Store the old baseline dates for audit trail
       const oldBaselineStart = task.baselineStartDate;
       const oldBaselineEnd = task.baselineEndDate;
 
-      // Update the task with new baseline dates and actual dates
       const updates = {
         baselineStartDate: newStartDate,
         baselineEndDate: newEndDate,
@@ -243,7 +244,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
       
       await updateTaskDB(taskId, updates);
       
-      // Log the rebaseline action (you could enhance this to store in audit table)
       console.log('Task rebaselined:', {
         taskId,
         taskName: task.name,
@@ -316,7 +316,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
 
   const handleExport = () => {
     try {
-      // Create CSV content
       const headers = ['Task Name', 'Status', 'Priority', 'Start Date', 'End Date', 'Duration', 'Progress', 'Milestone'];
       const csvContent = [
         headers.join(','),
@@ -332,7 +331,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         ].join(','))
       ].join('\n');
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -350,7 +348,27 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  // Calculate table cell padding based on density
+  // New inline editing handlers
+  const handleInlineTaskSave = async (taskData: Omit<ProjectTask, 'id'>) => {
+    try {
+      await createTask({ ...taskData, projectId });
+      toast.success('Task created successfully');
+      setShowInlineTaskEditor(false);
+    } catch (error) {
+      toast.error('Failed to create task');
+    }
+  };
+
+  const handleInlineMilestoneSave = async (milestoneData: Omit<ProjectMilestone, 'id'>) => {
+    try {
+      await createMilestone(milestoneData);
+      toast.success('Milestone created successfully');
+      setShowInlineMilestoneEditor(false);
+    } catch (error) {
+      toast.error('Failed to create milestone');
+    }
+  };
+
   const getDensityClass = () => {
     switch (tableDensity) {
       case 'compact': return 'py-1 px-2';
@@ -386,8 +404,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 size="sm"
                 className="flex items-center gap-2"
                 onClick={() => {
-                  setEditingMilestone(null);
-                  setShowMilestoneDialog(true);
+                  setShowInlineMilestoneEditor(true);
+                  setShowInlineTaskEditor(false);
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -396,8 +414,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
               <Button 
                 className="flex items-center gap-2"
                 onClick={() => {
-                  setEditingTask(null);
-                  setShowTaskDialog(true);
+                  setShowInlineTaskEditor(true);
+                  setShowInlineMilestoneEditor(false);
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -443,9 +461,26 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Inline editors */}
+                {showInlineMilestoneEditor && (
+                  <InlineMilestoneEditor
+                    onSave={handleInlineMilestoneSave}
+                    onCancel={() => setShowInlineMilestoneEditor(false)}
+                    densityClass={getDensityClass()}
+                  />
+                )}
+                {showInlineTaskEditor && (
+                  <InlineTaskEditor
+                    onSave={handleInlineTaskSave}
+                    onCancel={() => setShowInlineTaskEditor(false)}
+                    milestones={milestones}
+                    densityClass={getDensityClass()}
+                  />
+                )}
+
+                {/* Existing grouped tasks */}
                 {Object.entries(groupedTasks).map(([groupKey, group]) => (
                   <React.Fragment key={groupKey}>
-                    {/* Milestone Header Row */}
                     {group.milestone && (
                       <TableRow>
                         <TableCell colSpan={12} className="p-0 border-b">
@@ -472,7 +507,6 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                       </TableRow>
                     )}
                     
-                    {/* Task Rows */}
                     {(groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) && (
                       <>
                         {group.tasks.map((task) => (

@@ -1,89 +1,92 @@
 
 import React from 'react';
-import { useProject } from '@/contexts/ProjectContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Calendar, Clock, CheckCircle, AlertCircle, Target, Edit } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Calendar, Clock, Target, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useTaskManagement } from '@/hooks/useTaskManagement';
+import { useMilestones } from '@/hooks/useMilestones';
+import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 
 interface ProjectTimelineProps {
   projectId: string;
 }
 
 const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
-  const { getProject } = useProject();
-  const project = getProject(projectId);
+  const { tasks, loading: tasksLoading } = useTaskManagement(projectId);
+  const { milestones, loading: milestonesLoading } = useMilestones(projectId);
 
-  if (!project) return <div>Project not found</div>;
+  if (tasksLoading || milestonesLoading) {
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        Loading timeline data...
+      </div>
+    );
+  }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'in-progress':
-        return <Clock className="h-5 w-5 text-blue-500" />;
-      case 'upcoming':
-        return <Target className="h-5 w-5 text-gray-400" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
-    }
-  };
+  // Calculate real-time metrics
+  const today = new Date();
+  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+  const totalTasks = tasks.length;
+  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'in-progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'upcoming':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-red-100 text-red-800';
-    }
-  };
+  // Calculate overdue items
+  const overdueTasks = tasks.filter(task => 
+    task.status !== 'Completed' && 
+    isAfter(today, new Date(task.endDate))
+  );
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'in-progress':
-        return 'In Progress';
-      case 'upcoming':
-        return 'Upcoming';
-      default:
-        return 'Delayed';
-    }
-  };
+  const overdueMilestones = milestones.filter(milestone => 
+    milestone.status !== 'completed' && 
+    isAfter(today, new Date(milestone.date))
+  );
 
-  const getMilestoneTasks = (milestoneId: string) => {
-    return project.tasks.filter(task => task.milestoneId === milestoneId);
-  };
+  // Find next milestone
+  const upcomingMilestones = milestones
+    .filter(m => m.status !== 'completed' && !isAfter(today, new Date(m.date)))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const calculateMilestoneProgress = (milestoneId: string) => {
-    const tasks = getMilestoneTasks(milestoneId);
-    if (tasks.length === 0) return 0;
-    return Math.round(tasks.reduce((acc, task) => acc + task.progress, 0) / tasks.length);
-  };
+  const nextMilestone = upcomingMilestones[0];
 
-  // Calculate milestone statistics
-  const milestoneStats = {
-    completed: project.milestones.filter(m => m.status === 'completed').length,
-    inProgress: project.milestones.filter(m => m.status === 'in-progress').length,
-    upcoming: project.milestones.filter(m => m.status === 'upcoming').length,
-    total: project.milestones.length
-  };
+  // Calculate project health
+  const criticalTasks = tasks.filter(task => 
+    (task.priority === 'High' || task.priority === 'Critical') && 
+    task.status !== 'Completed'
+  ).length;
+
+  const healthScore = Math.max(0, 100 - (overdueTasks.length * 10) - (overdueMilestones.length * 15) - (criticalTasks * 5));
+  let healthStatus: 'red' | 'yellow' | 'green' = 'green';
+  if (healthScore < 60) healthStatus = 'red';
+  else if (healthScore < 80) healthStatus = 'yellow';
+
+  // Get recent milestones for timeline
+  const recentMilestones = milestones
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
+
+  // Calculate variance metrics
+  const taskVariances = tasks.map(task => {
+    const baseline = new Date(task.baselineEndDate);
+    const actual = new Date(task.endDate);
+    return differenceInDays(actual, baseline);
+  });
+
+  const averageVariance = taskVariances.length > 0 
+    ? Math.round(taskVariances.reduce((sum, variance) => sum + variance, 0) / taskVariances.length)
+    : 0;
 
   return (
     <div className="space-y-6">
-      {/* Timeline Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Project Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-8 w-8 text-green-500" />
+              <Target className="h-8 w-8 text-blue-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="font-semibold">{milestoneStats.completed}</p>
+                <p className="text-sm text-muted-foreground">Overall Progress</p>
+                <p className="font-semibold">{overallProgress}%</p>
+                <Progress value={overallProgress} className="mt-1 h-1" />
               </div>
             </div>
           </CardContent>
@@ -92,10 +95,11 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Clock className="h-8 w-8 text-blue-500" />
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
               <div>
-                <p className="text-sm text-muted-foreground">In Progress</p>
-                <p className="font-semibold">{milestoneStats.inProgress}</p>
+                <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                <p className="font-semibold">{completedTasks}/{totalTasks}</p>
+                <p className="text-xs text-muted-foreground">{totalTasks - completedTasks} remaining</p>
               </div>
             </div>
           </CardContent>
@@ -104,10 +108,13 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Target className="h-8 w-8 text-gray-500" />
+              <AlertTriangle className={`h-8 w-8 ${overdueTasks.length > 0 ? 'text-red-500' : 'text-green-500'}`} />
               <div>
-                <p className="text-sm text-muted-foreground">Upcoming</p>
-                <p className="font-semibold">{milestoneStats.upcoming}</p>
+                <p className="text-sm text-muted-foreground">Overdue Items</p>
+                <p className="font-semibold">{overdueTasks.length + overdueMilestones.length}</p>
+                <p className="text-xs text-muted-foreground">
+                  {overdueTasks.length} tasks, {overdueMilestones.length} milestones
+                </p>
               </div>
             </div>
           </CardContent>
@@ -116,195 +123,144 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-purple-500" />
+              <TrendingUp className={`h-8 w-8 ${
+                healthStatus === 'red' ? 'text-red-500' : 
+                healthStatus === 'yellow' ? 'text-yellow-500' : 'text-green-500'
+              }`} />
               <div>
-                <p className="text-sm text-muted-foreground">Total Milestones</p>
-                <p className="font-semibold">{milestoneStats.total}</p>
+                <p className="text-sm text-muted-foreground">Project Health</p>
+                <p className="font-semibold">{healthScore}/100</p>
+                <Badge variant={healthStatus === 'red' ? 'destructive' : healthStatus === 'yellow' ? 'secondary' : 'default'}>
+                  {healthStatus === 'red' ? 'At Risk' : healthStatus === 'yellow' ? 'Caution' : 'Healthy'}
+                </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Project Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-8 top-0 bottom-0 w-px bg-border"></div>
-            
-            <div className="space-y-8">
-              {project.milestones.map((milestone, index) => {
-                const milestoneTasks = getMilestoneTasks(milestone.id);
-                const actualProgress = calculateMilestoneProgress(milestone.id);
-                const completedTasks = milestoneTasks.filter(t => t.status === 'Completed').length;
-                const isDelayed = new Date(milestone.date) > new Date(milestone.baselineDate);
-
-                return (
-                  <div key={milestone.id} className="relative flex items-start gap-6">
-                    {/* Timeline dot */}
-                    <div className="relative z-10 flex items-center justify-center w-16 h-16 bg-background border-2 border-border rounded-full">
-                      {getStatusIcon(milestone.status)}
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <Card className={`border-l-4 ${milestone.status === 'completed' ? 'border-l-green-500' : milestone.status === 'in-progress' ? 'border-l-blue-500' : 'border-l-gray-400'}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h3 className="font-semibold text-lg">{milestone.name}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                Due: {new Date(milestone.date).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                                {isDelayed && (
-                                  <span className="text-orange-600">
-                                    (Originally: {new Date(milestone.baselineDate).toLocaleDateString()})
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className={getStatusColor(milestone.status)}>
-                                {getStatusText(milestone.status)}
-                              </Badge>
-                              {isDelayed && (
-                                <Badge variant="outline" className="bg-orange-100 text-orange-800">
-                                  Delayed
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {milestone.description}
-                          </p>
-                          
-                          <div className="flex items-center justify-between text-sm mb-3">
-                            <div className="flex items-center gap-4">
-                              <span className="text-muted-foreground">
-                                Tasks: {completedTasks}/{milestoneTasks.length}
-                              </span>
-                              <div className="w-24 bg-muted rounded-full h-2">
-                                <div 
-                                  className="bg-blue-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${actualProgress}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-muted-foreground">
-                                {actualProgress}%
-                              </span>
-                            </div>
-                            
-                            {milestone.status === 'completed' && (
-                              <span className="text-green-600 text-xs font-medium">
-                                ✓ Completed
-                              </span>
-                            )}
-                            
-                            {milestone.status === 'in-progress' && (
-                              <span className="text-blue-600 text-xs font-medium">
-                                🔄 In progress
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Milestone Tasks */}
-                          {milestoneTasks.length > 0 && (
-                            <div className="space-y-2">
-                              <h4 className="text-sm font-medium text-muted-foreground">Associated Tasks:</h4>
-                              <div className="grid grid-cols-1 gap-2">
-                                {milestoneTasks.map((task) => (
-                                  <div key={task.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-2 h-2 rounded-full ${
-                                        task.status === 'Completed' ? 'bg-green-500' :
-                                        task.status === 'In Progress' ? 'bg-blue-500' :
-                                        task.status === 'On Hold' ? 'bg-yellow-500' : 'bg-gray-400'
-                                      }`} />
-                                      <span className="text-sm font-medium">{task.name}</span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {task.progress}%
-                                      </Badge>
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {new Date(task.startDate).toLocaleDateString()} - {new Date(task.endDate).toLocaleDateString()}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Critical Path Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Critical Path Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Critical tasks and milestones that directly impact the project timeline
-            </p>
-            <div className="grid grid-cols-1 gap-4">
-              {project.tasks
-                .filter(task => {
-                  const isDelayed = new Date(task.endDate) > new Date(task.baselineEndDate);
-                  const hasDependents = project.tasks.some(t => t.dependencies.includes(task.id));
-                  return isDelayed || hasDependents || task.priority === 'High';
-                })
-                .slice(0, 4)
-                .map((task) => {
-                  const isDelayed = new Date(task.endDate) > new Date(task.baselineEndDate);
+      {/* Timeline and Key Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Timeline */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Project Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentMilestones.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No milestones defined</p>
+              ) : (
+                recentMilestones.map((milestone, index) => {
+                  const isCompleted = milestone.status === 'completed';
+                  const isOverdue = !isCompleted && isAfter(today, new Date(milestone.date));
+                  const isCurrent = !isCompleted && !isOverdue;
+                  
                   return (
-                    <div key={task.id} className="p-4 border border-border rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        {isDelayed ? (
-                          <AlertCircle className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        )}
-                        <span className="font-medium">{task.name}</span>
-                        <Badge variant="outline" className={`text-xs ${
-                          task.priority === 'High' ? 'bg-red-100 text-red-800' : 
-                          task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {task.priority}
-                        </Badge>
+                    <div key={milestone.id} className="flex items-center gap-4">
+                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                        isCompleted ? 'bg-green-500' : 
+                        isOverdue ? 'bg-red-500' : 'bg-blue-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="font-medium">{milestone.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(milestone.date), 'MMM dd, yyyy')}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {isDelayed 
-                          ? `Delay risk: High - Behind baseline by ${Math.ceil((new Date(task.endDate).getTime() - new Date(task.baselineEndDate).getTime()) / (24 * 60 * 60 * 1000))} days`
-                          : task.status === 'Completed' 
-                            ? 'On track - Completed successfully'
-                            : `Progress: ${task.progress}% - ${task.status}`
-                        }
-                      </p>
+                      <Badge variant={
+                        isCompleted ? 'default' : 
+                        isOverdue ? 'destructive' : 'secondary'
+                      }>
+                        {milestone.status}
+                      </Badge>
                     </div>
                   );
-                })}
+                })
+              )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Key Metrics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Key Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Milestones Completed</span>
+                <span className="font-medium">
+                  {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Critical Tasks</span>
+                <span className="font-medium text-red-600">{criticalTasks}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Average Task Duration</span>
+                <span className="font-medium">
+                  {tasks.length > 0 ? Math.round(tasks.reduce((sum, task) => sum + task.duration, 0) / tasks.length) : 0} days
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Schedule Variance</span>
+                <span className={`font-medium ${averageVariance > 0 ? 'text-red-600' : averageVariance < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {averageVariance > 0 ? '+' : ''}{averageVariance} days
+                </span>
+              </div>
+
+              {nextMilestone && (
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Next Milestone</span>
+                    <span className="font-medium">{nextMilestone.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-sm text-muted-foreground">Due in</span>
+                    <span className="font-medium">
+                      {Math.max(0, differenceInDays(new Date(nextMilestone.date), today))} days
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Task Status Distribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Task Status Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { status: 'Not Started', count: tasks.filter(t => t.status === 'Not Started').length, color: 'bg-gray-500' },
+              { status: 'In Progress', count: tasks.filter(t => t.status === 'In Progress').length, color: 'bg-blue-500' },
+              { status: 'Completed', count: tasks.filter(t => t.status === 'Completed').length, color: 'bg-green-500' },
+              { status: 'On Hold', count: tasks.filter(t => t.status === 'On Hold').length, color: 'bg-yellow-500' },
+              { status: 'Cancelled', count: tasks.filter(t => t.status === 'Cancelled').length, color: 'bg-red-500' }
+            ].map((item) => (
+              <div key={item.status} className="text-center">
+                <div className={`w-12 h-12 ${item.color} rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold`}>
+                  {item.count}
+                </div>
+                <p className="text-sm font-medium">{item.status}</p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

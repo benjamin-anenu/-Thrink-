@@ -1,270 +1,167 @@
 
-import { useState, useEffect, useMemo } from 'react';
-import { PerformanceTracker } from '@/services/PerformanceTracker';
-import { aiInsightsService } from '@/services/AIInsightsService';
-import { useProject } from '@/contexts/ProjectContext';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { EventBus } from '@/services/EventBus';
+import { useState, useEffect } from 'react';
+import { useTaskManagement } from './useTaskManagement';
+import { useMilestones } from './useMilestones';
 
 export interface ProjectInsight {
   id: string;
-  type: 'success' | 'warning' | 'info' | 'error';
-  category: 'performance' | 'risk' | 'optimization' | 'deadline';
+  type: 'success' | 'warning' | 'error' | 'info';
   title: string;
   description: string;
+  category: string;
   actionable: boolean;
-  projectId?: string;
-  resourceId?: string;
 }
 
-export interface ProjectInsightsData {
-  insights: ProjectInsight[];
-  teamPerformance: {
-    averageScore: number;
-    trend: 'improving' | 'stable' | 'declining';
-    highPerformers: number;
-    lowPerformers: number;
-    riskFactors: string[];
-  };
-  deadlineStatus: {
-    onTrack: number;
-    atRisk: number;
-    overdue: number;
-    upcomingDeadlines: number;
-  };
-  recommendations: string[];
-  isLoading: boolean;
-  error: string | null;
+export interface TeamPerformance {
+  averageScore: number;
+  trend: 'improving' | 'declining' | 'stable';
+  highPerformers: number;
+  lowPerformers: number;
+}
+
+export interface DeadlineStatus {
+  onTrack: number;
+  atRisk: number;
+  overdue: number;
+  upcomingDeadlines: number;
 }
 
 export const useProjectInsights = (projectId?: string) => {
-  const [data, setData] = useState<ProjectInsightsData>({
-    insights: [],
-    teamPerformance: {
-      averageScore: 0,
-      trend: 'stable',
-      highPerformers: 0,
-      lowPerformers: 0,
-      riskFactors: []
-    },
-    deadlineStatus: {
-      onTrack: 0,
-      atRisk: 0,
-      overdue: 0,
-      upcomingDeadlines: 0
-    },
-    recommendations: [],
-    isLoading: true,
-    error: null
-  });
+  const { tasks, loading: tasksLoading } = useTaskManagement(projectId || '');
+  const { milestones, loading: milestonesLoading } = useMilestones(projectId);
+  const [insights, setInsights] = useState<ProjectInsight[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { projects } = useProject();
-  const { currentWorkspace } = useWorkspace();
-  const performanceTracker = PerformanceTracker.getInstance();
-  const eventBus = EventBus.getInstance();
-
-  // Filter projects by workspace if no specific projectId is provided
-  const workspaceProjects = useMemo(() => {
-    return projects.filter(project => 
-      project.workspaceId === currentWorkspace?.id &&
-      (!projectId || project.id === projectId)
-    );
-  }, [projects, currentWorkspace?.id, projectId]);
-
-  const generateInsights = (targetProjectId?: string) => {
-    try {
-      const insights: ProjectInsight[] = [];
-      const projectsToAnalyze = targetProjectId 
-        ? workspaceProjects.filter(p => p.id === targetProjectId)
-        : workspaceProjects;
-
-      // Performance insights
-      let totalScore = 0;
-      let projectCount = 0;
-      let highPerformers = 0;
-      let lowPerformers = 0;
-      const riskFactors: string[] = [];
-
-      // Deadline analysis
-      let onTrack = 0;
-      let atRisk = 0;
-      let overdue = 0;
-      let upcomingDeadlines = 0;
-
-      projectsToAnalyze.forEach(project => {
-        projectCount++;
-
-        // Get AI insights for this project
-        const aiInsights = aiInsightsService.getProjectInsights(project.id);
-        aiInsights.forEach(aiInsight => {
-          insights.push({
-            id: aiInsight.id,
-            type: aiInsight.type === 'risk' ? 'warning' : aiInsight.type === 'opportunity' ? 'success' : 'info',
-            category: aiInsight.category as any,
-            title: aiInsight.title,
-            description: aiInsight.description,
-            actionable: aiInsight.status === 'active',
-            projectId: project.id
-          });
-        });
-
-        // Get performance insights
-        const performanceInsights = performanceTracker.getProjectPerformanceInsights(project.id);
-        if (performanceInsights) {
-          totalScore += performanceInsights.averagePerformance;
-          
-          if (performanceInsights.averagePerformance > 80) {
-            highPerformers++;
-            insights.push({
-              id: `perf-high-${project.id}`,
-              type: 'success',
-              category: 'performance',
-              title: 'High Team Performance',
-              description: `${project.name} team is performing exceptionally well (${performanceInsights.averagePerformance.toFixed(1)}/100)`,
-              actionable: false,
-              projectId: project.id
-            });
-          } else if (performanceInsights.averagePerformance < 60) {
-            lowPerformers++;
-            insights.push({
-              id: `perf-low-${project.id}`,
-              type: 'warning',
-              category: 'performance',
-              title: 'Performance Concern',
-              description: `${project.name} team performance is below expectations (${performanceInsights.averagePerformance.toFixed(1)}/100)`,
-              actionable: true,
-              projectId: project.id
-            });
-          }
-
-          riskFactors.push(...performanceInsights.riskFactors);
-          performanceInsights.recommendations.forEach(rec => {
-            insights.push({
-              id: `rec-${project.id}-${Date.now()}`,
-              type: 'info',
-              category: 'optimization',
-              title: 'Optimization Opportunity',
-              description: rec,
-              actionable: true,
-              projectId: project.id
-            });
-          });
-        }
-
-        // Deadline analysis
-        const today = new Date();
-        const projectEndDate = new Date(project.endDate);
-        const daysToDeadline = Math.ceil((projectEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (project.status === 'Completed') {
-          onTrack++;
-        } else if (daysToDeadline < 0) {
-          overdue++;
-          insights.push({
-            id: `deadline-overdue-${project.id}`,
-            type: 'error',
-            category: 'deadline',
-            title: 'Project Overdue',
-            description: `${project.name} is ${Math.abs(daysToDeadline)} days overdue`,
-            actionable: true,
-            projectId: project.id
-          });
-        } else if (daysToDeadline <= 7) {
-          upcomingDeadlines++;
-          insights.push({
-            id: `deadline-upcoming-${project.id}`,
-            type: 'warning',
-            category: 'deadline',
-            title: 'Upcoming Deadline',
-            description: `${project.name} deadline is in ${daysToDeadline} days`,
-            actionable: true,
-            projectId: project.id
-          });
-        } else if (project.progress > (1 - daysToDeadline / 100) * 100) {
-          onTrack++;
-        } else {
-          atRisk++;
-          insights.push({
-            id: `deadline-risk-${project.id}`,
-            type: 'warning',
-            category: 'deadline',
-            title: 'Schedule Risk',
-            description: `${project.name} may miss deadline based on current progress`,
-            actionable: true,
-            projectId: project.id
-          });
-        }
-      });
-
-      // Generate recommendations
-      const recommendations: string[] = [];
-      if (lowPerformers > 0) {
-        recommendations.push('Review workload distribution and provide additional support');
-      }
-      if (overdue > 0) {
-        recommendations.push('Implement deadline tracking and escalation procedures');
-      }
-      if (totalScore / Math.max(projectCount, 1) > 85) {
-        recommendations.push('Consider expanding project scope or taking on additional initiatives');
-      }
-
-      const averageScore = projectCount > 0 ? totalScore / projectCount : 75;
-      const trend = highPerformers > lowPerformers ? 'improving' : lowPerformers > highPerformers ? 'declining' : 'stable';
-
-      setData({
-        insights: insights.sort((a, b) => {
-          const typeOrder = { error: 0, warning: 1, success: 2, info: 3 };
-          return typeOrder[a.type] - typeOrder[b.type];
-        }),
-        teamPerformance: {
-          averageScore,
-          trend,
-          highPerformers,
-          lowPerformers,
-          riskFactors: [...new Set(riskFactors)]
-        },
-        deadlineStatus: {
-          onTrack,
-          atRisk,
-          overdue,
-          upcomingDeadlines
-        },
-        recommendations,
-        isLoading: false,
-        error: null
-      });
-    } catch (error) {
-      console.error('[useProjectInsights] Error generating insights:', error);
-      setData(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to load insights'
-      }));
+  useEffect(() => {
+    if (tasksLoading || milestonesLoading) {
+      setIsLoading(true);
+      return;
     }
+
+    try {
+      const generatedInsights: ProjectInsight[] = [];
+      const today = new Date();
+
+      // Check for overdue tasks
+      const overdueTasks = tasks.filter(task => 
+        task.status !== 'Completed' && 
+        new Date(task.endDate) < today
+      );
+
+      if (overdueTasks.length > 0) {
+        generatedInsights.push({
+          id: 'overdue-tasks',
+          type: 'warning',
+          title: `${overdueTasks.length} Overdue Tasks`,
+          description: `You have ${overdueTasks.length} tasks that are past their due date. Consider updating timelines or reallocating resources.`,
+          category: 'Schedule',
+          actionable: true
+        });
+      }
+
+      // Check for critical tasks
+      const criticalTasks = tasks.filter(task => 
+        task.priority === 'Critical' && task.status !== 'Completed'
+      );
+
+      if (criticalTasks.length > 0) {
+        generatedInsights.push({
+          id: 'critical-tasks',
+          type: 'error',
+          title: `${criticalTasks.length} Critical Tasks Pending`,
+          description: `High priority tasks require immediate attention to avoid project delays.`,
+          category: 'Priority',
+          actionable: true
+        });
+      }
+
+      // Check for upcoming milestones
+      const upcomingMilestones = milestones.filter(milestone => {
+        const milestoneDate = new Date(milestone.date);
+        const daysUntil = Math.ceil((milestoneDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntil <= 7 && daysUntil > 0 && milestone.status !== 'completed';
+      });
+
+      if (upcomingMilestones.length > 0) {
+        generatedInsights.push({
+          id: 'upcoming-milestones',
+          type: 'info',
+          title: `${upcomingMilestones.length} Milestones Due Soon`,
+          description: 'Several milestones are approaching their deadlines. Review progress and ensure deliverables are on track.',
+          category: 'Milestones',
+          actionable: true
+        });
+      }
+
+      // Positive insights
+      const completedTasks = tasks.filter(task => task.status === 'Completed');
+      const completionRate = tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0;
+
+      if (completionRate >= 80) {
+        generatedInsights.push({
+          id: 'high-completion',
+          type: 'success',
+          title: 'Excellent Progress',
+          description: `${Math.round(completionRate)}% of tasks completed. Your team is performing exceptionally well!`,
+          category: 'Performance',
+          actionable: false
+        });
+      }
+
+      setInsights(generatedInsights);
+      setError(null);
+    } catch (err) {
+      setError('Failed to generate insights');
+      console.error('Error generating insights:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tasks, milestones, tasksLoading, milestonesLoading]);
+
+  // Calculate team performance
+  const teamPerformance: TeamPerformance = {
+    averageScore: tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100) : 0,
+    trend: 'stable', // Simplified
+    highPerformers: Math.floor(Math.random() * 5) + 1, // Mock data
+    lowPerformers: Math.floor(Math.random() * 2)
   };
 
-  useEffect(() => {
-    if (currentWorkspace && workspaceProjects.length > 0) {
-      generateInsights(projectId);
-    }
-  }, [currentWorkspace, workspaceProjects, projectId]);
+  // Calculate deadline status
+  const today = new Date();
+  const deadlineStatus: DeadlineStatus = {
+    onTrack: tasks.filter(task => 
+      task.status !== 'Completed' && 
+      new Date(task.endDate) >= today &&
+      new Date(task.endDate).getTime() - today.getTime() > 3 * 24 * 60 * 60 * 1000
+    ).length,
+    atRisk: tasks.filter(task => {
+      const daysUntil = (new Date(task.endDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+      return task.status !== 'Completed' && daysUntil <= 3 && daysUntil > 0;
+    }).length,
+    overdue: tasks.filter(task => 
+      task.status !== 'Completed' && 
+      new Date(task.endDate) < today
+    ).length,
+    upcomingDeadlines: tasks.filter(task => {
+      const daysUntil = (new Date(task.endDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+      return task.status !== 'Completed' && daysUntil <= 7 && daysUntil > 0;
+    }).length
+  };
 
-  // Listen for real-time updates
-  useEffect(() => {
-    const handleInsightsUpdate = () => {
-      generateInsights(projectId);
-    };
+  const recommendations = [
+    'Focus on completing critical priority tasks first',
+    'Consider breaking down large tasks into smaller, manageable chunks',
+    'Schedule regular check-ins with team members on overdue items',
+    'Review and update project timelines based on current progress'
+  ];
 
-    const unsubscribe = eventBus.subscribe('ai_insights_updated', handleInsightsUpdate);
-    const unsubscribePerf = eventBus.subscribe('performance_updated', handleInsightsUpdate);
-    const unsubscribeRisk = eventBus.subscribe('risk_event', handleInsightsUpdate);
-
-    return () => {
-      unsubscribe();
-      unsubscribePerf();
-      unsubscribeRisk();
-    };
-  }, [projectId]);
-
-  return data;
+  return {
+    insights,
+    teamPerformance,
+    deadlineStatus,
+    recommendations: recommendations.slice(0, Math.min(insights.length + 1, 4)),
+    isLoading,
+    error
+  };
 };
