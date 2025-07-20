@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -29,13 +28,19 @@ export const useStakeholders = (workspaceId?: string) => {
       const { data, error } = await query.order('name');
       if (error) throw error;
       
-      // Map database fields to interface fields
+      // Map database fields to interface fields with all required properties
       const mappedData = (data || []).map(item => ({
         id: item.id,
         workspace_id: item.workspace_id || '',
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
+        department: item.department || '',
+        phone: item.phone || '',
+        communicationPreference: (item.communication_preference === 'email' ? 'Email' : 
+                                 item.communication_preference === 'phone' ? 'Phone' :
+                                 item.communication_preference === 'slack' ? 'Slack' : 'Email') as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        projects: item.projects || [],
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
@@ -70,6 +75,10 @@ export const useStakeholders = (workspaceId?: string) => {
         workspace_id: targetWorkspaceId,
         influence_level: stakeholder.influence,
         notes: stakeholder.notes || '',
+        department: stakeholder.department || '',
+        phone: stakeholder.phone || '',
+        communication_preference: stakeholder.communicationPreference?.toLowerCase() || 'email',
+        projects: stakeholder.projects || [],
       };
       
       const { data, error } = await supabase
@@ -87,6 +96,10 @@ export const useStakeholders = (workspaceId?: string) => {
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
+        department: data[0].department || '',
+        phone: data[0].phone || '',
+        communicationPreference: (data[0].communication_preference === 'email' ? 'Email' : 'Email') as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        projects: data[0].projects || [],
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
@@ -113,6 +126,10 @@ export const useStakeholders = (workspaceId?: string) => {
       if (updates.role) dbUpdates.role = updates.role;
       if (updates.influence) dbUpdates.influence_level = updates.influence;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      if (updates.department) dbUpdates.department = updates.department;
+      if (updates.phone) dbUpdates.phone = updates.phone;
+      if (updates.communicationPreference) dbUpdates.communication_preference = updates.communicationPreference.toLowerCase();
+      if (updates.projects) dbUpdates.projects = updates.projects;
       
       const { error } = await supabase
         .from('stakeholders')

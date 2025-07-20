@@ -2,9 +2,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Task } from '@/types/task';
 
-export interface Task {
+export interface TaskData {
   id: string;
   project_id: string;
   name: string;
@@ -18,7 +17,7 @@ export interface Task {
 }
 
 export function useTasks(projectId?: string) {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,12 +29,25 @@ export function useTasks(projectId?: string) {
     async function fetchTasks() {
       setLoading(true);
       const { data, error } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .select('*')
         .eq('project_id', projectId)
         .order('start_date');
       if (!error && data) {
-        setTasks(data);
+        // Map the data to ensure compatibility
+        const mappedTasks = data.map(task => ({
+          id: task.id,
+          project_id: task.project_id,
+          name: task.name,
+          description: task.description || '',
+          start_date: task.start_date || '',
+          end_date: task.end_date || '',
+          status: task.status || 'Pending',
+          priority: task.priority || 'Medium',
+          estimated_hours: task.duration || 0,
+          assigned_resource_id: task.assigned_resources?.[0] || ''
+        }));
+        setTasks(mappedTasks);
       }
       setLoading(false);
     }

@@ -63,43 +63,18 @@ export const useSoftDelete = () => {
   const softDeleteResource = async (resourceId: string) => {
     setLoading(true);
     try {
-      // Get resource data before deletion
-      const { data: resource, error: fetchError } = await supabase
-        .from('resources')
-        .select('*')
-        .eq('id', resourceId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Check if resource is assigned to active projects
-      const { data: activeAssignments, error: assignmentError } = await supabase
-        .from('project_tasks')
-        .select('id, name, project_id')
-        .contains('assigned_resources', [resourceId])
-        .neq('status', 'Completed');
-
-      if (assignmentError) throw assignmentError;
-
-      // Soft delete the resource
+      // For now, just hard delete resources since they don't have deleted_at column
       const { error: deleteError } = await supabase
         .from('resources')
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by: (await supabase.auth.getUser()).data.user?.id
-        })
+        .delete()
         .eq('id', resourceId);
 
       if (deleteError) throw deleteError;
 
-      toast.success('Resource moved to recycle bin');
-      return {
-        success: true,
-        hasActiveAssignments: activeAssignments && activeAssignments.length > 0,
-        activeAssignments: activeAssignments || []
-      };
+      toast.success('Resource deleted');
+      return { success: true };
     } catch (error) {
-      console.error('Error soft deleting resource:', error);
+      console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource');
       return { success: false };
     } finally {
@@ -110,30 +85,18 @@ export const useSoftDelete = () => {
   const softDeleteStakeholder = async (stakeholderId: string) => {
     setLoading(true);
     try {
-      // Get stakeholder data before deletion
-      const { data: stakeholder, error: fetchError } = await supabase
-        .from('stakeholders')
-        .select('*')
-        .eq('id', stakeholderId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Soft delete the stakeholder
+      // For now, just hard delete stakeholders since they don't have deleted_at column
       const { error: deleteError } = await supabase
         .from('stakeholders')
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by: (await supabase.auth.getUser()).data.user?.id
-        })
+        .delete()
         .eq('id', stakeholderId);
 
       if (deleteError) throw deleteError;
 
-      toast.success('Stakeholder moved to recycle bin');
+      toast.success('Stakeholder deleted');
       return { success: true };
     } catch (error) {
-      console.error('Error soft deleting stakeholder:', error);
+      console.error('Error deleting stakeholder:', error);
       toast.error('Failed to delete stakeholder');
       return { success: false };
     } finally {

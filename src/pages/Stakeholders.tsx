@@ -20,19 +20,39 @@ const Stakeholders = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('stakeholders');
+  const [editingStakeholder, setEditingStakeholder] = useState(null);
   
-  const { stakeholders, createStakeholder } = useStakeholders();
+  const { stakeholders, createStakeholder, updateStakeholder, deleteStakeholder } = useStakeholders();
 
   const handleStakeholderSave = async (stakeholder: any) => {
     console.log('Saving stakeholder:', stakeholder);
-    await createStakeholder(stakeholder);
+    if (editingStakeholder) {
+      await updateStakeholder(editingStakeholder.id, stakeholder);
+    } else {
+      await createStakeholder(stakeholder);
+    }
     setShowStakeholderForm(false);
+    setEditingStakeholder(null);
+  };
+
+  const handleEdit = (stakeholder: any) => {
+    setEditingStakeholder(stakeholder);
+    setShowStakeholderForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteStakeholder(id);
+  };
+
+  const handleContact = (stakeholder: any) => {
+    // Handle contact functionality
+    console.log('Contacting stakeholder:', stakeholder);
   };
 
   const filteredStakeholders = stakeholders.filter(stakeholder =>
     stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stakeholder.organization?.toLowerCase().includes(searchTerm.toLowerCase())
+    stakeholder.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -88,11 +108,22 @@ const Stakeholders = () => {
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredStakeholders.map((stakeholder) => (
-                    <StakeholderCard key={stakeholder.id} stakeholder={stakeholder} />
+                    <StakeholderCard 
+                      key={stakeholder.id} 
+                      stakeholder={stakeholder}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onContact={handleContact}
+                    />
                   ))}
                 </div>
               ) : (
-                <StakeholderListView stakeholders={filteredStakeholders} />
+                <StakeholderListView 
+                  stakeholders={filteredStakeholders}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onContact={handleContact}
+                />
               )}
 
               {filteredStakeholders.length === 0 && (
@@ -111,8 +142,12 @@ const Stakeholders = () => {
       </main>
 
       <StakeholderForm
-        isOpen={showStakeholderForm}
-        onClose={() => setShowStakeholderForm(false)}
+        open={showStakeholderForm}
+        onClose={() => {
+          setShowStakeholderForm(false);
+          setEditingStakeholder(null);
+        }}
+        stakeholder={editingStakeholder}
         onSave={handleStakeholderSave}
       />
 

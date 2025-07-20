@@ -28,7 +28,7 @@ export const useRecycleBin = () => {
       setLoading(true);
       const deletedItems: RecycleBinItem[] = [];
 
-      // Get deleted projects
+      // Get deleted projects - only projects have deleted_at column currently
       const { data: deletedProjects } = await supabase
         .from('projects')
         .select('*')
@@ -51,50 +51,6 @@ export const useRecycleBin = () => {
         });
       }
 
-      // Get deleted resources
-      const { data: deletedResources } = await supabase
-        .from('resources')
-        .select('*')
-        .not('deleted_at', 'is', null);
-
-      if (deletedResources) {
-        deletedResources.forEach(resource => {
-          if (resource.deleted_at) {
-            deletedItems.push({
-              id: `resource-${resource.id}`,
-              item_type: 'resource',
-              item_id: resource.id,
-              item_data: resource,
-              deleted_at: resource.deleted_at,
-              deleted_by: resource.deleted_by || '',
-              auto_delete_at: new Date(new Date(resource.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
-            });
-          }
-        });
-      }
-
-      // Get deleted stakeholders
-      const { data: deletedStakeholders } = await supabase
-        .from('stakeholders')
-        .select('*')
-        .not('deleted_at', 'is', null);
-
-      if (deletedStakeholders) {
-        deletedStakeholders.forEach(stakeholder => {
-          if (stakeholder.deleted_at) {
-            deletedItems.push({
-              id: `stakeholder-${stakeholder.id}`,
-              item_type: 'stakeholder',
-              item_id: stakeholder.id,
-              item_data: stakeholder,
-              deleted_at: stakeholder.deleted_at,
-              deleted_by: stakeholder.deleted_by || '',
-              auto_delete_at: new Date(new Date(stakeholder.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
-            });
-          }
-        });
-      }
-
       setItems(deletedItems);
     } catch (error) {
       console.error('Error loading recycle bin:', error);
@@ -109,19 +65,17 @@ export const useRecycleBin = () => {
       const item = items.find(i => i.id === itemId);
       if (!item) return;
 
-      // Restore the actual item by clearing deleted_at
-      const tableName = item.item_type === 'project' ? 'projects' : 
-                       item.item_type === 'resource' ? 'resources' : 'stakeholders';
+      if (item.item_type === 'project') {
+        const { error: restoreError } = await supabase
+          .from('projects')
+          .update({
+            deleted_at: null,
+            deleted_by: null
+          })
+          .eq('id', item.item_id);
 
-      const { error: restoreError } = await supabase
-        .from(tableName as any)
-        .update({
-          deleted_at: null,
-          deleted_by: null
-        })
-        .eq('id', item.item_id);
-
-      if (restoreError) throw restoreError;
+        if (restoreError) throw restoreError;
+      }
 
       toast.success(`${item.item_type} restored successfully`);
       loadRecycleBinItems();

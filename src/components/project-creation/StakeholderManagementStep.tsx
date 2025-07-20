@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,9 +64,8 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
         projects: [],
         phone: '',
         department: '',
-        communication_preference: 'email' as const,
-        communicationPreference: 'email' as const,
-        status: 'active' as const
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        status: 'active' as 'active' | 'inactive' | 'pending'
       };
 
       await createStakeholder(stakeholderData);
