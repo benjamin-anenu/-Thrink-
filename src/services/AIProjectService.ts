@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectCreationData } from './ProjectCreationService';
+import { aiService } from './AIService';
 
 export interface AIGeneratedContent {
   projectPlan: string;
@@ -26,36 +27,59 @@ export interface AIInsight {
 
 export class AIProjectService {
   static async generateProjectPlan(projectData: ProjectCreationData): Promise<AIGeneratedContent> {
-    // Simulate AI generation with realistic content
-    const projectPlan = this.generateRealisticProjectPlan(projectData);
-    const riskAssessment = this.generateRiskAssessment(projectData);
-    const recommendations = this.generateRecommendations(projectData);
-
-    const aiContent: AIGeneratedContent = {
-      projectPlan,
-      riskAssessment,
-      recommendations
-    };
-
-    // Store in database
+    console.log('[AI Project Service] Generating project plan with AI...');
+    
     try {
-      const { error } = await supabase
-        .from('project_ai_data')
-        .insert({
-          project_id: projectData.workspaceId, // Temporary until we have actual project ID
-          project_plan: projectPlan,
-          risk_assessment: riskAssessment,
-          recommendations
-        });
+      // Use real AI service for generation
+      const [projectPlan, riskAssessment, recommendations] = await Promise.all([
+        aiService.generateProjectPlan(projectData),
+        aiService.generateRiskAssessment(projectData),
+        aiService.generateRecommendations(projectData)
+      ]);
 
-      if (error) {
-        console.warn('Could not save AI data to database:', error);
+      console.log('[AI Project Service] AI generation completed successfully');
+      
+      const aiContent: AIGeneratedContent = {
+        projectPlan,
+        riskAssessment,
+        recommendations
+      };
+
+      // Store in database
+      try {
+        const { error } = await supabase
+          .from('project_ai_data')
+          .insert({
+            project_id: projectData.workspaceId, // Temporary until we have actual project ID
+            project_plan: projectPlan,
+            risk_assessment: riskAssessment,
+            recommendations
+          });
+
+        if (error) {
+          console.warn('[AI Project Service] Could not save AI data to database:', error);
+        }
+      } catch (dbError) {
+        console.warn('[AI Project Service] Database error:', dbError);
       }
-    } catch (error) {
-      console.warn('Error saving AI data:', error);
-    }
 
-    return aiContent;
+      return aiContent;
+    } catch (error) {
+      console.warn('[AI Project Service] AI generation failed, falling back to simulated content:', error);
+      
+      // Fallback to simulated content
+      const projectPlan = this.generateRealisticProjectPlan(projectData);
+      const riskAssessment = this.generateRiskAssessment(projectData);
+      const recommendations = this.generateRecommendations(projectData);
+
+      const aiContent: AIGeneratedContent = {
+        projectPlan,
+        riskAssessment,
+        recommendations
+      };
+
+      return aiContent;
+    }
   }
 
   static async saveAIDataForProject(projectId: string, aiContent: AIGeneratedContent): Promise<void> {
@@ -100,7 +124,45 @@ export class AIProjectService {
     }
   }
 
-  static generateTaskSuggestions(projectData: ProjectCreationData): AITaskSuggestion[] {
+  static async generateTaskSuggestions(projectData: ProjectCreationData): Promise<AITaskSuggestion[]> {
+    try {
+      console.log('[AI Project Service] Generating AI-powered task suggestions...');
+      
+      const systemPrompt = `You are an expert project manager. Generate a comprehensive list of tasks for the given project. Return the response as a JSON array of objects with fields: name, description, estimatedDuration, priority, dependencies.`;
+
+      const userMessage = `Generate task suggestions for:
+      
+Project: ${projectData.name}
+Description: ${projectData.description}
+Timeline: ${projectData.resources?.timeline?.start} to ${projectData.resources?.timeline?.end}
+Team: ${JSON.stringify(projectData.resources?.teamMembers || [])}
+Milestones: ${JSON.stringify(projectData.milestones || [])}
+Requirements: ${JSON.stringify(projectData.requirements || {})}
+
+Generate 8-12 specific tasks with realistic duration estimates, priorities (High/Medium/Low), and dependencies.`;
+
+      const response = await aiService.generateCompletion([
+        { role: 'user', content: userMessage }
+      ], {
+        systemPrompt,
+        temperature: 0.6,
+        maxTokens: 1500
+      });
+
+      try {
+        const tasks = JSON.parse(response.content);
+        if (Array.isArray(tasks)) {
+          console.log('[AI Project Service] Generated', tasks.length, 'AI-powered task suggestions');
+          return tasks;
+        }
+      } catch (parseError) {
+        console.warn('[AI Project Service] Failed to parse AI task suggestions, using fallback');
+      }
+    } catch (error) {
+      console.warn('[AI Project Service] AI task generation failed, using fallback:', error);
+    }
+
+    // Fallback to base task suggestions
     const baseTaskSuggestions: AITaskSuggestion[] = [
       {
         name: 'Project Kickoff Meeting',
@@ -159,7 +221,46 @@ export class AIProjectService {
     return customizedTasks;
   }
 
-  static generateProjectInsights(projectData: ProjectCreationData): AIInsight[] {
+  static async generateProjectInsights(projectData: ProjectCreationData): Promise<AIInsight[]> {
+    try {
+      console.log('[AI Project Service] Generating AI-powered project insights...');
+      
+      const systemPrompt = `You are a project management expert. Analyze the project data and generate insights about timeline, resources, risks, and opportunities. Return as JSON array with fields: type, title, description, confidence, impact, recommendations.`;
+
+      const userMessage = `Analyze this project and generate insights:
+      
+Project: ${projectData.name}
+Description: ${projectData.description}
+Timeline: ${projectData.resources?.timeline?.start} to ${projectData.resources?.timeline?.end}
+Team Size: ${projectData.resources?.teamMembers?.length || 0}
+Stakeholders: ${projectData.stakeholders?.length || 0}
+Requirements: ${JSON.stringify(projectData.requirements || {})}
+Milestones: ${projectData.milestones?.length || 0}
+
+Generate 3-5 insights about timeline feasibility, resource allocation, potential risks, and opportunities. Each insight should have type (timeline/resource/risk/opportunity), title, description, confidence (0-100), impact (low/medium/high), and recommendations array.`;
+
+      const response = await aiService.generateCompletion([
+        { role: 'user', content: userMessage }
+      ], {
+        systemPrompt,
+        temperature: 0.6,
+        maxTokens: 1200
+      });
+
+      try {
+        const insights = JSON.parse(response.content);
+        if (Array.isArray(insights)) {
+          console.log('[AI Project Service] Generated', insights.length, 'AI-powered insights');
+          return insights;
+        }
+      } catch (parseError) {
+        console.warn('[AI Project Service] Failed to parse AI insights, using fallback');
+      }
+    } catch (error) {
+      console.warn('[AI Project Service] AI insight generation failed, using fallback:', error);
+    }
+
+    // Fallback to rule-based insights
     const insights: AIInsight[] = [];
 
     // Timeline insight
@@ -217,7 +318,7 @@ export class AIProjectService {
     }
 
     // Opportunity insight
-    if (projectData.requirements.functional.length > 0 && projectData.requirements.nonFunctional.length > 0) {
+    if (projectData.requirements?.functional?.length > 0 && projectData.requirements?.nonFunctional?.length > 0) {
       insights.push({
         type: 'opportunity',
         title: 'Well-Defined Requirements',

@@ -7,6 +7,7 @@ import { PerformanceTracker } from '@/services/PerformanceTracker';
 import { EventBus } from '@/services/EventBus';
 import { clientSatisfactionService } from '@/services/ClientSatisfactionService';
 import { budgetService } from '@/services/BudgetService';
+import { aiService } from '@/services/AIService';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AIInsight {
@@ -196,12 +197,104 @@ export const useAIDashboardData = () => {
     ];
   }, [workspaceResources]);
 
-  // Generate AI insights from real data
-  const aiInsights = useMemo(() => {
+  // Generate AI insights from real data using AI service
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+
+  // Generate AI insights when data changes
+  useEffect(() => {
+    const generateAIInsights = async () => {
+      if (!currentWorkspace || workspaceProjects.length === 0) {
+        setAiInsights([]);
+        return;
+      }
+
+      setAiInsightsLoading(true);
+      
+      try {
+        const projectMetrics = {
+          status: workspaceProjects.length > 0 ? 'Active' : 'No Projects',
+          progress: workspaceProjects.length > 0 
+            ? Math.round(workspaceProjects.reduce((acc, p) => acc + p.progress, 0) / workspaceProjects.length)
+            : 0,
+          resourceUtilization: realTimeData.resourceUtilization,
+          budgetHealth: realTimeData.budgetHealth,
+          riskScore: realTimeData.riskScore,
+          projectsInProgress: realTimeData.projectsInProgress,
+          overdueTasks: workspaceProjects.reduce((acc, project) => {
+            const overdue = project.tasks.filter(task => {
+              const taskDate = new Date(task.endDate);
+              const today = new Date();
+              return taskDate < today && task.status !== 'Completed';
+            });
+            return acc + overdue.length;
+          }, 0)
+        };
+
+        console.log('[AI Dashboard] Generating insights for metrics:', projectMetrics);
+        
+        if (aiService.isConfigured()) {
+          const insights = await aiService.generateInsights(projectMetrics);
+          const formattedInsights = insights.map(insight => ({
+            type: insight.type || 'analysis',
+            title: insight.title || 'AI Insight',
+            message: insight.description || insight.message || 'No description available',
+            confidence: insight.confidence || 75,
+            impact: insight.impact || 'medium',
+            icon: getIconForInsightType(insight.type)
+          }));
+          
+          setAiInsights(formattedInsights);
+          console.log('[AI Dashboard] Generated', formattedInsights.length, 'AI insights');
+        } else {
+          // Fallback to rule-based insights when AI is not configured
+          const fallbackInsights = generateFallbackInsights(projectMetrics, workspaceProjects, workspaceResources, budgetData, clientSatisfactionTrend);
+          setAiInsights(fallbackInsights);
+          console.log('[AI Dashboard] Using fallback insights (AI not configured)');
+        }
+      } catch (error) {
+        console.error('[AI Dashboard] Error generating AI insights:', error);
+        // Fallback to rule-based insights on error
+        const fallbackInsights = generateFallbackInsights(
+          { 
+            resourceUtilization: realTimeData.resourceUtilization,
+            budgetHealth: realTimeData.budgetHealth,
+            riskScore: realTimeData.riskScore,
+            projectsInProgress: realTimeData.projectsInProgress
+          },
+          workspaceProjects, 
+          workspaceResources, 
+          budgetData, 
+          clientSatisfactionTrend
+        );
+        setAiInsights(fallbackInsights);
+      } finally {
+        setAiInsightsLoading(false);
+      }
+    };
+
+    // Debounce AI insights generation to avoid too many calls
+    const timeoutId = setTimeout(generateAIInsights, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [workspaceProjects.length, realTimeData, currentWorkspace?.id]);
+
+  // Helper function to get icon for insight type
+  const getIconForInsightType = (type: string): string => {
+    switch (type) {
+      case 'prediction': return 'TrendingUp';
+      case 'optimization': return 'Users';
+      case 'risk': return 'AlertTriangle';
+      case 'opportunity': return 'Sparkles';
+      default: return 'TrendingUp';
+    }
+  };
+
+  // Fallback insights generator
+  const generateFallbackInsights = (metrics: any, projects: any[], resources: any[], budget: any, satisfaction: any[]): AIInsight[] => {
     const insights: AIInsight[] = [];
     
     // Delivery forecast insight
-    const overdueProjects = workspaceProjects.filter(project => {
+    const overdueProjects = projects.filter(project => {
       const endDate = new Date(project.endDate);
       const today = new Date();
       return endDate < today && project.status !== 'Completed';
@@ -219,8 +312,8 @@ export const useAIDashboardData = () => {
     }
 
     // Resource optimization insight
-    const overutilizedResources = workspaceResources.filter(r => r.utilization > 90).length;
-    const underutilizedResources = workspaceResources.filter(r => r.utilization < 50).length;
+    const overutilizedResources = resources.filter(r => r.utilization > 90).length;
+    const underutilizedResources = resources.filter(r => r.utilization < 50).length;
     
     if (overutilizedResources > 0 && underutilizedResources > 0) {
       insights.push({
@@ -234,11 +327,11 @@ export const useAIDashboardData = () => {
     }
 
     // Budget insight using real data
-    if (budgetData && budgetData.utilizationRate > 90) {
+    if (budget && budget.utilizationRate > 90) {
       insights.push({
         type: 'risk',
         title: 'Budget Alert',
-        message: `Budget utilization at ${budgetData.utilizationRate}%. Consider reviewing project scope or requesting additional funding.`,
+        message: `Budget utilization at ${budget.utilizationRate}%. Consider reviewing project scope or requesting additional funding.`,
         confidence: 95,
         impact: 'high',
         icon: 'AlertTriangle'
@@ -246,8 +339,8 @@ export const useAIDashboardData = () => {
     }
 
     // Client satisfaction insight
-    const avgSatisfaction = clientSatisfactionTrend.length > 0 
-      ? clientSatisfactionTrend.reduce((sum, t) => sum + t.score, 0) / clientSatisfactionTrend.length
+    const avgSatisfaction = satisfaction.length > 0 
+      ? satisfaction.reduce((sum, t) => sum + t.score, 0) / satisfaction.length
       : 4.2;
     
     if (avgSatisfaction > 4.5) {
@@ -262,7 +355,7 @@ export const useAIDashboardData = () => {
     }
 
     return insights;
-  }, [workspaceProjects, workspaceResources, budgetData, clientSatisfactionTrend, cacheKey]);
+  };
 
   // Performance optimizations
   const optimizedData = useMemo(() => ({
@@ -272,12 +365,13 @@ export const useAIDashboardData = () => {
     aiInsights,
     workspaceProjects,
     workspaceResources,
-    isLoading,
+    isLoading: isLoading || aiInsightsLoading,
     lastUpdate,
     cacheKey,
     clientSatisfactionTrend,
-    budgetData
-  }), [realTimeData, performanceData, resourceData, aiInsights, workspaceProjects, workspaceResources, isLoading, lastUpdate, cacheKey, clientSatisfactionTrend, budgetData]);
+    budgetData,
+    aiInsightsLoading
+  }), [realTimeData, performanceData, resourceData, aiInsights, workspaceProjects, workspaceResources, isLoading, aiInsightsLoading, lastUpdate, cacheKey, clientSatisfactionTrend, budgetData]);
 
   return optimizedData;
 };
