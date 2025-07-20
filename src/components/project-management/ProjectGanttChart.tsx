@@ -185,6 +185,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     try {
       const taskData = {
         ...task,
+        project_id: projectId,
         milestoneId: task.milestoneId && task.milestoneId !== '' ? task.milestoneId : undefined,
       };
       

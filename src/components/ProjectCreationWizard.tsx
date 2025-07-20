@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -286,6 +287,28 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     }
   }, [isOpen]);
 
+  // Render step component with appropriate props
+  const renderStepComponent = () => {
+    if (currentStep === 5) {
+      // StakeholderManagementStep has different props
+      return (
+        <StepComponent
+          data={projectData}
+          onUpdate={handleStepData}
+          onNext={handleNext}
+          onPrevious={handleBack}
+        />
+      );
+    }
+    
+    return (
+      <StepComponent
+        data={projectData}
+        onDataChange={handleStepData}
+      />
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="project-creation-description">
@@ -333,10 +356,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
-          <StepComponent
-            data={projectData}
-            onDataChange={handleStepData}
-          />
+          {renderStepComponent()}
         </div>
 
         <div className="flex justify-between pt-4 border-t">

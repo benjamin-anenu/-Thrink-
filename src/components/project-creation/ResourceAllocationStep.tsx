@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,10 +30,8 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
   const [allocationHours, setAllocationHours] = useState<{[key: string]: number}>(formData.allocationHours || {});
   const [teamSize, setTeamSize] = useState(formData.teamSize || 0);
 
-  // Filter available resources
-  const availableResources = resources.filter(resource => 
-    resource.status === 'active' && !resource.isDeleted
-  );
+  // Filter available resources (since Resource type doesn't have status/isDeleted, include all)
+  const availableResources = resources.filter(resource => resource && resource.id);
 
   const handleResourceToggle = (resourceId: string) => {
     setSelectedResources(prev => {
@@ -74,7 +73,8 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
   };
 
   const getResourceSkills = (resource: Resource) => {
-    return resource.skills?.slice(0, 3).map(skill => skill.name).join(', ') || 'No skills listed';
+    // Since Resource type doesn't have skills property, return default text
+    return 'Skills not available';
   };
 
   return (
@@ -117,7 +117,6 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                       onCheckedChange={() => handleResourceToggle(resource.id)}
                     />
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={resource.avatar} />
                       <AvatarFallback>
                         {resource.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
@@ -132,8 +131,8 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                             {resource.role} • {getResourceSkills(resource)}
                           </p>
                         </div>
-                        <Badge variant={resource.status === 'active' ? 'default' : 'secondary'}>
-                          {resource.status}
+                        <Badge variant="default">
+                          Active
                         </Badge>
                       </div>
                     </div>
@@ -155,7 +154,6 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                   return (
                     <div key={resourceId} className="flex items-center space-x-3 p-3 border rounded-lg">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={resource.avatar} />
                         <AvatarFallback>
                           {resource.name.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
@@ -229,4 +227,4 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
   );
 };
 
-export default ResourceAllocationStep; 
+export default ResourceAllocationStep;

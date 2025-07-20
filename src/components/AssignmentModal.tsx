@@ -184,14 +184,19 @@ const AssignmentModal = ({ isOpen, onClose, resourceId, resourceName }: Assignme
                   </thead>
                   <tbody>
                     {tasks.map(task => (
-                      <tr key={task.id} className={(!task.assigned_resource_id ? 'bg-yellow-50 dark:bg-yellow-900/10' : '')}>
+                      <tr key={task.id} className={(!task.assigned_resources || task.assigned_resources.length === 0) ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
                         <td className="p-2 font-medium">{task.name}</td>
                         <td className="p-2">{task.start_date ? new Date(task.start_date).toLocaleDateString() : '-'}</td>
                         <td className="p-2">{task.end_date ? new Date(task.end_date).toLocaleDateString() : '-'}</td>
-                        <td className="p-2">{task.assigned_resource_id ? task.assigned_resource_id : <span className="text-orange-600">Unassigned</span>}</td>
+                        <td className="p-2">
+                          {task.assigned_resources && task.assigned_resources.length > 0 
+                            ? task.assigned_resources.join(', ') 
+                            : <span className="text-orange-600">Unassigned</span>
+                          }
+                        </td>
                         <td className="p-2">{task.status || '-'}</td>
                         <td className="p-2">
-                          {!task.assigned_resource_id && resourceId && (
+                          {(!task.assigned_resources || task.assigned_resources.length === 0) && resourceId && (
                             <Button size="sm" onClick={() => {/* TODO: implement assign logic */}}>Assign</Button>
                           )}
                         </td>

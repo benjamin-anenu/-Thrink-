@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Search, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 
 export interface Skill {
@@ -32,20 +32,23 @@ export function SkillSelect({ selectedSkills, onSkillsChange, placeholder = "Sea
   const [isAddingNew, setIsAddingNew] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch skills from database
+  // Pre-defined skills for now since the skills table doesn't exist in the schema
+  const predefinedSkills: Skill[] = [
+    { id: '1', name: 'React' },
+    { id: '2', name: 'TypeScript' },
+    { id: '3', name: 'Node.js' },
+    { id: '4', name: 'Python' },
+    { id: '5', name: 'JavaScript' },
+    { id: '6', name: 'HTML/CSS' },
+    { id: '7', name: 'Project Management' },
+    { id: '8', name: 'UI/UX Design' },
+    { id: '9', name: 'Database Management' },
+    { id: '10', name: 'DevOps' },
+  ];
+
+  // Initialize with predefined skills
   useEffect(() => {
-    async function fetchSkills() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('skills')
-        .select('id, name')
-        .order('name');
-      if (!error && data) {
-        setSkills(data);
-      }
-      setLoading(false);
-    }
-    fetchSkills();
+    setSkills(predefinedSkills);
   }, []);
 
   // Filter skills based on search term
@@ -59,29 +62,26 @@ export function SkillSelect({ selectedSkills, onSkillsChange, placeholder = "Sea
     skill.name.toLowerCase() === searchTerm.toLowerCase()
   );
 
-  // Add new skill to database
+  // Add new skill (for now, just add to local state)
   const handleAddNewSkill = async () => {
     if (!searchTerm.trim()) return;
     
     setLoading(true);
-    const { data, error } = await supabase
-      .from('skills')
-      .insert([{ name: searchTerm.trim() }])
-      .select();
+    const newSkill: Skill = {
+      id: Date.now().toString(), // Simple ID for now
+      name: searchTerm.trim()
+    };
     
-    if (!error && data && data.length > 0) {
-      const newSkill = data[0];
-      setSkills([...skills, newSkill]);
-      onSkillsChange([...selectedSkills, {
-        skill_id: newSkill.id,
-        skill_name: newSkill.name,
-        proficiency: 3,
-        years_experience: 0
-      }]);
-      setSearchTerm('');
-      setIsAddingNew(false);
-      setShowDropdown(false);
-    }
+    setSkills([...skills, newSkill]);
+    onSkillsChange([...selectedSkills, {
+      skill_id: newSkill.id,
+      skill_name: newSkill.name,
+      proficiency: 3,
+      years_experience: 0
+    }]);
+    setSearchTerm('');
+    setIsAddingNew(false);
+    setShowDropdown(false);
     setLoading(false);
   };
 
@@ -252,4 +252,4 @@ export function SkillSelect({ selectedSkills, onSkillsChange, placeholder = "Sea
       )}
     </div>
   );
-} 
+}

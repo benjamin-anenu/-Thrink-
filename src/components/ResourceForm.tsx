@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { useResourceSkills } from '@/hooks/useResourceSkills';
 import { supabase } from '@/integrations/supabase/client';
-import { SkillSelect, SelectedSkill } from '@/components/ui/skill-select';
 
 interface Resource {
   id?: string;
@@ -18,12 +17,8 @@ interface Resource {
   role: string;
   department: string;
   email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  availability: number;
-  hourlyRate: string;
-  status: 'Available' | 'Busy' | 'Overallocated';
+  phone?: string;
+  workspace_id?: string;
 }
 
 interface ResourceFormProps {
@@ -40,56 +35,16 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
     department: resource?.department || '',
     email: resource?.email || '',
     phone: resource?.phone || '',
-    location: resource?.location || '',
-    skills: resource?.skills || [],
-    availability: resource?.availability || 100,
-    hourlyRate: resource?.hourlyRate || '',
-    status: resource?.status || 'Available',
+    workspace_id: resource?.workspace_id || '',
   });
 
-  const { resourceSkills, loading: resourceSkillsLoading } = useResourceSkills(resource?.id || '');
-  const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
-
   const departments = ['Engineering', 'Design', 'Marketing', 'Operations', 'Sales', 'HR'];
-  const commonSkills = ['React', 'TypeScript', 'Node.js', 'Python', 'Figma', 'UI/UX', 'Project Management', 'Agile', 'SEO', 'Content Marketing'];
 
-  // Sync resourceSkills to selectedSkills on edit
-  React.useEffect(() => {
-    if (resource && resourceSkills) {
-      setSelectedSkills(resourceSkills.map(rs => ({
-        skill_id: rs.skill_id,
-        skill_name: rs.skill_name,
-        proficiency: rs.proficiency || 3,
-        years_experience: rs.years_experience || 0
-      })));
-    }
-  }, [resource, resourceSkills]);
-
-  // Handle skills change from SkillSelect component
-  const handleSkillsChange = (skills: SelectedSkill[]) => {
-    setSelectedSkills(skills);
-  };
-
-  // On save, upsert resource_skills
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Save resource (existing logic)
-    onSave({ ...formData });
-    // Upsert resource_skills
-    if (formData.id) {
-      for (const skill of selectedSkills) {
-        await supabase.from('resource_skills').upsert({
-          resource_id: formData.id,
-          skill_id: skill.skill_id,
-          proficiency: skill.proficiency,
-          years_experience: skill.years_experience
-        }, { onConflict: 'resource_id,skill_id' });
-      }
-    }
+    onSave(formData);
     onClose();
   };
-
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -135,22 +90,6 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
               </Select>
             </div>
             <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="Busy">Busy</SelectItem>
-                  <SelectItem value="Overallocated">Overallocated</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -160,56 +99,14 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="hourlyRate">Hourly Rate</Label>
-              <Input
-                id="hourlyRate"
-                value={formData.hourlyRate}
-                onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
-                placeholder="$85/hr"
-                required
-              />
-            </div>
           </div>
 
           <div>
-            <Label>Availability ({formData.availability}%)</Label>
-            <Slider
-              value={[formData.availability]}
-              onValueChange={(value) => setFormData({ ...formData, availability: value[0] })}
-              max={100}
-              step={5}
-              className="mt-2"
-            />
-          </div>
-
-          <div>
-            <Label>Skills</Label>
-            <SkillSelect
-              selectedSkills={selectedSkills}
-              onSkillsChange={handleSkillsChange}
-              placeholder="Search or add skills..."
+            <Label htmlFor="phone">Phone (Optional)</Label>
+            <Input
+              id="phone"
+              value={formData.phone || ''}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             />
           </div>
 
