@@ -1,11 +1,14 @@
+
 import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Target, Calendar, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -54,6 +57,21 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
+
+  // Inline creation states
+  const [showInlineTaskForm, setShowInlineTaskForm] = useState(false);
+  const [showInlineMilestoneForm, setShowInlineMilestoneForm] = useState(false);
+  const [inlineTaskData, setInlineTaskData] = useState({
+    name: '',
+    priority: 'Medium',
+    status: 'Not Started',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  });
+  const [inlineMilestoneData, setInlineMilestoneData] = useState({
+    name: '',
+    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  });
 
   // Load resources and stakeholders
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
@@ -190,6 +208,65 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
       setShowTaskDialog(false);
     } catch (error) {
       // Error handled in hook
+    }
+  };
+
+  const handleInlineTaskCreate = async () => {
+    try {
+      const taskData = {
+        name: inlineTaskData.name,
+        description: '',
+        startDate: inlineTaskData.start_date,
+        endDate: inlineTaskData.end_date,
+        baselineStartDate: inlineTaskData.start_date,
+        baselineEndDate: inlineTaskData.end_date,
+        priority: inlineTaskData.priority as 'Low' | 'Medium' | 'High' | 'Critical',
+        status: inlineTaskData.status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled',
+        progress: 0,
+        duration: Math.ceil((new Date(inlineTaskData.end_date).getTime() - new Date(inlineTaskData.start_date).getTime()) / (24 * 60 * 60 * 1000)),
+        dependencies: [],
+        assignedResources: [],
+        assignedStakeholders: [],
+        hierarchyLevel: 0,
+        sortOrder: 0
+      };
+
+      await createTask(taskData);
+      toast.success('Task created successfully');
+      setInlineTaskData({
+        name: '',
+        priority: 'Medium',
+        status: 'Not Started',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
+      setShowInlineTaskForm(false);
+    } catch (error) {
+      toast.error('Failed to create task');
+    }
+  };
+
+  const handleInlineMilestoneCreate = async () => {
+    try {
+      const milestoneData = {
+        name: inlineMilestoneData.name,
+        description: '',
+        due_date: inlineMilestoneData.due_date,
+        baseline_date: inlineMilestoneData.due_date,
+        status: 'Not Started' as const,
+        progress: 0,
+        task_ids: []
+      };
+
+      await createMilestone(milestoneData);
+      toast.success('Milestone created successfully');
+      setInlineMilestoneData({
+        name: '',
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
+      setShowInlineMilestoneForm(false);
+    } catch (error) {
+      toast.error('Failed to create milestone');
     }
   };
 
@@ -443,6 +520,164 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Inline Task Creation Row */}
+                {showInlineTaskForm && (
+                  <TableRow className="bg-blue-50">
+                    <TableCell className={getDensityClass()}>
+                      <Input
+                        placeholder="Task name"
+                        value={inlineTaskData.name}
+                        onChange={(e) => setInlineTaskData({ ...inlineTaskData, name: e.target.value })}
+                      />
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <Select value={inlineTaskData.status} onValueChange={(value) => setInlineTaskData({ ...inlineTaskData, status: value })}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Not Started">Not Started</SelectItem>
+                          <SelectItem value="In Progress">In Progress</SelectItem>
+                          <SelectItem value="Completed">Completed</SelectItem>
+                          <SelectItem value="On Hold">On Hold</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <Select value={inlineTaskData.priority} onValueChange={(value) => setInlineTaskData({ ...inlineTaskData, priority: value })}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
+                          <SelectItem value="Critical">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <Input
+                        type="date"
+                        value={inlineTaskData.start_date}
+                        onChange={(e) => setInlineTaskData({ ...inlineTaskData, start_date: e.target.value })}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <Input
+                        type="date"
+                        value={inlineTaskData.end_date}
+                        onChange={(e) => setInlineTaskData({ ...inlineTaskData, end_date: e.target.value })}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>
+                      {Math.ceil((new Date(inlineTaskData.end_date).getTime() - new Date(inlineTaskData.start_date).getTime()) / (24 * 60 * 60 * 1000))} days
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>0%</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          onClick={handleInlineTaskCreate}
+                          disabled={!inlineTaskData.name.trim()}
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowInlineTaskForm(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {/* Inline Milestone Creation Row */}
+                {showInlineMilestoneForm && (
+                  <TableRow className="bg-green-50">
+                    <TableCell className={getDensityClass()}>
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-primary" />
+                        <Input
+                          placeholder="Milestone name"
+                          value={inlineMilestoneData.name}
+                          onChange={(e) => setInlineMilestoneData({ ...inlineMilestoneData, name: e.target.value })}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>Not Started</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <Input
+                        type="date"
+                        value={inlineMilestoneData.due_date}
+                        onChange={(e) => setInlineMilestoneData({ ...inlineMilestoneData, due_date: e.target.value })}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>0%</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>Milestone</TableCell>
+                    <TableCell className={getDensityClass()}>-</TableCell>
+                    <TableCell className={getDensityClass()}>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          onClick={handleInlineMilestoneCreate}
+                          disabled={!inlineMilestoneData.name.trim()}
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowInlineMilestoneForm(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {/* Quick Add Buttons Row */}
+                {!showInlineTaskForm && !showInlineMilestoneForm && (
+                  <TableRow className="bg-gray-50">
+                    <TableCell colSpan={12} className={`text-center ${getDensityClass()}`}>
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowInlineTaskForm(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Quick Add Task
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowInlineMilestoneForm(true)}
+                        >
+                          <Target className="h-4 w-4 mr-2" />
+                          Quick Add Milestone
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
                 {Object.entries(groupedTasks).map(([groupKey, group]) => (
                   <React.Fragment key={groupKey}>
                     {/* Milestone Header Row */}
