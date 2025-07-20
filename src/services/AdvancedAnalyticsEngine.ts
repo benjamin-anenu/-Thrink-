@@ -1,5 +1,5 @@
 import { ProjectData, ProjectTask } from '@/types/project';
-import { ResourceData } from '@/types/resource';
+import { Resource } from '@/contexts/ResourceContext';
 import { PerformanceTracker } from './PerformanceTracker';
 import { budgetService, BudgetSummary } from './BudgetService';
 import { clientSatisfactionService } from './ClientSatisfactionService';
@@ -112,7 +112,7 @@ export class AdvancedAnalyticsEngine {
 
   async generateAdvancedAnalytics(
     projects: ProjectData[], 
-    resources: ResourceData[], 
+    resources: Resource[], 
     workspaceId: string
   ): Promise<AdvancedAnalytics> {
     
@@ -307,7 +307,7 @@ export class AdvancedAnalyticsEngine {
     return projectQuality;
   }
 
-  private calculateResourceEfficiencies(resources: ResourceData[], projects: ProjectData[]): ResourceEfficiency[] {
+  private calculateResourceEfficiencies(resources: Resource[], projects: ProjectData[]): ResourceEfficiency[] {
     return resources.map(resource => {
       const performanceProfile = this.performanceTracker.getPerformanceProfile(resource.id);
       
@@ -344,7 +344,7 @@ export class AdvancedAnalyticsEngine {
     });
   }
 
-  private calculateTeamPerformance(resources: ResourceData[], projects: ProjectData[]) {
+  private calculateTeamPerformance(resources: Resource[], projects: ProjectData[]) {
     const efficiencies = this.calculateResourceEfficiencies(resources, projects);
     
     const averageEfficiency = efficiencies.length > 0 ? 
@@ -371,7 +371,7 @@ export class AdvancedAnalyticsEngine {
     };
   }
 
-  private identifyActiveRisks(projects: ProjectData[], resources: ResourceData[]): RiskIndicator[] {
+  private identifyActiveRisks(projects: ProjectData[], resources: Resource[]): RiskIndicator[] {
     const risks: RiskIndicator[] = [];
     
     // Schedule risks
@@ -445,7 +445,7 @@ export class AdvancedAnalyticsEngine {
 
   private async generatePredictiveInsights(
     projects: ProjectData[], 
-    resources: ResourceData[], 
+    resources: Resource[], 
     workspaceId: string
   ): Promise<PredictiveInsight[]> {
     const insights: PredictiveInsight[] = [];
@@ -539,7 +539,7 @@ export class AdvancedAnalyticsEngine {
     });
   }
 
-  private calculateBenchmarks(projects: ProjectData[], resources: ResourceData[]) {
+  private calculateBenchmarks(projects: ProjectData[], resources: Resource[]) {
     const velocityMetrics = this.calculateWorkspaceVelocity(projects);
     const teamPerformance = this.calculateTeamPerformance(resources, projects);
     
@@ -608,7 +608,7 @@ export class AdvancedAnalyticsEngine {
     return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
   }
 
-  private identifyResourceStrengths(resource: ResourceData, tasks: ProjectTask[]): string[] {
+  private identifyResourceStrengths(resource: Resource, tasks: ProjectTask[]): string[] {
     const strengths: string[] = [];
     
     if (resource.utilization > 80) {
@@ -630,7 +630,7 @@ export class AdvancedAnalyticsEngine {
     return strengths.length > 0 ? strengths : ['Consistent performance'];
   }
 
-  private generateResourceRecommendations(resource: ResourceData, tasks: ProjectTask[], efficiencyScore: number): string[] {
+  private generateResourceRecommendations(resource: Resource, tasks: ProjectTask[], efficiencyScore: number): string[] {
     const recommendations: string[] = [];
     
     if (efficiencyScore < 60) {

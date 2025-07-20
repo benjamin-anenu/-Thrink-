@@ -10,9 +10,9 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 // Step components
 import ProjectDetailsStep from './project-creation/ProjectDetailsStep';
-import ResourceAllocationStep from './project-creation/ResourceAllocationStep';
+import ResourcePlanningStep from './project-creation/ResourcePlanningStep';
 import StakeholderManagementStep from './project-creation/StakeholderManagementStep';
-import TimelineStep from './project-creation/TimelineStep';
+import MilestonePlanningStep from './project-creation/MilestonePlanningStep';
 import BudgetStep from './project-creation/BudgetStep';
 import ReviewStep from './project-creation/ReviewStep';
 
@@ -92,9 +92,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
 
   const steps = [
     { id: 1, title: 'Project Details', component: ProjectDetailsStep },
-    { id: 2, title: 'Resource Allocation', component: ResourceAllocationStep },
+    { id: 2, title: 'Resource Allocation', component: ResourcePlanningStep },
     { id: 3, title: 'Stakeholder Management', component: StakeholderManagementStep },
-    { id: 4, title: 'Timeline & Milestones', component: TimelineStep },
+    { id: 4, title: 'Timeline & Milestones', component: MilestonePlanningStep },
     { id: 5, title: 'Budget Planning', component: BudgetStep },
     { id: 6, title: 'Review & Create', component: ReviewStep },
   ];

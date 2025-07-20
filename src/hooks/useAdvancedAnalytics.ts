@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
-import { useResources } from '@/contexts/ResourceContext';
+import { useResources, Resource } from '@/contexts/ResourceContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { 
   advancedAnalyticsEngine, 
