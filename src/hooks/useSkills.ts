@@ -8,22 +8,25 @@ export interface Skill {
 
 export function useSkills() {
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchSkills() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('skills')
-        .select('id, name')
-        .order('name');
-      if (!error && data) {
-        setSkills(data);
-      }
-      setLoading(false);
-    }
-    fetchSkills();
+    // Use predefined skills since 'skills' table doesn't exist
+    const predefinedSkills: Skill[] = [
+      { id: '1', name: 'Project Management' },
+      { id: '2', name: 'Software Development' },
+      { id: '3', name: 'UI/UX Design' },
+      { id: '4', name: 'Data Analysis' },
+      { id: '5', name: 'Quality Assurance' },
+      { id: '6', name: 'DevOps' },
+      { id: '7', name: 'Business Analysis' },
+      { id: '8', name: 'Marketing' },
+      { id: '9', name: 'Sales' },
+      { id: '10', name: 'Finance' },
+    ];
+    setSkills(predefinedSkills);
+    setLoading(false);
   }, []);
 
   return { skills, loading };
-} 
+}

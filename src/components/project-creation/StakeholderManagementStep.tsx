@@ -57,7 +57,32 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
 
         if (error) throw error;
 
-        setStakeholders(fetchedStakeholders || []);
+        // Map database stakeholders to component format
+        const mappedStakeholders = (fetchedStakeholders || []).map(dbStakeholder => ({
+          id: dbStakeholder.id,
+          workspace_id: dbStakeholder.workspace_id,
+          name: dbStakeholder.name,
+          email: dbStakeholder.email || '',
+          role: dbStakeholder.role || '',
+          influence: (dbStakeholder.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+          interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+          status: 'active' as 'active' | 'inactive' | 'pending',
+          notes: '', // Database doesn't have notes field
+          created_at: dbStakeholder.created_at,
+          updated_at: dbStakeholder.updated_at,
+          // Add missing properties with defaults
+          projects: null,
+          department: null,
+          phone: null,
+          communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+          avatar: null,
+          escalation_level: null,
+          contact_info: {},
+          project_id: null,
+          department_id: null,
+          organization: null
+        }));
+        setStakeholders(mappedStakeholders);
       } catch (error) {
         console.error('Error fetching stakeholders:', error);
         toast({
@@ -103,7 +128,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
         projects: null,
         department: null,
         phone: null,
-        communication_preference: 'email',
+        communicationPreference: 'Email',
         avatar: null,
         notes: '',
         escalation_level: null,
@@ -122,7 +147,32 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
 
       if (error) throw error;
 
-      setStakeholders([...stakeholders, createdStakeholder]);
+      // Map created stakeholder to component format
+      const mappedStakeholder = {
+        id: createdStakeholder.id,
+        workspace_id: createdStakeholder.workspace_id,
+        name: createdStakeholder.name,
+        email: createdStakeholder.email || '',
+        role: createdStakeholder.role || '',
+        influence: (createdStakeholder.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        notes: '', // Database doesn't have notes field
+        created_at: createdStakeholder.created_at,
+        updated_at: createdStakeholder.updated_at,
+        // Add missing properties with defaults
+        projects: null,
+        department: null,
+        phone: null,
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        avatar: null,
+        escalation_level: null,
+        contact_info: {},
+        project_id: null,
+        department_id: null,
+        organization: null
+      };
+      setStakeholders([...stakeholders, mappedStakeholder]);
       setNewStakeholder({
         name: '',
         email: '',
@@ -160,13 +210,39 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
 
       if (error) throw error;
 
+      // Map updated stakeholder to component format
+      const mappedStakeholder = {
+        id: updatedStakeholder.id,
+        workspace_id: updatedStakeholder.workspace_id,
+        name: updatedStakeholder.name,
+        email: updatedStakeholder.email || '',
+        role: updatedStakeholder.role || '',
+        influence: (updatedStakeholder.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        notes: '', // Database doesn't have notes field
+        created_at: updatedStakeholder.created_at,
+        updated_at: updatedStakeholder.updated_at,
+        // Add missing properties with defaults
+        projects: null,
+        department: null,
+        phone: null,
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        avatar: null,
+        escalation_level: null,
+        contact_info: {},
+        project_id: null,
+        department_id: null,
+        organization: null
+      };
       setStakeholders(stakeholders.map(stakeholder =>
-        stakeholder.id === stakeholderId ? updatedStakeholder : stakeholder
+        stakeholder.id === stakeholderId ? mappedStakeholder : stakeholder
       ));
       setEditingStakeholderId(null);
       setEditedStakeholder(prev => {
-        const { [stakeholderId]: _, ...rest } = prev;
-        return rest;
+        const newState = { ...prev };
+        delete newState[stakeholderId];
+        return newState;
       });
       
       toast({
@@ -212,7 +288,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+            <User className="h-5 w-5" />
             Stakeholder Management
           </CardTitle>
           <CardDescription>

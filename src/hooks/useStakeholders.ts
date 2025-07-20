@@ -39,9 +39,20 @@ export const useStakeholders = (workspaceId?: string) => {
         influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: item.notes || '',
+        notes: '', // Database doesn't have notes field
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
+        // Add missing interface properties
+        projects: null,
+        department: null,
+        phone: null,
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        avatar: null,
+        escalation_level: null,
+        contact_info: {},
+        project_id: null,
+        department_id: null,
+        organization: null
       }));
       
       setStakeholders(mappedData);
@@ -90,7 +101,18 @@ export const useStakeholders = (workspaceId?: string) => {
         influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
         interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: data[0].notes || '',
+        notes: '', // Database doesn't have notes field
+        // Add missing interface properties
+        projects: null,
+        department: null,
+        phone: null,
+        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        avatar: null,
+        escalation_level: null,
+        contact_info: {},
+        project_id: null,
+        department_id: null,
+        organization: null,
         created_at: data[0].created_at,
         updated_at: data[0].updated_at,
       } : null;

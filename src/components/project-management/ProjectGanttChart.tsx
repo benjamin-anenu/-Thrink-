@@ -352,7 +352,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   // New inline editing handlers
   const handleInlineTaskSave = async (taskData: Omit<ProjectTask, 'id'>) => {
     try {
-      await createTask({ ...taskData, projectId });
+      await createTask({ ...taskData, project_id: projectId });
       toast.success('Task created successfully');
       setShowInlineTaskEditor(false);
     } catch (error) {

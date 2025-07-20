@@ -292,7 +292,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
     if (currentStep === 5) {
       // StakeholderManagementStep has different props
       return (
-        <StepComponent
+        <StakeholderManagementStep
           data={projectData}
           onUpdate={handleStepData}
           onNext={handleNext}
@@ -301,10 +301,24 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       );
     }
     
+    if (currentStep === 1) {
+      return (
+        <ProjectDetailsStep
+          data={projectData}
+          onDataChange={handleStepData}
+        />
+      );
+    }
+    
+    // For other steps, check if they need special props
+    const StepComponentTyped = StepComponent as any;
     return (
-      <StepComponent
+      <StepComponentTyped
         data={projectData}
         onDataChange={handleStepData}
+        onUpdate={handleStepData}
+        onNext={handleNext}
+        onPrevious={handleBack}
       />
     );
   };
