@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Task } from '@/types/task';
+import type { Task as TaskType } from '@/types/task';
 
-export interface Task {
+export interface TaskData {
   id: string;
   project_id: string;
   name: string;
@@ -18,7 +18,7 @@ export interface Task {
 }
 
 export function useTasks(projectId?: string) {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskType[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,7 +35,13 @@ export function useTasks(projectId?: string) {
         .eq('project_id', projectId)
         .order('start_date');
       if (!error && data) {
-        setTasks(data);
+        // Map database tasks to TaskType format
+        const mappedTasks = (data || []).map(dbTask => ({
+          ...dbTask,
+          priority: (dbTask.priority as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium',
+          status: (dbTask.status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled') || 'Not Started'
+        }));
+        setTasks(mappedTasks as TaskType[]);
       }
       setLoading(false);
     }

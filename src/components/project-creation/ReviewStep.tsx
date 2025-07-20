@@ -164,7 +164,13 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Total Allocation</Label>
                 <p className="text-sm p-2 bg-muted rounded">
-                  {Object.values(formData.allocationHours || {}).reduce((sum: number, hours: unknown) => sum + (typeof hours === 'number' ? hours : 0), 0)} hours/week
+                  {(() => {
+                    const total = Object.values(formData.allocationHours || {}).reduce((sum: number, hours: unknown) => {
+                      const numHours = typeof hours === 'number' ? hours : 0;
+                      return sum + numHours;
+                    }, 0);
+                     return `${total} hours/week`;
+                   })()}
                 </p>
               </div>
             </div>

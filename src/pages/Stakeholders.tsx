@@ -185,8 +185,7 @@ const Stakeholders = () => {
                         key={stakeholder.id}
                         stakeholder={stakeholder}
                         onEdit={handleEditStakeholder}
-                        onDelete={handleDeleteStakeholder}
-                        onContact={handleContactStakeholder}
+                        onDelete={(stakeholder) => handleDeleteStakeholder(stakeholder.id)}
                       />
                     ))}
                   </div>
