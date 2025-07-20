@@ -24,6 +24,10 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace } from '@/types/workspace';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import DepartmentsManagement from './workspace-settings/DepartmentsManagement';
+import SkillsManagement from './workspace-settings/SkillsManagement';
+import EscalationTriggersManagement from './workspace-settings/EscalationTriggersManagement';
 
 interface WorkspaceSettingsModalProps {
   open: boolean;
@@ -105,7 +109,7 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Workspace Settings</DialogTitle>
           <DialogDescription>
@@ -113,7 +117,16 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="departments">Departments</TabsTrigger>
+            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="escalation">Escalation</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general">
+            <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Basic Information</h3>
@@ -235,15 +248,29 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
             </div>
           </div>
           
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!name.trim() || isLoading}>
-              {isLoading ? 'Saving...' : 'Save Settings'}
-            </Button>
-          </DialogFooter>
-        </form>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!name.trim() || isLoading}>
+                  {isLoading ? 'Saving...' : 'Save Settings'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="departments">
+            <DepartmentsManagement />
+          </TabsContent>
+
+          <TabsContent value="skills">
+            <SkillsManagement />
+          </TabsContent>
+
+          <TabsContent value="escalation">
+            <EscalationTriggersManagement />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
