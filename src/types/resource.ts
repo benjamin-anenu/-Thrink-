@@ -6,14 +6,6 @@ export interface Resource {
   email?: string;
   role?: string;
   department?: string;
-  status?: 'active' | 'inactive';
-  isDeleted?: boolean;
-  avatar?: string;
-  skills?: Array<{
-    id: string;
-    name: string;
-    proficiency?: number;
-  }>;
   created_at: string;
   updated_at: string;
-}
+} 

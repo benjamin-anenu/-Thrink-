@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -334,19 +333,10 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
-          {currentStep === 5 ? (
-            <StakeholderManagementStep
-              data={projectData}
-              onUpdate={handleStepData}
-              onNext={handleNext}
-              onPrevious={handleBack}
-            />
-          ) : (
-            <StepComponent
-              data={projectData}
-              onDataChange={handleStepData}
-            />
-          )}
+          <StepComponent
+            data={projectData}
+            onDataChange={handleStepData}
+          />
         </div>
 
         <div className="flex justify-between pt-4 border-t">

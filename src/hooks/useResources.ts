@@ -18,14 +18,18 @@ export const useResources = () => {
       if (error) throw error;
       
       // Map database fields to interface fields
-      const mappedData: Resource[] = (data || []).map(item => ({
-        id: item.id,
+      const mappedData = (data || []).map(item => ({
+        ...item,
+        type: 'human' as 'human' | 'ai' | 'external', // Map to correct type
+        status: 'active' as 'active' | 'inactive' | 'pending', // Map to correct status
+        skills: [] as string[], // Default empty array
+        availability: '100%', // Default availability string
+        cost: 0, // Default cost
         workspace_id: item.workspace_id || '',
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
         department: item.department || '',
-        status: 'active' as const,
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
       }));
@@ -58,21 +62,17 @@ export const useResources = () => {
       loadResources();
       
       // Map response back to interface
-      if (data?.[0]) {
-        const mappedResult: Resource = {
-          id: data[0].id,
-          workspace_id: data[0].workspace_id || '',
-          name: data[0].name || '',
-          email: data[0].email || '',
-          role: data[0].role || '',
-          department: data[0].department || '',
-          status: 'active' as const,
-          created_at: data[0].created_at || '',
-          updated_at: data[0].updated_at || '',
-        };
-        return mappedResult;
-      }
-      return null;
+      const mappedResult = data?.[0] ? {
+        ...data[0],
+        type: 'human' as 'human' | 'ai' | 'external',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        skills: [] as string[],
+        availability: '100%',
+        cost: 0,
+        department: data[0].department || '',
+      } : null;
+      
+      return mappedResult as Resource;
     } catch (error) {
       console.error('Error creating resource:', error);
       toast.error('Failed to create resource');
@@ -91,8 +91,8 @@ export const useResources = () => {
       
       // Remove undefined values
       Object.keys(dbUpdates).forEach(key => {
-        if (dbUpdates[key as keyof typeof dbUpdates] === undefined) {
-          delete dbUpdates[key as keyof typeof dbUpdates];
+        if (dbUpdates[key] === undefined) {
+          delete dbUpdates[key];
         }
       });
       

@@ -57,11 +57,7 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
       id: `temp-${Date.now()}`,
       workspace_id: currentWorkspace?.id || '',
       status: 'active' as const,
-      interest: 'medium' as const,
-      department: '',
-      phone: '',
-      communicationPreference: 'Email' as const,
-      projects: []
+      interest: 'medium' as const
     };
 
     onUpdate({
@@ -146,10 +142,6 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           workspace_id: currentWorkspace?.id || '',
           status: 'active',
           interest: 'medium',
-          department: '',
-          phone: '',
-          communicationPreference: 'Email',
-          projects: [],
           notes: ''
         });
       }
