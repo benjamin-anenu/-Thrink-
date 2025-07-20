@@ -39,7 +39,6 @@ interface Task {
   id: string;
   name: string;
   description: string;
-  required_skills: string[];
   assigned_resources: string[];
   status: string;
   priority: string;
@@ -100,7 +99,7 @@ const EnhancedAssignmentModal: React.FC<EnhancedAssignmentModalProps> = ({
     try {
       const { data, error } = await supabase
         .from('project_tasks')
-        .select('id, name, description, required_skills, assigned_resources, status, priority')
+        .select('id, name, description, assigned_resources, status, priority')
         .eq('project_id', selectedProjectId)
         .order('name');
 
@@ -234,21 +233,6 @@ const EnhancedAssignmentModal: React.FC<EnhancedAssignmentModalProps> = ({
                           <p className="text-sm text-muted-foreground">
                             <strong>Assigned Resources:</strong> {task.assigned_resources?.length || 0}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            <strong>Required Skills:</strong> {task.required_skills?.length || 0}
-                          </p>
-                          {selectedTaskId === task.id && task.required_skills?.length > 0 && (
-                            <div className="mt-2 pt-2 border-t">
-                              <p className="text-sm font-medium mb-2">Required Skills:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {task.required_skills.map((skillId, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    Skill {skillId}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </CardContent>
                     </Card>

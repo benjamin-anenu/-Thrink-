@@ -26,15 +26,72 @@ export const useRecycleBin = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('recycle_bin')
+      // For now, we'll simulate the recycle bin functionality
+      // by querying deleted items directly from each table
+      const deletedItems: RecycleBinItem[] = [];
+
+      // Get deleted projects
+      const { data: deletedProjects } = await supabase
+        .from('projects')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
-        .is('restored_at', null)
-        .order('deleted_at', { ascending: false });
+        .not('deleted_at', 'is', null);
 
-      if (error) throw error;
-      setItems(data || []);
+      if (deletedProjects) {
+        deletedProjects.forEach(project => {
+          deletedItems.push({
+            id: `project-${project.id}`,
+            item_type: 'project',
+            item_id: project.id,
+            item_data: project,
+            deleted_at: project.deleted_at,
+            deleted_by: project.deleted_by,
+            auto_delete_at: new Date(new Date(project.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
+          });
+        });
+      }
+
+      // Get deleted resources
+      const { data: deletedResources } = await supabase
+        .from('resources')
+        .select('*')
+        .not('deleted_at', 'is', null);
+
+      if (deletedResources) {
+        deletedResources.forEach(resource => {
+          deletedItems.push({
+            id: `resource-${resource.id}`,
+            item_type: 'resource',
+            item_id: resource.id,
+            item_data: resource,
+            deleted_at: resource.deleted_at || new Date().toISOString(),
+            deleted_by: resource.deleted_by || '',
+            auto_delete_at: new Date(new Date(resource.deleted_at || new Date()).getTime() + 48 * 60 * 60 * 1000).toISOString()
+          });
+        });
+      }
+
+      // Get deleted stakeholders
+      const { data: deletedStakeholders } = await supabase
+        .from('stakeholders')
+        .select('*')
+        .not('deleted_at', 'is', null);
+
+      if (deletedStakeholders) {
+        deletedStakeholders.forEach(stakeholder => {
+          deletedItems.push({
+            id: `stakeholder-${stakeholder.id}`,
+            item_type: 'stakeholder',
+            item_id: stakeholder.id,
+            item_data: stakeholder,
+            deleted_at: stakeholder.deleted_at || new Date().toISOString(),
+            deleted_by: stakeholder.deleted_by || '',
+            auto_delete_at: new Date(new Date(stakeholder.deleted_at || new Date()).getTime() + 48 * 60 * 60 * 1000).toISOString()
+          });
+        });
+      }
+
+      setItems(deletedItems);
     } catch (error) {
       console.error('Error loading recycle bin:', error);
       toast.error('Failed to load recycle bin');
@@ -48,23 +105,12 @@ export const useRecycleBin = () => {
       const item = items.find(i => i.id === itemId);
       if (!item) return;
 
-      // Mark as restored in recycle bin
-      const { error: recycleError } = await supabase
-        .from('recycle_bin')
-        .update({
-          restored_at: new Date().toISOString(),
-          restored_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .eq('id', itemId);
-
-      if (recycleError) throw recycleError;
-
-      // Restore the actual item
+      // Restore the actual item by clearing deleted_at
       const tableName = item.item_type === 'project' ? 'projects' : 
                        item.item_type === 'resource' ? 'resources' : 'stakeholders';
 
       const { error: restoreError } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update({
           deleted_at: null,
           deleted_by: null
@@ -86,20 +132,12 @@ export const useRecycleBin = () => {
       const item = items.find(i => i.id === itemId);
       if (!item) return;
 
-      // Delete from recycle bin
-      const { error: recycleError } = await supabase
-        .from('recycle_bin')
-        .delete()
-        .eq('id', itemId);
-
-      if (recycleError) throw recycleError;
-
       // Hard delete the actual item
       const tableName = item.item_type === 'project' ? 'projects' : 
                        item.item_type === 'resource' ? 'resources' : 'stakeholders';
 
       const { error: deleteError } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .delete()
         .eq('id', item.item_id);
 
