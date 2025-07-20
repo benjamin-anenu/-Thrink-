@@ -58,18 +58,25 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
       }, {} as Record<string, number>);
 
       setReportData({
-        kpis: {
-          totalTasks,
-          completedTasks,
-          completionRate,
-          overdueTasks,
-          inProgressTasks,
-          pendingTasks,
-          totalMilestones,
-          completedMilestones,
-          milestoneCompletionRate,
-          avgProgress
+        // KPI data structure matching ProjectReportsKPIsProps
+        overallProgress: avgProgress,
+        tasksCompleted: completedTasks,
+        totalTasks,
+        budgetUsed: 65, // Mock data
+        timeElapsed: 45, // Mock data
+        teamEfficiency: 88, // Mock data
+        riskLevel: 'Low',
+        nextMilestone: milestones.length > 0 ? milestones[0].name : 'No milestones',
+        daysToMilestone: 15, // Mock data
+        
+        // Performance data
+        performance: {
+          onTimeCompletion: completionRate,
+          resourceUtilization: tasks.filter(t => t.assignedResources.length > 0).length / totalTasks * 100,
+          qualityScore: avgProgress
         },
+        
+        // Charts data
         charts: {
           tasksByStatus,
           tasksByPriority,
@@ -79,11 +86,6 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
             startDate: task.startDate,
             endDate: task.endDate
           }))
-        },
-        performance: {
-          onTimeCompletion: completionRate,
-          resourceUtilization: tasks.filter(t => t.assignedResources.length > 0).length / totalTasks * 100,
-          qualityScore: avgProgress
         }
       });
     }
@@ -128,36 +130,23 @@ const ProjectReports: React.FC<ProjectReportsProps> = ({ projectId }) => {
             </TabsList>
             
             <TabsContent value="kpis" className="space-y-4">
-              <ProjectReportsKPIs data={reportData.kpis || {}} />
+              <ProjectReportsKPIs reportData={reportData} />
             </TabsContent>
             
             <TabsContent value="charts" className="space-y-4">
-              <ProjectReportsCharts data={reportData.charts || {}} />
+              <ProjectReportsCharts />
             </TabsContent>
             
             <TabsContent value="performance" className="space-y-4">
-              <ProjectReportsPerformance 
-                data={reportData.performance || {}} 
-                tasks={tasks}
-                milestones={milestones}
-              />
+              <ProjectReportsPerformance reportData={reportData} />
             </TabsContent>
             
             <TabsContent value="insights" className="space-y-4">
-              <ProjectReportsInsights 
-                tasks={tasks}
-                milestones={milestones}
-                projectId={projectId}
-              />
+              <ProjectReportsInsights projectId={projectId} />
             </TabsContent>
             
             <TabsContent value="export" className="space-y-4">
-              <ProjectReportsExport 
-                projectId={projectId}
-                data={reportData}
-                tasks={tasks}
-                milestones={milestones}
-              />
+              <ProjectReportsExport />
             </TabsContent>
           </Tabs>
         </CardContent>
