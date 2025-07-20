@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -34,11 +35,11 @@ export const useStakeholders = () => {
           role: item.role || '',
           department: item.department || '',
           phone: item.phone || '',
-          communicationPreference: item.communication_preference || 'Email',
+          communicationPreference: (item.communication_preference || 'Email') as 'Email' | 'Phone' | 'Slack' | 'In-person',
           projects: item.projects || [],
-          influence: item.influence || 'medium',
-          interest: item.interest || 'medium',
-          status: 'active', // Default since it's required
+          influence: (item.influence || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+          interest: (item.interest || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+          status: 'active' as const, // Default since it's required
           notes: item.notes || '',
           created_at: item.created_at,
           updated_at: item.updated_at
@@ -89,10 +90,10 @@ export const useStakeholders = () => {
         role: data.role || '',
         department: data.department || '',
         phone: data.phone || '',
-        communicationPreference: data.communication_preference || 'Email',
+        communicationPreference: (data.communication_preference || 'Email') as 'Email' | 'Phone' | 'Slack' | 'In-person',
         projects: data.projects || [],
-        influence: data.influence || 'medium',
-        interest: data.interest || 'medium',
+        influence: (data.influence || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+        interest: (data.interest || 'medium') as 'low' | 'medium' | 'high' | 'critical',
         status: 'active',
         notes: data.notes || '',
         created_at: data.created_at,
@@ -111,7 +112,18 @@ export const useStakeholders = () => {
     try {
       const { data, error } = await supabase
         .from('stakeholders')
-        .update(updates)
+        .update({
+          name: updates.name,
+          email: updates.email,
+          role: updates.role,
+          department: updates.department,
+          phone: updates.phone,
+          communication_preference: updates.communicationPreference,
+          projects: updates.projects,
+          influence: updates.influence,
+          interest: updates.interest,
+          notes: updates.notes
+        })
         .eq('id', id)
         .select()
         .single();
@@ -121,10 +133,28 @@ export const useStakeholders = () => {
         throw error;
       }
 
+      const updatedStakeholder: Stakeholder = {
+        id: data.id,
+        workspace_id: data.workspace_id,
+        name: data.name,
+        email: data.email || '',
+        role: data.role || '',
+        department: data.department || '',
+        phone: data.phone || '',
+        communicationPreference: (data.communication_preference || 'Email') as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        projects: data.projects || [],
+        influence: (data.influence || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+        interest: (data.interest || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+        status: 'active',
+        notes: data.notes || '',
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
       setStakeholders(prevStakeholders =>
-        prevStakeholders.map(stakeholder => (stakeholder.id === id ? { ...stakeholder, ...data } : stakeholder))
+        prevStakeholders.map(stakeholder => (stakeholder.id === id ? updatedStakeholder : stakeholder))
       );
-      return data;
+      return updatedStakeholder;
     } catch (error) {
       console.error('Error updating stakeholder:', error);
       throw error;
@@ -154,7 +184,7 @@ export const useStakeholders = () => {
     stakeholders,
     loading,
     createStakeholder,
-    updateStakeholder: async () => {},
-    deleteStakeholder: async () => {}
+    updateStakeholder,
+    deleteStakeholder
   };
 };

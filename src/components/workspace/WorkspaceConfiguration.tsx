@@ -3,11 +3,22 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Building2, Award, AlertTriangle } from 'lucide-react';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import DepartmentManagement from './config/DepartmentManagement';
 import SkillsManagement from './config/SkillsManagement';
 import EscalationTriggersManagement from './config/EscalationTriggersManagement';
 
 const WorkspaceConfiguration: React.FC = () => {
+  const { currentWorkspace } = useWorkspace();
+
+  if (!currentWorkspace) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Please select a workspace to configure settings.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -39,11 +50,11 @@ const WorkspaceConfiguration: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="skills">
-              <SkillsManagement />
+              <SkillsManagement workspaceId={currentWorkspace.id} />
             </TabsContent>
 
             <TabsContent value="escalation">
-              <EscalationTriggersManagement />
+              <EscalationTriggersManagement workspaceId={currentWorkspace.id} />
             </TabsContent>
           </Tabs>
         </CardContent>

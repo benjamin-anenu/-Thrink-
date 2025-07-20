@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,25 +35,27 @@ interface StakeholderFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (stakeholder: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => void;
-  onDelete?: (stakeholder: Stakeholder) => void;
+  onDelete?: (id: string) => void;
   stakeholder?: Stakeholder | null;
 }
 
 const StakeholderForm: React.FC<StakeholderFormProps> = ({ isOpen, onClose, onSubmit, onDelete, stakeholder }) => {
+  const { currentWorkspace } = useWorkspace();
   const [name, setName] = useState(stakeholder?.name || '');
   const [email, setEmail] = useState(stakeholder?.email || '');
   const [role, setRole] = useState(stakeholder?.role || '');
   const [department, setDepartment] = useState(stakeholder?.department || '');
   const [phone, setPhone] = useState(stakeholder?.phone || '');
-  const [communicationPreference, setCommunicationPreference] = useState(stakeholder?.communicationPreference || 'Email');
-  const [influence, setInfluence] = useState(stakeholder?.influence || 'medium');
-  const [interest, setInterest] = useState(stakeholder?.interest || 'medium');
-  const [status, setStatus] = useState(stakeholder?.status || 'active');
+  const [communicationPreference, setCommunicationPreference] = useState<'Email' | 'Phone' | 'Slack' | 'In-person'>(stakeholder?.communicationPreference || 'Email');
+  const [influence, setInfluence] = useState<'low' | 'medium' | 'high' | 'critical'>(stakeholder?.influence || 'medium');
+  const [interest, setInterest] = useState<'low' | 'medium' | 'high' | 'critical'>(stakeholder?.interest || 'medium');
+  const [status, setStatus] = useState<'active' | 'inactive' | 'pending'>(stakeholder?.status || 'active');
   const [notes, setNotes] = useState(stakeholder?.notes || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const stakeholderData = {
+    const stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'> = {
+      workspace_id: currentWorkspace?.id || '',
       name,
       email,
       role,
@@ -71,7 +74,7 @@ const StakeholderForm: React.FC<StakeholderFormProps> = ({ isOpen, onClose, onSu
 
   const handleDelete = () => {
     if (stakeholder && onDelete) {
-      onDelete(stakeholder);
+      onDelete(stakeholder.id);
       onClose();
     }
   };
@@ -128,7 +131,7 @@ const StakeholderForm: React.FC<StakeholderFormProps> = ({ isOpen, onClose, onSu
             </div>
             <div>
               <Label htmlFor="communicationPreference">Communication Preference</Label>
-              <Select value={communicationPreference} onValueChange={setCommunicationPreference}>
+              <Select value={communicationPreference} onValueChange={(value: 'Email' | 'Phone' | 'Slack' | 'In-person') => setCommunicationPreference(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -144,7 +147,7 @@ const StakeholderForm: React.FC<StakeholderFormProps> = ({ isOpen, onClose, onSu
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="influence">Influence</Label>
-              <Select value={influence} onValueChange={setInfluence}>
+              <Select value={influence} onValueChange={(value: 'low' | 'medium' | 'high' | 'critical') => setInfluence(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -158,7 +161,7 @@ const StakeholderForm: React.FC<StakeholderFormProps> = ({ isOpen, onClose, onSu
             </div>
             <div>
               <Label htmlFor="interest">Interest</Label>
-              <Select value={interest} onValueChange={setInterest}>
+              <Select value={interest} onValueChange={(value: 'low' | 'medium' | 'high' | 'critical') => setInterest(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -173,7 +176,7 @@ const StakeholderForm: React.FC<StakeholderFormProps> = ({ isOpen, onClose, onSu
           </div>
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(value: 'active' | 'inactive' | 'pending') => setStatus(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -217,10 +220,7 @@ const Stakeholders = () => {
 
   const handleCreateStakeholder = async (stakeholderData: Omit<Stakeholder, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      await createStakeholder({
-        ...stakeholderData,
-        workspace_id: currentWorkspace?.id || '',
-      });
+      await createStakeholder(stakeholderData);
       toast({
         title: "Success",
         description: "Stakeholder created successfully"
@@ -253,8 +253,8 @@ const Stakeholders = () => {
     }
   };
 
-  const handleDeleteStakeholder = async (stakeholder: Stakeholder) => {
-    await deleteStakeholder(stakeholder.id);
+  const handleDeleteStakeholder = async (id: string) => {
+    await deleteStakeholder(id);
   };
 
   const filteredStakeholders = stakeholders.filter(stakeholder =>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +20,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     description: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    priority: 'medium',
+    priority: 'Medium',
     status: 'Not Started'
   });
 
@@ -27,15 +28,15 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     if (!quickTask.name.trim()) return;
 
     try {
-      const newTask = {
+      const newTask: Omit<ProjectTask, 'id'> = {
         name: quickTask.name,
         description: quickTask.description,
         startDate: quickTask.startDate,
         endDate: quickTask.endDate,
         baselineStartDate: quickTask.startDate,
         baselineEndDate: quickTask.endDate,
-        priority: quickTask.priority,
-        status: quickTask.status,
+        priority: quickTask.priority as 'Low' | 'Medium' | 'High' | 'Critical',
+        status: quickTask.status as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled',
         progress: 0,
         duration: 1,
         hierarchyLevel: 0,
@@ -52,7 +53,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         description: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
-        priority: 'medium',
+        priority: 'Medium',
         status: 'Not Started'
       });
     } catch (error) {
@@ -106,10 +107,10 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -11,12 +11,14 @@ interface ProjectReportsChartsProps {
 
 const ProjectReportsCharts: React.FC<ProjectReportsChartsProps> = ({ tasks, milestones }) => {
   const statusData = [
-    { name: 'Completed', value: tasks.filter(t => t.status === 'completed').length },
-    { name: 'In Progress', value: tasks.filter(t => t.status === 'in-progress').length },
-    { name: 'Pending', value: tasks.filter(t => t.status === 'upcoming').length }
-  ];
+    { name: 'Completed', value: tasks.filter(t => t.status === 'Completed').length },
+    { name: 'In Progress', value: tasks.filter(t => t.status === 'In Progress').length },
+    { name: 'Not Started', value: tasks.filter(t => t.status === 'Not Started').length },
+    { name: 'On Hold', value: tasks.filter(t => t.status === 'On Hold').length },
+    { name: 'Cancelled', value: tasks.filter(t => t.status === 'Cancelled').length }
+  ].filter(item => item.value > 0);
 
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

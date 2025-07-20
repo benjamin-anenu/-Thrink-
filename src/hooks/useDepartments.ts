@@ -3,6 +3,16 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
+interface Department {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
 export const useDepartments = () => {
   const [departments, setDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +30,6 @@ export const useDepartments = () => {
         const { data, error } = await supabase
           .from('departments')
           .select('name')
-          .eq('workspace_id', currentWorkspace.id)
           .order('name');
 
         if (error) throw error;
