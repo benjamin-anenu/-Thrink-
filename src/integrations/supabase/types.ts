@@ -1176,6 +1176,48 @@ export type Database = {
           },
         ]
       }
+      resource_skills: {
+        Row: {
+          created_at: string
+          id: string
+          proficiency: number | null
+          resource_id: string
+          skill_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proficiency?: number | null
+          resource_id: string
+          skill_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proficiency?: number | null
+          resource_id?: string
+          skill_id?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_skills_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           created_at: string
@@ -1217,45 +1259,87 @@ export type Database = {
           },
         ]
       }
+      skills: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       stakeholders: {
         Row: {
+          avatar: string | null
+          communication_preference: string | null
           contact_info: Json | null
           created_at: string
+          department: string | null
           email: string | null
           escalation_level: number | null
           id: string
+          influence: string | null
           influence_level: string | null
+          interest: string | null
           name: string
+          notes: string | null
           organization: string | null
+          phone: string | null
           project_id: string | null
+          projects: string[] | null
           role: string | null
           updated_at: string
           workspace_id: string | null
         }
         Insert: {
+          avatar?: string | null
+          communication_preference?: string | null
           contact_info?: Json | null
           created_at?: string
+          department?: string | null
           email?: string | null
           escalation_level?: number | null
           id?: string
+          influence?: string | null
           influence_level?: string | null
+          interest?: string | null
           name: string
+          notes?: string | null
           organization?: string | null
+          phone?: string | null
           project_id?: string | null
+          projects?: string[] | null
           role?: string | null
           updated_at?: string
           workspace_id?: string | null
         }
         Update: {
+          avatar?: string | null
+          communication_preference?: string | null
           contact_info?: Json | null
           created_at?: string
+          department?: string | null
           email?: string | null
           escalation_level?: number | null
           id?: string
+          influence?: string | null
           influence_level?: string | null
+          interest?: string | null
           name?: string
+          notes?: string | null
           organization?: string | null
+          phone?: string | null
           project_id?: string | null
+          projects?: string[] | null
           role?: string | null
           updated_at?: string
           workspace_id?: string | null
