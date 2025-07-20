@@ -7,11 +7,7 @@ import DepartmentManagement from './config/DepartmentManagement';
 import SkillsManagement from './config/SkillsManagement';
 import EscalationTriggersManagement from './config/EscalationTriggersManagement';
 
-interface WorkspaceConfigurationProps {
-  workspaceId: string;
-}
-
-const WorkspaceConfiguration: React.FC<WorkspaceConfigurationProps> = ({ workspaceId }) => {
+const WorkspaceConfiguration: React.FC = () => {
   return (
     <div className="space-y-6">
       <Card>
@@ -39,15 +35,15 @@ const WorkspaceConfiguration: React.FC<WorkspaceConfigurationProps> = ({ workspa
             </TabsList>
 
             <TabsContent value="departments">
-              <DepartmentManagement workspaceId={workspaceId} />
+              <DepartmentManagement />
             </TabsContent>
 
             <TabsContent value="skills">
-              <SkillsManagement workspaceId={workspaceId} />
+              <SkillsManagement />
             </TabsContent>
 
             <TabsContent value="escalation">
-              <EscalationTriggersManagement workspaceId={workspaceId} />
+              <EscalationTriggersManagement />
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -13,7 +13,7 @@ interface ProjectGanttChartProps {
 }
 
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
-  const { tasks, milestones, loading, addTask } = useTaskManagement(projectId);
+  const { tasks, milestones, loading, createTask } = useTaskManagement(projectId);
   const [quickTask, setQuickTask] = useState({
     name: '',
     description: '',
@@ -42,10 +42,11 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         sortOrder: 0,
         assignedResources: [],
         assignedStakeholders: [],
-        dependencies: []
+        dependencies: [],
+        project_id: projectId
       };
 
-      await addTask(newTask);
+      await createTask(newTask);
       setQuickTask({
         name: '',
         description: '',

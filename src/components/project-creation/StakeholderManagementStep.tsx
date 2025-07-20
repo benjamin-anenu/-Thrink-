@@ -146,6 +146,10 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
           workspace_id: currentWorkspace?.id || '',
           status: 'active',
           interest: 'medium',
+          department: '',
+          phone: '',
+          communicationPreference: 'Email',
+          projects: [],
           notes: ''
         });
       }

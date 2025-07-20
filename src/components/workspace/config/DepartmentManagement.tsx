@@ -47,7 +47,17 @@ const DepartmentManagement = () => {
           return;
         }
 
-        setDepartments(data || []);
+        // Map the data to include workspace_id
+        const mappedData: Department[] = (data || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          workspace_id: currentWorkspace.id,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }));
+
+        setDepartments(mappedData);
       } finally {
         setLoading(false);
       }
@@ -80,7 +90,16 @@ const DepartmentManagement = () => {
         return;
       }
 
-      setDepartments([...departments, data]);
+      const newDepartment: Department = {
+        id: data.id,
+        name: data.name,
+        description: data.description || '',
+        workspace_id: currentWorkspace.id,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
+      setDepartments([...departments, newDepartment]);
       setFormData({ name: '', description: '' });
       toast.success('Department created successfully!');
     } catch (error) {
@@ -106,7 +125,16 @@ const DepartmentManagement = () => {
         return;
       }
 
-      setDepartments(departments.map(d => (d.id === editingId ? data : d)));
+      const updatedDepartment: Department = {
+        id: data.id,
+        name: data.name,
+        description: data.description || '',
+        workspace_id: currentWorkspace?.id || '',
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
+      setDepartments(departments.map(d => d.id === editingId ? updatedDepartment : d));
       setEditingId(null);
       setFormData({ name: '', description: '' });
       toast.success('Department updated successfully!');
