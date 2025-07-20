@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useResources } from '@/hooks/useResources';
+import { Resource } from '@/types/resource';
 import { User, Users, Clock, Target } from 'lucide-react';
 
 interface ResourceAllocationStepProps {
@@ -15,15 +16,6 @@ interface ResourceAllocationStepProps {
   onBack: () => void;
   formData: any;
   updateFormData: (data: any) => void;
-}
-
-interface ResourceData {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  email: string;
-  workspace_id: string;
 }
 
 const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
@@ -35,18 +27,12 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
   const { resources, loading } = useResources();
   const [selectedResources, setSelectedResources] = useState<string[]>(formData.resources || []);
   const [allocationHours, setAllocationHours] = useState<{[key: string]: number}>(formData.allocationHours || {});
+  const [teamSize, setTeamSize] = useState(formData.teamSize || 0);
 
-  // Filter available resources (only non-deleted resources)
-  const availableResources: ResourceData[] = resources
-    .filter(resource => resource.id && resource.name)
-    .map(resource => ({
-      id: resource.id,
-      name: resource.name,
-      role: resource.role || 'Unknown Role',
-      department: resource.department || 'No Department',
-      email: resource.email || '',
-      workspace_id: resource.workspace_id || ''
-    }));
+  // Filter available resources
+  const availableResources = resources.filter(resource => 
+    resource.status === 'active' && !resource.isDeleted
+  );
 
   const handleResourceToggle = (resourceId: string) => {
     setSelectedResources(prev => {
@@ -79,12 +65,16 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
     onNext();
   };
 
-  const getResourceById = (id: string): ResourceData | undefined => {
+  const getResourceById = (id: string): Resource | undefined => {
     return availableResources.find(r => r.id === id);
   };
 
   const calculateTotalAllocation = () => {
     return Object.values(allocationHours).reduce((sum, hours) => sum + hours, 0);
+  };
+
+  const getResourceSkills = (resource: Resource) => {
+    return resource.skills?.slice(0, 3).map(skill => skill.name).join(', ') || 'No skills listed';
   };
 
   return (
@@ -127,6 +117,7 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                       onCheckedChange={() => handleResourceToggle(resource.id)}
                     />
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={resource.avatar} />
                       <AvatarFallback>
                         {resource.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
@@ -138,11 +129,11 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                             {resource.name}
                           </Label>
                           <p className="text-sm text-muted-foreground">
-                            {resource.role} • {resource.department}
+                            {resource.role} • {getResourceSkills(resource)}
                           </p>
                         </div>
-                        <Badge variant="default">
-                          Available
+                        <Badge variant={resource.status === 'active' ? 'default' : 'secondary'}>
+                          {resource.status}
                         </Badge>
                       </div>
                     </div>
@@ -164,6 +155,7 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                   return (
                     <div key={resourceId} className="flex items-center space-x-3 p-3 border rounded-lg">
                       <Avatar className="h-8 w-8">
+                        <AvatarImage src={resource.avatar} />
                         <AvatarFallback>
                           {resource.name.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
@@ -237,4 +229,4 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
   );
 };
 
-export default ResourceAllocationStep;
+export default ResourceAllocationStep; 

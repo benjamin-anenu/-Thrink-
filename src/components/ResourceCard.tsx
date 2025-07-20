@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,15 +20,13 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Resource } from '@/contexts/ResourceContext';
-import SoftDeleteButton from '@/components/SoftDeleteButton';
 
 interface ResourceCardProps {
   resource: Resource;
   onViewDetails: (resource: Resource) => void;
-  onDeleted?: () => void;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails, onDeleted }) => {
+const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails }) => {
   const {
     id,
     name,
@@ -139,25 +138,15 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails, on
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button 
-            onClick={() => onViewDetails(resource)} 
-            size="sm"
-            variant="outline"
-            className="flex-1"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Details
-          </Button>
-          <SoftDeleteButton
-            type="resource"
-            itemId={id}
-            itemName={name}
-            onDeleted={onDeleted}
-            size="sm"
-            className="flex-1"
-          />
-        </div>
+        <Button 
+          onClick={() => onViewDetails(resource)} 
+          className="w-full"
+          size="sm"
+          variant="outline"
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          View More Details
+        </Button>
       </CardContent>
     </Card>
   );

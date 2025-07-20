@@ -188,15 +188,10 @@ const AssignmentModal = ({ isOpen, onClose, resourceId, resourceName }: Assignme
                         <td className="p-2 font-medium">{task.name}</td>
                         <td className="p-2">{task.start_date ? new Date(task.start_date).toLocaleDateString() : '-'}</td>
                         <td className="p-2">{task.end_date ? new Date(task.end_date).toLocaleDateString() : '-'}</td>
-                        <td className="p-2">
-                          {task.assigned_resource_id 
-                            ? 'Assigned'
-                            : <span className="text-orange-600">Unassigned</span>
-                          }
-                        </td>
+                        <td className="p-2">{task.assigned_resource_id ? task.assigned_resource_id : <span className="text-orange-600">Unassigned</span>}</td>
                         <td className="p-2">{task.status || '-'}</td>
                         <td className="p-2">
-                          {(!task.assigned_resource_id || task.assigned_resource_id !== resourceId) && resourceId && (
+                          {!task.assigned_resource_id && resourceId && (
                             <Button size="sm" onClick={() => {/* TODO: implement assign logic */}}>Assign</Button>
                           )}
                         </td>

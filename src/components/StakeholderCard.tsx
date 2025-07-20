@@ -25,14 +25,12 @@ interface StakeholderCardProps {
   stakeholder: Stakeholder;
   onEdit: (stakeholder: Stakeholder) => void;
   onDelete?: (stakeholder: Stakeholder) => void;
-  onContact?: (stakeholder: Stakeholder) => void;
 }
 
-const StakeholderCard = ({ stakeholder, onEdit, onDelete, onContact }: StakeholderCardProps) => {
+const StakeholderCard = ({ stakeholder, onEdit, onDelete }: StakeholderCardProps) => {
   const getInfluenceColor = (influence: string | undefined) => {
     switch ((influence?.toLowerCase?.() ?? '')) {
-      case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
-      case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300';
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
       case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
       case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
@@ -55,12 +53,6 @@ const StakeholderCard = ({ stakeholder, onEdit, onDelete, onContact }: Stakehold
     }
   };
 
-  const handleContact = () => {
-    if (onContact) {
-      onContact(stakeholder);
-    }
-  };
-
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -76,11 +68,6 @@ const StakeholderCard = ({ stakeholder, onEdit, onDelete, onContact }: Stakehold
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {onContact && (
-              <Button variant="ghost" size="sm" onClick={handleContact}>
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-            )}
             <Button variant="ghost" size="sm" onClick={() => onEdit(stakeholder)}>
               <Edit className="h-4 w-4" />
             </Button>

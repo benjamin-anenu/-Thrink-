@@ -144,7 +144,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map(dept => (
-                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
