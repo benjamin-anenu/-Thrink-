@@ -63,7 +63,9 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
         projects: [],
         phone: '',
         department: '',
-        communication_preference: 'email' as const
+        communication_preference: 'email' as const,
+        communicationPreference: 'email' as const,
+        status: 'active' as const
       };
 
       await createStakeholder(stakeholderData);
@@ -243,7 +245,6 @@ const StakeholderManagementStep: React.FC<StakeholderManagementStepProps> = ({
                     onClick={() => handleStakeholderSelection(stakeholder.id)}
                   >
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={stakeholder.avatar} />
                       <AvatarFallback>
                         {stakeholder.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>

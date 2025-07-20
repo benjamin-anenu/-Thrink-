@@ -36,10 +36,17 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
   const [selectedResources, setSelectedResources] = useState<string[]>(formData.resources || []);
   const [allocationHours, setAllocationHours] = useState<{[key: string]: number}>(formData.allocationHours || {});
 
-  // Filter available resources (since we don't have status/isDeleted, we'll use all resources)
-  const availableResources = resources.filter(resource => 
-    resource.id && resource.name
-  );
+  // Filter available resources (only non-deleted resources)
+  const availableResources: ResourceData[] = resources
+    .filter(resource => resource.id && resource.name)
+    .map(resource => ({
+      id: resource.id,
+      name: resource.name,
+      role: resource.role || 'Unknown Role',
+      department: resource.department || 'No Department',
+      email: resource.email || '',
+      workspace_id: resource.workspace_id || ''
+    }));
 
   const handleResourceToggle = (resourceId: string) => {
     setSelectedResources(prev => {
@@ -78,11 +85,6 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
 
   const calculateTotalAllocation = () => {
     return Object.values(allocationHours).reduce((sum, hours) => sum + hours, 0);
-  };
-
-  const getResourceSkills = (resource: ResourceData) => {
-    // Since skills aren't in the current resource type, we'll return a placeholder
-    return 'Skills not defined';
   };
 
   return (
@@ -136,7 +138,7 @@ const ResourceAllocationStep: React.FC<ResourceAllocationStepProps> = ({
                             {resource.name}
                           </Label>
                           <p className="text-sm text-muted-foreground">
-                            {resource.role} • {resource.department || 'No department'}
+                            {resource.role} • {resource.department}
                           </p>
                         </div>
                         <Badge variant="default">

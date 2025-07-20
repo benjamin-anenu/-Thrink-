@@ -26,8 +26,6 @@ export const useRecycleBin = () => {
     
     try {
       setLoading(true);
-      // For now, we'll simulate the recycle bin functionality
-      // by querying deleted items directly from each table
       const deletedItems: RecycleBinItem[] = [];
 
       // Get deleted projects
@@ -39,15 +37,17 @@ export const useRecycleBin = () => {
 
       if (deletedProjects) {
         deletedProjects.forEach(project => {
-          deletedItems.push({
-            id: `project-${project.id}`,
-            item_type: 'project',
-            item_id: project.id,
-            item_data: project,
-            deleted_at: project.deleted_at,
-            deleted_by: project.deleted_by,
-            auto_delete_at: new Date(new Date(project.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
-          });
+          if (project.deleted_at) {
+            deletedItems.push({
+              id: `project-${project.id}`,
+              item_type: 'project',
+              item_id: project.id,
+              item_data: project,
+              deleted_at: project.deleted_at,
+              deleted_by: project.deleted_by || '',
+              auto_delete_at: new Date(new Date(project.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
+            });
+          }
         });
       }
 
@@ -59,15 +59,17 @@ export const useRecycleBin = () => {
 
       if (deletedResources) {
         deletedResources.forEach(resource => {
-          deletedItems.push({
-            id: `resource-${resource.id}`,
-            item_type: 'resource',
-            item_id: resource.id,
-            item_data: resource,
-            deleted_at: resource.deleted_at || new Date().toISOString(),
-            deleted_by: resource.deleted_by || '',
-            auto_delete_at: new Date(new Date(resource.deleted_at || new Date()).getTime() + 48 * 60 * 60 * 1000).toISOString()
-          });
+          if (resource.deleted_at) {
+            deletedItems.push({
+              id: `resource-${resource.id}`,
+              item_type: 'resource',
+              item_id: resource.id,
+              item_data: resource,
+              deleted_at: resource.deleted_at,
+              deleted_by: resource.deleted_by || '',
+              auto_delete_at: new Date(new Date(resource.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
+            });
+          }
         });
       }
 
@@ -79,15 +81,17 @@ export const useRecycleBin = () => {
 
       if (deletedStakeholders) {
         deletedStakeholders.forEach(stakeholder => {
-          deletedItems.push({
-            id: `stakeholder-${stakeholder.id}`,
-            item_type: 'stakeholder',
-            item_id: stakeholder.id,
-            item_data: stakeholder,
-            deleted_at: stakeholder.deleted_at || new Date().toISOString(),
-            deleted_by: stakeholder.deleted_by || '',
-            auto_delete_at: new Date(new Date(stakeholder.deleted_at || new Date()).getTime() + 48 * 60 * 60 * 1000).toISOString()
-          });
+          if (stakeholder.deleted_at) {
+            deletedItems.push({
+              id: `stakeholder-${stakeholder.id}`,
+              item_type: 'stakeholder',
+              item_id: stakeholder.id,
+              item_data: stakeholder,
+              deleted_at: stakeholder.deleted_at,
+              deleted_by: stakeholder.deleted_by || '',
+              auto_delete_at: new Date(new Date(stakeholder.deleted_at).getTime() + 48 * 60 * 60 * 1000).toISOString()
+            });
+          }
         });
       }
 

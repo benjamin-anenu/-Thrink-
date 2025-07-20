@@ -34,19 +34,6 @@ export const useSoftDelete = () => {
 
       if (tasksError) throw tasksError;
 
-      // Store in recycle bin
-      const { error: recycleError } = await supabase
-        .from('recycle_bin')
-        .insert({
-          workspace_id: project.workspace_id,
-          item_type: 'project',
-          item_id: projectId,
-          item_data: project,
-          deleted_by: (await supabase.auth.getUser()).data.user?.id
-        });
-
-      if (recycleError) throw recycleError;
-
       // Soft delete the project
       const { error: deleteError } = await supabase
         .from('projects')
@@ -88,24 +75,11 @@ export const useSoftDelete = () => {
       // Check if resource is assigned to active projects
       const { data: activeAssignments, error: assignmentError } = await supabase
         .from('project_tasks')
-        .select('id, name, project_id, projects(name)')
+        .select('id, name, project_id')
         .contains('assigned_resources', [resourceId])
         .neq('status', 'Completed');
 
       if (assignmentError) throw assignmentError;
-
-      // Store in recycle bin
-      const { error: recycleError } = await supabase
-        .from('recycle_bin')
-        .insert({
-          workspace_id: resource.workspace_id,
-          item_type: 'resource',
-          item_id: resourceId,
-          item_data: resource,
-          deleted_by: (await supabase.auth.getUser()).data.user?.id
-        });
-
-      if (recycleError) throw recycleError;
 
       // Soft delete the resource
       const { error: deleteError } = await supabase
@@ -144,19 +118,6 @@ export const useSoftDelete = () => {
         .single();
 
       if (fetchError) throw fetchError;
-
-      // Store in recycle bin
-      const { error: recycleError } = await supabase
-        .from('recycle_bin')
-        .insert({
-          workspace_id: stakeholder.workspace_id,
-          item_type: 'stakeholder',
-          item_id: stakeholderId,
-          item_data: stakeholder,
-          deleted_by: (await supabase.auth.getUser()).data.user?.id
-        });
-
-      if (recycleError) throw recycleError;
 
       // Soft delete the stakeholder
       const { error: deleteError } = await supabase
