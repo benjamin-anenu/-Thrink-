@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProjectReportsKPIs } from './reports/ProjectReportsKPIs';
-import { ProjectReportsCharts } from './reports/ProjectReportsCharts';
-import { ProjectReportsPerformance } from './reports/ProjectReportsPerformance';
-import { ProjectReportsInsights } from './reports/ProjectReportsInsights';
-import { ProjectReportsExport } from './reports/ProjectReportsExport';
+import ProjectReportsKPIs from './reports/ProjectReportsKPIs';
+import ProjectReportsCharts from './reports/ProjectReportsCharts';
+import ProjectReportsPerformance from './reports/ProjectReportsPerformance';
+import ProjectReportsInsights from './reports/ProjectReportsInsights';
+import ProjectReportsExport from './reports/ProjectReportsExport';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { BarChart3 } from 'lucide-react';
 

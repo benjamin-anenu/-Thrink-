@@ -188,7 +188,7 @@ const ProjectDocumentation: React.FC<ProjectDocumentationProps> = ({ projectId }
 
       // Create download link
       const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
       a.download = document.file_name;
       a.click();

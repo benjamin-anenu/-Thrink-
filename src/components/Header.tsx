@@ -6,15 +6,15 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { UserButton } from '@/components/auth/UserButton';
 import { GlobalConfigModal } from '@/components/GlobalConfigModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Logo } from '@/components/Logo';
+import Logo from '@/components/Logo';
 import { Home, BarChart3, Users, FolderOpen, Building } from 'lucide-react';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
 
-  // Only show global config for owners
-  const showGlobalConfig = userRole === 'owner';
+  // Only show global config for authenticated users (we'll add role check later)
+  const showGlobalConfig = !!user;
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

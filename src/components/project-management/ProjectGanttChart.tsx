@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,24 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleTaskCreate = async (taskData: any) => {
+    try {
+      await createTask(taskData);
+      setShowTaskCreator(false);
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
+
+  const handleMilestoneCreate = async (milestoneData: any) => {
+    try {
+      await createMilestone(milestoneData);
+      setShowMilestoneCreator(false);
+    } catch (error) {
+      console.error('Error creating milestone:', error);
     }
   };
 
@@ -183,8 +202,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 {showTaskCreator && (
                   <InlineTaskCreator
                     type="task"
-                    onCreateTask={createTask}
-                    onCreateMilestone={createMilestone}
+                    onCreateTask={handleTaskCreate}
+                    onCreateMilestone={handleMilestoneCreate}
                     onCancel={() => setShowTaskCreator(false)}
                   />
                 )}
@@ -193,8 +212,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                 {showMilestoneCreator && (
                   <InlineTaskCreator
                     type="milestone"
-                    onCreateTask={createTask}
-                    onCreateMilestone={createMilestone}
+                    onCreateTask={handleTaskCreate}
+                    onCreateMilestone={handleMilestoneCreate}
                     onCancel={() => setShowMilestoneCreator(false)}
                   />
                 )}
