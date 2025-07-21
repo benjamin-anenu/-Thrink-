@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Edit2, Trash2, Clock } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import TaskActionsCell from './TaskActionsCell';
 import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
@@ -56,6 +57,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   }>>([]);
   const [showCascadeNotification, setShowCascadeNotification] = useState(false);
   const [isCriticalPath, setIsCriticalPath] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Check if task is on critical path
   useEffect(() => {
@@ -75,50 +77,86 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   }, [task.id, projectId]);
 
   const handleFieldUpdate = async (field: keyof ProjectTask, value: any) => {
-    // Handle dependency updates with cascade logic
-    if (field === 'dependencies') {
-      try {
+    try {
+      setIsUpdating(true);
+      console.log('TaskTableRow: Updating field', field, 'with value:', value);
+
+      // Handle dependency updates with cascade logic
+      if (field === 'dependencies') {
+        console.log('TaskTableRow: Processing dependency update');
+        
         // Update the task first
         await onUpdateTask(task.id, { [field]: value });
         
-        // Then trigger cascade updates
-        const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(task.id);
+        // Show loading toast
+        const loadingToast = toast.loading('Updating task dependencies and dependent tasks...');
         
-        if (cascadeResult.totalUpdated > 0) {
-          setCascadeUpdates(cascadeResult.updatedTasks);
-          setShowCascadeNotification(true);
-          
-          // Hide notification after 5 seconds
-          setTimeout(() => {
-            setShowCascadeNotification(false);
-            setCascadeUpdates([]);
-          }, 5000);
-        }
-      } catch (error) {
-        console.error('Error updating dependencies:', error);
-      }
-    } else {
-      // Handle other field updates
-      await onUpdateTask(task.id, { [field]: value });
-      
-      // If updating start/end dates, trigger cascade updates
-      if (field === 'startDate' || field === 'endDate') {
         try {
+          // Then trigger cascade updates
           const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(task.id);
+          
+          console.log('TaskTableRow: Cascade result:', cascadeResult);
           
           if (cascadeResult.totalUpdated > 0) {
             setCascadeUpdates(cascadeResult.updatedTasks);
             setShowCascadeNotification(true);
             
+            toast.success(`Dependencies updated! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} adjusted automatically.`, {
+              id: loadingToast,
+              duration: 5000
+            });
+            
+            // Hide notification after 5 seconds
             setTimeout(() => {
               setShowCascadeNotification(false);
               setCascadeUpdates([]);
             }, 5000);
+          } else {
+            toast.success('Dependencies updated successfully!', {
+              id: loadingToast
+            });
           }
-        } catch (error) {
-          console.error('Error cascading updates:', error);
+        } catch (cascadeError) {
+          console.error('TaskTableRow: Cascade error:', cascadeError);
+          toast.error('Dependencies updated, but some dependent tasks may not have been adjusted automatically.', {
+            id: loadingToast
+          });
         }
+      } else {
+        // Handle other field updates
+        await onUpdateTask(task.id, { [field]: value });
+        
+        // If updating start/end dates, trigger cascade updates
+        if (field === 'startDate' || field === 'endDate') {
+          console.log('TaskTableRow: Date updated, triggering cascade');
+          
+          try {
+            const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(task.id);
+            
+            if (cascadeResult.totalUpdated > 0) {
+              setCascadeUpdates(cascadeResult.updatedTasks);
+              setShowCascadeNotification(true);
+              
+              toast.success(`Task updated! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} adjusted automatically.`);
+              
+              setTimeout(() => {
+                setShowCascadeNotification(false);
+                setCascadeUpdates([]);
+              }, 5000);
+            }
+          } catch (cascadeError) {
+            console.error('TaskTableRow: Cascade error after date update:', cascadeError);
+            // Don't show error toast for cascade failures on date updates
+          }
+        }
+        
+        toast.success('Task updated successfully!');
       }
+    } catch (error) {
+      console.error('TaskTableRow: Update error:', error);
+      toast.error(`Failed to update task: ${error.message}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -189,7 +227,8 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
     <>
       <TableRow className={cn(
         "hover:bg-muted/50 relative",
-        isCriticalPath && "bg-red-50 border-l-4 border-red-500"
+        isCriticalPath && "bg-red-50 border-l-4 border-red-500",
+        isUpdating && "opacity-60"
       )}>
         {/* Critical Path Indicator */}
         {isCriticalPath && (
@@ -200,11 +239,21 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
           </div>
         )}
 
+        {/* Update Status Indicator */}
+        {isUpdating && (
+          <div className="absolute top-1 left-1">
+            <Badge variant="outline" className="text-xs">
+              <Clock className="h-3 w-3 mr-1 animate-spin" />
+              Updating...
+            </Badge>
+          </div>
+        )}
+
         {/* Cascade Update Notification */}
         {showCascadeNotification && (
           <div className="absolute top-0 left-0 right-0 z-10 bg-blue-100 border border-blue-200 rounded-md p-2 mx-2 mt-1">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <CheckCircle className="h-4 w-4 text-blue-600" />
               <span className="text-sm text-blue-800">
                 Updated {cascadeUpdates.length} dependent task{cascadeUpdates.length !== 1 ? 's' : ''} due to dependency changes
               </span>
@@ -218,6 +267,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             value={task.name}
             onSave={(value) => handleFieldUpdate('name', value)}
             placeholder="Task name"
+            disabled={isUpdating}
           />
         </TableCell>
 
@@ -232,6 +282,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
                 {value}
               </Badge>
             )}
+            disabled={isUpdating}
           />
         </TableCell>
 
@@ -246,6 +297,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
                 {value}
               </Badge>
             )}
+            disabled={isUpdating}
           />
         </TableCell>
 
@@ -256,6 +308,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             options={availableResources.map(r => ({ id: r.id, name: r.name }))}
             onSave={(value) => handleFieldUpdate('assignedResources', value)}
             placeholder="Assign resources"
+            disabled={isUpdating}
           />
         </TableCell>
 
@@ -266,6 +319,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
               value={task.startDate || ''}
               onSave={(value) => handleFieldUpdate('startDate', value)}
               placeholder="Start date"
+              disabled={isUpdating}
             />
             {task.manualOverrideDates && (
               <Badge variant="outline" className="text-xs">
@@ -282,6 +336,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
               value={task.endDate || ''}
               onSave={(value) => handleFieldUpdate('endDate', value)}
               placeholder="End date"
+              disabled={isUpdating}
             />
             {task.manualOverrideDates && (
               <Badge variant="outline" className="text-xs">
@@ -320,6 +375,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             allTasks={allTasks}
             currentTaskId={task.id}
             onSave={(dependencies) => handleFieldUpdate('dependencies', dependencies)}
+            disabled={isUpdating}
           />
         </TableCell>
 
@@ -341,6 +397,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
                 <span className="text-muted-foreground">None</span>
               );
             }}
+            disabled={isUpdating}
           />
         </TableCell>
 
@@ -378,6 +435,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             onEdit={onEditTask}
             onDelete={onDeleteTask}
             onRebaseline={onRebaselineTask}
+            disabled={isUpdating}
           />
         </TableCell>
       </TableRow>

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask } from '@/types/project';
 
@@ -43,28 +44,38 @@ export class DependencyCalculationService {
     dependencies: string[]
   ): Promise<DependencyCalculationResult> {
     try {
+      console.log('DependencyCalculationService: Calculating dates for task', taskId, 'with dependencies:', dependencies);
+      
       const { data, error } = await supabase.rpc('calculate_task_dates_from_dependencies', {
         task_id_param: taskId,
         task_duration: duration,
         task_dependencies: dependencies
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('DependencyCalculationService: Database function error:', error);
+        throw error;
+      }
+
+      console.log('DependencyCalculationService: Raw result from database:', data);
 
       const result = data?.[0];
-      return {
+      const calculationResult = {
         suggestedStartDate: result?.suggested_start_date || null,
         suggestedEndDate: result?.suggested_end_date || null,
         hasConflicts: result?.has_conflicts || false,
-        conflictDetails: []
+        conflictDetails: result?.conflict_details || []
       };
+
+      console.log('DependencyCalculationService: Final calculation result:', calculationResult);
+      return calculationResult;
     } catch (error) {
       console.error('Error calculating task dates from dependencies:', error);
       return {
         suggestedStartDate: null,
         suggestedEndDate: null,
         hasConflicts: false,
-        conflictDetails: []
+        conflictDetails: [`Error calculating dates: ${error.message}`]
       };
     }
   }
@@ -84,11 +95,18 @@ export class DependencyCalculationService {
     totalUpdated: number;
   }> {
     try {
+      console.log('DependencyCalculationService: Cascading updates for task:', updatedTaskId);
+      
       const { data, error } = await supabase.rpc('cascade_dependency_updates', {
         updated_task_id: updatedTaskId
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('DependencyCalculationService: Cascade function error:', error);
+        throw error;
+      }
+
+      console.log('DependencyCalculationService: Cascade result:', data);
 
       const updatedTasks = (data || []).map((row: any) => ({
         taskId: row.updated_task_id,
@@ -99,10 +117,13 @@ export class DependencyCalculationService {
         updateReason: row.update_reason
       }));
 
-      return {
+      const result = {
         updatedTasks,
         totalUpdated: updatedTasks.length
       };
+
+      console.log('DependencyCalculationService: Final cascade result:', result);
+      return result;
     } catch (error) {
       console.error('Error cascading dependency updates:', error);
       return {
@@ -165,6 +186,13 @@ export class DependencyCalculationService {
     lagDays: number
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('DependencyCalculationService: Validating dependency:', {
+        taskId,
+        dependencyTaskId,
+        dependencyType,
+        lagDays
+      });
+
       // Check for circular dependency
       const hasCircular = await this.checkCircularDependency(taskId, dependencyTaskId);
       if (hasCircular) {
@@ -181,7 +209,10 @@ export class DependencyCalculationService {
         .eq('id', taskId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('DependencyCalculationService: Error fetching task:', fetchError);
+        throw fetchError;
+      }
 
       const currentDependencies = currentTask.dependencies || [];
       const existingDep = currentDependencies.find(dep => dep.startsWith(dependencyTaskId));
@@ -193,6 +224,7 @@ export class DependencyCalculationService {
         };
       }
 
+      console.log('DependencyCalculationService: Validation passed');
       return { success: true };
     } catch (error) {
       console.error('Error validating dependency:', error);
@@ -242,13 +274,21 @@ export class DependencyCalculationService {
    */
   static async checkCircularDependency(taskId: string, newDependencyId: string): Promise<boolean> {
     try {
+      console.log('DependencyCalculationService: Checking circular dependency:', taskId, '->', newDependencyId);
+      
       const { data, error } = await supabase.rpc('check_circular_dependency', {
         task_id_param: taskId,
         new_dependency_id: newDependencyId
       });
 
-      if (error) throw error;
-      return data || false;
+      if (error) {
+        console.error('DependencyCalculationService: Circular check error:', error);
+        throw error;
+      }
+      
+      const isCircular = data || false;
+      console.log('DependencyCalculationService: Circular dependency result:', isCircular);
+      return isCircular;
     } catch (error) {
       console.error('Error checking circular dependency:', error);
       return false;
@@ -260,12 +300,19 @@ export class DependencyCalculationService {
    */
   static async setManualOverride(taskId: string, override: boolean): Promise<void> {
     try {
+      console.log('DependencyCalculationService: Setting manual override for task:', taskId, 'to:', override);
+      
       const { error } = await supabase
         .from('project_tasks')
         .update({ manual_override_dates: override })
         .eq('id', taskId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('DependencyCalculationService: Manual override error:', error);
+        throw error;
+      }
+      
+      console.log('DependencyCalculationService: Manual override set successfully');
     } catch (error) {
       console.error('Error setting manual override:', error);
       throw error;

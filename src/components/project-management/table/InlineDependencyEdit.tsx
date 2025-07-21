@@ -13,6 +13,7 @@ interface InlineDependencyEditProps {
   currentTaskId: string;
   onSave: (dependencies: string[]) => void;
   className?: string;
+  disabled?: boolean;
 }
 
 interface ParsedDependency {
@@ -27,7 +28,8 @@ const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
   allTasks,
   currentTaskId,
   onSave,
-  className = ""
+  className = "",
+  disabled = false
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -90,7 +92,14 @@ const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
   };
 
   const handleSave = (dependencies: string[]) => {
+    console.log('InlineDependencyEdit: Saving dependencies:', dependencies);
     onSave(dependencies);
+  };
+
+  const handleOpenModal = () => {
+    if (!disabled) {
+      setIsModalOpen(true);
+    }
   };
 
   return (
@@ -98,10 +107,11 @@ const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
       <div
         className={cn(
           "group cursor-pointer hover:bg-muted/50 p-2 rounded min-h-[32px] flex items-center justify-between gap-2",
+          disabled && "opacity-50 cursor-not-allowed",
           className
         )}
-        onClick={() => setIsModalOpen(true)}
-        title="Click to manage dependencies"
+        onClick={handleOpenModal}
+        title={disabled ? "Updating..." : "Click to manage dependencies"}
       >
         <div className="flex flex-wrap gap-1 items-center flex-1">
           {value && value.length > 0 ? (
@@ -121,11 +131,15 @@ const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={cn(
+            "h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+            disabled && "opacity-0"
+          )}
           onClick={(e) => {
             e.stopPropagation();
-            setIsModalOpen(true);
+            handleOpenModal();
           }}
+          disabled={disabled}
         >
           <Edit2 className="h-3 w-3" />
         </Button>
