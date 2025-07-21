@@ -76,7 +76,8 @@ const RecycleBin = () => {
       if (error) throw error;
 
       toast.success(`${item.name} has been restored`);
-      fetchDeletedItems();
+      // Remove item from local state immediately
+      setDeletedItems(prev => prev.filter(i => i.id !== item.id));
     } catch (error) {
       console.error('Error restoring item:', error);
       toast.error('Failed to restore item');
@@ -92,15 +93,38 @@ const RecycleBin = () => {
 
     setPermanentDeleting(item.id);
     try {
-      const { error } = await supabase
+      // First, delete related records that might block the deletion
+      const { error: tasksError } = await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('project_id', item.id);
+
+      if (tasksError) {
+        console.error('Error deleting project tasks:', tasksError);
+        // Continue with project deletion even if tasks deletion fails
+      }
+
+      const { error: milestonesError } = await supabase
+        .from('milestones')
+        .delete()
+        .eq('project_id', item.id);
+
+      if (milestonesError) {
+        console.error('Error deleting milestones:', milestonesError);
+        // Continue with project deletion even if milestones deletion fails
+      }
+
+      // Now delete the project
+      const { error: projectError } = await supabase
         .from('projects')
         .delete()
         .eq('id', item.id);
 
-      if (error) throw error;
+      if (projectError) throw projectError;
 
       toast.success(`${item.name} has been permanently deleted`);
-      fetchDeletedItems();
+      // Remove item from local state immediately
+      setDeletedItems(prev => prev.filter(i => i.id !== item.id));
     } catch (error) {
       console.error('Error permanently deleting item:', error);
       toast.error('Failed to permanently delete item');

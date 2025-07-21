@@ -6,13 +6,14 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { 
   Calendar, Users, TrendingUp, AlertTriangle, 
-  CheckCircle, Clock, Eye, Edit
+  CheckCircle, Clock, Eye, Edit, Trash2
 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { transformProjectForModal, ProjectDetailsModalData } from '@/types/project-modal';
+import { toast } from 'sonner';
 
 interface Task {
   id: string;
@@ -26,11 +27,12 @@ interface Task {
 }
 
 const ProjectDisplay = () => {
-  const { projects } = useProject();
+  const { projects, refreshProjects } = useProject();
   const { currentWorkspace } = useWorkspace();
   const [selectedProject, setSelectedProject] = useState<ProjectDetailsModalData | null>(null);
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingProject, setDeletingProject] = useState<string | null>(null);
 
   // Filter projects by current workspace
   const workspaceProjects = projects.filter(project => 
@@ -169,6 +171,33 @@ const ProjectDisplay = () => {
     }
   };
 
+  const handleDeleteProject = async (project: any) => {
+    if (!window.confirm(`Are you sure you want to delete "${project.name}"? This action can be undone from the recycle bin.`)) {
+      return;
+    }
+
+    setDeletingProject(project.id);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', project.id);
+
+      if (error) throw error;
+
+      toast.success(`${project.name} has been moved to recycle bin`);
+      refreshProjects();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error('Failed to delete project');
+    } finally {
+      setDeletingProject(null);
+    }
+  };
+
   if (workspaceProjects.length === 0) {
     return (
       <div className="text-center py-12">
@@ -277,6 +306,14 @@ const ProjectDisplay = () => {
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Manage
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteProject(project)}
+                    disabled={deletingProject === project.id}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>

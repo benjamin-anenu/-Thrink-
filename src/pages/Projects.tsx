@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -12,14 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Users, Target, BarChart3, Upload, Grid3x3, List, Eye, ArrowRight, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, addProject } = useProject();
+  const { projects, addProject, refreshProjects } = useProject();
   const { currentWorkspace } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreationWizard, setShowCreationWizard] = useState(false);
@@ -27,6 +30,7 @@ const Projects = () => {
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
+  const [deletingProject, setDeletingProject] = useState<string | null>(null);
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,6 +85,33 @@ const Projects = () => {
 
   const handleOpenProject = (projectId: string) => {
     navigate(`/project/${projectId}`);
+  };
+
+  const handleDeleteProject = async (project: any) => {
+    if (!window.confirm(`Are you sure you want to delete "${project.name}"? This action can be undone from the recycle bin.`)) {
+      return;
+    }
+
+    setDeletingProject(project.id);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', project.id);
+
+      if (error) throw error;
+
+      toast.success(`${project.name} has been moved to recycle bin`);
+      refreshProjects();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error('Failed to delete project');
+    } finally {
+      setDeletingProject(null);
+    }
   };
 
   return (
@@ -145,18 +176,18 @@ const Projects = () => {
           </TabsList>
 
           <TabsContent value="grid" className="mt-6">
-            {/* Projects Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Projects Grid - Changed to 4 columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {filteredProjects.map((project) => (
                 <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg mb-1">{project.name}</CardTitle>
-                        <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base mb-1 line-clamp-1">{project.name}</CardTitle>
+                        <CardDescription className="line-clamp-2 text-xs">{project.description}</CardDescription>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
+                      <div className="flex items-center gap-1 ml-2">
+                        <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white text-xs`}>
                           {project.priority}
                         </Badge>
                         <HealthIndicator 
@@ -166,77 +197,90 @@ const Projects = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3">
                     {/* Progress */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
                         <span>Progress</span>
                         <span>{project.progress}%</span>
                       </div>
-                      <Progress value={project.progress} className="h-2" />
+                      <Progress value={project.progress} className="h-1" />
                     </div>
 
                     {/* Project Details */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2 text-xs">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
                           <p className="font-medium">Timeline</p>
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-muted-foreground truncate">
                             {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <Users className="h-3 w-3 text-muted-foreground" />
                         <div>
                           <p className="font-medium">Team</p>
-                          <p className="text-muted-foreground text-xs">{project.teamSize} members</p>
+                          <p className="text-muted-foreground">{project.teamSize} members</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <Target className="h-3 w-3 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
                           <p className="font-medium">Budget</p>
-                          <p className="text-muted-foreground text-xs">{project.budget}</p>
+                          <p className="text-muted-foreground truncate">{project.budget}</p>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{project.status}</Badge>
                       </div>
                     </div>
 
+                    {/* Status Badge */}
+                    <Badge variant="secondary" className="text-xs">{project.status}</Badge>
+
                     {/* Tags */}
-                    <div className="flex flex-wrap gap-2">
-                      {project.tags.map((tag, index) => (
+                    <div className="flex flex-wrap gap-1">
+                      {project.tags.slice(0, 2).map((tag, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
                           {tag}
                         </Badge>
                       ))}
+                      {project.tags.length > 2 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{project.tags.length - 2}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-1 pt-2">
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex-1 flex items-center gap-2"
+                        className="flex-1 flex items-center gap-1 text-xs"
                         onClick={() => handleViewDetails(project)}
                       >
-                        <Eye className="h-4 w-4" />
-                        View Details
+                        <Eye className="h-3 w-3" />
+                        View
                       </Button>
                       <Button 
                         variant="default" 
                         size="sm" 
-                        className="flex-1 flex items-center gap-2"
+                        className="flex-1 flex items-center gap-1 text-xs"
                         onClick={() => handleOpenProject(project.id)}
                       >
-                        <ArrowRight className="h-4 w-4" />
-                        Open Project
+                        <ArrowRight className="h-3 w-3" />
+                        Open
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="flex items-center gap-1 text-xs"
+                        onClick={() => handleDeleteProject(project)}
+                        disabled={deletingProject === project.id}
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </CardContent>
@@ -301,7 +345,7 @@ const Projects = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -315,6 +359,14 @@ const Projects = () => {
                               onClick={() => handleOpenProject(project.id)}
                             >
                               <ArrowRight className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleDeleteProject(project)}
+                              disabled={deletingProject === project.id}
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
