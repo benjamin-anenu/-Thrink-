@@ -11,6 +11,7 @@ interface InlineMultiSelectEditProps {
   onSave: (value: string[]) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 const InlineMultiSelectEdit: React.FC<InlineMultiSelectEditProps> = ({
@@ -18,7 +19,8 @@ const InlineMultiSelectEdit: React.FC<InlineMultiSelectEditProps> = ({
   options,
   onSave,
   placeholder,
-  className = ""
+  className = "",
+  disabled = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedValues, setSelectedValues] = useState(value);
@@ -81,9 +83,9 @@ const InlineMultiSelectEdit: React.FC<InlineMultiSelectEditProps> = ({
 
   return (
     <div
-      className={`cursor-pointer hover:bg-muted/50 p-1 rounded ${className}`}
-      onClick={() => setIsEditing(true)}
-      title="Click to edit"
+      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'} p-1 rounded ${className}`}
+      onClick={() => !disabled && setIsEditing(true)}
+      title={disabled ? "Editing disabled" : "Click to edit"}
     >
       {selectedValues.length > 0 ? (
         <div className="flex flex-wrap gap-1">

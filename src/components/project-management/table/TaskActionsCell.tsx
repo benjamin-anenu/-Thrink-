@@ -16,6 +16,7 @@ interface TaskActionsCellProps {
   onDeleteTask?: (taskId: string) => void;
   onRebaselineTask?: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
   densityClass?: string;
+  disabled?: boolean;
 }
 
 const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
@@ -27,7 +28,8 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   onEdit,
   onDelete,
   onRebaseline,
-  densityClass = 'py-3 px-4'
+  densityClass = 'py-3 px-4',
+  disabled = false
 }) => {
   // Use the newer prop names if available, otherwise fallback to old ones
   const handleEdit = onEdit || onEditTask;
@@ -53,9 +55,10 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleEdit?.(task)}
+            onClick={() => !disabled && handleEdit?.(task)}
             className="h-8 w-8 p-0"
-            title="Edit task"
+            title={disabled ? "Editing disabled" : "Edit task"}
+            disabled={disabled}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -63,9 +66,10 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRebaselineClick}
+              onClick={() => !disabled && handleRebaselineClick()}
               className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600"
-              title="Rebaseline task - update baseline dates to current dates"
+              title={disabled ? "Editing disabled" : "Rebaseline task - update baseline dates to current dates"}
+              disabled={disabled}
             >
               <AlertTriangle className="h-4 w-4" />
             </Button>
@@ -73,9 +77,10 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleDelete?.(task.id)}
+            onClick={() => !disabled && handleDelete?.(task.id)}
             className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-            title="Delete task"
+            title={disabled ? "Editing disabled" : "Delete task"}
+            disabled={disabled}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

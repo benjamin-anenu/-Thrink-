@@ -13,13 +13,15 @@ interface InlineDateEditProps {
   onSave: (value: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 const InlineDateEdit: React.FC<InlineDateEditProps> = ({
   value,
   onSave,
   placeholder,
-  className = ""
+  className = "",
+  disabled = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -64,9 +66,9 @@ const InlineDateEdit: React.FC<InlineDateEditProps> = ({
 
   return (
     <div
-      className={`cursor-pointer hover:bg-muted/50 p-1 rounded ${className}`}
-      onClick={() => setIsEditing(true)}
-      title="Click to edit"
+      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'} p-1 rounded ${className}`}
+      onClick={() => !disabled && setIsEditing(true)}
+      title={disabled ? "Editing disabled" : "Click to edit"}
     >
       {displayValue || <span className="text-muted-foreground italic">{placeholder}</span>}
     </div>

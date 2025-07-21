@@ -63,8 +63,7 @@ export class DependencyCalculationService {
       const calculationResult = {
         suggestedStartDate: result?.suggested_start_date || null,
         suggestedEndDate: result?.suggested_end_date || null,
-        hasConflicts: result?.has_conflicts || false,
-        conflictDetails: result?.conflict_details || []
+        hasConflicts: result?.has_conflicts || false
       };
 
       console.log('DependencyCalculationService: Final calculation result:', calculationResult);
