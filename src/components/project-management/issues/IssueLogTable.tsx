@@ -1,9 +1,9 @@
+
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { IssueStatusBadge } from '@/components/ui/issue-status-badge';
 import { AlertTriangle, Edit2, Trash2, Save, X, ExternalLink } from 'lucide-react';
@@ -60,6 +60,20 @@ export const IssueLogTable = ({
     setEditForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const formatScheduleVariance = (variance?: number) => {
+    if (variance === undefined) return '-';
+    if (variance === 0) return 'On time';
+    if (variance > 0) return `+${variance} days`;
+    return `${variance} days`;
+  };
+
+  const getVarianceColor = (variance?: number) => {
+    if (variance === undefined) return 'text-muted-foreground';
+    if (variance === 0) return 'text-green-600';
+    if (variance > 0) return 'text-red-600';
+    return 'text-green-600';
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading issues...</div>;
   }
@@ -79,12 +93,15 @@ export const IssueLogTable = ({
           <TableRow>
             <TableHead className="w-8"></TableHead>
             <TableHead>Title</TableHead>
+            <TableHead>Task</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Severity</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Assignee</TableHead>
             <TableHead>Due Date</TableHead>
+            <TableHead>Date Resolved</TableHead>
+            <TableHead>Schedule Variance</TableHead>
             <TableHead>Impact</TableHead>
             <TableHead className="w-24">Actions</TableHead>
           </TableRow>
@@ -131,6 +148,12 @@ export const IssueLogTable = ({
                     )}
                   </div>
                 )}
+              </TableCell>
+
+              <TableCell>
+                <span className="text-sm">
+                  {issue.task_name || 'No task linked'}
+                </span>
               </TableCell>
 
               <TableCell>
@@ -233,6 +256,20 @@ export const IssueLogTable = ({
                     </span>
                   )
                 )}
+              </TableCell>
+
+              <TableCell>
+                {issue.resolved_at && (
+                  <span className="text-sm">
+                    {format(new Date(issue.resolved_at), 'MMM dd, yyyy')}
+                  </span>
+                )}
+              </TableCell>
+
+              <TableCell>
+                <span className={cn("text-sm font-medium", getVarianceColor(issue.schedule_variance_days))}>
+                  {formatScheduleVariance(issue.schedule_variance_days)}
+                </span>
               </TableCell>
 
               <TableCell>

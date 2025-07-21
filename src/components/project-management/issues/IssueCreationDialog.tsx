@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ interface IssueCreationDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreateIssue: (issue: Partial<ProjectIssue>) => Promise<any>;
   generateAIInsights: (issue: ProjectIssue) => Promise<any>;
+  getTaskDetails: (taskId: string) => Promise<any>;
   projectId: string;
 }
 
@@ -24,6 +26,7 @@ export const IssueCreationDialog = ({
   onOpenChange, 
   onCreateIssue, 
   generateAIInsights,
+  getTaskDetails,
   projectId 
 }: IssueCreationDialogProps) => {
   const [formData, setFormData] = useState<Partial<ProjectIssue>>({
@@ -52,7 +55,7 @@ export const IssueCreationDialog = ({
   const fetchProjectData = async () => {
     try {
       const [tasksRes, milestonesRes, resourcesRes] = await Promise.all([
-        supabase.from('project_tasks').select('id, name').eq('project_id', projectId),
+        supabase.from('project_tasks').select('id, name, milestone_id').eq('project_id', projectId),
         supabase.from('milestones').select('id, name').eq('project_id', projectId),
         supabase.from('resources').select('id, name')
       ]);
@@ -62,6 +65,25 @@ export const IssueCreationDialog = ({
       if (resourcesRes.data) setResources(resourcesRes.data);
     } catch (error) {
       console.error('Error fetching project data:', error);
+    }
+  };
+
+  const handleTaskChange = async (taskId: string) => {
+    updateFormData('linked_task_id', taskId);
+    
+    if (taskId && taskId !== 'none') {
+      try {
+        const taskDetails = await getTaskDetails(taskId);
+        if (taskDetails?.milestone_id) {
+          updateFormData('linked_milestone_id', taskDetails.milestone_id);
+        } else {
+          updateFormData('linked_milestone_id', 'none');
+        }
+      } catch (error) {
+        console.error('Error fetching task details:', error);
+      }
+    } else {
+      updateFormData('linked_milestone_id', 'none');
     }
   };
 
@@ -246,7 +268,7 @@ export const IssueCreationDialog = ({
 
               <div>
                 <Label htmlFor="linkedTask">Linked Task</Label>
-                <Select value={formData.linked_task_id || ''} onValueChange={(value) => updateFormData('linked_task_id', value)}>
+                <Select value={formData.linked_task_id || ''} onValueChange={handleTaskChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select task" />
                   </SelectTrigger>

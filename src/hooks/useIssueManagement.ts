@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectIssue, IssueComment, IssueFilters, IssueMetrics } from '@/types/issue';
@@ -26,26 +27,48 @@ export const useIssueManagement = (projectId: string) => {
   });
   const { toast } = useToast();
 
-  // Fetch issues
+  // Fetch issues with task and milestone names
   const fetchIssues = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('project_issues')
-        .select('*')
+        .select(`
+          *,
+          project_tasks:linked_task_id (
+            id,
+            name,
+            milestone_id
+          ),
+          milestones:linked_milestone_id (
+            id,
+            name
+          )
+        `)
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      const mappedIssues: ProjectIssue[] = (data || []).map(issue => ({
-        ...issue,
-        category: issue.category as ProjectIssue['category'],
-        severity: issue.severity as ProjectIssue['severity'],
-        priority: issue.priority as ProjectIssue['priority'],
-        status: issue.status as ProjectIssue['status'],
-        attachments: (issue.attachments as any) || [],
-        tags: issue.tags || []
-      }));
+      
+      const mappedIssues: ProjectIssue[] = (data || []).map(issue => {
+        const scheduleVariance = issue.resolved_at && issue.due_date
+          ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24))
+          : undefined;
+
+        return {
+          ...issue,
+          category: issue.category as ProjectIssue['category'],
+          severity: issue.severity as ProjectIssue['severity'],
+          priority: issue.priority as ProjectIssue['priority'],
+          status: issue.status as ProjectIssue['status'],
+          attachments: (issue.attachments as any) || [],
+          tags: issue.tags || [],
+          task_name: issue.project_tasks?.name,
+          milestone_name: issue.milestones?.name,
+          schedule_variance_days: scheduleVariance
+        };
+      });
+      
       setIssues(mappedIssues);
     } catch (error) {
       console.error('Error fetching issues:', error);
@@ -54,6 +77,23 @@ export const useIssueManagement = (projectId: string) => {
       setLoading(false);
     }
   }, [projectId, toast]);
+
+  // Get task details for milestone auto-population
+  const getTaskDetails = useCallback(async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .select('id, name, milestone_id')
+        .eq('id', taskId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching task details:', error);
+      return null;
+    }
+  }, []);
 
   // Apply filters
   useEffect(() => {
@@ -166,6 +206,11 @@ export const useIssueManagement = (projectId: string) => {
   // Update issue
   const updateIssue = async (issueId: string, updates: Partial<ProjectIssue>) => {
     try {
+      // Set resolved_at when status changes to Resolved or Closed
+      if (updates.status && ['Resolved', 'Closed'].includes(updates.status)) {
+        updates.resolved_at = new Date().toISOString();
+      }
+      
       const { data, error } = await supabase
         .from('project_issues')
         .update(updates)
@@ -305,6 +350,7 @@ export const useIssueManagement = (projectId: string) => {
     updateIssue,
     deleteIssue,
     generateAIInsights,
+    getTaskDetails,
     refetch: fetchIssues
   };
 };

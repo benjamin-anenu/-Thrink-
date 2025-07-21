@@ -1,3 +1,4 @@
+
 export interface ProjectIssue {
   id: string;
   project_id: string;
@@ -23,6 +24,10 @@ export interface ProjectIssue {
   created_at: string;
   updated_at: string;
   resolved_at?: string;
+  // New computed fields
+  task_name?: string;
+  milestone_name?: string;
+  schedule_variance_days?: number;
 }
 
 export interface IssueComment {
