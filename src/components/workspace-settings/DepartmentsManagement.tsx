@@ -21,12 +21,12 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 interface Department {
   id: string;
   name: string;
-  description?: string;
-  is_active: boolean;
-  workspace_id: string;
+  description?: string | null;
+  is_active?: boolean;
+  workspace_id?: string;
   created_at: string;
   updated_at: string;
-  created_by?: string;
+  created_by?: string | null;
 }
 
 const DepartmentsManagement = () => {
@@ -52,14 +52,20 @@ const DepartmentsManagement = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('departments')
+      // Use type assertion to avoid TypeScript issues
+      const { data, error } = await (supabase
+        .from('departments') as any)
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
         .order('name');
 
       if (error) throw error;
-      setDepartments((data || []) as Department[]);
+      const departmentData = (data || []).map((dept: any) => ({
+        ...dept,
+        is_active: dept.is_active ?? true,
+        workspace_id: dept.workspace_id ?? currentWorkspace.id
+      })) as Department[];
+      setDepartments(departmentData);
     } catch (error) {
       console.error('Error fetching departments:', error);
       toast.error('Failed to load departments');

@@ -129,6 +129,8 @@ const EscalationTriggersManagement = () => {
         .filter(trigger => trigger.workspace_id === currentWorkspace.id)
         .map(trigger => ({
           id: trigger.id,
+          name: trigger.name,
+          condition_type: trigger.condition_type,
           workspace_id: currentWorkspace.id,
           is_active: trigger.is_active,
           threshold_value: trigger.threshold_value,

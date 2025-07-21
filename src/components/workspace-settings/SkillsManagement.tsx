@@ -28,11 +28,11 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 interface Skill {
   id: string;
   name: string;
-  category: string;
+  category?: string;
   description?: string;
-  workspace_id: string;
+  workspace_id?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 const skillCategories = [
@@ -73,15 +73,22 @@ const SkillsManagement = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('skills')
+      // Use type assertion to avoid TypeScript issues
+      const { data, error } = await (supabase
+        .from('skills') as any)
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
         .order('category')
         .order('name');
 
       if (error) throw error;
-      setSkills((data || []) as Skill[]);
+      const skillsData = (data || []).map((skill: any) => ({
+        ...skill,
+        category: skill.category ?? 'General',
+        workspace_id: skill.workspace_id ?? currentWorkspace.id,
+        updated_at: skill.updated_at ?? skill.created_at
+      })) as Skill[];
+      setSkills(skillsData);
     } catch (error) {
       console.error('Error fetching skills:', error);
       toast.error('Failed to load skills');
