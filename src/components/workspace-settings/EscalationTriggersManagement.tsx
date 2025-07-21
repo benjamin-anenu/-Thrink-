@@ -64,20 +64,33 @@ const EscalationTriggersManagement = () => {
     if (!currentWorkspace) return;
 
     try {
+      // When enabling, set workspace_id; when disabling, remove workspace_id
+      const updateData = isActive 
+        ? {
+            workspace_id: currentWorkspace.id,
+            is_active: true,
+            updated_at: new Date().toISOString()
+          }
+        : {
+            workspace_id: null,
+            is_active: false,
+            updated_at: new Date().toISOString()
+          };
+
       const { error } = await supabase
         .from('escalation_triggers')
-        .update({
-          workspace_id: currentWorkspace.id,
-          is_active: isActive,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', triggerId);
 
       if (error) throw error;
 
       setTriggers(prev => prev.map(trigger => 
         trigger.id === triggerId 
-          ? { ...trigger, is_active: isActive, workspace_id: currentWorkspace.id }
+          ? { 
+              ...trigger, 
+              is_active: isActive,
+              workspace_id: isActive ? currentWorkspace.id : null 
+            }
           : trigger
       ));
 
@@ -95,7 +108,6 @@ const EscalationTriggersManagement = () => {
       const { error } = await supabase
         .from('escalation_triggers')
         .update({
-          workspace_id: currentWorkspace.id,
           threshold_value: value,
           threshold_unit: unit,
           updated_at: new Date().toISOString()
@@ -109,11 +121,12 @@ const EscalationTriggersManagement = () => {
           ? { 
               ...trigger, 
               threshold_value: value, 
-              threshold_unit: unit,
-              workspace_id: currentWorkspace.id 
+              threshold_unit: unit
             }
           : trigger
       ));
+
+      toast.success('Threshold updated successfully');
     } catch (error) {
       console.error('Error updating threshold:', error);
       toast.error('Failed to update threshold');
@@ -125,27 +138,30 @@ const EscalationTriggersManagement = () => {
 
     setSaving(true);
     try {
-      const activeWorkspaceTriggers = triggers
-        .filter(trigger => trigger.workspace_id === currentWorkspace.id)
-        .map(trigger => ({
-          id: trigger.id,
-          name: trigger.name,
-          condition_type: trigger.condition_type,
-          workspace_id: currentWorkspace.id,
-          is_active: trigger.is_active,
-          threshold_value: trigger.threshold_value,
-          threshold_unit: trigger.threshold_unit,
-          updated_at: new Date().toISOString()
-        }));
+      const activeWorkspaceTriggers = triggers.filter(trigger => 
+        trigger.workspace_id === currentWorkspace.id && trigger.is_active
+      );
 
       if (activeWorkspaceTriggers.length > 0) {
-        const { error } = await supabase
-          .from('escalation_triggers')
-          .upsert(activeWorkspaceTriggers, {
-            onConflict: 'id'
-          });
+        const updatePromises = activeWorkspaceTriggers.map(trigger => 
+          supabase
+            .from('escalation_triggers')
+            .update({
+              workspace_id: currentWorkspace.id,
+              is_active: trigger.is_active,
+              threshold_value: trigger.threshold_value,
+              threshold_unit: trigger.threshold_unit,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', trigger.id)
+        );
 
-        if (error) throw error;
+        const results = await Promise.all(updatePromises);
+        const errors = results.filter(result => result.error);
+
+        if (errors.length > 0) {
+          throw new Error(`Failed to save ${errors.length} triggers`);
+        }
       }
 
       toast.success('Escalation triggers saved successfully');
