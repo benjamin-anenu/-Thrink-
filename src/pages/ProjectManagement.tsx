@@ -10,8 +10,9 @@ import ProjectTimeline from '@/components/project-management/ProjectTimeline';
 import ProjectReports from '@/components/project-management/ProjectReports';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target, FolderOpen } from 'lucide-react';
+import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target, FolderOpen, AlertTriangle } from 'lucide-react';
 import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
+import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
 
 const ProjectManagement = () => {
   const { id } = useParams();
@@ -67,7 +68,7 @@ const ProjectManagement = () => {
 
         {/* Project Management Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
               Overview
@@ -83,6 +84,10 @@ const ProjectManagement = () => {
             <TabsTrigger value="timeline" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Timeline
+            </TabsTrigger>
+            <TabsTrigger value="issues" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Issue Log
             </TabsTrigger>
             <TabsTrigger value="documentation" className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
@@ -108,6 +113,10 @@ const ProjectManagement = () => {
 
           <TabsContent value="timeline">
             <ProjectTimeline projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="issues">
+            <ProjectIssueLog projectId={project.id} />
           </TabsContent>
 
           <TabsContent value="documentation">

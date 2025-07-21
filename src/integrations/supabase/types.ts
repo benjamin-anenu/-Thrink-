@@ -520,6 +520,44 @@ export type Database = {
           },
         ]
       }
+      issue_comments: {
+        Row: {
+          comment_text: string
+          comment_type: string
+          created_at: string
+          id: string
+          issue_id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          comment_text: string
+          comment_type?: string
+          created_at?: string
+          id?: string
+          issue_id: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          comment_text?: string
+          comment_type?: string
+          created_at?: string
+          id?: string
+          issue_id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_issue_comments_issue"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "project_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       milestones: {
         Row: {
           baseline_date: string | null
@@ -962,6 +1000,116 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_issues: {
+        Row: {
+          assignee_id: string | null
+          attachments: Json | null
+          category: string
+          created_at: string
+          created_by: string
+          date_identified: string
+          description: string | null
+          due_date: string | null
+          estimated_delay_days: number | null
+          id: string
+          impact_summary: string | null
+          linked_milestone_id: string | null
+          linked_task_id: string | null
+          priority: string
+          project_id: string
+          resolved_at: string | null
+          severity: string
+          source: string | null
+          status: string
+          suggested_action: string | null
+          suggested_resolver: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          attachments?: Json | null
+          category?: string
+          created_at?: string
+          created_by: string
+          date_identified?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_delay_days?: number | null
+          id?: string
+          impact_summary?: string | null
+          linked_milestone_id?: string | null
+          linked_task_id?: string | null
+          priority?: string
+          project_id: string
+          resolved_at?: string | null
+          severity?: string
+          source?: string | null
+          status?: string
+          suggested_action?: string | null
+          suggested_resolver?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          attachments?: Json | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          date_identified?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_delay_days?: number | null
+          id?: string
+          impact_summary?: string | null
+          linked_milestone_id?: string | null
+          linked_task_id?: string | null
+          priority?: string
+          project_id?: string
+          resolved_at?: string | null
+          severity?: string
+          source?: string | null
+          status?: string
+          suggested_action?: string | null
+          suggested_resolver?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_project_issues_assignee"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_project_issues_milestone"
+            columns: ["linked_milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_project_issues_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_project_issues_task"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
             referencedColumns: ["id"]
           },
         ]
