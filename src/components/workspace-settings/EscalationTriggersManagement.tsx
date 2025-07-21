@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,7 @@ const EscalationTriggersManagement = () => {
   const fetchTriggers = async () => {
     setLoading(true);
     try {
+      // Now fetch all triggers as the RLS policy allows viewing all
       const { data, error } = await supabase
         .from('escalation_triggers')
         .select('*')

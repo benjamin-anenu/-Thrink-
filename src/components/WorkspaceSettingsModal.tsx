@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DepartmentsManagement from './workspace-settings/DepartmentsManagement';
 import SkillsManagement from './workspace-settings/SkillsManagement';
 import EscalationTriggersManagement from './workspace-settings/EscalationTriggersManagement';
+import RecycleBin from './workspace-settings/RecycleBin';
 
 interface WorkspaceSettingsModalProps {
   open: boolean;
@@ -118,136 +118,137 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="departments">Departments</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
             <TabsTrigger value="escalation">Escalation</TabsTrigger>
+            <TabsTrigger value="recycle-bin">Recycle Bin</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
             <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Basic Information</h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="name">Workspace Name *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Basic Information</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="name">Workspace Name *</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
 
-          <Separator />
+              <Separator />
 
-          {/* Access & Permissions */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Access & Permissions</h3>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Guest Access</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow people without accounts to view public projects
-                </p>
+              {/* Access & Permissions */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Access & Permissions</h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Guest Access</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Allow people without accounts to view public projects
+                    </p>
+                  </div>
+                  <Switch
+                    checked={allowGuestAccess}
+                    onCheckedChange={setAllowGuestAccess}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="defaultVisibility">Default Project Visibility</Label>
+                  <Select 
+                    value={defaultProjectVisibility} 
+                    onValueChange={(value: 'private' | 'workspace' | 'public') => setDefaultProjectVisibility(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private">Private - Only project members</SelectItem>
+                      <SelectItem value="workspace">Workspace - All workspace members</SelectItem>
+                      <SelectItem value="public">Public - Anyone with link</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Switch
-                checked={allowGuestAccess}
-                onCheckedChange={setAllowGuestAccess}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="defaultVisibility">Default Project Visibility</Label>
-              <Select 
-                value={defaultProjectVisibility} 
-                onValueChange={(value: 'private' | 'workspace' | 'public') => setDefaultProjectVisibility(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="private">Private - Only project members</SelectItem>
-                  <SelectItem value="workspace">Workspace - All workspace members</SelectItem>
-                  <SelectItem value="public">Public - Anyone with link</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <Separator />
+              <Separator />
 
-          {/* Notification Settings */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Notification Settings</h3>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Send email notifications to workspace members
-                </p>
+              {/* Notification Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Notification Settings</h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Email Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Send email notifications to workspace members
+                    </p>
+                  </div>
+                  <Switch
+                    checked={emailNotifications}
+                    onCheckedChange={setEmailNotifications}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Project Updates</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Notify when projects are created, updated, or completed
+                    </p>
+                  </div>
+                  <Switch
+                    checked={projectUpdates}
+                    onCheckedChange={setProjectUpdates}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Task Assignments</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Notify when tasks are assigned or reassigned
+                    </p>
+                  </div>
+                  <Switch
+                    checked={taskAssignments}
+                    onCheckedChange={setTaskAssignments}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Deadline Reminders</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Send reminders before project and task deadlines
+                    </p>
+                  </div>
+                  <Switch
+                    checked={deadlineReminders}
+                    onCheckedChange={setDeadlineReminders}
+                  />
+                </div>
               </div>
-              <Switch
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Project Updates</Label>
-                <p className="text-sm text-muted-foreground">
-                  Notify when projects are created, updated, or completed
-                </p>
-              </div>
-              <Switch
-                checked={projectUpdates}
-                onCheckedChange={setProjectUpdates}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Task Assignments</Label>
-                <p className="text-sm text-muted-foreground">
-                  Notify when tasks are assigned or reassigned
-                </p>
-              </div>
-              <Switch
-                checked={taskAssignments}
-                onCheckedChange={setTaskAssignments}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Deadline Reminders</Label>
-                <p className="text-sm text-muted-foreground">
-                  Send reminders before project and task deadlines
-                </p>
-              </div>
-              <Switch
-                checked={deadlineReminders}
-                onCheckedChange={setDeadlineReminders}
-              />
-            </div>
-          </div>
-          
+              
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
@@ -269,6 +270,10 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
 
           <TabsContent value="escalation">
             <EscalationTriggersManagement />
+          </TabsContent>
+
+          <TabsContent value="recycle-bin">
+            <RecycleBin />
           </TabsContent>
         </Tabs>
       </DialogContent>
