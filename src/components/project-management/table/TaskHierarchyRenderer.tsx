@@ -53,11 +53,7 @@ const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
         onDeleteTask={onDeleteTask}
         onEditTask={onEditTask}
         onRebaselineTask={onRebaselineTask}
-        isExpanded={isExpanded}
-        onToggleExpansion={onToggleExpansion}
-        onPromoteTask={onPromoteTask}
-        onDemoteTask={onDemoteTask}
-        onAddSubtask={onAddSubtask}
+        densityClass="py-2 px-3"
       />
     );
     

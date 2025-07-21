@@ -96,8 +96,18 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
     return `${variance}d`;
   };
 
-  const statusOptions = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Blocked'];
-  const priorityOptions = ['Low', 'Medium', 'High'];
+  const statusOptions = [
+    { value: 'Not Started', label: 'Not Started' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Completed', label: 'Completed' },
+    { value: 'On Hold', label: 'On Hold' },
+    { value: 'Blocked', label: 'Blocked' }
+  ];
+  const priorityOptions = [
+    { value: 'Low', label: 'Low' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'High', label: 'High' }
+  ];
 
   return (
     <TableRow className="hover:bg-muted/50">

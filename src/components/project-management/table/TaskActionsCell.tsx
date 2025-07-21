@@ -8,21 +8,31 @@ import RebaselineDialog from './RebaselineDialog';
 
 interface TaskActionsCellProps {
   task: ProjectTask;
-  isDelayed: boolean;
-  onEditTask: (task: ProjectTask) => void;
-  onDeleteTask: (taskId: string) => void;
-  onRebaselineTask: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
+  onEdit?: (task: ProjectTask) => void;
+  onDelete?: (taskId: string) => void;
+  onRebaseline?: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
+  isDelayed?: boolean;
+  onEditTask?: (task: ProjectTask) => void;
+  onDeleteTask?: (taskId: string) => void;
+  onRebaselineTask?: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
   densityClass?: string;
 }
 
 const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   task,
-  isDelayed,
+  isDelayed = false,
   onEditTask,
   onDeleteTask,
   onRebaselineTask,
+  onEdit,
+  onDelete,
+  onRebaseline,
   densityClass = 'py-3 px-4'
 }) => {
+  // Use the newer prop names if available, otherwise fallback to old ones
+  const handleEdit = onEdit || onEditTask;
+  const handleDelete = onDelete || onDeleteTask;
+  const handleRebaselineAction = onRebaseline || onRebaselineTask;
   const [showRebaselineDialog, setShowRebaselineDialog] = useState(false);
 
   const handleRebaselineClick = () => {
@@ -30,7 +40,9 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   };
 
   const handleRebaseline = (taskId: string, newStartDate: string, newEndDate: string, reason: string) => {
-    onRebaselineTask(taskId, newStartDate, newEndDate, reason);
+    if (handleRebaselineAction) {
+      handleRebaselineAction(taskId, newStartDate, newEndDate, reason);
+    }
     setShowRebaselineDialog(false);
   };
 
@@ -41,7 +53,7 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onEditTask(task)}
+            onClick={() => handleEdit?.(task)}
             className="h-8 w-8 p-0"
             title="Edit task"
           >
@@ -61,7 +73,7 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onDeleteTask(task.id)}
+            onClick={() => handleDelete?.(task.id)}
             className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
             title="Delete task"
           >

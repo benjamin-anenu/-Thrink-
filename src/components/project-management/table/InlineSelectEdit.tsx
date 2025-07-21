@@ -10,6 +10,7 @@ interface InlineSelectEditProps {
   placeholder?: string;
   className?: string;
   allowEmpty?: boolean;
+  renderValue?: (value: string) => React.ReactNode;
 }
 
 const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
@@ -18,7 +19,8 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
   onSave,
   placeholder,
   className = "",
-  allowEmpty = false
+  allowEmpty = false,
+  renderValue
 }) => {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -60,7 +62,9 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
       onClick={() => setIsEditing(true)}
       title="Click to edit"
     >
-      {currentOption ? (
+      {renderValue ? (
+        renderValue(value)
+      ) : currentOption ? (
         <Badge 
           variant="outline" 
           className={currentOption.color ? `${currentOption.color} text-white` : ''}
