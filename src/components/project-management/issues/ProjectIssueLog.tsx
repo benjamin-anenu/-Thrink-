@@ -25,7 +25,8 @@ export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
     createIssue,
     updateIssue,
     deleteIssue,
-    generateAIInsights
+    generateAIInsights,
+    getTaskDetails
   } = useIssueManagement(projectId);
 
   const handleExportCSV = () => {
@@ -119,6 +120,7 @@ export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
         onOpenChange={setShowCreateDialog}
         onCreateIssue={createIssue}
         generateAIInsights={generateAIInsights}
+        getTaskDetails={getTaskDetails}
         projectId={projectId}
       />
     </div>
