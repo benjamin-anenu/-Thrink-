@@ -341,26 +341,40 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_active: boolean | null
           name: string
           updated_at: string
+          workspace_id: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
           name: string
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
           name?: string
           updated_at?: string
+          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "departments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_folders: {
         Row: {
@@ -412,6 +426,7 @@ export type Database = {
           threshold_unit: string | null
           threshold_value: number | null
           updated_at: string
+          workspace_id: string | null
         }
         Insert: {
           condition_type: string
@@ -424,6 +439,7 @@ export type Database = {
           threshold_unit?: string | null
           threshold_value?: number | null
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
           condition_type?: string
@@ -436,8 +452,17 @@ export type Database = {
           threshold_unit?: string | null
           threshold_value?: number | null
           updated_at?: string
+          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "escalation_triggers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       external_calendar_integrations: {
         Row: {
@@ -1414,21 +1439,41 @@ export type Database = {
       }
       skills: {
         Row: {
+          category: string | null
           created_at: string
+          description: string | null
           id: string
           name: string
+          updated_at: string | null
+          workspace_id: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name: string
+          updated_at?: string | null
+          workspace_id?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
+          updated_at?: string | null
+          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "skills_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stakeholders: {
         Row: {
