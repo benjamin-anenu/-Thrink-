@@ -1,40 +1,59 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
 import { toast } from 'sonner';
 
-// Define interfaces for task and milestone
-interface Task {
-  id: string;
-  name: string;
-  project_id: string;
-  status: string;
-  start_date: string;
-  end_date: string;
-  priority: string;
-  description?: string;
-  milestone_id?: string | null;
-  dependencies?: string[];
-  assigned_resource_id?: string;
-  estimated_hours?: number;
-  actual_hours?: number;
-  progress?: number;
-  baseline_start_date?: string;
-  baseline_end_date?: string;
-  created_at?: string;
-  updated_at?: string;
-}
+// Helper function to map database fields to ProjectTask interface
+const mapDatabaseTaskToProjectTask = (dbTask: any): ProjectTask => {
+  return {
+    id: dbTask.id,
+    name: dbTask.name,
+    description: dbTask.description || '',
+    startDate: dbTask.start_date || '',
+    endDate: dbTask.end_date || '',
+    baselineStartDate: dbTask.baseline_start_date || '',
+    baselineEndDate: dbTask.baseline_end_date || '',
+    progress: dbTask.progress || 0,
+    assignedResources: dbTask.assigned_resources || [],
+    assignedStakeholders: dbTask.assigned_stakeholders || [],
+    dependencies: dbTask.dependencies || [],
+    priority: dbTask.priority || 'Medium',
+    status: dbTask.status || 'Not Started',
+    milestoneId: dbTask.milestone_id,
+    duration: dbTask.duration || 1,
+    parentTaskId: dbTask.parent_task_id,
+    hierarchyLevel: dbTask.hierarchy_level || 0,
+    sortOrder: dbTask.sort_order || 0,
+    manualOverrideDates: dbTask.manual_override_dates || false
+  };
+};
 
-interface Milestone {
-  id: string;
-  name: string;
-  project_id: string;
-  date: string;
-  status: string;
-  description?: string;
-  created_at?: string;
-  updated_at?: string;
-}
+// Helper function to map ProjectTask to database fields
+const mapProjectTaskToDatabase = (task: Partial<ProjectTask>): any => {
+  const dbTask: any = {};
+  
+  if (task.name !== undefined) dbTask.name = task.name;
+  if (task.description !== undefined) dbTask.description = task.description;
+  if (task.startDate !== undefined) dbTask.start_date = task.startDate;
+  if (task.endDate !== undefined) dbTask.end_date = task.endDate;
+  if (task.baselineStartDate !== undefined) dbTask.baseline_start_date = task.baselineStartDate;
+  if (task.baselineEndDate !== undefined) dbTask.baseline_end_date = task.baselineEndDate;
+  if (task.progress !== undefined) dbTask.progress = task.progress;
+  if (task.assignedResources !== undefined) dbTask.assigned_resources = task.assignedResources;
+  if (task.assignedStakeholders !== undefined) dbTask.assigned_stakeholders = task.assignedStakeholders;
+  if (task.dependencies !== undefined) dbTask.dependencies = task.dependencies;
+  if (task.priority !== undefined) dbTask.priority = task.priority;
+  if (task.status !== undefined) dbTask.status = task.status;
+  if (task.milestoneId !== undefined) dbTask.milestone_id = task.milestoneId;
+  if (task.duration !== undefined) dbTask.duration = task.duration;
+  if (task.parentTaskId !== undefined) dbTask.parent_task_id = task.parentTaskId;
+  if (task.hierarchyLevel !== undefined) dbTask.hierarchy_level = task.hierarchyLevel;
+  if (task.sortOrder !== undefined) dbTask.sort_order = task.sortOrder;
+  if (task.manualOverrideDates !== undefined) dbTask.manual_override_dates = task.manualOverrideDates;
+  
+  return dbTask;
+};
 
 // Utility function to convert date strings to a sortable format
 const toSortableDate = (dateString: string): string => {
@@ -44,6 +63,7 @@ const toSortableDate = (dateString: string): string => {
 
 export function useTaskManagement(projectId: string) {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
+  const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -92,7 +112,8 @@ export function useTaskManagement(projectId: string) {
 
       if (tasksData) {
         console.log('[useTaskManagement] Fetched tasks:', tasksData.length);
-        setTasks(tasksData as ProjectTask[]);
+        const mappedTasks = tasksData.map(mapDatabaseTaskToProjectTask);
+        setTasks(mappedTasks);
       } else {
         console.log('[useTaskManagement] No tasks found for project:', projectId);
         setTasks([]);
@@ -112,14 +133,53 @@ export function useTaskManagement(projectId: string) {
     }
   };
 
+  const fetchMilestones = async () => {
+    try {
+      console.log('[useTaskManagement] Fetching milestones for project:', projectId);
+
+      const { data: milestonesData, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('due_date', { ascending: true });
+
+      if (milestonesError) {
+        console.error('[useTaskManagement] Milestone fetch error:', milestonesError);
+        return;
+      }
+
+      if (milestonesData) {
+        console.log('[useTaskManagement] Fetched milestones:', milestonesData.length);
+        const mappedMilestones = milestonesData.map(milestone => ({
+          id: milestone.id,
+          name: milestone.name,
+          description: milestone.description || '',
+          date: milestone.due_date || '',
+          baselineDate: milestone.baseline_date || '',
+          status: milestone.status || 'upcoming',
+          tasks: milestone.task_ids || [],
+          progress: milestone.progress || 0
+        }));
+        setMilestones(mappedMilestones);
+      } else {
+        setMilestones([]);
+      }
+    } catch (error) {
+      console.error('[useTaskManagement] Milestone fetch error:', error);
+    }
+  };
+
   const createTask = async (newTask: Omit<ProjectTask, 'id'>) => {
     try {
       console.log('[useTaskManagement] Creating task:', newTask);
       setError(null);
 
+      const dbTask = mapProjectTaskToDatabase(newTask);
+      dbTask.project_id = projectId;
+
       const { data, error } = await supabase
         .from('project_tasks')
-        .insert([newTask])
+        .insert([dbTask])
         .select()
         .single();
 
@@ -130,7 +190,8 @@ export function useTaskManagement(projectId: string) {
       }
 
       console.log('[useTaskManagement] Task created successfully:', data);
-      setTasks(prevTasks => [...prevTasks, data as ProjectTask]);
+      const mappedTask = mapDatabaseTaskToProjectTask(data);
+      setTasks(prevTasks => [...prevTasks, mappedTask]);
 
       // Clear any previous errors
       setError(null);
@@ -159,7 +220,7 @@ export function useTaskManagement(projectId: string) {
       const { error } = await supabase
         .from('project_tasks')
         .delete()
-        .eq('id', taskId); // Ensure this is a proper UUID
+        .eq('id', taskId);
 
       if (error) {
         console.error('[useTaskManagement] Delete error:', error);
@@ -193,48 +254,12 @@ export function useTaskManagement(projectId: string) {
         throw new Error('Invalid task ID format');
       }
 
-      // Process updates to ensure correct data types
-      const dbUpdates: Partial<ProjectTask> = {};
-      for (const key in updates) {
-        if (updates.hasOwnProperty(key)) {
-          const value = updates[key];
-          switch (key) {
-            case 'start_date':
-            case 'end_date':
-            case 'baseline_start_date':
-            case 'baseline_end_date':
-              dbUpdates[key] = value ? toSortableDate(value as string) : null;
-              break;
-            case 'priority':
-              if (['Low', 'Medium', 'High', 'Critical'].includes(value as string)) {
-                dbUpdates[key] = value;
-              } else {
-                console.warn(`[useTaskManagement] Invalid priority value: ${value}`);
-              }
-              break;
-            case 'status':
-              if (['Not Started', 'In Progress', 'Completed', 'On Hold', 'Cancelled'].includes(value as string)) {
-                dbUpdates[key] = value;
-              } else {
-                console.warn(`[useTaskManagement] Invalid status value: ${value}`);
-              }
-              break;
-            case 'estimated_hours':
-            case 'actual_hours':
-            case 'progress':
-              dbUpdates[key] = typeof value === 'number' ? value : null;
-              break;
-            default:
-              dbUpdates[key] = value;
-          }
-        }
-      }
+      const dbUpdates = mapProjectTaskToDatabase(updates);
 
-      // Use the proper UUID in the where clause
       const { data, error } = await supabase
         .from('project_tasks')
         .update(dbUpdates)
-        .eq('id', taskId) // Ensure this is a proper UUID
+        .eq('id', taskId)
         .select()
         .single();
 
@@ -247,9 +272,10 @@ export function useTaskManagement(projectId: string) {
       console.log('[useTaskManagement] Task updated successfully:', data);
       
       // Update local state
+      const mappedTask = mapDatabaseTaskToProjectTask(data);
       setTasks(prevTasks => 
         prevTasks.map(task => 
-          task.id === taskId ? { ...task, ...updates } : task
+          task.id === taskId ? mappedTask : task
         )
       );
 
@@ -264,6 +290,138 @@ export function useTaskManagement(projectId: string) {
       
       // Increment retry count for potential automatic retry
       setRetryCount(prev => prev + 1);
+    }
+  };
+
+  const createMilestone = async (milestone: Omit<ProjectMilestone, 'id'>) => {
+    try {
+      console.log('[useTaskManagement] Creating milestone:', milestone);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('milestones')
+        .insert([{
+          project_id: projectId,
+          name: milestone.name,
+          description: milestone.description,
+          due_date: milestone.date,
+          baseline_date: milestone.baselineDate,
+          status: milestone.status,
+          task_ids: milestone.tasks,
+          progress: milestone.progress
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[useTaskManagement] Create milestone error:', error);
+        handleNetworkError(error, 'create milestone');
+        return;
+      }
+
+      console.log('[useTaskManagement] Milestone created successfully:', data);
+      const mappedMilestone = {
+        id: data.id,
+        name: data.name,
+        description: data.description || '',
+        date: data.due_date || '',
+        baselineDate: data.baseline_date || '',
+        status: data.status || 'upcoming',
+        tasks: data.task_ids || [],
+        progress: data.progress || 0
+      };
+      setMilestones(prevMilestones => [...prevMilestones, mappedMilestone]);
+
+      toast.success('Milestone created successfully');
+    } catch (error) {
+      console.error('[useTaskManagement] Create milestone error:', error);
+      handleNetworkError(error, 'create milestone');
+    }
+  };
+
+  const updateMilestone = async (milestoneId: string, updates: Partial<ProjectMilestone>) => {
+    try {
+      console.log('[useTaskManagement] Updating milestone:', milestoneId, updates);
+      
+      if (!validateUUID(milestoneId)) {
+        throw new Error('Invalid milestone ID format');
+      }
+
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.date !== undefined) dbUpdates.due_date = updates.date;
+      if (updates.baselineDate !== undefined) dbUpdates.baseline_date = updates.baselineDate;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.tasks !== undefined) dbUpdates.task_ids = updates.tasks;
+      if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
+
+      const { data, error } = await supabase
+        .from('milestones')
+        .update(dbUpdates)
+        .eq('id', milestoneId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[useTaskManagement] Update milestone error:', error);
+        handleNetworkError(error, 'update milestone');
+        return;
+      }
+
+      console.log('[useTaskManagement] Milestone updated successfully:', data);
+      
+      const mappedMilestone = {
+        id: data.id,
+        name: data.name,
+        description: data.description || '',
+        date: data.due_date || '',
+        baselineDate: data.baseline_date || '',
+        status: data.status || 'upcoming',
+        tasks: data.task_ids || [],
+        progress: data.progress || 0
+      };
+      
+      setMilestones(prevMilestones => 
+        prevMilestones.map(milestone => 
+          milestone.id === milestoneId ? mappedMilestone : milestone
+        )
+      );
+
+      toast.success('Milestone updated successfully');
+    } catch (error) {
+      console.error('[useTaskManagement] Update milestone error:', error);
+      handleNetworkError(error, 'update milestone');
+    }
+  };
+
+  const deleteMilestone = async (milestoneId: string) => {
+    try {
+      console.log('[useTaskManagement] Deleting milestone:', milestoneId);
+      setError(null);
+
+      if (!validateUUID(milestoneId)) {
+        throw new Error('Invalid milestone ID format');
+      }
+
+      const { error } = await supabase
+        .from('milestones')
+        .delete()
+        .eq('id', milestoneId);
+
+      if (error) {
+        console.error('[useTaskManagement] Delete milestone error:', error);
+        handleNetworkError(error, 'delete milestone');
+        return;
+      }
+
+      console.log('[useTaskManagement] Milestone deleted successfully:', milestoneId);
+      setMilestones(prevMilestones => prevMilestones.filter(milestone => milestone.id !== milestoneId));
+
+      toast.success('Milestone deleted successfully');
+    } catch (error) {
+      console.error('[useTaskManagement] Delete milestone error:', error);
+      handleNetworkError(error, 'delete milestone');
     }
   };
 
@@ -291,25 +449,35 @@ export function useTaskManagement(projectId: string) {
   };
 
   const getTaskHierarchy = (): TaskHierarchyNode[] => {
-    const rootTasks = tasks.filter(task => !task.milestone_id);
+    const rootTasks = tasks.filter(task => !task.parentTaskId);
     const hierarchy = rootTasks.map(task => ({
-      ...task,
+      task,
       children: getSubtasks(task.id),
+      depth: 0,
+      isExpanded: true,
+      path: [task.id]
     }));
     return hierarchy;
   };
 
   const getSubtasks = (taskId: string): TaskHierarchyNode[] => {
-    const subtasks = tasks.filter(task => task.milestone_id === taskId);
+    const subtasks = tasks.filter(task => task.parentTaskId === taskId);
     return subtasks.map(task => ({
-      ...task,
+      task,
       children: getSubtasks(task.id),
+      depth: 1,
+      isExpanded: true,
+      path: [taskId, task.id]
     }));
+  };
+
+  const refreshData = async () => {
+    await Promise.all([fetchTasks(), fetchMilestones()]);
   };
 
   useEffect(() => {
     if (projectId && validateUUID(projectId)) {
-      fetchTasks();
+      Promise.all([fetchTasks(), fetchMilestones()]);
     } else {
       setLoading(false);
       if (projectId) {
@@ -326,7 +494,7 @@ export function useTaskManagement(projectId: string) {
       
       const timeoutId = setTimeout(() => {
         if (projectId && validateUUID(projectId)) {
-          fetchTasks();
+          Promise.all([fetchTasks(), fetchMilestones()]);
         }
       }, retryDelay);
 
@@ -336,14 +504,19 @@ export function useTaskManagement(projectId: string) {
 
   return {
     tasks,
+    milestones,
     loading,
     error,
     createTask,
     updateTask,
     deleteTask,
+    createMilestone,
+    updateMilestone,
+    deleteMilestone,
     reorderTasks,
     getTaskHierarchy,
     refreshTasks: fetchTasks,
+    refreshData,
     retryCount,
     maxRetries
   };

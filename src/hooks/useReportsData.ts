@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskManagement } from './useTaskManagement';
@@ -50,9 +49,12 @@ export interface ChartData {
 
 export const useReportsData = (projectId?: string) => {
   const { tasks, milestones: taskMilestones, loading: tasksLoading } = useTaskManagement(projectId || '');
-  const { milestones, loading: milestonesLoading } = useMilestones(projectId);
+  const { milestones: milestonesData, loading: milestonesLoading } = useMilestones(projectId);
   const [budgetData, setBudgetData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Use milestones from useTaskManagement since it's already loaded
+  const milestones = taskMilestones;
 
   // Load budget data
   useEffect(() => {
@@ -243,8 +245,8 @@ export const useReportsData = (projectId?: string) => {
   }, [tasks, budgetData]);
 
   useEffect(() => {
-    setLoading(tasksLoading || milestonesLoading);
-  }, [tasksLoading, milestonesLoading]);
+    setLoading(tasksLoading);
+  }, [tasksLoading]);
 
   return {
     reportsData,
