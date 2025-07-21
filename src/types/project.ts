@@ -61,6 +61,8 @@ export interface ProjectTask {
   sortOrder: number;
   hasChildren?: boolean;
   children?: ProjectTask[];
+  // New dependency management fields
+  manualOverrideDates?: boolean;
 }
 
 export interface ProjectMilestone {

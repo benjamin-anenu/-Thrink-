@@ -119,17 +119,35 @@ export class TaskManagementService {
 
   static async updateTask(taskId: string, updates: Partial<ProjectTask>): Promise<void> {
     try {
+      const updateData: any = {
+        name: updates.name,
+        description: updates.description,
+        assignee_id: updates.assignedResources?.[0] || null,
+        priority: updates.priority,
+        status: updates.status,
+        start_date: updates.startDate,
+        end_date: updates.endDate,
+        duration: updates.duration,
+        dependencies: updates.dependencies,
+        assigned_resources: updates.assignedResources,
+        assigned_stakeholders: updates.assignedStakeholders,
+        progress: updates.progress,
+        milestone_id: updates.milestoneId,
+        baseline_start_date: updates.baselineStartDate,
+        baseline_end_date: updates.baselineEndDate,
+        manual_override_dates: updates.manualOverrideDates
+      };
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+
       const { error } = await supabase
         .from('project_tasks')
-        .update({
-          name: updates.name,
-          description: updates.description,
-          assignee_id: updates.assignedResources?.[0] || null,
-          priority: updates.priority,
-          status: updates.status,
-          start_date: updates.startDate,
-          end_date: updates.endDate,
-        })
+        .update(updateData)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -159,7 +177,7 @@ export class TaskManagementService {
         .from('project_tasks')
         .select('*')
         .eq('project_id', projectId)
-        .order('created_at');
+        .order('sort_order', { ascending: true });
 
       if (error) throw error;
 
@@ -167,20 +185,22 @@ export class TaskManagementService {
         id: task.id,
         name: task.name,
         description: task.description || '',
-        milestoneId: null,
+        milestoneId: task.milestone_id,
         priority: task.priority as "High" | "Medium" | "Low" | "Critical",
         status: task.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
         startDate: task.start_date,
         endDate: task.end_date,
-        baselineStartDate: task.start_date,
-        baselineEndDate: task.end_date,
-        dependencies: [],
-        assignedResources: task.assignee_id ? [task.assignee_id] : [],
-        assignedStakeholders: [],
-        progress: 0,
-        duration: 1,
+        baselineStartDate: task.baseline_start_date || task.start_date,
+        baselineEndDate: task.baseline_end_date || task.end_date,
+        dependencies: task.dependencies || [],
+        assignedResources: task.assigned_resources || [],
+        assignedStakeholders: task.assigned_stakeholders || [],
+        progress: task.progress || 0,
+        duration: task.duration || 1,
         hierarchyLevel: task.hierarchy_level || 0,
-        sortOrder: task.sort_order || 0
+        sortOrder: task.sort_order || 0,
+        parentTaskId: task.parent_task_id,
+        manualOverrideDates: task.manual_override_dates || false
       }));
     } catch (error) {
       console.error('Error fetching project tasks:', error);

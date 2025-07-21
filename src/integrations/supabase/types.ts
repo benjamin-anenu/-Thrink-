@@ -1057,6 +1057,7 @@ export type Database = {
           end_date: string | null
           hierarchy_level: number | null
           id: string
+          manual_override_dates: boolean | null
           milestone_id: string | null
           name: string
           parent_task_id: string | null
@@ -1082,6 +1083,7 @@ export type Database = {
           end_date?: string | null
           hierarchy_level?: number | null
           id?: string
+          manual_override_dates?: boolean | null
           milestone_id?: string | null
           name: string
           parent_task_id?: string | null
@@ -1107,6 +1109,7 @@ export type Database = {
           end_date?: string | null
           hierarchy_level?: number | null
           id?: string
+          manual_override_dates?: boolean | null
           milestone_id?: string | null
           name?: string
           parent_task_id?: string | null
@@ -2066,9 +2069,37 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
+      calculate_task_dates_from_dependencies: {
+        Args: {
+          task_id_param: string
+          task_duration: number
+          task_dependencies: string[]
+        }
+        Returns: {
+          suggested_start_date: string
+          suggested_end_date: string
+          has_conflicts: boolean
+        }[]
+      }
       calculate_task_duration: {
         Args: { task_uuid: string }
         Returns: number
+      }
+      cascade_dependency_updates: {
+        Args: { updated_task_id: string }
+        Returns: undefined
+      }
+      check_circular_dependency: {
+        Args: { task_id_param: string; new_dependency_id: string }
+        Returns: boolean
+      }
+      check_circular_dependency_recursive: {
+        Args: {
+          current_task_id: string
+          target_task_id: string
+          visited_tasks: string[]
+        }
+        Returns: boolean
       }
       check_project_dependencies: {
         Args: { project_id_param: string }

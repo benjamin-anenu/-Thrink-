@@ -1,106 +1,80 @@
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { ProjectTask } from '@/types/project';
-
-interface ParsedDependency {
-  taskId: string;
-  type: string;
-  lag: number;
-}
+import { DependencyCalculationService, DependencyCalculationResult, ParsedDependency } from '@/services/DependencyCalculationService';
 
 export const useDependencyCalculator = (tasks: ProjectTask[]) => {
-  const parseDependency = (depString: string): ParsedDependency => {
-    const parts = depString.split(':');
-    return {
-      taskId: parts[0],
-      type: parts[1] || 'finish-to-start',
-      lag: parseInt(parts[2]) || 0
-    };
-  };
+  const parseDependency = useCallback((depString: string): ParsedDependency => {
+    return DependencyCalculationService.parseDependency(depString);
+  }, []);
 
-  const calculateTaskSchedule = useMemo(() => {
-    return (task: ProjectTask): { suggestedStartDate: string; suggestedEndDate: string } | null => {
-      if (task.dependencies.length === 0) {
-        return null; // No dependencies, no suggestions
-      }
-
-      let latestRequiredStart = new Date(task.startDate);
-
-      for (const depString of task.dependencies) {
-        const dep = parseDependency(depString);
-        const depTask = tasks.find(t => t.id === dep.taskId);
-        
-        if (!depTask) continue;
-
-        let requiredStartDate: Date;
-        const depStartDate = new Date(depTask.startDate);
-        const depEndDate = new Date(depTask.endDate);
-
-        switch (dep.type) {
-          case 'finish-to-start':
-            requiredStartDate = new Date(depEndDate);
-            requiredStartDate.setDate(requiredStartDate.getDate() + 1 + dep.lag);
-            break;
-          case 'start-to-start':
-            requiredStartDate = new Date(depStartDate);
-            requiredStartDate.setDate(requiredStartDate.getDate() + dep.lag);
-            break;
-          case 'finish-to-finish':
-            // Work backwards from dependency end date
-            const taskDuration = task.duration || 1;
-            requiredStartDate = new Date(depEndDate);
-            requiredStartDate.setDate(requiredStartDate.getDate() - taskDuration + 1 + dep.lag);
-            break;
-          case 'start-to-finish':
-            // Work backwards from dependency start date
-            const taskDuration2 = task.duration || 1;
-            requiredStartDate = new Date(depStartDate);
-            requiredStartDate.setDate(requiredStartDate.getDate() - taskDuration2 + 1 + dep.lag);
-            break;
-          default:
-            continue;
-        }
-
-        if (requiredStartDate > latestRequiredStart) {
-          latestRequiredStart = requiredStartDate;
-        }
-      }
-
-      // Calculate end date based on duration
-      const suggestedEndDate = new Date(latestRequiredStart);
-      suggestedEndDate.setDate(suggestedEndDate.getDate() + (task.duration || 1) - 1);
-
+  const calculateTaskSchedule = useCallback(async (task: ProjectTask): Promise<DependencyCalculationResult> => {
+    if (task.dependencies.length === 0) {
       return {
-        suggestedStartDate: latestRequiredStart.toISOString().split('T')[0],
-        suggestedEndDate: suggestedEndDate.toISOString().split('T')[0]
+        suggestedStartDate: null,
+        suggestedEndDate: null,
+        hasConflicts: false
       };
-    };
+    }
+
+    return await DependencyCalculationService.calculateTaskDatesFromDependencies(
+      task.id,
+      task.duration,
+      task.dependencies
+    );
+  }, []);
+
+  const getTasksWithScheduleConflicts = useCallback(async (): Promise<{
+    task: ProjectTask;
+    conflicts: DependencyCalculationResult;
+  }[]> => {
+    return await DependencyCalculationService.getTasksWithScheduleConflicts(tasks);
   }, [tasks]);
 
-  const getTasksWithScheduleConflicts = useMemo(() => {
-    return tasks.filter(task => {
-      const suggestion = calculateTaskSchedule(task);
-      if (!suggestion) return false;
-
-      const currentStart = new Date(task.startDate);
-      const suggestedStart = new Date(suggestion.suggestedStartDate);
-
-      return suggestedStart > currentStart;
-    });
-  }, [tasks, calculateTaskSchedule]);
-
-  const getDependentTasks = useMemo(() => {
-    return (taskId: string): ProjectTask[] => {
-      return tasks.filter(task => 
-        task.dependencies.some(dep => dep.split(':')[0] === taskId)
-      );
-    };
+  const getDependentTasks = useCallback(async (taskId: string): Promise<ProjectTask[]> => {
+    return await DependencyCalculationService.getDependentTasks(taskId, tasks);
   }, [tasks]);
+
+  const checkCircularDependency = useCallback(async (taskId: string, newDependencyId: string): Promise<boolean> => {
+    return await DependencyCalculationService.checkCircularDependency(taskId, newDependencyId);
+  }, []);
+
+  const validateAndAddDependency = useCallback(async (
+    taskId: string,
+    dependencyTaskId: string,
+    dependencyType: ParsedDependency['type'],
+    lagDays: number
+  ) => {
+    return await DependencyCalculationService.validateAndAddDependency(
+      taskId,
+      dependencyTaskId,
+      dependencyType,
+      lagDays
+    );
+  }, []);
+
+  const cascadeDependencyUpdates = useCallback(async (taskId: string): Promise<void> => {
+    return await DependencyCalculationService.cascadeDependencyUpdates(taskId);
+  }, []);
+
+  const calculateCriticalPath = useCallback((): ProjectTask[] => {
+    return DependencyCalculationService.calculateCriticalPath(tasks);
+  }, [tasks]);
+
+  const setManualOverride = useCallback(async (taskId: string, override: boolean): Promise<void> => {
+    return await DependencyCalculationService.setManualOverride(taskId, override);
+  }, []);
 
   return {
     calculateTaskSchedule,
     getTasksWithScheduleConflicts,
     getDependentTasks,
-    parseDependency
+    parseDependency,
+    checkCircularDependency,
+    validateAndAddDependency,
+    cascadeDependencyUpdates,
+    calculateCriticalPath,
+    setManualOverride,
+    formatDependency: DependencyCalculationService.formatDependency
   };
 };
