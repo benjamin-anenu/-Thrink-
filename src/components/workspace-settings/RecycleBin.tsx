@@ -93,28 +93,39 @@ const RecycleBin = () => {
 
     setPermanentDeleting(item.id);
     try {
-      // First, delete related records that might block the deletion
-      const { error: tasksError } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('project_id', item.id);
+      // Delete all related records in the correct order using comprehensive cascade delete
+      const deleteOperations = [
+        // Delete project-specific data
+        supabase.from('project_ai_data').delete().eq('project_id', item.id),
+        supabase.from('project_budgets').delete().eq('project_id', item.id),
+        supabase.from('project_documents').delete().eq('project_id', item.id),
+        supabase.from('project_files').delete().eq('project_id', item.id),
+        supabase.from('project_initiation_documents').delete().eq('project_id', item.id),
+        supabase.from('project_kickoff_data').delete().eq('project_id', item.id),
+        supabase.from('project_requirements').delete().eq('project_id', item.id),
+        supabase.from('project_team_members').delete().eq('project_id', item.id),
+        supabase.from('project_escalation_matrix').delete().eq('project_id', item.id),
+        supabase.from('critical_path_analysis').delete().eq('project_id', item.id),
+        supabase.from('project_issues').delete().eq('project_id', item.id),
+        supabase.from('document_folders').delete().eq('project_id', item.id),
+        supabase.from('calendar_events').delete().eq('project_id', item.id),
+        
+        // Delete tasks and milestones
+        supabase.from('project_tasks').delete().eq('project_id', item.id),
+        supabase.from('milestones').delete().eq('project_id', item.id),
+      ];
 
-      if (tasksError) {
-        console.error('Error deleting project tasks:', tasksError);
-        // Continue with project deletion even if tasks deletion fails
-      }
+      // Execute all delete operations
+      const results = await Promise.allSettled(deleteOperations);
+      
+      // Check for any failures (but don't stop the process)
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.warn(`Failed to delete related data (operation ${index}):`, result.reason);
+        }
+      });
 
-      const { error: milestonesError } = await supabase
-        .from('milestones')
-        .delete()
-        .eq('project_id', item.id);
-
-      if (milestonesError) {
-        console.error('Error deleting milestones:', milestonesError);
-        // Continue with project deletion even if milestones deletion fails
-      }
-
-      // Now delete the project
+      // Finally delete the project itself
       const { error: projectError } = await supabase
         .from('projects')
         .delete()
@@ -127,7 +138,7 @@ const RecycleBin = () => {
       setDeletedItems(prev => prev.filter(i => i.id !== item.id));
     } catch (error) {
       console.error('Error permanently deleting item:', error);
-      toast.error('Failed to permanently delete item');
+      toast.error('Failed to permanently delete item. Please try again.');
     } finally {
       setPermanentDeleting(null);
     }

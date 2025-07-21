@@ -200,6 +200,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           )
         `)
         .eq('workspace_id', currentWorkspace.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
