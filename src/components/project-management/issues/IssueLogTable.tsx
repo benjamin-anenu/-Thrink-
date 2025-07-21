@@ -17,13 +17,16 @@ interface IssueLogTableProps {
   onUpdateIssue: (issueId: string, updates: Partial<ProjectIssue>) => Promise<any>;
   onDeleteIssue: (issueId: string) => Promise<void>;
   projectId: string;
+  density?: 'compact' | 'normal' | 'comfortable';
 }
 
 export const IssueLogTable = ({ 
   issues, 
   loading, 
   onUpdateIssue, 
-  onDeleteIssue 
+  onDeleteIssue,
+  projectId,
+  density = 'compact'
 }: IssueLogTableProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProjectIssue>>({});
@@ -61,17 +64,32 @@ export const IssueLogTable = ({
   };
 
   const formatScheduleVariance = (variance?: number) => {
-    if (variance === undefined) return '-';
+    if (variance === null || variance === undefined) return '-';
     if (variance === 0) return 'On time';
-    if (variance > 0) return `+${variance} days`;
-    return `${variance} days`;
+    return variance > 0 ? `+${variance} days` : `${variance} days`;
   };
 
   const getVarianceColor = (variance?: number) => {
-    if (variance === undefined) return 'text-muted-foreground';
+    if (variance === null || variance === undefined) return 'text-muted-foreground';
     if (variance === 0) return 'text-green-600';
-    if (variance > 0) return 'text-red-600';
-    return 'text-green-600';
+    return variance > 0 ? 'text-red-600' : 'text-blue-600';
+  };
+
+  const formatTimeToResolve = (days?: number) => {
+    if (days === null || days === undefined) return '-';
+    if (days === 0) return 'Same day';
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  };
+
+  const getDensityClasses = () => {
+    switch (density) {
+      case 'compact':
+        return 'text-xs';
+      case 'comfortable':
+        return 'text-base py-4';
+      default:
+        return 'text-sm py-2';
+    }
   };
 
   if (loading) {
@@ -87,73 +105,37 @@ export const IssueLogTable = ({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-8"></TableHead>
             <TableHead>Title</TableHead>
-            <TableHead>Task</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Severity</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Assignee</TableHead>
+            <TableHead>Date Identified</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead>Date Resolved</TableHead>
+            <TableHead>Task</TableHead>
+            <TableHead>Time to Resolve</TableHead>
             <TableHead>Schedule Variance</TableHead>
-            <TableHead>Impact</TableHead>
-            <TableHead className="w-24">Actions</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {issues.map((issue) => (
-            <TableRow 
-              key={issue.id}
-              className={cn(
-                'hover:bg-muted/50',
-                issue.status === 'Resolved' || issue.status === 'Closed' 
-                  ? 'opacity-60' 
-                  : '',
-                issue.severity === 'Critical' 
-                  ? 'border-l-4 border-l-red-500' 
-                  : issue.severity === 'High' 
-                  ? 'border-l-4 border-l-orange-500' 
-                  : ''
-              )}
-            >
-              <TableCell>
-                {issue.severity === 'Critical' && (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                )}
-                {issue.linked_task_id && (
-                  <ExternalLink className="h-3 w-3 text-blue-500 mt-1" />
-                )}
-              </TableCell>
-              
+            <TableRow key={issue.id} className={getDensityClasses()}>
               <TableCell className="font-medium">
                 {editingId === issue.id ? (
                   <Input
-                    value={editForm.title || ''}
+                    value={editForm.title}
                     onChange={(e) => updateEditForm('title', e.target.value)}
                     className="w-full"
                   />
                 ) : (
-                  <div>
-                    <div className="font-medium">{issue.title}</div>
-                    {issue.description && (
-                      <div className="text-sm text-muted-foreground truncate max-w-xs">
-                        {issue.description}
-                      </div>
-                    )}
-                  </div>
+                  issue.title
                 )}
-              </TableCell>
-
-              <TableCell>
-                <span className="text-sm">
-                  {issue.task_name || 'No task linked'}
-                </span>
               </TableCell>
 
               <TableCell>
@@ -237,9 +219,11 @@ export const IssueLogTable = ({
               </TableCell>
 
               <TableCell>
-                <span className="text-sm">
-                  {issue.assignee_id || 'Unassigned'}
-                </span>
+                {issue.date_identified && (
+                  <span className="text-sm">
+                    {format(new Date(issue.date_identified), 'MMM dd, yyyy')}
+                  </span>
+                )}
               </TableCell>
 
               <TableCell>
@@ -267,20 +251,15 @@ export const IssueLogTable = ({
               </TableCell>
 
               <TableCell>
-                <span className={cn("text-sm font-medium", getVarianceColor(issue.schedule_variance_days))}>
-                  {formatScheduleVariance(issue.schedule_variance_days)}
-                </span>
+                {issue.task_name || '-'}
               </TableCell>
 
-              <TableCell>
-                <div className="text-xs text-muted-foreground max-w-xs">
-                  {issue.impact_summary || 'No impact analysis'}
-                  {issue.estimated_delay_days > 0 && (
-                    <div className="text-orange-600 font-medium">
-                      +{issue.estimated_delay_days}d delay
-                    </div>
-                  )}
-                </div>
+              <TableCell className="text-muted-foreground">
+                {formatTimeToResolve(issue.time_to_resolve_days)}
+              </TableCell>
+
+              <TableCell className={getVarianceColor(issue.schedule_variance_days)}>
+                {formatScheduleVariance(issue.schedule_variance_days)}
               </TableCell>
 
               <TableCell>

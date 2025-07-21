@@ -28,6 +28,7 @@ export interface ProjectIssue {
   task_name?: string;
   milestone_name?: string;
   schedule_variance_days?: number;
+  time_to_resolve_days?: number;
 }
 
 export interface IssueComment {

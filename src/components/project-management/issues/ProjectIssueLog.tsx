@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Download } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Filter, Download, LayoutGrid } from 'lucide-react';
 import { useIssueManagement } from '@/hooks/useIssueManagement';
 import { IssueLogTable } from './IssueLogTable';
 import { IssueCreationDialog } from './IssueCreationDialog';
@@ -15,6 +16,7 @@ interface ProjectIssueLogProps {
 export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact');
   
   const {
     issues,
@@ -67,6 +69,17 @@ export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
           <div className="flex items-center justify-between">
             <CardTitle>Issue Log</CardTitle>
             <div className="flex items-center gap-2">
+              <Select value={tableDensity} onValueChange={(value: 'compact' | 'normal' | 'comfortable') => setTableDensity(value)}>
+                <SelectTrigger className="w-32">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="compact">Compact</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="comfortable">Comfortable</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
@@ -110,6 +123,7 @@ export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
             onUpdateIssue={updateIssue}
             onDeleteIssue={deleteIssue}
             projectId={projectId}
+            density={tableDensity}
           />
         </CardContent>
       </Card>

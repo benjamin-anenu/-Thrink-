@@ -55,6 +55,10 @@ export const useIssueManagement = (projectId: string) => {
           ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24))
           : undefined;
 
+        const timeToResolve = issue.resolved_at && issue.date_identified
+          ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.date_identified).getTime()) / (1000 * 60 * 60 * 24))
+          : undefined;
+
         return {
           ...issue,
           category: issue.category as ProjectIssue['category'],
@@ -65,7 +69,8 @@ export const useIssueManagement = (projectId: string) => {
           tags: issue.tags || [],
           task_name: issue.project_tasks?.name,
           milestone_name: issue.milestones?.name,
-          schedule_variance_days: scheduleVariance
+          schedule_variance_days: scheduleVariance,
+          time_to_resolve_days: timeToResolve
         };
       });
       

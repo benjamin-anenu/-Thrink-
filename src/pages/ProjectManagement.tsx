@@ -75,7 +75,7 @@ const ProjectManagement = () => {
             </TabsTrigger>
             <TabsTrigger value="gantt" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              Gantt Chart
+              Project Plan
             </TabsTrigger>
             <TabsTrigger value="resources" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
