@@ -1,717 +1,350 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
-import { TaskHierarchyUtils } from '@/utils/taskHierarchy';
-import { DependencyCalculationService } from '@/services/DependencyCalculationService';
 import { toast } from 'sonner';
 
-export interface DatabaseTask {
+// Define interfaces for task and milestone
+interface Task {
   id: string;
-  project_id: string;
   name: string;
+  project_id: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  priority: string;
   description?: string;
-  start_date?: string;
-  end_date?: string;
+  milestone_id?: string | null;
+  dependencies?: string[];
+  assigned_resource_id?: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+  progress?: number;
   baseline_start_date?: string;
   baseline_end_date?: string;
-  status?: string;
-  priority?: string;
-  assignee_id?: string;
-  milestone_id?: string;
-  duration?: number;
-  progress?: number;
-  dependencies?: string[];
-  assigned_resources?: string[];
-  assigned_stakeholders?: string[];
-  created_at: string;
-  updated_at: string;
-  parent_task_id?: string;
-  hierarchy_level?: number;
-  sort_order?: number;
-  manual_override_dates?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface DatabaseMilestone {
+interface Milestone {
   id: string;
-  project_id: string;
   name: string;
+  project_id: string;
+  date: string;
+  status: string;
   description?: string;
-  due_date?: string;
-  baseline_date?: string;
-  status?: string;
-  progress?: number;
-  task_ids?: string[];
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Helper function to validate and convert UUID
-const validateUUID = (value: string | null | undefined): string | null => {
-  if (!value || value === '' || value === 'undefined' || value === 'null') {
-    return null;
-  }
-  
-  // UUID regex pattern
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  
-  if (uuidPattern.test(value)) {
-    return value;
-  }
-  
-  // If not a valid UUID, return null
-  console.warn(`Invalid UUID format: ${value}`);
-  return null;
+// Utility function to convert date strings to a sortable format
+const toSortableDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? dateString : date.toISOString();
 };
 
-// Helper function to validate project ID
-const validateProjectId = (projectId: string): string => {
-  if (!projectId || projectId === '') {
-    throw new Error('Project ID is required');
-  }
-  
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  
-  if (!uuidPattern.test(projectId)) {
-    throw new Error(`Invalid project ID format: ${projectId}`);
-  }
-  
-  return projectId;
-};
-
-export const useTaskManagement = (projectId: string) => {
+export function useTaskManagement(projectId: string) {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
-  const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hierarchyTree, setHierarchyTree] = useState<TaskHierarchyNode[]>([]);
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
-  // Transform database task to frontend task with safe defaults
-  const transformTask = (dbTask: DatabaseTask): ProjectTask => {
-    const today = new Date().toISOString().split('T')[0];
-    const defaultEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Helper function to validate UUID format
+  const validateUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
+  // Helper function to handle network errors
+  const handleNetworkError = (error: any, operation: string) => {
+    console.error(`[useTaskManagement] ${operation} error:`, error);
     
-    return {
-      id: dbTask.id,
-      name: dbTask.name || 'Untitled Task',
-      description: dbTask.description || '',
-      startDate: dbTask.start_date || today,
-      endDate: dbTask.end_date || defaultEndDate,
-      baselineStartDate: dbTask.baseline_start_date || dbTask.start_date || today,
-      baselineEndDate: dbTask.baseline_end_date || dbTask.end_date || defaultEndDate,
-      progress: typeof dbTask.progress === 'number' ? dbTask.progress : 0,
-      assignedResources: Array.isArray(dbTask.assigned_resources) ? dbTask.assigned_resources : [],
-      assignedStakeholders: Array.isArray(dbTask.assigned_stakeholders) ? dbTask.assigned_stakeholders : [],
-      dependencies: Array.isArray(dbTask.dependencies) ? dbTask.dependencies : [],
-      priority: (dbTask.priority as any) || 'Medium',
-      status: (dbTask.status as any) || 'Not Started',
-      milestoneId: dbTask.milestone_id || undefined,
-      duration: typeof dbTask.duration === 'number' ? dbTask.duration : 1,
-      parentTaskId: dbTask.parent_task_id || undefined,
-      hierarchyLevel: typeof dbTask.hierarchy_level === 'number' ? dbTask.hierarchy_level : 0,
-      sortOrder: typeof dbTask.sort_order === 'number' ? dbTask.sort_order : 0,
-      hasChildren: false,
-      manualOverrideDates: dbTask.manual_override_dates || false
-    };
-  };
-
-  // Transform database milestone to frontend milestone with safe defaults
-  const transformMilestone = (dbMilestone: DatabaseMilestone): ProjectMilestone => {
-    const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    if (error?.message?.includes('net::ERR_FAILED') || error?.message?.includes('404')) {
+      setError(`Network error during ${operation}. Please check your connection and try again.`);
+      return;
+    }
     
-    return {
-      id: dbMilestone.id,
-      name: dbMilestone.name || 'Untitled Milestone',
-      description: dbMilestone.description || '',
-      date: dbMilestone.due_date || defaultDate,
-      baselineDate: dbMilestone.baseline_date || dbMilestone.due_date || defaultDate,
-      status: (dbMilestone.status as any) || 'upcoming',
-      tasks: Array.isArray(dbMilestone.task_ids) ? dbMilestone.task_ids : [],
-      progress: typeof dbMilestone.progress === 'number' ? dbMilestone.progress : 0
-    };
+    if (error?.code === '42883') {
+      setError(`Database error during ${operation}. Please contact support if this continues.`);
+      return;
+    }
+    
+    setError(`Failed to ${operation}. Please try again.`);
   };
 
-  // Enhanced dependency validation with automatic date adjustment using service
-  const validateAndAdjustDependencies = async (taskId: string, updates: Partial<ProjectTask>) => {
-    if (!updates.dependencies || updates.dependencies.length === 0) return updates;
-
-    // Check if manual override is enabled for this task
-    const existingTask = tasks.find(t => t.id === taskId);
-    if (existingTask?.manualOverrideDates) {
-      return updates; // Skip automatic adjustment if manually overridden
-    }
-
-    try {
-      // Use the enhanced dependency calculation service
-      const calculation = await DependencyCalculationService.calculateTaskDatesFromDependencies(
-        taskId,
-        updates.duration || existingTask?.duration || 1,
-        updates.dependencies
-      );
-
-      // If we have suggested dates and they differ from current dates, use them
-      if (calculation.suggestedStartDate && calculation.suggestedEndDate) {
-        const adjustedUpdates = {
-          ...updates,
-          startDate: calculation.suggestedStartDate,
-          endDate: calculation.suggestedEndDate
-        };
-
-        // Notify about conflicts if any
-        if (calculation.hasConflicts && calculation.conflictDetails) {
-          toast.warning(`Dependency conflicts detected: ${calculation.conflictDetails.join(', ')}`);
-        }
-
-        return adjustedUpdates;
-      }
-
-      return updates;
-    } catch (error) {
-      console.error('Error calculating dependency dates:', error);
-      return updates;
-    }
-  };
-
-  // Load tasks and milestones
-  const loadData = async () => {
+  const fetchTasks = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('[useTaskManagement] Fetching tasks for project:', projectId);
 
-      // Load tasks with hierarchy information
       const { data: tasksData, error: tasksError } = await supabase
         .from('project_tasks')
         .select('*')
         .eq('project_id', projectId)
-        .order('hierarchy_level', { ascending: true })
-        .order('sort_order', { ascending: true });
+        .order('end_date', { ascending: true });
 
-      if (tasksError) throw tasksError;
+      if (tasksError) {
+        console.error('[useTaskManagement] Task fetch error:', tasksError);
+        handleNetworkError(tasksError, 'fetch tasks');
+        return;
+      }
 
-      // Load milestones
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select('*')
-        .eq('project_id', projectId);
+      if (tasksData) {
+        console.log('[useTaskManagement] Fetched tasks:', tasksData.length);
+        setTasks(tasksData as ProjectTask[]);
+      } else {
+        console.log('[useTaskManagement] No tasks found for project:', projectId);
+        setTasks([]);
+      }
 
-      if (milestonesError) throw milestonesError;
-
-      const transformedTasks = (tasksData || []).map(transformTask);
-      setTasks(transformedTasks);
-      setMilestones((milestonesData || []).map(transformMilestone));
-
-      // Build hierarchy tree
-      const tree = TaskHierarchyUtils.buildHierarchyTree(transformedTasks);
-      setHierarchyTree(tree);
-
-      // Set all nodes as expanded by default
-      const allTaskIds = new Set(transformedTasks.map(t => t.id));
-      setExpandedNodes(allTaskIds);
+      // Clear any previous errors
+      setError(null);
+      setRetryCount(0);
     } catch (error) {
-      console.error('Error loading project data:', error);
-      toast.error('Failed to load project data');
+      console.error('[useTaskManagement] Task fetch error:', error);
+      handleNetworkError(error, 'fetch tasks');
+      
+      // Increment retry count for potential automatic retry
+      setRetryCount(prev => prev + 1);
     } finally {
       setLoading(false);
     }
   };
 
-  // Create task with proper UUID handling and baseline initialization
-  const createTask = async (taskData: Omit<ProjectTask, 'id'>) => {
+  const createTask = async (newTask: Omit<ProjectTask, 'id'>) => {
     try {
-      // Validate and format project ID
-      const validatedProjectId = validateProjectId(projectId);
-      
-      // Validate and convert milestone ID
-      const validatedMilestoneId = validateUUID(taskData.milestoneId);
-      
-      // Validate assigned resources and stakeholders arrays
-      const validatedAssignedResources = Array.isArray(taskData.assignedResources) 
-        ? taskData.assignedResources.filter(id => validateUUID(id) !== null)
-        : [];
-        
-      const validatedAssignedStakeholders = Array.isArray(taskData.assignedStakeholders)
-        ? taskData.assignedStakeholders.filter(id => validateUUID(id) !== null)
-        : [];
-
-      // Ensure proper UUID formatting and null handling
-      const dbTaskData = {
-        project_id: validatedProjectId,
-        name: taskData.name,
-        description: taskData.description,
-        start_date: taskData.startDate,
-        end_date: taskData.endDate,
-        baseline_start_date: taskData.startDate,
-        baseline_end_date: taskData.endDate,
-        status: taskData.status,
-        priority: taskData.priority,
-        // Handle milestoneId properly - convert empty string to null for UUID field
-        milestone_id: validatedMilestoneId,
-        duration: typeof taskData.duration === 'number' ? taskData.duration : 1,
-        progress: taskData.progress,
-        dependencies: taskData.dependencies,
-        assigned_resources: validatedAssignedResources,
-        assigned_stakeholders: validatedAssignedStakeholders
-      };
-
-      console.log('Creating task with data:', dbTaskData);
+      console.log('[useTaskManagement] Creating task:', newTask);
+      setError(null);
 
       const { data, error } = await supabase
         .from('project_tasks')
-        .insert(dbTaskData)
+        .insert([newTask])
         .select()
         .single();
 
       if (error) {
-        console.error('Database error creating task:', error);
-        throw error;
+        console.error('[useTaskManagement] Create error:', error);
+        handleNetworkError(error, 'create task');
+        return;
       }
 
-      const newTask = transformTask(data);
-      setTasks(prev => [...prev, newTask]);
-      return newTask;
+      console.log('[useTaskManagement] Task created successfully:', data);
+      setTasks(prevTasks => [...prevTasks, data as ProjectTask]);
+
+      // Clear any previous errors
+      setError(null);
+      setRetryCount(0);
+
+      toast.success('Task created successfully');
     } catch (error) {
-      console.error('Error creating task:', error);
-      if (error instanceof Error) {
-        if (error.message.includes('Invalid project ID') || error.message.includes('uuid')) {
-          toast.error('Invalid project or milestone ID format');
-        } else {
-          toast.error(`Failed to create task: ${error.message}`);
-        }
-      } else {
-        toast.error('Failed to create task');
-      }
-      throw error;
+      console.error('[useTaskManagement] Create task error:', error);
+      handleNetworkError(error, 'create task');
+      
+      // Increment retry count for potential automatic retry
+      setRetryCount(prev => prev + 1);
     }
   };
 
-  // Enhanced update task with dependency date adjustment
-  const updateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
+  const deleteTask = async (taskId: string) => {
     try {
-      // Validate task ID
-      const validatedTaskId = validateUUID(taskId);
-      if (!validatedTaskId) {
+      console.log('[useTaskManagement] Deleting task:', taskId);
+      setError(null);
+
+      // Validate task ID format
+      if (!validateUUID(taskId)) {
         throw new Error('Invalid task ID format');
       }
 
-      // Get existing task for comparison
-      const existingTask = tasks.find(t => t.id === taskId);
+      const { error } = await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('id', taskId); // Ensure this is a proper UUID
 
-      // Validate and adjust dependencies
-      const adjustedUpdates = await validateAndAdjustDependencies(taskId, updates);
+      if (error) {
+        console.error('[useTaskManagement] Delete error:', error);
+        handleNetworkError(error, 'delete task');
+        return;
+      }
 
-      const dbUpdates: Partial<DatabaseTask> = {};
+      console.log('[useTaskManagement] Task deleted successfully:', taskId);
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+
+      // Clear any previous errors
+      setError(null);
+      setRetryCount(0);
+
+      toast.success('Task deleted successfully');
+    } catch (error) {
+      console.error('[useTaskManagement] Delete task error:', error);
+      handleNetworkError(error, 'delete task');
       
-      if (adjustedUpdates.name) dbUpdates.name = adjustedUpdates.name;
-      if (adjustedUpdates.description !== undefined) dbUpdates.description = adjustedUpdates.description;
-      if (adjustedUpdates.startDate) dbUpdates.start_date = adjustedUpdates.startDate;
-      if (adjustedUpdates.endDate) dbUpdates.end_date = adjustedUpdates.endDate;
-      if (adjustedUpdates.status) dbUpdates.status = adjustedUpdates.status;
-      if (adjustedUpdates.priority) dbUpdates.priority = adjustedUpdates.priority;
-      if (adjustedUpdates.milestoneId !== undefined) {
-        dbUpdates.milestone_id = validateUUID(adjustedUpdates.milestoneId);
+      // Increment retry count for potential automatic retry
+      setRetryCount(prev => prev + 1);
+    }
+  };
+
+  const updateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
+    try {
+      console.log('[useTaskManagement] Updating task:', taskId, updates);
+      
+      // Validate task ID format
+      if (!validateUUID(taskId)) {
+        throw new Error('Invalid task ID format');
       }
-      if (adjustedUpdates.duration) dbUpdates.duration = adjustedUpdates.duration;
-      if (adjustedUpdates.progress !== undefined) dbUpdates.progress = adjustedUpdates.progress;
-      if (adjustedUpdates.dependencies) {
-        // Validate dependencies before updating
-        await validateDependencies(taskId, adjustedUpdates.dependencies);
-        dbUpdates.dependencies = adjustedUpdates.dependencies;
-      }
-      if (adjustedUpdates.assignedResources) {
-        // Validate assigned resources UUIDs
-        const validatedResources = adjustedUpdates.assignedResources.filter(id => validateUUID(id) !== null);
-        dbUpdates.assigned_resources = validatedResources;
-      }
-      if (adjustedUpdates.assignedStakeholders) {
-        // Validate assigned stakeholders UUIDs
-        const validatedStakeholders = adjustedUpdates.assignedStakeholders.filter(id => validateUUID(id) !== null);
-        dbUpdates.assigned_stakeholders = validatedStakeholders;
-      }
-      if (adjustedUpdates.manualOverrideDates !== undefined) {
-        dbUpdates.manual_override_dates = adjustedUpdates.manualOverrideDates;
+
+      // Process updates to ensure correct data types
+      const dbUpdates: Partial<ProjectTask> = {};
+      for (const key in updates) {
+        if (updates.hasOwnProperty(key)) {
+          const value = updates[key];
+          switch (key) {
+            case 'start_date':
+            case 'end_date':
+            case 'baseline_start_date':
+            case 'baseline_end_date':
+              dbUpdates[key] = value ? toSortableDate(value as string) : null;
+              break;
+            case 'priority':
+              if (['Low', 'Medium', 'High', 'Critical'].includes(value as string)) {
+                dbUpdates[key] = value;
+              } else {
+                console.warn(`[useTaskManagement] Invalid priority value: ${value}`);
+              }
+              break;
+            case 'status':
+              if (['Not Started', 'In Progress', 'Completed', 'On Hold', 'Cancelled'].includes(value as string)) {
+                dbUpdates[key] = value;
+              } else {
+                console.warn(`[useTaskManagement] Invalid status value: ${value}`);
+              }
+              break;
+            case 'estimated_hours':
+            case 'actual_hours':
+            case 'progress':
+              dbUpdates[key] = typeof value === 'number' ? value : null;
+              break;
+            default:
+              dbUpdates[key] = value;
+          }
+        }
       }
 
       // Use the proper UUID in the where clause
       const { data, error } = await supabase
         .from('project_tasks')
         .update(dbUpdates)
-        .eq('id', validatedTaskId)
+        .eq('id', taskId) // Ensure this is a proper UUID
         .select()
         .single();
 
-      if (error) throw error;
-
-      const updatedTask = transformTask(data);
-      setTasks(prev => prev.map(task => task.id === taskId ? updatedTask : task));
-      
-      // Handle resource assignments with validated UUIDs
-      if (adjustedUpdates.assignedResources) {
-        await updateResourceAssignments(validatedTaskId, adjustedUpdates.assignedResources.filter(id => validateUUID(id) !== null));
-      }
-
-      // If dates were automatically adjusted, show notification
-      if (adjustedUpdates.startDate !== updates.startDate || adjustedUpdates.endDate !== updates.endDate) {
-        toast.info('Task dates were automatically adjusted based on dependencies');
-      }
-
-      // Trigger cascade updates for dependent tasks if dates changed
-      if (adjustedUpdates.startDate !== existingTask?.startDate || adjustedUpdates.endDate !== existingTask?.endDate) {
-        try {
-          await DependencyCalculationService.cascadeDependencyUpdates(taskId);
-        } catch (error) {
-          console.error('Error cascading dependency updates:', error);
-          // Don't throw here - the main update was successful
-        }
-      }
-
-      return updatedTask;
-    } catch (error) {
-      console.error('Error updating task:', error);
-      if (error instanceof Error && error.message.includes('Circular dependency')) {
-        toast.error('Cannot create circular dependency between tasks');
-      } else if (error instanceof Error && error.message.includes('Invalid')) {
-        toast.error(`Invalid data format: ${error.message}`);
-      } else {
-        toast.error('Failed to update task');
-      }
-      throw error;
-    }
-  };
-
-  // Enhanced circular dependency validation using service
-  const validateDependencies = async (taskId: string, dependencies: string[]) => {
-    if (!dependencies || dependencies.length === 0) return;
-
-    // Check each dependency for circular references
-    for (const depString of dependencies) {
-      const parsedDep = DependencyCalculationService.parseDependency(depString);
-      
-      // Check for self-dependency
-      if (parsedDep.taskId === taskId) {
-        throw new Error('Circular dependency detected: Task cannot depend on itself');
-      }
-
-      // Use enhanced circular dependency check
-      const hasCircular = await DependencyCalculationService.checkCircularDependency(taskId, parsedDep.taskId);
-      if (hasCircular) {
-        throw new Error(`Circular dependency detected: Adding dependency to task ${parsedDep.taskId} would create a loop`);
-      }
-    }
-  };
-
-  // Delete task
-  const deleteTask = async (taskId: string) => {
-    try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      setTasks(prev => prev.filter(task => task.id !== taskId));
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      toast.error('Failed to delete task');
-      throw error;
-    }
-  };
-
-  // Create milestone
-  const createMilestone = async (milestoneData: Omit<ProjectMilestone, 'id'>) => {
-    try {
-      const { data, error } = await supabase
-        .rpc('create_milestone', {
-          p_project_id: projectId,
-          p_name: milestoneData.name,
-          p_description: milestoneData.description,
-          p_due_date: milestoneData.date
-        });
-
-      if (error) throw error;
-
-      // Reload milestones to get the new one
-      await loadData();
-      return data;
-    } catch (error) {
-      console.error('Error creating milestone:', error);
-      toast.error('Failed to create milestone');
-      throw error;
-    }
-  };
-
-  // Update milestone
-  const updateMilestone = async (milestoneId: string, updates: Partial<ProjectMilestone>) => {
-    try {
-      const dbUpdates: any = {};
-      
-      if (updates.name) dbUpdates.name = updates.name;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.date) dbUpdates.due_date = updates.date;
-      if (updates.status) dbUpdates.status = updates.status;
-      if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
-
-      const { data, error } = await supabase
-        .from('milestones')
-        .update(dbUpdates)
-        .eq('id', milestoneId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const updatedMilestone = transformMilestone(data);
-      setMilestones(prev => prev.map(milestone => 
-        milestone.id === milestoneId ? updatedMilestone : milestone
-      ));
-      
-      return updatedMilestone;
-    } catch (error) {
-      console.error('Error updating milestone:', error);
-      toast.error('Failed to update milestone');
-      throw error;
-    }
-  };
-
-  // Delete milestone
-  const deleteMilestone = async (milestoneId: string) => {
-    try {
-      const { error } = await supabase
-        .from('milestones')
-        .delete()
-        .eq('id', milestoneId);
-
-      if (error) throw error;
-
-      setMilestones(prev => prev.filter(milestone => milestone.id !== milestoneId));
-    } catch (error) {
-      console.error('Error deleting milestone:', error);
-      toast.error('Failed to delete milestone');
-      throw error;
-    }
-  };
-
-  // Update resource assignments
-  const updateResourceAssignments = async (taskId: string, resourceIds: string[]) => {
-    try {
-      // First, remove existing assignments
-      await supabase
-        .from('resource_assignments')
-        .delete()
-        .eq('task_id', taskId);
-
-      // Then add new assignments
-      if (resourceIds.length > 0) {
-        const assignments = resourceIds.map(resourceId => ({
-          task_id: taskId,
-          resource_id: resourceId
-        }));
-
-        const { error } = await supabase
-          .from('resource_assignments')
-          .insert(assignments);
-
-        if (error) throw error;
-      }
-    } catch (error) {
-      console.error('Error updating resource assignments:', error);
-      throw error;
-    }
-  };
-
-  // New hierarchy operations
-  const promoteTask = async (taskId: string) => {
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task?.parentTaskId) {
-        toast.error('Task is already at root level');
+      if (error) {
+        console.error('[useTaskManagement] Update error:', error);
+        handleNetworkError(error, 'update task');
         return;
       }
 
-      // Use direct database operation instead of RPC function
-      const parentTask = tasks.find(t => t.id === task.parentTaskId);
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({
-          parent_task_id: parentTask?.parentTaskId || null,
-          hierarchy_level: (parentTask?.hierarchyLevel || 1) - 1,
-        })
-        .eq('id', taskId);
+      console.log('[useTaskManagement] Task updated successfully:', data);
+      
+      // Update local state
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, ...updates } : task
+        )
+      );
 
-      if (error) throw error;
+      // Clear any previous errors
+      setError(null);
+      setRetryCount(0);
 
-      await loadData();
-      toast.success('Task promoted successfully');
+      toast.success('Task updated successfully');
     } catch (error) {
-      console.error('Error promoting task:', error);
-      toast.error('Failed to promote task');
-      throw error;
+      console.error('[useTaskManagement] Update task error:', error);
+      handleNetworkError(error, 'update task');
+      
+      // Increment retry count for potential automatic retry
+      setRetryCount(prev => prev + 1);
     }
   };
 
-  const demoteTask = async (taskId: string, newParentId?: string) => {
+  const reorderTasks = async (startIndex: number, endIndex: number) => {
     try {
-      const validation = TaskHierarchyUtils.canMoveTask(taskId, newParentId, hierarchyTree);
-      if (!validation.canMove) {
-        toast.error(validation.reason || 'Cannot demote task');
-        return;
-      }
+      console.log('[useTaskManagement] Reordering tasks from', startIndex, 'to', endIndex);
+      setError(null);
 
-      // If no parent specified, find previous sibling
-      if (!newParentId) {
-        const task = tasks.find(t => t.id === taskId);
-        const siblings = TaskHierarchyUtils.getTaskSiblings(taskId, tasks);
-        const currentIndex = siblings.findIndex(s => s.sortOrder < task!.sortOrder);
-        
-        if (currentIndex === -1) {
-          toast.error('No previous sibling found to demote under');
-          return;
-        }
-        
-        newParentId = siblings[currentIndex].id;
-      }
+      const reorderedTasks = [...tasks];
+      const [movedTask] = reorderedTasks.splice(startIndex, 1);
+      reorderedTasks.splice(endIndex, 0, movedTask);
 
-      const newHierarchyLevel = TaskHierarchyUtils.calculateHierarchyLevel(newParentId, tasks);
-      const newSortOrder = TaskHierarchyUtils.generateSortOrder(newParentId, 0, tasks);
+      setTasks(reorderedTasks);
 
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({
-          parent_task_id: newParentId,
-          hierarchy_level: newHierarchyLevel,
-          sort_order: newSortOrder
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      await loadData();
-      toast.success('Task demoted successfully');
+      // Clear any previous errors
+      setError(null);
+      setRetryCount(0);
     } catch (error) {
-      console.error('Error demoting task:', error);
-      toast.error('Failed to demote task');
-      throw error;
+      console.error('[useTaskManagement] Reorder tasks error:', error);
+      handleNetworkError(error, 'reorder tasks');
+      
+      // Increment retry count for potential automatic retry
+      setRetryCount(prev => prev + 1);
     }
   };
 
-  const moveTask = async (taskId: string, newParentId?: string, newPosition?: number) => {
-    try {
-      const validation = TaskHierarchyUtils.canMoveTask(taskId, newParentId, hierarchyTree);
-      if (!validation.canMove) {
-        toast.error(validation.reason || 'Cannot move task');
-        return;
-      }
-
-      const newHierarchyLevel = TaskHierarchyUtils.calculateHierarchyLevel(newParentId, tasks);
-      const newSortOrder = TaskHierarchyUtils.generateSortOrder(newParentId, newPosition || 0, tasks);
-
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({
-          parent_task_id: newParentId || null,
-          hierarchy_level: newHierarchyLevel,
-          sort_order: newSortOrder
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      await loadData();
-      toast.success('Task moved successfully');
-    } catch (error) {
-      console.error('Error moving task:', error);
-      toast.error('Failed to move task');
-      throw error;
-    }
+  const getTaskHierarchy = (): TaskHierarchyNode[] => {
+    const rootTasks = tasks.filter(task => !task.milestone_id);
+    const hierarchy = rootTasks.map(task => ({
+      ...task,
+      children: getSubtasks(task.id),
+    }));
+    return hierarchy;
   };
 
-  const toggleNodeExpansion = (taskId: string) => {
-    setExpandedNodes(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
-      return newSet;
-    });
+  const getSubtasks = (taskId: string): TaskHierarchyNode[] => {
+    const subtasks = tasks.filter(task => task.milestone_id === taskId);
+    return subtasks.map(task => ({
+      ...task,
+      children: getSubtasks(task.id),
+    }));
   };
 
-  const expandAllNodes = () => {
-    const allTaskIds = new Set(tasks.map(t => t.id));
-    setExpandedNodes(allTaskIds);
-  };
-
-  const collapseAllNodes = () => {
-    setExpandedNodes(new Set());
-  };
-
-  // Set up real-time subscriptions
   useEffect(() => {
-    if (!projectId) return;
-
-    loadData();
-
-    // Subscribe to task changes
-    const tasksSubscription = supabase
-      .channel('project_tasks_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'project_tasks',
-          filter: `project_id=eq.${projectId}`
-        },
-        () => {
-          loadData();
-        }
-      )
-      .subscribe();
-
-    // Subscribe to milestone changes
-    const milestonesSubscription = supabase
-      .channel('milestones_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'milestones',
-          filter: `project_id=eq.${projectId}`
-        },
-        () => {
-          loadData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(tasksSubscription);
-      supabase.removeChannel(milestonesSubscription);
-    };
+    if (projectId && validateUUID(projectId)) {
+      fetchTasks();
+    } else {
+      setLoading(false);
+      if (projectId) {
+        setError('Invalid project ID format');
+      }
+    }
   }, [projectId]);
+
+  // Auto-retry mechanism with exponential backoff
+  useEffect(() => {
+    if (error && retryCount < maxRetries && retryCount > 0) {
+      const retryDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000);
+      console.log(`[useTaskManagement] Retrying in ${retryDelay}ms (attempt ${retryCount}/${maxRetries})`);
+      
+      const timeoutId = setTimeout(() => {
+        if (projectId && validateUUID(projectId)) {
+          fetchTasks();
+        }
+      }, retryDelay);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [error, retryCount, projectId]);
 
   return {
     tasks,
-    milestones,
     loading,
+    error,
     createTask,
     updateTask,
     deleteTask,
-    createMilestone,
-    updateMilestone,
-    deleteMilestone,
-    refreshData: loadData,
-    hierarchyTree,
-    expandedNodes,
-    promoteTask,
-    demoteTask,
-    moveTask,
-    toggleNodeExpansion,
-    expandAllNodes,
-    collapseAllNodes,
-    // Enhanced dependency functions
-    setManualOverride: DependencyCalculationService.setManualOverride,
-    calculateCriticalPath: () => DependencyCalculationService.calculateCriticalPath(tasks),
-    getTasksWithScheduleConflicts: () => DependencyCalculationService.getTasksWithScheduleConflicts(tasks)
+    reorderTasks,
+    getTaskHierarchy,
+    refreshTasks: fetchTasks,
+    retryCount,
+    maxRetries
   };
-};
+}

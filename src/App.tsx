@@ -1,110 +1,126 @@
-import { Suspense, lazy } from 'react';
-import { Toaster } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from 'next-themes';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { AuthGuard } from '@/components/auth/AuthGuard';
-import { ProfileLoader } from '@/components/auth/ProfileLoader';
-import { ProjectProvider } from '@/contexts/ProjectContext';
-import { ResourceProvider } from '@/contexts/ResourceContext';
-import { StakeholderProvider } from '@/contexts/StakeholderContext';
-import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
-import { initializeNotificationIntegration } from '@/services/NotificationIntegrationService';
-import { startEmailReminderService } from '@/services/EmailReminderService';
-import { initializePerformanceTracking } from '@/services/PerformanceTracker';
-import ErrorBoundary from '@/components/ErrorBoundary';
-import GlobalErrorHandler from '@/components/GlobalErrorHandler';
-import PerformanceMonitor from '@/components/PerformanceMonitor';
-import { useOfflineStatus } from '@/hooks/useOfflineStatus';
-import { useAccessibility } from '@/hooks/useAccessibility';
 
-// Lazy load components
-const Index = lazy(() => import('@/pages/Index'));
-const Auth = lazy(() => import('@/pages/Auth'));
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const Projects = lazy(() => import('@/pages/Projects'));
-const ProjectManagement = lazy(() => import('@/pages/ProjectManagement'));
-const Resources = lazy(() => import('@/pages/Resources'));
-const Stakeholders = lazy(() => import('@/pages/Stakeholders'));
-const Analytics = lazy(() => import('@/pages/Analytics'));
-const Workspaces = lazy(() => import('@/pages/Workspaces'));
-const NotFound = lazy(() => import('@/pages/NotFound'));
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
+import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/Projects";
+import Resources from "./pages/Resources";
+import Stakeholders from "./pages/Stakeholders";
+import Analytics from "./pages/Analytics";
+import ProjectManagement from "./pages/ProjectManagement";
+import Auth from "./pages/Auth";
+import Login from "./pages/Login";
+import Workspaces from "./pages/Workspaces";
+import NotFound from "./pages/NotFound";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProjectProvider } from "./contexts/ProjectContext";
+import { ResourceProvider } from "./contexts/ResourceContext";
+import { StakeholderProvider } from "./contexts/StakeholderContext";
+import { WorkspaceProvider } from "./contexts/WorkspaceContext";
+import GlobalErrorHandler from "./components/GlobalErrorHandler";
+import ErrorBoundary from "./components/ErrorBoundary";
+import NetworkErrorHandler from "./components/NetworkErrorHandler";
 
-// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on 404 errors or network failures that might cause loops
+        if (error instanceof Error && (
+          error.message.includes('404') || 
+          error.message.includes('net::ERR_FAILED') ||
+          error.message.includes('fetch')
+        )) {
+          console.log('[QueryClient] Not retrying due to network error:', error.message);
+          return false;
+        }
+        return failureCount < 2; // Limit retries to prevent loops
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
   },
 });
 
-// Initialize services
-initializeNotificationIntegration();
-startEmailReminderService();
-initializePerformanceTracking();
-
-function AppContent() {
-  const offlineStatus = useOfflineStatus();
-  const { preferences } = useAccessibility();
-
-  return (
-    <div id="main-content" className="min-h-screen bg-background font-sans antialiased">
-      <Suspense fallback={
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-        </div>
-      }>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-          <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
-          <Route path="/project/:id" element={<AuthGuard><ProjectManagement /></AuthGuard>} />
-          <Route path="/resources" element={<AuthGuard><Resources /></AuthGuard>} />
-          <Route path="/stakeholders" element={<AuthGuard><Stakeholders /></AuthGuard>} />
-          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/workspaces" element={<AuthGuard><Workspaces /></AuthGuard>} />
-          <Route path="/404" element={<NotFound />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
-        </Routes>
-      </Suspense>
-      <Toaster />
-      <PerformanceMonitor />
-    </div>
-  );
-}
-
 function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" value={{ dark: "dark" }}>
-          <TooltipProvider>
-            <GlobalErrorHandler>
-              <AuthProvider>
-                <ProfileLoader>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <TooltipProvider>
+          <ErrorBoundary>
+            <NetworkErrorHandler>
+              <GlobalErrorHandler>
+                <AuthProvider>
                   <WorkspaceProvider>
-                    <ResourceProvider>
-                      <StakeholderProvider>
-                        <ProjectProvider>
+                    <ProjectProvider>
+                      <ResourceProvider>
+                        <StakeholderProvider>
                           <BrowserRouter>
-                            <AppContent />
+                            <Routes>
+                              <Route path="/" element={<Index />} />
+                              <Route path="/auth" element={<Auth />} />
+                              <Route path="/login" element={<Login />} />
+                              <Route path="/dashboard" element={
+                                <ErrorBoundary fallback={
+                                  <div className="p-8 text-center">
+                                    <p>Unable to load dashboard. Please try refreshing the page.</p>
+                                  </div>
+                                }>
+                                  <Dashboard />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/projects" element={
+                                <ErrorBoundary fallback={
+                                  <div className="p-8 text-center">
+                                    <p>Unable to load projects. Please try refreshing the page.</p>
+                                  </div>
+                                }>
+                                  <Projects />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/resources" element={
+                                <ErrorBoundary>
+                                  <Resources />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/stakeholders" element={
+                                <ErrorBoundary>
+                                  <Stakeholders />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/analytics" element={
+                                <ErrorBoundary>
+                                  <Analytics />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/project/:id" element={
+                                <ErrorBoundary>
+                                  <ProjectManagement />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/workspaces" element={
+                                <ErrorBoundary>
+                                  <Workspaces />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="*" element={<NotFound />} />
+                            </Routes>
                           </BrowserRouter>
-                        </ProjectProvider>
-                      </StakeholderProvider>
-                    </ResourceProvider>
+                          <Toaster />
+                        </StakeholderProvider>
+                      </ResourceProvider>
+                    </ProjectProvider>
                   </WorkspaceProvider>
-                </ProfileLoader>
-              </AuthProvider>
-            </GlobalErrorHandler>
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+                </AuthProvider>
+              </GlobalErrorHandler>
+            </NetworkErrorHandler>
+          </ErrorBoundary>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

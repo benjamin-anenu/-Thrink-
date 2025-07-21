@@ -1,24 +1,23 @@
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
-  retryCount: number;
+  errorId: string;
 }
 
 class ErrorBoundary extends Component<Props, State> {
+  private retryCount = 0;
   private maxRetries = 3;
 
   constructor(props: Props) {
@@ -27,160 +26,142 @@ class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
-      retryCount: 0
+      errorId: Date.now().toString()
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
-      errorInfo: null,
-      retryCount: 0
+      errorId: Date.now().toString()
     };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error);
+    console.error('[ErrorBoundary] Error info:', errorInfo);
+    
+    // Prevent infinite loops by limiting retries
+    if (this.retryCount >= this.maxRetries) {
+      console.error('[ErrorBoundary] Max retries reached, stopping auto-retry');
+      return;
+    }
+
     this.setState({
       error,
       errorInfo,
-      retryCount: this.state.retryCount + 1
+      hasError: true
     });
 
-    // Log error to console and external service
-    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
-    
-    // Call optional error handler
-    this.props.onError?.(error, errorInfo);
-
-    // Report to analytics/monitoring service
-    this.reportError(error, errorInfo);
+    // Log error details for debugging
+    if (error.message.includes('404') || error.message.includes('net::ERR_FAILED')) {
+      console.error('[ErrorBoundary] Network error detected, component may be in retry loop');
+    }
   }
 
-  private reportError = (error: Error, errorInfo: ErrorInfo) => {
-    // In a real app, this would send to error tracking service
-    const errorReport = {
-      message: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href
-    };
-
-    console.warn('[ErrorBoundary] Error report:', errorReport);
-  };
-
-  private handleRetry = () => {
-    if (this.state.retryCount < this.maxRetries) {
+  handleRetry = () => {
+    if (this.retryCount < this.maxRetries) {
+      this.retryCount++;
+      console.log(`[ErrorBoundary] Retry attempt ${this.retryCount}/${this.maxRetries}`);
+      
       this.setState({
         hasError: false,
         error: null,
-        errorInfo: null
+        errorInfo: null,
+        errorId: Date.now().toString()
       });
+    } else {
+      console.error('[ErrorBoundary] Maximum retries reached');
     }
   };
 
-  private handleReload = () => {
-    window.location.reload();
-  };
-
-  private handleGoHome = () => {
-    window.location.href = '/';
+  handleReset = () => {
+    this.retryCount = 0;
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: Date.now().toString()
+    });
   };
 
   render() {
     if (this.state.hasError) {
+      // Custom fallback UI if provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
+      // Default error UI
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-          <Card className="w-full max-w-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Something went wrong
-              </CardTitle>
-              <CardDescription>
-                We encountered an unexpected error. Here's what you can do:
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <Bug className="h-4 w-4" />
-                <AlertTitle>Error Details</AlertTitle>
-                <AlertDescription className="mt-2">
-                  <code className="text-sm bg-muted p-2 rounded block">
-                    {this.state.error?.message || 'Unknown error occurred'}
-                  </code>
-                </AlertDescription>
-              </Alert>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                {this.state.retryCount < this.maxRetries && (
-                  <Button 
-                    onClick={this.handleRetry} 
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Try Again ({this.maxRetries - this.state.retryCount} attempts left)
-                  </Button>
+        <Card className="m-4 border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Something went wrong
+            </CardTitle>
+            <CardDescription>
+              An error occurred while rendering this component. Error ID: {this.state.errorId}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {this.state.error && (
+              <div className="p-3 bg-destructive/10 rounded-md">
+                <p className="text-sm font-medium text-destructive">
+                  {this.state.error.message}
+                </p>
+                {process.env.NODE_ENV === 'development' && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-muted-foreground cursor-pointer">
+                      Stack trace (development only)
+                    </summary>
+                    <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap">
+                      {this.state.error.stack}
+                    </pre>
+                  </details>
                 )}
-                
-                <Button 
-                  variant="outline" 
-                  onClick={this.handleReload}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reload Page
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  onClick={this.handleGoHome}
-                  className="flex items-center gap-2"
-                >
-                  <Home className="h-4 w-4" />
-                  Go Home
-                </Button>
               </div>
-
-              {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-sm font-medium mb-2">
-                    Development Details
-                  </summary>
-                  <pre className="text-xs bg-muted p-4 rounded overflow-auto">
-                    {this.state.error?.stack}
-                    {this.state.errorInfo.componentStack}
-                  </pre>
-                </details>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={this.handleRetry} 
+                variant="outline" 
+                size="sm"
+                disabled={this.retryCount >= this.maxRetries}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry ({this.retryCount}/{this.maxRetries})
+              </Button>
+              
+              <Button onClick={this.handleReset} size="sm">
+                Reset Component
+              </Button>
+              
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="destructive" 
+                size="sm"
+              >
+                Reload Page
+              </Button>
+            </div>
+            
+            {this.retryCount >= this.maxRetries && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                <p className="text-sm text-orange-800">
+                  Maximum retry attempts reached. This may indicate a network connectivity issue or a persistent rendering problem.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       );
     }
 
     return this.props.children;
   }
-}
-
-// HOC for functional components
-export function withErrorBoundary<P extends object>(
-  Component: React.ComponentType<P>,
-  fallback?: ReactNode
-) {
-  return function WrappedComponent(props: P) {
-    return (
-      <ErrorBoundary fallback={fallback}>
-        <Component {...props} />
-      </ErrorBoundary>
-    );
-  };
 }
 
 export default ErrorBoundary;
