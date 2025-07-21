@@ -1,81 +1,81 @@
 
 import React from 'react';
-import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
+import { ProjectTask, ProjectMilestone } from '@/types/project';
 import TaskTableRow from './TaskTableRow';
 
 interface TaskHierarchyRendererProps {
-  hierarchyTree: TaskHierarchyNode[];
-  expandedNodes: Set<string>;
+  tasks: ProjectTask[];
   milestones: ProjectMilestone[];
-  availableResources: Array<{ id: string; name: string; role: string }>;
-  availableStakeholders: Array<{ id: string; name: string; role: string }>;
-  allTasks: ProjectTask[];
+  availableResources: Array<{ id: string; name: string; role: string; email?: string }>;
+  availableStakeholders: Array<{ id: string; name: string; role: string; email?: string }>;
   onUpdateTask: (taskId: string, updates: Partial<ProjectTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: ProjectTask) => void;
   onRebaselineTask: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
+  densityClass: string;
+  expandedTasks: Set<string>;
   onToggleExpansion: (taskId: string) => void;
   onPromoteTask: (taskId: string) => void;
   onDemoteTask: (taskId: string) => void;
   onAddSubtask: (taskId: string) => void;
+  onIssueWarningClick?: (taskId: string) => void;
 }
 
 const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
-  hierarchyTree,
-  expandedNodes,
+  tasks,
   milestones,
   availableResources,
   availableStakeholders,
-  allTasks,
   onUpdateTask,
   onDeleteTask,
   onEditTask,
   onRebaselineTask,
+  densityClass,
+  expandedTasks,
   onToggleExpansion,
   onPromoteTask,
   onDemoteTask,
-  onAddSubtask
+  onAddSubtask,
+  onIssueWarningClick
 }) => {
-  const renderTaskNode = (node: TaskHierarchyNode): React.ReactNode[] => {
-    const isExpanded = expandedNodes.has(node.task.id);
-    const elements: React.ReactNode[] = [];
-    
-    // Render the task row
-    elements.push(
-      <TaskTableRow
-        key={node.task.id}
-        task={node.task}
-        milestones={milestones}
-        availableResources={availableResources}
-        availableStakeholders={availableStakeholders}
-        allTasks={allTasks}
-        onUpdateTask={onUpdateTask}
-        onDeleteTask={onDeleteTask}
-        onEditTask={onEditTask}
-        onRebaselineTask={onRebaselineTask}
-        densityClass="py-2 px-3"
-      />
+  // Filter and sort tasks by hierarchy
+  const rootTasks = tasks.filter(task => !task.parentTaskId);
+  const sortedTasks = [...rootTasks].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  const renderTask = (task: ProjectTask): React.ReactNode => {
+    const isExpanded = expandedTasks.has(task.id);
+    const subtasks = tasks.filter(t => t.parentTaskId === task.id);
+    const hasSubtasks = subtasks.length > 0;
+
+    return (
+      <React.Fragment key={task.id}>
+        <TaskTableRow
+          task={task}
+          milestones={milestones}
+          availableResources={availableResources}
+          availableStakeholders={availableStakeholders}
+          allTasks={tasks}
+          onUpdateTask={onUpdateTask}
+          onDeleteTask={onDeleteTask}
+          onEditTask={onEditTask}
+          onRebaselineTask={onRebaselineTask}
+          densityClass={densityClass}
+          onIssueWarningClick={onIssueWarningClick}
+        />
+        {hasSubtasks && isExpanded && (
+          <>
+            {subtasks.map(subtask => renderTask(subtask))}
+          </>
+        )}
+      </React.Fragment>
     );
-    
-    // Render children if expanded
-    if (isExpanded && node.children.length > 0) {
-      node.children.forEach(childNode => {
-        elements.push(...renderTaskNode(childNode));
-      });
-    }
-    
-    return elements;
   };
 
-  const renderAllNodes = () => {
-    const allElements: React.ReactNode[] = [];
-    hierarchyTree.forEach(node => {
-      allElements.push(...renderTaskNode(node));
-    });
-    return allElements;
-  };
-
-  return <>{renderAllNodes()}</>;
+  return (
+    <>
+      {sortedTasks.map(task => renderTask(task))}
+    </>
+  );
 };
 
 export default TaskHierarchyRenderer;

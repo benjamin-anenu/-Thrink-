@@ -12,6 +12,7 @@ import InlineTextEdit from './InlineTextEdit';
 import InlineSelectEdit from './InlineSelectEdit';
 import InlineMultiSelectEdit from './InlineMultiSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
+import InlineDependencyEdit from './InlineDependencyEdit';
 
 interface TaskTableRowProps {
   task: ProjectTask;
@@ -96,6 +97,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
     return `${variance}d`;
   };
 
+  // Fix the options to ensure they're in the correct format
   const statusOptions = [
     { value: 'Not Started', label: 'Not Started' },
     { value: 'In Progress', label: 'In Progress' },
@@ -103,6 +105,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
     { value: 'On Hold', label: 'On Hold' },
     { value: 'Blocked', label: 'Blocked' }
   ];
+  
   const priorityOptions = [
     { value: 'Low', label: 'Low' },
     { value: 'Medium', label: 'Medium' },
@@ -121,7 +124,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
 
       <TableCell className={densityClass}>
         <InlineSelectEdit
-          value={task.status}
+          value={task.status || 'Not Started'}
           options={statusOptions}
           onSave={(value) => handleFieldUpdate('status', value)}
           renderValue={(value) => (
@@ -134,7 +137,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
 
       <TableCell className={densityClass}>
         <InlineSelectEdit
-          value={task.priority}
+          value={task.priority || 'Medium'}
           options={priorityOptions}
           onSave={(value) => handleFieldUpdate('priority', value)}
           renderValue={(value) => (
@@ -147,7 +150,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
 
       <TableCell className={densityClass}>
         <InlineMultiSelectEdit
-          value={task.assignedResources}
+          value={task.assignedResources || []}
           options={availableResources.map(r => ({ id: r.id, name: r.name }))}
           onSave={(value) => handleFieldUpdate('assignedResources', value)}
           placeholder="Assign resources"
@@ -191,26 +194,12 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
       </TableCell>
 
       <TableCell className={densityClass}>
-        <div className="flex flex-wrap gap-1">
-          {task.dependencies && task.dependencies.length > 0 ? (
-            task.dependencies.slice(0, 2).map((dep, index) => {
-              const depTaskId = dep.split(':')[0];
-              const depTask = allTasks.find(t => t.id === depTaskId);
-              return (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {depTask?.name.substring(0, 10) || 'Unknown'}...
-                </Badge>
-              );
-            })
-          ) : (
-            <span className="text-sm text-muted-foreground">None</span>
-          )}
-          {task.dependencies && task.dependencies.length > 2 && (
-            <Badge variant="outline" className="text-xs">
-              +{task.dependencies.length - 2} more
-            </Badge>
-          )}
-        </div>
+        <InlineDependencyEdit
+          value={task.dependencies || []}
+          allTasks={allTasks}
+          currentTaskId={task.id}
+          onSave={(dependencies) => handleFieldUpdate('dependencies', dependencies)}
+        />
       </TableCell>
 
       <TableCell className={densityClass}>

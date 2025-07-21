@@ -25,7 +25,7 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
   const [isEditing, setIsEditing] = useState(false);
 
   // Handle empty values by using a special "__NONE__" value internally
-  const internalValue = value || (allowEmpty ? "__NONE__" : '');
+  const internalValue = value === '' ? (allowEmpty ? "__NONE__" : options[0]?.value || '') : value;
   
   const currentOption = options.find(opt => opt.value === value);
 
@@ -36,6 +36,12 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
     setIsEditing(false);
   };
 
+  // Ensure all options have non-empty values for SelectItem
+  const processedOptions = options.map(option => ({
+    ...option,
+    internalValue: option.value === '' ? "__NONE__" : option.value
+  }));
+
   if (isEditing) {
     return (
       <Select value={internalValue} onValueChange={handleValueChange} onOpenChange={setIsEditing}>
@@ -43,10 +49,10 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
+          {processedOptions.map((option) => (
             <SelectItem 
-              key={option.value === '' ? "__NONE__" : option.value} 
-              value={option.value === '' ? "__NONE__" : option.value}
+              key={option.internalValue} 
+              value={option.internalValue}
             >
               {option.label}
             </SelectItem>
