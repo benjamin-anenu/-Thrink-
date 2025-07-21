@@ -14,6 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_assignment_recommendations: {
+        Row: {
+          alternative_assignments: Json | null
+          availability_score: number | null
+          collaboration_fit_score: number | null
+          complexity_handling_fit_score: number | null
+          context_switching_impact: number | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          learning_opportunity_score: number | null
+          overall_fit_score: number | null
+          overload_risk_score: number | null
+          project_id: string | null
+          quality_prediction: number | null
+          reasoning: Json | null
+          recommended_task_count: number | null
+          resource_id: string | null
+          skill_gap_risk_score: number | null
+          skill_match_score: number | null
+          success_probability: number | null
+          task_capacity_fit_score: number | null
+          task_completion_forecast: number | null
+          timeline_confidence: number | null
+          workspace_id: string | null
+        }
+        Insert: {
+          alternative_assignments?: Json | null
+          availability_score?: number | null
+          collaboration_fit_score?: number | null
+          complexity_handling_fit_score?: number | null
+          context_switching_impact?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          learning_opportunity_score?: number | null
+          overall_fit_score?: number | null
+          overload_risk_score?: number | null
+          project_id?: string | null
+          quality_prediction?: number | null
+          reasoning?: Json | null
+          recommended_task_count?: number | null
+          resource_id?: string | null
+          skill_gap_risk_score?: number | null
+          skill_match_score?: number | null
+          success_probability?: number | null
+          task_capacity_fit_score?: number | null
+          task_completion_forecast?: number | null
+          timeline_confidence?: number | null
+          workspace_id?: string | null
+        }
+        Update: {
+          alternative_assignments?: Json | null
+          availability_score?: number | null
+          collaboration_fit_score?: number | null
+          complexity_handling_fit_score?: number | null
+          context_switching_impact?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          learning_opportunity_score?: number | null
+          overall_fit_score?: number | null
+          overload_risk_score?: number | null
+          project_id?: string | null
+          quality_prediction?: number | null
+          reasoning?: Json | null
+          recommended_task_count?: number | null
+          resource_id?: string | null
+          skill_gap_risk_score?: number | null
+          skill_match_score?: number | null
+          success_probability?: number | null
+          task_capacity_fit_score?: number | null
+          task_completion_forecast?: number | null
+          timeline_confidence?: number | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_assignment_recommendations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assignment_recommendations_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assignment_recommendations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1192,81 +1292,120 @@ export type Database = {
       }
       project_tasks: {
         Row: {
+          actual_complexity: number | null
           assigned_resources: string[] | null
           assigned_stakeholders: string[] | null
           assignee_id: string | null
           baseline_end_date: string | null
           baseline_start_date: string | null
+          blocker_count: number | null
+          collaboration_intensity: string | null
           completed_at: string | null
+          complexity_score: number | null
+          confidence_level: number | null
+          context_switching_penalty: number | null
           created_at: string
           dependencies: string[] | null
+          dependency_weight: number | null
           description: string | null
           duration: number | null
+          effort_points: number | null
           end_date: string | null
           hierarchy_level: number | null
           id: string
+          knowledge_transfer_required: boolean | null
           manual_override_dates: boolean | null
           milestone_id: string | null
           name: string
+          parallel_task_capacity: number | null
           parent_task_id: string | null
           priority: string | null
           progress: number | null
           project_id: string | null
+          requires_deep_focus: boolean | null
+          rework_cycles: number | null
           sort_order: number | null
           start_date: string | null
           status: string | null
+          task_size: string | null
           updated_at: string
         }
         Insert: {
+          actual_complexity?: number | null
           assigned_resources?: string[] | null
           assigned_stakeholders?: string[] | null
           assignee_id?: string | null
           baseline_end_date?: string | null
           baseline_start_date?: string | null
+          blocker_count?: number | null
+          collaboration_intensity?: string | null
           completed_at?: string | null
+          complexity_score?: number | null
+          confidence_level?: number | null
+          context_switching_penalty?: number | null
           created_at?: string
           dependencies?: string[] | null
+          dependency_weight?: number | null
           description?: string | null
           duration?: number | null
+          effort_points?: number | null
           end_date?: string | null
           hierarchy_level?: number | null
           id?: string
+          knowledge_transfer_required?: boolean | null
           manual_override_dates?: boolean | null
           milestone_id?: string | null
           name: string
+          parallel_task_capacity?: number | null
           parent_task_id?: string | null
           priority?: string | null
           progress?: number | null
           project_id?: string | null
+          requires_deep_focus?: boolean | null
+          rework_cycles?: number | null
           sort_order?: number | null
           start_date?: string | null
           status?: string | null
+          task_size?: string | null
           updated_at?: string
         }
         Update: {
+          actual_complexity?: number | null
           assigned_resources?: string[] | null
           assigned_stakeholders?: string[] | null
           assignee_id?: string | null
           baseline_end_date?: string | null
           baseline_start_date?: string | null
+          blocker_count?: number | null
+          collaboration_intensity?: string | null
           completed_at?: string | null
+          complexity_score?: number | null
+          confidence_level?: number | null
+          context_switching_penalty?: number | null
           created_at?: string
           dependencies?: string[] | null
+          dependency_weight?: number | null
           description?: string | null
           duration?: number | null
+          effort_points?: number | null
           end_date?: string | null
           hierarchy_level?: number | null
           id?: string
+          knowledge_transfer_required?: boolean | null
           manual_override_dates?: boolean | null
           milestone_id?: string | null
           name?: string
+          parallel_task_capacity?: number | null
           parent_task_id?: string | null
           priority?: string | null
           progress?: number | null
           project_id?: string | null
+          requires_deep_focus?: boolean | null
+          rework_cycles?: number | null
           sort_order?: number | null
           start_date?: string | null
           status?: string | null
+          task_size?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1495,6 +1634,179 @@ export type Database = {
           },
         ]
       }
+      resource_comparisons: {
+        Row: {
+          availability_comparison_data: Json | null
+          comparison_type: string | null
+          complementary_skills_analysis: Json | null
+          cost_comparison_data: Json | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          optimal_pairing_suggestions: Json | null
+          performance_comparison_data: Json | null
+          resource_ids: string[]
+          skill_comparison_data: Json | null
+          team_synergy_prediction: Json | null
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          availability_comparison_data?: Json | null
+          comparison_type?: string | null
+          complementary_skills_analysis?: Json | null
+          cost_comparison_data?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          optimal_pairing_suggestions?: Json | null
+          performance_comparison_data?: Json | null
+          resource_ids: string[]
+          skill_comparison_data?: Json | null
+          team_synergy_prediction?: Json | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          availability_comparison_data?: Json | null
+          comparison_type?: string | null
+          complementary_skills_analysis?: Json | null
+          cost_comparison_data?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          optimal_pairing_suggestions?: Json | null
+          performance_comparison_data?: Json | null
+          resource_ids?: string[]
+          skill_comparison_data?: Json | null
+          team_synergy_prediction?: Json | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_comparisons_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_profiles: {
+        Row: {
+          career_aspirations: string[] | null
+          collaboration_effectiveness: number | null
+          complexity_handling_score: number | null
+          contract_end_date: string | null
+          created_at: string | null
+          current_projects: string[] | null
+          employee_id: string | null
+          employment_type: string | null
+          growth_areas: string[] | null
+          historical_task_velocity: number | null
+          id: string
+          last_activity: string | null
+          learning_task_success_rate: number | null
+          mentorship_capacity: boolean | null
+          new_project_ramp_up_tasks: number | null
+          optimal_task_count_per_day: number | null
+          optimal_task_count_per_week: number | null
+          peak_productivity_periods: string[] | null
+          planned_time_off: Json | null
+          preferred_work_style: string | null
+          recurring_commitments: Json | null
+          resource_id: string | null
+          seniority_level: string | null
+          strength_keywords: string[] | null
+          task_switching_penalty_score: number | null
+          task_switching_preference: string | null
+          timezone: string | null
+          updated_at: string | null
+          work_days: string[] | null
+          workspace_id: string | null
+        }
+        Insert: {
+          career_aspirations?: string[] | null
+          collaboration_effectiveness?: number | null
+          complexity_handling_score?: number | null
+          contract_end_date?: string | null
+          created_at?: string | null
+          current_projects?: string[] | null
+          employee_id?: string | null
+          employment_type?: string | null
+          growth_areas?: string[] | null
+          historical_task_velocity?: number | null
+          id?: string
+          last_activity?: string | null
+          learning_task_success_rate?: number | null
+          mentorship_capacity?: boolean | null
+          new_project_ramp_up_tasks?: number | null
+          optimal_task_count_per_day?: number | null
+          optimal_task_count_per_week?: number | null
+          peak_productivity_periods?: string[] | null
+          planned_time_off?: Json | null
+          preferred_work_style?: string | null
+          recurring_commitments?: Json | null
+          resource_id?: string | null
+          seniority_level?: string | null
+          strength_keywords?: string[] | null
+          task_switching_penalty_score?: number | null
+          task_switching_preference?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          work_days?: string[] | null
+          workspace_id?: string | null
+        }
+        Update: {
+          career_aspirations?: string[] | null
+          collaboration_effectiveness?: number | null
+          complexity_handling_score?: number | null
+          contract_end_date?: string | null
+          created_at?: string | null
+          current_projects?: string[] | null
+          employee_id?: string | null
+          employment_type?: string | null
+          growth_areas?: string[] | null
+          historical_task_velocity?: number | null
+          id?: string
+          last_activity?: string | null
+          learning_task_success_rate?: number | null
+          mentorship_capacity?: boolean | null
+          new_project_ramp_up_tasks?: number | null
+          optimal_task_count_per_day?: number | null
+          optimal_task_count_per_week?: number | null
+          peak_productivity_periods?: string[] | null
+          planned_time_off?: Json | null
+          preferred_work_style?: string | null
+          recurring_commitments?: Json | null
+          resource_id?: string | null
+          seniority_level?: string | null
+          strength_keywords?: string[] | null
+          task_switching_penalty_score?: number | null
+          task_switching_preference?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          work_days?: string[] | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_profiles_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resource_skills: {
         Row: {
           created_at: string
@@ -1533,6 +1845,102 @@ export type Database = {
             columns: ["skill_id"]
             isOneToOne: false
             referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_utilization_metrics: {
+        Row: {
+          average_task_quality: number | null
+          bottleneck_risk_score: number | null
+          collaboration_tasks: number | null
+          complex_tasks: number | null
+          context_switch_penalty: number | null
+          created_at: string | null
+          id: string
+          learning_tasks: number | null
+          medium_tasks: number | null
+          period_end: string
+          period_start: string
+          period_type: string | null
+          resource_id: string | null
+          simple_tasks: number | null
+          task_capacity: number | null
+          task_count: number | null
+          tasks_completed: number | null
+          updated_at: string | null
+          utilization_percentage: number | null
+          utilization_status: string | null
+          weighted_capacity: number | null
+          weighted_task_load: number | null
+          weighted_utilization: number | null
+          workspace_id: string | null
+        }
+        Insert: {
+          average_task_quality?: number | null
+          bottleneck_risk_score?: number | null
+          collaboration_tasks?: number | null
+          complex_tasks?: number | null
+          context_switch_penalty?: number | null
+          created_at?: string | null
+          id?: string
+          learning_tasks?: number | null
+          medium_tasks?: number | null
+          period_end: string
+          period_start: string
+          period_type?: string | null
+          resource_id?: string | null
+          simple_tasks?: number | null
+          task_capacity?: number | null
+          task_count?: number | null
+          tasks_completed?: number | null
+          updated_at?: string | null
+          utilization_percentage?: number | null
+          utilization_status?: string | null
+          weighted_capacity?: number | null
+          weighted_task_load?: number | null
+          weighted_utilization?: number | null
+          workspace_id?: string | null
+        }
+        Update: {
+          average_task_quality?: number | null
+          bottleneck_risk_score?: number | null
+          collaboration_tasks?: number | null
+          complex_tasks?: number | null
+          context_switch_penalty?: number | null
+          created_at?: string | null
+          id?: string
+          learning_tasks?: number | null
+          medium_tasks?: number | null
+          period_end?: string
+          period_start?: string
+          period_type?: string | null
+          resource_id?: string | null
+          simple_tasks?: number | null
+          task_capacity?: number | null
+          task_count?: number | null
+          tasks_completed?: number | null
+          updated_at?: string | null
+          utilization_percentage?: number | null
+          utilization_status?: string | null
+          weighted_capacity?: number | null
+          weighted_task_load?: number | null
+          weighted_utilization?: number | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_utilization_metrics_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_utilization_metrics_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1581,6 +1989,73 @@ export type Database = {
           },
           {
             foreignKeyName: "resources_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_proficiencies: {
+        Row: {
+          certification_level: string | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          improvement_trend: string | null
+          last_used: string | null
+          proficiency_level: number | null
+          resource_id: string | null
+          skill_id: string | null
+          updated_at: string | null
+          workspace_id: string | null
+          years_experience: number | null
+        }
+        Insert: {
+          certification_level?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          improvement_trend?: string | null
+          last_used?: string | null
+          proficiency_level?: number | null
+          resource_id?: string | null
+          skill_id?: string | null
+          updated_at?: string | null
+          workspace_id?: string | null
+          years_experience?: number | null
+        }
+        Update: {
+          certification_level?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          improvement_trend?: string | null
+          last_used?: string | null
+          proficiency_level?: number | null
+          resource_id?: string | null
+          skill_id?: string | null
+          updated_at?: string | null
+          workspace_id?: string | null
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_proficiencies_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_proficiencies_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_proficiencies_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1802,6 +2277,48 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_skill_requirements: {
+        Row: {
+          created_at: string | null
+          id: string
+          minimum_proficiency: number | null
+          requirement_type: string | null
+          skill_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          minimum_proficiency?: number | null
+          requirement_type?: string | null
+          skill_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          minimum_proficiency?: number | null
+          requirement_type?: string | null
+          skill_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_skill_requirements_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_skill_requirements_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
             referencedColumns: ["id"]
           },
         ]
