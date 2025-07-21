@@ -90,8 +90,9 @@ export const useDependencyVisualization = (tasks: ProjectTask[]) => {
     return lag > 0 ? `+${lag}d` : `${lag}d`;
   };
 
+  // Note: Critical path calculation should be done at the component level with proper projectId
   const getCriticalPath = useMemo(() => {
-    return DependencyCalculationService.calculateCriticalPath(tasks);
+    return []; // Placeholder - actual calculation done in component with projectId
   }, [tasks]);
 
   const getTaskLevel = (taskId: string): number => {

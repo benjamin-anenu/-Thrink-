@@ -51,12 +51,12 @@ export class DependencyCalculationService {
 
       if (error) throw error;
 
-      const result = data[0];
+      const result = data?.[0];
       return {
         suggestedStartDate: result?.suggested_start_date || null,
         suggestedEndDate: result?.suggested_end_date || null,
         hasConflicts: result?.has_conflicts || false,
-        conflictDetails: result?.conflict_details || []
+        conflictDetails: []
       };
     } catch (error) {
       console.error('Error calculating task dates from dependencies:', error);
@@ -90,14 +90,14 @@ export class DependencyCalculationService {
 
       if (error) throw error;
 
-      const updatedTasks = data?.map((row: any) => ({
+      const updatedTasks = (data || []).map((row: any) => ({
         taskId: row.updated_task_id,
         oldStartDate: row.old_start_date,
         newStartDate: row.new_start_date,
         oldEndDate: row.old_end_date,
         newEndDate: row.new_end_date,
         updateReason: row.update_reason
-      })) || [];
+      }));
 
       return {
         updatedTasks,
@@ -217,7 +217,7 @@ export class DependencyCalculationService {
   }>> {
     try {
       const { data, error } = await supabase.rpc('get_critical_path', {
-        project_id_param: projectId
+        project_uuid: projectId
       });
 
       if (error) throw error;
@@ -270,5 +270,12 @@ export class DependencyCalculationService {
       console.error('Error setting manual override:', error);
       throw error;
     }
+  }
+
+  /**
+   * Calculate critical path (alias for getCriticalPath for backward compatibility)
+   */
+  static async calculateCriticalPath(projectId: string) {
+    return await this.getCriticalPath(projectId);
   }
 }

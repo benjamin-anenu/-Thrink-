@@ -39,9 +39,13 @@ const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [dependencies, setDependencies] = useState<string[]>(value || []);
-  const [newDependency, setNewDependency] = useState({
+  const [newDependency, setNewDependency] = useState<{
+    taskId: string;
+    type: ParsedDependency['type'];
+    lag: number;
+  }>({
     taskId: '',
-    type: 'finish-to-start' as const,
+    type: 'finish-to-start',
     lag: 0
   });
   const [conflicts, setConflicts] = useState<string[]>([]);

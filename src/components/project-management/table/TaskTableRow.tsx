@@ -27,6 +27,7 @@ interface TaskTableRowProps {
   densityClass: string;
   issueCount?: number;
   onIssueWarningClick?: (taskId: string) => void;
+  projectId?: string;
 }
 
 const TaskTableRow: React.FC<TaskTableRowProps> = ({
@@ -41,7 +42,8 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   onRebaselineTask,
   densityClass,
   issueCount = 0,
-  onIssueWarningClick
+  onIssueWarningClick,
+  projectId
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [cascadeUpdates, setCascadeUpdates] = useState<Array<{
@@ -59,7 +61,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   useEffect(() => {
     const checkCriticalPath = async () => {
       try {
-        const criticalPath = await DependencyCalculationService.getCriticalPath(task.projectId || '');
+        const criticalPath = await DependencyCalculationService.getCriticalPath(projectId || '');
         const isOnCriticalPath = criticalPath.some(cp => cp.taskId === task.id && cp.isCritical);
         setIsCriticalPath(isOnCriticalPath);
       } catch (error) {
@@ -67,10 +69,10 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
       }
     };
 
-    if (task.projectId) {
+    if (projectId) {
       checkCriticalPath();
     }
-  }, [task.id, task.projectId]);
+  }, [task.id, projectId]);
 
   const handleFieldUpdate = async (field: keyof ProjectTask, value: any) => {
     // Handle dependency updates with cascade logic
