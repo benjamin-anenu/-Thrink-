@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
@@ -53,6 +52,24 @@ const mapProjectTaskToDatabase = (task: Partial<ProjectTask>): any => {
   if (task.manualOverrideDates !== undefined) dbTask.manual_override_dates = task.manualOverrideDates;
   
   return dbTask;
+};
+
+// Helper function to map database milestone to ProjectMilestone
+const mapDatabaseMilestoneToProjectMilestone = (dbMilestone: any): ProjectMilestone => {
+  // Ensure status is one of the expected values
+  const validStatuses: ProjectMilestone['status'][] = ['upcoming', 'in-progress', 'completed', 'overdue'];
+  const status = validStatuses.includes(dbMilestone.status) ? dbMilestone.status : 'upcoming';
+  
+  return {
+    id: dbMilestone.id,
+    name: dbMilestone.name,
+    description: dbMilestone.description || '',
+    date: dbMilestone.due_date || '',
+    baselineDate: dbMilestone.baseline_date || '',
+    status: status,
+    tasks: dbMilestone.task_ids || [],
+    progress: dbMilestone.progress || 0
+  };
 };
 
 // Utility function to convert date strings to a sortable format
@@ -150,16 +167,7 @@ export function useTaskManagement(projectId: string) {
 
       if (milestonesData) {
         console.log('[useTaskManagement] Fetched milestones:', milestonesData.length);
-        const mappedMilestones = milestonesData.map(milestone => ({
-          id: milestone.id,
-          name: milestone.name,
-          description: milestone.description || '',
-          date: milestone.due_date || '',
-          baselineDate: milestone.baseline_date || '',
-          status: milestone.status || 'upcoming',
-          tasks: milestone.task_ids || [],
-          progress: milestone.progress || 0
-        }));
+        const mappedMilestones = milestonesData.map(mapDatabaseMilestoneToProjectMilestone);
         setMilestones(mappedMilestones);
       } else {
         setMilestones([]);
@@ -320,16 +328,7 @@ export function useTaskManagement(projectId: string) {
       }
 
       console.log('[useTaskManagement] Milestone created successfully:', data);
-      const mappedMilestone = {
-        id: data.id,
-        name: data.name,
-        description: data.description || '',
-        date: data.due_date || '',
-        baselineDate: data.baseline_date || '',
-        status: data.status || 'upcoming',
-        tasks: data.task_ids || [],
-        progress: data.progress || 0
-      };
+      const mappedMilestone = mapDatabaseMilestoneToProjectMilestone(data);
       setMilestones(prevMilestones => [...prevMilestones, mappedMilestone]);
 
       toast.success('Milestone created successfully');
@@ -371,16 +370,7 @@ export function useTaskManagement(projectId: string) {
 
       console.log('[useTaskManagement] Milestone updated successfully:', data);
       
-      const mappedMilestone = {
-        id: data.id,
-        name: data.name,
-        description: data.description || '',
-        date: data.due_date || '',
-        baselineDate: data.baseline_date || '',
-        status: data.status || 'upcoming',
-        tasks: data.task_ids || [],
-        progress: data.progress || 0
-      };
+      const mappedMilestone = mapDatabaseMilestoneToProjectMilestone(data);
       
       setMilestones(prevMilestones => 
         prevMilestones.map(milestone => 
