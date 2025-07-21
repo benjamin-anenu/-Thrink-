@@ -17,6 +17,7 @@ import TaskTableRow from './table/TaskTableRow';
 import TableControls from './table/TableControls';
 import InlineTaskEditor from './table/InlineTaskEditor';
 import InlineMilestoneEditor from './table/InlineMilestoneEditor';
+import MilestoneActionsCell from './table/MilestoneActionsCell';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectGanttChartProps {
@@ -282,6 +283,11 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
+  const handleEditMilestone = (milestone: ProjectMilestone) => {
+    setEditingMilestone(milestone);
+    setShowMilestoneDialog(true);
+  };
+
   const toggleMilestone = (milestoneId: string) => {
     const newExpanded = new Set(expandedMilestones);
     if (newExpanded.has(milestoneId)) {
@@ -490,17 +496,26 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                             onOpenChange={() => toggleMilestone(group.milestone.id)}
                           >
                             <CollapsibleTrigger className="w-full p-3 hover:bg-muted/40 transition-colors">
-                              <div className="flex items-center gap-2 w-full text-left">
-                                {expandedMilestones.has(group.milestone.id) ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <Target className="h-4 w-4 text-primary" />
-                                <span className="font-semibold text-foreground">{group.milestone.name}</span>
-                                <Badge variant="outline" className="ml-2">
-                                  {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
-                                </Badge>
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2 text-left">
+                                  {expandedMilestones.has(group.milestone.id) ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                  <Target className="h-4 w-4 text-primary" />
+                                  <span className="font-semibold text-foreground">{group.milestone.name}</span>
+                                  <Badge variant="outline" className="ml-2">
+                                    {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <MilestoneActionsCell
+                                    milestone={group.milestone}
+                                    onEdit={handleEditMilestone}
+                                    onDelete={handleDeleteMilestone}
+                                  />
+                                </div>
                               </div>
                             </CollapsibleTrigger>
                           </Collapsible>
