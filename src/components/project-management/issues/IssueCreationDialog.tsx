@@ -236,7 +236,7 @@ export const IssueCreationDialog = ({
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {resources.map(resource => (
                       <SelectItem key={resource.id} value={resource.id}>{resource.name}</SelectItem>
                     ))}
@@ -251,7 +251,7 @@ export const IssueCreationDialog = ({
                     <SelectValue placeholder="Select task" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No linked task</SelectItem>
+                    <SelectItem value="none">No linked task</SelectItem>
                     {tasks.map(task => (
                       <SelectItem key={task.id} value={task.id}>{task.name}</SelectItem>
                     ))}
@@ -266,7 +266,7 @@ export const IssueCreationDialog = ({
                     <SelectValue placeholder="Select milestone" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No linked milestone</SelectItem>
+                    <SelectItem value="none">No linked milestone</SelectItem>
                     {milestones.map(milestone => (
                       <SelectItem key={milestone.id} value={milestone.id}>{milestone.name}</SelectItem>
                     ))}
