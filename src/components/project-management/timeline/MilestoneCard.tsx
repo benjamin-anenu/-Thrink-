@@ -4,11 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Clock, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { ProjectMilestone } from '@/types/project';
+import { Milestone } from '@/types/milestone';
 import { format, isAfter, isBefore, differenceInDays } from 'date-fns';
 
 interface MilestoneCardProps {
-  milestone: ProjectMilestone;
+  milestone: Milestone;
   progress: number;
   className?: string;
 }
