@@ -84,11 +84,11 @@ export const IssueLogTable = ({
   const getDensityClasses = () => {
     switch (density) {
       case 'compact':
-        return 'text-xs';
+        return 'text-xs py-1 px-2';
       case 'comfortable':
-        return 'text-base py-4';
+        return 'text-base py-4 px-4';
       default:
-        return 'text-sm py-2';
+        return 'text-sm py-2 px-3';
     }
   };
 
@@ -109,24 +109,24 @@ export const IssueLogTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Severity</TableHead>
-            <TableHead>Priority</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Date Identified</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead>Date Resolved</TableHead>
-            <TableHead>Task</TableHead>
-            <TableHead>Time to Resolve</TableHead>
-            <TableHead>Schedule Variance</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className={getDensityClasses()}>Title</TableHead>
+            <TableHead className={getDensityClasses()}>Category</TableHead>
+            <TableHead className={getDensityClasses()}>Severity</TableHead>
+            <TableHead className={getDensityClasses()}>Priority</TableHead>
+            <TableHead className={getDensityClasses()}>Status</TableHead>
+            <TableHead className={getDensityClasses()}>Date Identified</TableHead>
+            <TableHead className={getDensityClasses()}>Due Date</TableHead>
+            <TableHead className={getDensityClasses()}>Date Resolved</TableHead>
+            <TableHead className={getDensityClasses()}>Task</TableHead>
+            <TableHead className={getDensityClasses()}>Time to Resolve</TableHead>
+            <TableHead className={getDensityClasses()}>Schedule Variance</TableHead>
+            <TableHead className={getDensityClasses()}>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {issues.map((issue) => (
-            <TableRow key={issue.id} className={getDensityClasses()}>
-              <TableCell className="font-medium">
+            <TableRow key={issue.id}>
+              <TableCell className={cn("font-medium", getDensityClasses())}>
                 {editingId === issue.id ? (
                   <Input
                     value={editForm.title}
@@ -138,7 +138,7 @@ export const IssueLogTable = ({
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
                   <Select
                     value={editForm.category}
@@ -158,7 +158,7 @@ export const IssueLogTable = ({
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
                   <Select
                     value={editForm.severity}
@@ -178,7 +178,7 @@ export const IssueLogTable = ({
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
                   <Select
                     value={editForm.priority}
@@ -198,7 +198,7 @@ export const IssueLogTable = ({
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
                   <Select
                     value={editForm.status}
@@ -218,15 +218,23 @@ export const IssueLogTable = ({
                 )}
               </TableCell>
 
-              <TableCell>
-                {issue.date_identified && (
-                  <span className="text-sm">
-                    {format(new Date(issue.date_identified), 'MMM dd, yyyy')}
-                  </span>
+              <TableCell className={getDensityClasses()}>
+                {editingId === issue.id ? (
+                  <Input
+                    type="date"
+                    value={editForm.date_identified || ''}
+                    onChange={(e) => updateEditForm('date_identified', e.target.value)}
+                  />
+                ) : (
+                  issue.date_identified && (
+                    <span className="text-sm">
+                      {format(new Date(issue.date_identified), 'MMM dd, yyyy')}
+                    </span>
+                  )
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
                   <Input
                     type="date"
@@ -242,27 +250,35 @@ export const IssueLogTable = ({
                 )}
               </TableCell>
 
-              <TableCell>
-                {issue.resolved_at && (
-                  <span className="text-sm">
-                    {format(new Date(issue.resolved_at), 'MMM dd, yyyy')}
-                  </span>
+              <TableCell className={getDensityClasses()}>
+                {editingId === issue.id ? (
+                  <Input
+                    type="date"
+                    value={editForm.resolved_at ? editForm.resolved_at.split('T')[0] : ''}
+                    onChange={(e) => updateEditForm('resolved_at', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                  />
+                ) : (
+                  issue.resolved_at && (
+                    <span className="text-sm">
+                      {format(new Date(issue.resolved_at), 'MMM dd, yyyy')}
+                    </span>
+                  )
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 {issue.task_name || '-'}
               </TableCell>
 
-              <TableCell className="text-muted-foreground">
+              <TableCell className={cn("text-muted-foreground", getDensityClasses())}>
                 {formatTimeToResolve(issue.time_to_resolve_days)}
               </TableCell>
 
-              <TableCell className={getVarianceColor(issue.schedule_variance_days)}>
+              <TableCell className={cn(getVarianceColor(issue.schedule_variance_days), getDensityClasses())}>
                 {formatScheduleVariance(issue.schedule_variance_days)}
               </TableCell>
 
-              <TableCell>
+              <TableCell className={getDensityClasses()}>
                 <div className="flex items-center gap-1">
                   {editingId === issue.id ? (
                     <>

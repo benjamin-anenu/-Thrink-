@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
@@ -19,6 +20,7 @@ const ProjectManagement = () => {
   const navigate = useNavigate();
   const { getProject, setCurrentProject } = useProject();
   const [activeTab, setActiveTab] = useState('overview');
+  const [issueLogTaskFilter, setIssueLogTaskFilter] = useState<string | undefined>();
 
   const project = getProject(id || '');
 
@@ -27,6 +29,11 @@ const ProjectManagement = () => {
       setCurrentProject(id);
     }
   }, [id, setCurrentProject]);
+
+  const handleSwitchToIssueLog = (taskId?: string) => {
+    setIssueLogTaskFilter(taskId);
+    setActiveTab('issues');
+  };
 
   if (!project) {
     return (
@@ -104,7 +111,10 @@ const ProjectManagement = () => {
           </TabsContent>
 
           <TabsContent value="gantt">
-            <ProjectGanttChart projectId={project.id} />
+            <ProjectGanttChart 
+              projectId={project.id} 
+              onSwitchToIssueLog={handleSwitchToIssueLog}
+            />
           </TabsContent>
 
           <TabsContent value="resources">
@@ -116,7 +126,11 @@ const ProjectManagement = () => {
           </TabsContent>
 
           <TabsContent value="issues">
-            <ProjectIssueLog projectId={project.id} />
+            <ProjectIssueLog 
+              projectId={project.id} 
+              taskFilter={issueLogTaskFilter}
+              onClearTaskFilter={() => setIssueLogTaskFilter(undefined)}
+            />
           </TabsContent>
 
           <TabsContent value="documentation">

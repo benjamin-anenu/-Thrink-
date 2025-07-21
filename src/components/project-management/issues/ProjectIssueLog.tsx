@@ -1,19 +1,23 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Filter, Download, LayoutGrid } from 'lucide-react';
+import { Plus, Filter, Download, LayoutGrid, X } from 'lucide-react';
 import { useIssueManagement } from '@/hooks/useIssueManagement';
 import { IssueLogTable } from './IssueLogTable';
 import { IssueCreationDialog } from './IssueCreationDialog';
 import { IssueFilters } from './IssueFilters';
 import { IssueMetricsCards } from './IssueMetricsCards';
+import { Badge } from '@/components/ui/badge';
 
 interface ProjectIssueLogProps {
   projectId: string;
+  taskFilter?: string;
+  onClearTaskFilter?: () => void;
 }
 
-export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
+export const ProjectIssueLog = ({ projectId, taskFilter, onClearTaskFilter }: ProjectIssueLogProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact');
@@ -30,6 +34,16 @@ export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
     generateAIInsights,
     getTaskDetails
   } = useIssueManagement(projectId);
+
+  // Apply task filter when provided
+  useEffect(() => {
+    if (taskFilter) {
+      setFilters(prev => ({
+        ...prev,
+        linkedTaskId: taskFilter
+      }));
+    }
+  }, [taskFilter, setFilters]);
 
   const handleExportCSV = () => {
     // Simple CSV export
@@ -67,7 +81,24 @@ export const ProjectIssueLog = ({ projectId }: ProjectIssueLogProps) => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Issue Log</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle>Issue Log</CardTitle>
+              {taskFilter && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    Filtered by task
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClearTaskFilter}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Select value={tableDensity} onValueChange={(value: 'compact' | 'normal' | 'comfortable') => setTableDensity(value)}>
                 <SelectTrigger className="w-32">

@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Target, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
+import { useIssueManagement } from '@/hooks/useIssueManagement';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
 import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
@@ -19,12 +20,14 @@ import InlineTaskEditor from './table/InlineTaskEditor';
 import InlineMilestoneEditor from './table/InlineMilestoneEditor';
 import MilestoneActionsCell from './table/MilestoneActionsCell';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface ProjectGanttChartProps {
   projectId: string;
+  onSwitchToIssueLog?: (taskId?: string) => void;
 }
 
-const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
+const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwitchToIssueLog }) => {
   const { getProject } = useProject();
   
   if (!projectId) {
@@ -48,6 +51,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     deleteMilestone,
     refreshData
   } = useTaskManagement(projectId);
+
+  // Fetch issues data for warning icons
+  const { issues: allIssues } = useIssueManagement(projectId);
   
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showMilestoneDialog, setShowMilestoneDialog] = useState(false);
@@ -56,7 +62,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({});
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('normal');
+  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact');
 
   // New state for inline editing
   const [showInlineTaskEditor, setShowInlineTaskEditor] = useState(false);
@@ -65,6 +71,17 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
   // Load resources and stakeholders
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
   const [availableStakeholders, setAvailableStakeholders] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
+
+  // Create task-to-issues mapping
+  const taskIssueMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    allIssues?.forEach(issue => {
+      if (issue.linked_task_id) {
+        map[issue.linked_task_id] = (map[issue.linked_task_id] || 0) + 1;
+      }
+    });
+    return map;
+  }, [allIssues]);
 
   React.useEffect(() => {
     const loadResourcesAndStakeholders = async () => {
@@ -178,9 +195,19 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     return groups;
   }, [filteredTasks, milestones]);
 
-  if (loading) {
-    return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
-  }
+  const handleIssueWarningClick = (taskId: string) => {
+    if (onSwitchToIssueLog) {
+      onSwitchToIssueLog(taskId);
+    }
+  };
+
+  const getDensityClass = () => {
+    switch (tableDensity) {
+      case 'compact': return 'text-xs py-1 px-2';
+      case 'comfortable': return 'text-base py-4 px-4';
+      default: return 'text-sm py-2 px-3';
+    }
+  };
 
   const handleCreateTask = async (task: Omit<ProjectTask, 'id'>) => {
     try {
@@ -376,13 +403,9 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
     }
   };
 
-  const getDensityClass = () => {
-    switch (tableDensity) {
-      case 'compact': return 'py-1 px-2';
-      case 'comfortable': return 'py-4 px-4';
-      default: return 'py-3 px-4';
-    }
-  };
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -453,18 +476,19 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
             <Table className="min-w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className={`w-80 min-w-[320px] ${getDensityClass()}`}>Task Name</TableHead>
-                  <TableHead className={`w-40 min-w-[160px] ${getDensityClass()}`}>Status</TableHead>
-                  <TableHead className={`w-32 ${getDensityClass()}`}>Priority</TableHead>
-                  <TableHead className={`w-40 ${getDensityClass()}`}>Resources</TableHead>
-                  <TableHead className={`w-32 ${getDensityClass()}`}>Start Date</TableHead>
-                  <TableHead className={`w-32 ${getDensityClass()}`}>End Date</TableHead>
-                  <TableHead className={`w-24 ${getDensityClass()}`}>Duration</TableHead>
-                  <TableHead className={`w-24 ${getDensityClass()}`}>Progress</TableHead>
-                  <TableHead className={`w-48 ${getDensityClass()}`}>Dependencies</TableHead>
-                  <TableHead className={`w-32 ${getDensityClass()}`}>Milestone</TableHead>
-                  <TableHead className={`w-24 ${getDensityClass()}`}>Variance</TableHead>
-                  <TableHead className={`w-32 ${getDensityClass()}`}>Actions</TableHead>
+                  <TableHead className={cn(`w-80 min-w-[320px]`, getDensityClass())}>Task Name</TableHead>
+                  <TableHead className={cn(`w-40 min-w-[160px]`, getDensityClass())}>Status</TableHead>
+                  <TableHead className={cn(`w-32`, getDensityClass())}>Priority</TableHead>
+                  <TableHead className={cn(`w-40`, getDensityClass())}>Resources</TableHead>
+                  <TableHead className={cn(`w-32`, getDensityClass())}>Start Date</TableHead>
+                  <TableHead className={cn(`w-32`, getDensityClass())}>End Date</TableHead>
+                  <TableHead className={cn(`w-24`, getDensityClass())}>Duration</TableHead>
+                  <TableHead className={cn(`w-24`, getDensityClass())}>Progress</TableHead>
+                  <TableHead className={cn(`w-48`, getDensityClass())}>Dependencies</TableHead>
+                  <TableHead className={cn(`w-32`, getDensityClass())}>Milestone</TableHead>
+                  <TableHead className={cn(`w-24`, getDensityClass())}>Variance</TableHead>
+                  <TableHead className={cn(`w-24`, getDensityClass())}>Issues</TableHead>
+                  <TableHead className={cn(`w-32`, getDensityClass())}>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -490,7 +514,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                   <React.Fragment key={groupKey}>
                     {group.milestone && (
                       <TableRow>
-                        <TableCell colSpan={12} className="p-0 border-b">
+                        <TableCell colSpan={13} className="p-0 border-b">
                           <Collapsible
                             open={expandedMilestones.has(group.milestone.id)}
                             onOpenChange={() => toggleMilestone(group.milestone.id)}
@@ -541,6 +565,8 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId }) => {
                             }}
                             onRebaselineTask={handleRebaselineTask}
                             densityClass={getDensityClass()}
+                            issueCount={taskIssueMap[task.id] || 0}
+                            onIssueWarningClick={handleIssueWarningClick}
                           />
                         ))}
                       </>
