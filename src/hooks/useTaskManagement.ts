@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
@@ -330,6 +329,7 @@ export const useTaskManagement = (projectId: string) => {
         dbUpdates.manual_override_dates = adjustedUpdates.manualOverrideDates;
       }
 
+      // Use the proper UUID in the where clause
       const { data, error } = await supabase
         .from('project_tasks')
         .update(dbUpdates)
