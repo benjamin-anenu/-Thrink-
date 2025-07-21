@@ -45,8 +45,8 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
         <SelectContent>
           {options.map((option) => (
             <SelectItem 
-              key={option.value || "__NONE__"} 
-              value={option.value || "__NONE__"}
+              key={option.value === '' ? "__NONE__" : option.value} 
+              value={option.value === '' ? "__NONE__" : option.value}
             >
               {option.label}
             </SelectItem>
