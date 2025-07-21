@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback } from 'react';
 import { ProjectTask } from '@/types/project';
 import { DependencyCalculationService, DependencyCalculationResult, ParsedDependency } from '@/services/DependencyCalculationService';
@@ -13,7 +12,8 @@ export const useDependencyCalculator = (tasks: ProjectTask[]) => {
       return {
         suggestedStartDate: null,
         suggestedEndDate: null,
-        hasConflicts: false
+        hasConflicts: false,
+        conflictDetails: []
       };
     }
 
@@ -22,6 +22,14 @@ export const useDependencyCalculator = (tasks: ProjectTask[]) => {
       task.duration,
       task.dependencies
     );
+  }, []);
+
+  const cascadeDependencyUpdates = useCallback(async (taskId: string) => {
+    return await DependencyCalculationService.cascadeDependencyUpdates(taskId);
+  }, []);
+
+  const getCriticalPath = useCallback(async (projectId: string) => {
+    return await DependencyCalculationService.getCriticalPath(projectId);
   }, []);
 
   const getTasksWithScheduleConflicts = useCallback(async (): Promise<{
@@ -53,14 +61,6 @@ export const useDependencyCalculator = (tasks: ProjectTask[]) => {
     );
   }, []);
 
-  const cascadeDependencyUpdates = useCallback(async (taskId: string): Promise<void> => {
-    return await DependencyCalculationService.cascadeDependencyUpdates(taskId);
-  }, []);
-
-  const calculateCriticalPath = useCallback((): ProjectTask[] => {
-    return DependencyCalculationService.calculateCriticalPath(tasks);
-  }, [tasks]);
-
   const setManualOverride = useCallback(async (taskId: string, override: boolean): Promise<void> => {
     return await DependencyCalculationService.setManualOverride(taskId, override);
   }, []);
@@ -73,7 +73,7 @@ export const useDependencyCalculator = (tasks: ProjectTask[]) => {
     checkCircularDependency,
     validateAndAddDependency,
     cascadeDependencyUpdates,
-    calculateCriticalPath,
+    getCriticalPath,
     setManualOverride,
     formatDependency: DependencyCalculationService.formatDependency
   };

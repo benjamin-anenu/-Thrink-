@@ -35,7 +35,7 @@ export class DependencyCalculationService {
   }
 
   /**
-   * Calculate task dates based on dependencies using database function
+   * Calculate task dates based on dependencies using enhanced database function
    */
   static async calculateTaskDatesFromDependencies(
     taskId: string,
@@ -56,49 +56,59 @@ export class DependencyCalculationService {
         suggestedStartDate: result?.suggested_start_date || null,
         suggestedEndDate: result?.suggested_end_date || null,
         hasConflicts: result?.has_conflicts || false,
-        conflictDetails: result?.has_conflicts ? ['Multiple dependencies create scheduling conflicts'] : undefined
+        conflictDetails: result?.conflict_details || []
       };
     } catch (error) {
       console.error('Error calculating task dates from dependencies:', error);
       return {
         suggestedStartDate: null,
         suggestedEndDate: null,
-        hasConflicts: false
+        hasConflicts: false,
+        conflictDetails: []
       };
     }
   }
 
   /**
-   * Check for circular dependencies using database function
+   * Trigger cascade updates for dependent tasks with detailed results
    */
-  static async checkCircularDependency(taskId: string, newDependencyId: string): Promise<boolean> {
+  static async cascadeDependencyUpdates(updatedTaskId: string): Promise<{
+    updatedTasks: Array<{
+      taskId: string;
+      oldStartDate: string | null;
+      newStartDate: string | null;
+      oldEndDate: string | null;
+      newEndDate: string | null;
+      updateReason: string;
+    }>;
+    totalUpdated: number;
+  }> {
     try {
-      const { data, error } = await supabase.rpc('check_circular_dependency', {
-        task_id_param: taskId,
-        new_dependency_id: newDependencyId
-      });
-
-      if (error) throw error;
-      return data || false;
-    } catch (error) {
-      console.error('Error checking circular dependency:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Trigger cascade updates for dependent tasks
-   */
-  static async cascadeDependencyUpdates(updatedTaskId: string): Promise<void> {
-    try {
-      const { error } = await supabase.rpc('cascade_dependency_updates', {
+      const { data, error } = await supabase.rpc('cascade_dependency_updates', {
         updated_task_id: updatedTaskId
       });
 
       if (error) throw error;
+
+      const updatedTasks = data?.map((row: any) => ({
+        taskId: row.updated_task_id,
+        oldStartDate: row.old_start_date,
+        newStartDate: row.new_start_date,
+        oldEndDate: row.old_end_date,
+        newEndDate: row.new_end_date,
+        updateReason: row.update_reason
+      })) || [];
+
+      return {
+        updatedTasks,
+        totalUpdated: updatedTasks.length
+      };
     } catch (error) {
       console.error('Error cascading dependency updates:', error);
-      throw error;
+      return {
+        updatedTasks: [],
+        totalUpdated: 0
+      };
     }
   }
 
@@ -194,58 +204,55 @@ export class DependencyCalculationService {
   }
 
   /**
-   * Calculate critical path for a project
+   * Get critical path for a project
    */
-  static calculateCriticalPath(tasks: ProjectTask[]): ProjectTask[] {
-    // Simple critical path calculation - can be enhanced with more sophisticated algorithms
-    const taskMap = new Map(tasks.map(task => [task.id, task]));
-    const visited = new Set<string>();
-    const criticalTasks: ProjectTask[] = [];
+  static async getCriticalPath(projectId: string): Promise<Array<{
+    taskId: string;
+    taskName: string;
+    startDate: string | null;
+    endDate: string | null;
+    duration: number;
+    totalFloat: number;
+    isCritical: boolean;
+  }>> {
+    try {
+      const { data, error } = await supabase.rpc('get_critical_path', {
+        project_id_param: projectId
+      });
 
-    // Find tasks with no successors (end tasks)
-    const endTasks = tasks.filter(task => 
-      !tasks.some(otherTask => 
-        otherTask.dependencies.some(dep => 
-          this.parseDependency(dep).taskId === task.id
-        )
-      )
-    );
+      if (error) throw error;
 
-    // Trace back from end tasks to find longest path
-    const findLongestPath = (taskId: string, currentPath: ProjectTask[]): ProjectTask[] => {
-      if (visited.has(taskId)) return currentPath;
-      
-      const task = taskMap.get(taskId);
-      if (!task) return currentPath;
-
-      visited.add(taskId);
-      const newPath = [task, ...currentPath];
-
-      let longestPath = newPath;
-
-      // Check all dependencies to find the longest path
-      for (const depString of task.dependencies) {
-        const dep = this.parseDependency(depString);
-        const depPath = findLongestPath(dep.taskId, newPath);
-        if (depPath.length > longestPath.length) {
-          longestPath = depPath;
-        }
-      }
-
-      return longestPath;
-    };
-
-    // Find the longest path from all end tasks
-    let longestCriticalPath: ProjectTask[] = [];
-    for (const endTask of endTasks) {
-      visited.clear();
-      const path = findLongestPath(endTask.id, []);
-      if (path.length > longestCriticalPath.length) {
-        longestCriticalPath = path;
-      }
+      return data?.map((row: any) => ({
+        taskId: row.task_id,
+        taskName: row.task_name,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        duration: row.duration,
+        totalFloat: row.total_float,
+        isCritical: row.is_critical
+      })) || [];
+    } catch (error) {
+      console.error('Error getting critical path:', error);
+      return [];
     }
+  }
 
-    return longestCriticalPath;
+  /**
+   * Check for circular dependencies using database function
+   */
+  static async checkCircularDependency(taskId: string, newDependencyId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.rpc('check_circular_dependency', {
+        task_id_param: taskId,
+        new_dependency_id: newDependencyId
+      });
+
+      if (error) throw error;
+      return data || false;
+    } catch (error) {
+      console.error('Error checking circular dependency:', error);
+      return false;
+    }
   }
 
   /**
