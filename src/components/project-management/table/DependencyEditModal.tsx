@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -5,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Plus, X, AlertTriangle, Clock } from 'lucide-react';
+import { Plus, X, AlertTriangle, Clock, Loader2 } from 'lucide-react';
 import { ProjectTask } from '@/types/project';
 import { useDependencyCalculator } from '@/hooks/useDependencyCalculator';
+import { DependencyCalculationService } from '@/services/DependencyCalculationService';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface DependencyEditModalProps {
   isOpen: boolean;
@@ -52,6 +55,13 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
     lag: 0
   });
   const [conflicts, setConflicts] = useState<string[]>([]);
+  const [removingDependencies, setRemovingDependencies] = useState<Set<string>>(new Set());
+  const [isCalculatingDates, setIsCalculatingDates] = useState(false);
+  const [suggestedDates, setSuggestedDates] = useState<{
+    startDate: string | null;
+    endDate: string | null;
+  } | null>(null);
+  
   const { parseDependency, checkCircularDependency, calculateTaskSchedule } = useDependencyCalculator(allTasks);
 
   useEffect(() => {
@@ -63,6 +73,8 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
         lag: 0
       });
       setConflicts([]);
+      setRemovingDependencies(new Set());
+      setSuggestedDates(null);
     }
   }, [isOpen, value]);
 
@@ -94,21 +106,55 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
     return !existingTaskIds.includes(task.id);
   });
 
+  // Calculate suggested dates when dependencies change
+  const calculateSuggestedDates = async (deps: string[]) => {
+    if (deps.length === 0) {
+      setSuggestedDates(null);
+      return;
+    }
+
+    setIsCalculatingDates(true);
+    try {
+      const currentTask = allTasks.find(t => t.id === currentTaskId);
+      if (!currentTask) return;
+
+      const result = await DependencyCalculationService.calculateTaskDatesFromDependencies(
+        currentTaskId,
+        currentTask.duration,
+        deps
+      );
+
+      if (result.suggestedStartDate && result.suggestedEndDate) {
+        setSuggestedDates({
+          startDate: result.suggestedStartDate,
+          endDate: result.suggestedEndDate
+        });
+      } else {
+        setSuggestedDates(null);
+      }
+
+      if (result.hasConflicts && result.conflictDetails) {
+        setConflicts(result.conflictDetails);
+      } else {
+        setConflicts([]);
+      }
+    } catch (error) {
+      console.error('Error calculating suggested dates:', error);
+      setConflicts([`Error calculating dates: ${error.message}`]);
+    } finally {
+      setIsCalculatingDates(false);
+    }
+  };
+
   // Check for conflicts when dependencies change
   useEffect(() => {
     if (dependencies.length > 0 && isOpen) {
-      calculateTaskSchedule(allTasks.find(t => t.id === currentTaskId)!)
-        .then(result => {
-          if (result.hasConflicts && result.conflictDetails) {
-            setConflicts(result.conflictDetails);
-          } else {
-            setConflicts([]);
-          }
-        });
+      calculateSuggestedDates(dependencies);
     } else {
       setConflicts([]);
+      setSuggestedDates(null);
     }
-  }, [dependencies, currentTaskId, calculateTaskSchedule, allTasks, isOpen]);
+  }, [dependencies, currentTaskId, allTasks, isOpen]);
 
   const handleAddDependency = async () => {
     if (!newDependency.taskId) return;
@@ -134,15 +180,77 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
     setConflicts([]);
   };
 
-  const handleRemoveDependency = (depToRemove: string) => {
-    const newDependencies = dependencies.filter(dep => dep !== depToRemove);
-    setDependencies(newDependencies);
-    setConflicts([]);
+  const handleRemoveDependency = async (depToRemove: string) => {
+    const depTaskId = parseDependencyString(depToRemove).taskId;
+    
+    try {
+      // Add to removing set for loading state
+      setRemovingDependencies(prev => new Set(prev).add(depTaskId));
+      
+      const newDependencies = dependencies.filter(dep => dep !== depToRemove);
+      setDependencies(newDependencies);
+      
+      // Immediately save to database
+      console.log('DependencyEditModal: Immediately saving dependency removal:', newDependencies);
+      await onSave(newDependencies);
+      
+      // Trigger cascade updates
+      try {
+        const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(currentTaskId);
+        console.log('DependencyEditModal: Cascade result after removal:', cascadeResult);
+        
+        if (cascadeResult.totalUpdated > 0) {
+          toast.success(`Dependency removed! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} updated automatically.`);
+        } else {
+          toast.success('Dependency removed successfully!');
+        }
+      } catch (cascadeError) {
+        console.error('DependencyEditModal: Cascade error after removal:', cascadeError);
+        toast.success('Dependency removed, but dependent tasks may need manual adjustment.');
+      }
+      
+      setConflicts([]);
+    } catch (error) {
+      console.error('DependencyEditModal: Error removing dependency:', error);
+      toast.error(`Failed to remove dependency: ${error.message}`);
+      
+      // Revert the change on error
+      setDependencies(dependencies);
+    } finally {
+      // Remove from removing set
+      setRemovingDependencies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(depTaskId);
+        return newSet;
+      });
+    }
   };
 
-  const handleSave = () => {
-    onSave(dependencies);
-    onClose();
+  const handleSave = async () => {
+    try {
+      console.log('DependencyEditModal: Saving all dependencies:', dependencies);
+      await onSave(dependencies);
+      
+      // Trigger cascade updates
+      try {
+        const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(currentTaskId);
+        console.log('DependencyEditModal: Final cascade result:', cascadeResult);
+        
+        if (cascadeResult.totalUpdated > 0) {
+          toast.success(`Dependencies saved! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} updated automatically.`);
+        } else {
+          toast.success('Dependencies saved successfully!');
+        }
+      } catch (cascadeError) {
+        console.error('DependencyEditModal: Final cascade error:', cascadeError);
+        toast.success('Dependencies saved, but some dependent tasks may need manual adjustment.');
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('DependencyEditModal: Error saving dependencies:', error);
+      toast.error(`Failed to save dependencies: ${error.message}`);
+    }
   };
 
   const handleCancel = () => {
@@ -153,6 +261,7 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
       lag: 0
     });
     setConflicts([]);
+    setSuggestedDates(null);
     onClose();
   };
 
@@ -180,9 +289,13 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
     const parsed = parseDependencyString(dep);
     const typeAbbr = getDependencyTypeAbbr(parsed.type);
     const lagText = parsed.lag !== 0 ? ` ${parsed.lag > 0 ? '+' : ''}${parsed.lag}d` : '';
+    const isRemoving = removingDependencies.has(parsed.taskId);
     
     return (
-      <div key={dep} className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+      <div key={dep} className={cn(
+        "flex items-center gap-2 p-3 border rounded-lg bg-muted/30 transition-opacity",
+        isRemoving && "opacity-50"
+      )}>
         <Badge 
           variant="outline" 
           className={cn("text-sm", getDependencyTypeColor(parsed.type))}
@@ -201,9 +314,14 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
           variant="ghost"
           size="sm"
           onClick={() => handleRemoveDependency(dep)}
+          disabled={isRemoving}
           className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
         >
-          <X className="h-4 w-4" />
+          {isRemoving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <X className="h-4 w-4" />
+          )}
         </Button>
       </div>
     );
@@ -217,7 +335,7 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Existing Dependencies */}
+          {/* Current Dependencies */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">Current Dependencies ({dependencies.length})</h4>
             {dependencies.length > 0 ? (
@@ -231,6 +349,32 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Suggested Dates Display */}
+          {suggestedDates && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Suggested Dates Based on Dependencies
+                  {isCalculatingDates && <Loader2 className="h-4 w-4 animate-spin" />}
+                </h4>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Start Date:</span>
+                      <div className="text-blue-700">{suggestedDates.startDate}</div>
+                    </div>
+                    <div>
+                      <span className="font-medium">End Date:</span>
+                      <div className="text-blue-700">{suggestedDates.endDate}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Conflicts Display */}
           {conflicts.length > 0 && (
@@ -343,8 +487,9 @@ const DependencyEditModal: React.FC<DependencyEditModalProps> = ({
           </Button>
           <Button 
             onClick={handleSave}
-            disabled={conflicts.length > 0}
+            disabled={conflicts.length > 0 || removingDependencies.size > 0}
           >
+            {removingDependencies.size > 0 && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save Dependencies
           </Button>
         </DialogFooter>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Edit2, Trash2, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2, Clock, CheckCircle, XCircle, Lock } from 'lucide-react';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -81,7 +81,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
       setIsUpdating(true);
       console.log('TaskTableRow: Updating field', field, 'with value:', value);
 
-      // Handle dependency updates with cascade logic
+      // Handle dependency updates with enhanced cascade logic
       if (field === 'dependencies') {
         console.log('TaskTableRow: Processing dependency update');
         
@@ -89,10 +89,31 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         await onUpdateTask(task.id, { [field]: value });
         
         // Show loading toast
-        const loadingToast = toast.loading('Updating task dependencies and dependent tasks...');
+        const loadingToast = toast.loading('Updating task dependencies and calculating dates...');
         
         try {
-          // Then trigger cascade updates
+          // Recalculate dates for the current task
+          console.log('TaskTableRow: Recalculating dates for current task');
+          const dateResult = await DependencyCalculationService.calculateTaskDatesFromDependencies(
+            task.id,
+            task.duration,
+            value
+          );
+          
+          // Update current task dates if calculated and not manually overridden
+          if (dateResult.suggestedStartDate && dateResult.suggestedEndDate && !task.manualOverrideDates) {
+            console.log('TaskTableRow: Updating current task dates:', {
+              startDate: dateResult.suggestedStartDate,
+              endDate: dateResult.suggestedEndDate
+            });
+            
+            await onUpdateTask(task.id, {
+              startDate: dateResult.suggestedStartDate,
+              endDate: dateResult.suggestedEndDate
+            });
+          }
+          
+          // Then trigger cascade updates for dependent tasks
           const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(task.id);
           
           console.log('TaskTableRow: Cascade result:', cascadeResult);
@@ -101,55 +122,98 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             setCascadeUpdates(cascadeResult.updatedTasks);
             setShowCascadeNotification(true);
             
-            toast.success(`Dependencies updated! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} adjusted automatically.`, {
+            toast.success(`Dependencies updated! Task dates recalculated and ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} adjusted automatically.`, {
               id: loadingToast,
-              duration: 5000
+              duration: 7000
             });
             
-            // Hide notification after 5 seconds
+            // Hide notification after 7 seconds
             setTimeout(() => {
               setShowCascadeNotification(false);
               setCascadeUpdates([]);
-            }, 5000);
+            }, 7000);
           } else {
-            toast.success('Dependencies updated successfully!', {
+            const message = dateResult.suggestedStartDate && !task.manualOverrideDates 
+              ? 'Dependencies updated and task dates recalculated!' 
+              : 'Dependencies updated successfully!';
+            toast.success(message, {
               id: loadingToast
             });
           }
         } catch (cascadeError) {
           console.error('TaskTableRow: Cascade error:', cascadeError);
-          toast.error('Dependencies updated, but some dependent tasks may not have been adjusted automatically.', {
+          toast.error('Dependencies updated, but date calculation failed. Please check for conflicts.', {
             id: loadingToast
           });
+        }
+      } 
+      // Handle date updates with manual override logic
+      else if (field === 'startDate' || field === 'endDate') {
+        console.log('TaskTableRow: Date updated, setting manual override and triggering cascade');
+        
+        // Set manual override flag when dates are manually changed
+        await onUpdateTask(task.id, { 
+          [field]: value,
+          manualOverrideDates: true
+        });
+        
+        try {
+          const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(task.id);
+          
+          if (cascadeResult.totalUpdated > 0) {
+            setCascadeUpdates(cascadeResult.updatedTasks);
+            setShowCascadeNotification(true);
+            
+            toast.success(`Task updated with manual dates! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} adjusted automatically.`);
+            
+            setTimeout(() => {
+              setShowCascadeNotification(false);
+              setCascadeUpdates([]);
+            }, 5000);
+          } else {
+            toast.success('Task dates updated with manual override!');
+          }
+        } catch (cascadeError) {
+          console.error('TaskTableRow: Cascade error after date update:', cascadeError);
+          toast.success('Task dates updated! Some dependent tasks may need manual adjustment.');
+        }
+      }
+      // Handle manual override reset
+      else if (field === 'manualOverrideDates' && value === false) {
+        console.log('TaskTableRow: Resetting manual override, recalculating dates');
+        
+        // First remove the manual override flag
+        await onUpdateTask(task.id, { manualOverrideDates: false });
+        
+        // Then recalculate dates based on dependencies
+        if (task.dependencies && task.dependencies.length > 0) {
+          try {
+            const dateResult = await DependencyCalculationService.calculateTaskDatesFromDependencies(
+              task.id,
+              task.duration,
+              task.dependencies
+            );
+            
+            if (dateResult.suggestedStartDate && dateResult.suggestedEndDate) {
+              await onUpdateTask(task.id, {
+                startDate: dateResult.suggestedStartDate,
+                endDate: dateResult.suggestedEndDate
+              });
+              
+              toast.success('Manual override removed and dates recalculated based on dependencies!');
+            } else {
+              toast.success('Manual override removed!');
+            }
+          } catch (error) {
+            console.error('Error recalculating dates after removing manual override:', error);
+            toast.warning('Manual override removed, but date recalculation failed.');
+          }
+        } else {
+          toast.success('Manual override removed!');
         }
       } else {
         // Handle other field updates
         await onUpdateTask(task.id, { [field]: value });
-        
-        // If updating start/end dates, trigger cascade updates
-        if (field === 'startDate' || field === 'endDate') {
-          console.log('TaskTableRow: Date updated, triggering cascade');
-          
-          try {
-            const cascadeResult = await DependencyCalculationService.cascadeDependencyUpdates(task.id);
-            
-            if (cascadeResult.totalUpdated > 0) {
-              setCascadeUpdates(cascadeResult.updatedTasks);
-              setShowCascadeNotification(true);
-              
-              toast.success(`Task updated! ${cascadeResult.totalUpdated} dependent task${cascadeResult.totalUpdated !== 1 ? 's' : ''} adjusted automatically.`);
-              
-              setTimeout(() => {
-                setShowCascadeNotification(false);
-                setCascadeUpdates([]);
-              }, 5000);
-            }
-          } catch (cascadeError) {
-            console.error('TaskTableRow: Cascade error after date update:', cascadeError);
-            // Don't show error toast for cascade failures on date updates
-          }
-        }
-        
         toast.success('Task updated successfully!');
       }
     } catch (error) {
@@ -239,9 +303,24 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
           </div>
         )}
 
+        {/* Manual Override Indicator */}
+        {task.manualOverrideDates && (
+          <div className="absolute top-1 left-1">
+            <Badge 
+              variant="outline" 
+              className="text-xs cursor-pointer hover:bg-muted"
+              onClick={() => handleFieldUpdate('manualOverrideDates', false)}
+              title="Click to remove manual override and recalculate dates"
+            >
+              <Lock className="h-3 w-3 mr-1" />
+              Manual
+            </Badge>
+          </div>
+        )}
+
         {/* Update Status Indicator */}
         {isUpdating && (
-          <div className="absolute top-1 left-1">
+          <div className="absolute top-1 right-1">
             <Badge variant="outline" className="text-xs">
               <Clock className="h-3 w-3 mr-1 animate-spin" />
               Updating...
@@ -323,7 +402,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             />
             {task.manualOverrideDates && (
               <Badge variant="outline" className="text-xs">
-                Manual
+                <Lock className="h-3 w-3" />
               </Badge>
             )}
           </div>
@@ -340,7 +419,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             />
             {task.manualOverrideDates && (
               <Badge variant="outline" className="text-xs">
-                Manual
+                <Lock className="h-3 w-3" />
               </Badge>
             )}
           </div>

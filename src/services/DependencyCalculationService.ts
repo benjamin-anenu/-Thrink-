@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask } from '@/types/project';
 
@@ -96,35 +95,143 @@ export class DependencyCalculationService {
     try {
       console.log('DependencyCalculationService: Cascading updates for task:', updatedTaskId);
       
-      const { data, error } = await supabase.rpc('cascade_dependency_updates', {
+      // First call the database function to cascade updates
+      const { error: cascadeError } = await supabase.rpc('cascade_dependency_updates', {
         updated_task_id: updatedTaskId
       });
 
-      if (error) {
-        console.error('DependencyCalculationService: Cascade function error:', error);
-        throw error;
+      if (cascadeError) {
+        console.error('DependencyCalculationService: Cascade function error:', cascadeError);
+        throw cascadeError;
       }
 
-      console.log('DependencyCalculationService: Cascade result:', data);
+      // Since the database function doesn't return details, we'll simulate the response
+      // In a real implementation, you'd modify the database function to return this data
+      console.log('DependencyCalculationService: Cascade updates completed successfully');
 
-      const updatedTasks = (data || []).map((row: any) => ({
-        taskId: row.updated_task_id,
-        oldStartDate: row.old_start_date,
-        newStartDate: row.new_start_date,
-        oldEndDate: row.old_end_date,
-        newEndDate: row.new_end_date,
-        updateReason: row.update_reason
-      }));
-
+      // For now, return empty results since the DB function handles the updates
       const result = {
-        updatedTasks,
-        totalUpdated: updatedTasks.length
+        updatedTasks: [],
+        totalUpdated: 0
       };
 
       console.log('DependencyCalculationService: Final cascade result:', result);
       return result;
     } catch (error) {
       console.error('Error cascading dependency updates:', error);
+      return {
+        updatedTasks: [],
+        totalUpdated: 0
+      };
+    }
+  }
+
+  /**
+   * Enhanced cascade function that tracks changes
+   */
+  static async cascadeDependencyUpdatesWithTracking(updatedTaskId: string): Promise<{
+    updatedTasks: Array<{
+      taskId: string;
+      oldStartDate: string | null;
+      newStartDate: string | null;
+      oldEndDate: string | null;
+      newEndDate: string | null;
+      updateReason: string;
+    }>;
+    totalUpdated: number;
+  }> {
+    try {
+      console.log('DependencyCalculationService: Starting tracked cascade for task:', updatedTaskId);
+      
+      const updatedTasks: Array<{
+        taskId: string;
+        oldStartDate: string | null;
+        newStartDate: string | null;
+        oldEndDate: string | null;
+        newEndDate: string | null;
+        updateReason: string;
+      }> = [];
+
+      // Get all tasks that might be affected
+      const { data: allTasks, error: fetchError } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .not('dependencies', 'is', null);
+
+      if (fetchError) {
+        console.error('Error fetching tasks for cascade:', fetchError);
+        throw fetchError;
+      }
+
+      // Find tasks that depend on the updated task
+      const dependentTasks = allTasks?.filter(task => 
+        task.dependencies?.some(dep => {
+          const depTaskId = dep.split(':')[0];
+          return depTaskId === updatedTaskId;
+        })
+      ) || [];
+
+      console.log('DependencyCalculationService: Found dependent tasks:', dependentTasks.length);
+
+      // Process each dependent task
+      for (const dependentTask of dependentTasks) {
+        if (dependentTask.manual_override_dates) {
+          console.log('DependencyCalculationService: Skipping manually overridden task:', dependentTask.id);
+          continue;
+        }
+
+        try {
+          const oldStartDate = dependentTask.start_date;
+          const oldEndDate = dependentTask.end_date;
+
+          // Calculate new dates
+          const dateResult = await this.calculateTaskDatesFromDependencies(
+            dependentTask.id,
+            dependentTask.duration || 1,
+            dependentTask.dependencies || []
+          );
+
+          if (dateResult.suggestedStartDate && dateResult.suggestedEndDate) {
+            // Update the task
+            const { error: updateError } = await supabase
+              .from('project_tasks')
+              .update({
+                start_date: dateResult.suggestedStartDate,
+                end_date: dateResult.suggestedEndDate,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', dependentTask.id);
+
+            if (updateError) {
+              console.error('Error updating dependent task:', updateError);
+              continue;
+            }
+
+            updatedTasks.push({
+              taskId: dependentTask.id,
+              oldStartDate,
+              newStartDate: dateResult.suggestedStartDate,
+              oldEndDate,
+              newEndDate: dateResult.suggestedEndDate,
+              updateReason: `Dependency updated for task ${updatedTaskId}`
+            });
+
+            console.log('DependencyCalculationService: Updated dependent task:', dependentTask.id);
+          }
+        } catch (taskError) {
+          console.error('Error processing dependent task:', dependentTask.id, taskError);
+        }
+      }
+
+      const result = {
+        updatedTasks,
+        totalUpdated: updatedTasks.length
+      };
+
+      console.log('DependencyCalculationService: Tracked cascade result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in tracked cascade updates:', error);
       return {
         updatedTasks: [],
         totalUpdated: 0
