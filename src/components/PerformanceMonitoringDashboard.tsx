@@ -38,7 +38,8 @@ const PerformanceMonitoringDashboard = () => {
     if (utilizationData.length === 0) return;
 
     const avgUtilization = utilizationData.reduce((acc, m) => acc + m.utilization_percentage, 0) / utilizationData.length;
-    const avgTaskCompletion = utilizationData.reduce((acc, m) => acc + (m.tasks_completed / m.task_count * 100), 0) / utilizationData.length;
+    // Fix: Use predicted_completion_count instead of tasks_completed
+    const avgTaskCompletion = utilizationData.reduce((acc, m) => acc + (m.predicted_completion_count / m.task_count * 100), 0) / utilizationData.length;
     const avgBottleneckRisk = utilizationData.reduce((acc, m) => acc + m.bottleneck_risk, 0) / utilizationData.length;
     const resourceEfficiency = aiRecommendations.length > 0 
       ? aiRecommendations.reduce((acc, r) => acc + r.overall_fit_score, 0) / aiRecommendations.length * 10
@@ -242,16 +243,16 @@ const PerformanceMonitoringDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 border rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  {Object.values(utilizationMetrics).filter(m => m.tasks_completed > 0).length}
+                  {Object.values(utilizationMetrics).filter(m => m.predicted_completion_count > 0).length}
                 </div>
                 <div className="text-sm text-muted-foreground">Active Resources</div>
               </div>
               
               <div className="text-center p-4 border rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {Object.values(utilizationMetrics).reduce((acc, m) => acc + m.tasks_completed, 0)}
+                  {Object.values(utilizationMetrics).reduce((acc, m) => acc + m.predicted_completion_count, 0)}
                 </div>
-                <div className="text-sm text-muted-foreground">Tasks Completed</div>
+                <div className="text-sm text-muted-foreground">Predicted Completions</div>
               </div>
               
               <div className="text-center p-4 border rounded-lg">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -18,6 +17,7 @@ import ViewToggle from '@/components/ViewToggle';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { Resource as ContextResource } from '@/contexts/ResourceContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { realTimeResourceService } from '@/services/RealTimeResourceService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,11 +50,12 @@ const Resources = () => {
     refreshEnhancedData
   } = useEnhancedResources();
   
-  const { currentWorkspace, currentUser } = useWorkspace();
+  const { currentWorkspace } = useWorkspace();
+  const { user } = useAuth();
 
   // Set up real-time updates
   useEffect(() => {
-    if (!currentWorkspace?.id || !currentUser?.id) return;
+    if (!currentWorkspace?.id || !user?.id) return;
 
     const unsubscribeUpdates = realTimeResourceService.subscribeToResourceUpdates(
       currentWorkspace.id,
@@ -66,14 +67,14 @@ const Resources = () => {
 
     const unsubscribePresence = realTimeResourceService.subscribeToResourcePresence(
       currentWorkspace.id,
-      currentUser.id
+      user.id
     );
 
     return () => {
       unsubscribeUpdates();
       unsubscribePresence();
     };
-  }, [currentWorkspace?.id, currentUser?.id, refreshEnhancedData]);
+  }, [currentWorkspace?.id, user?.id, refreshEnhancedData]);
 
   // Cleanup on unmount
   useEffect(() => {
