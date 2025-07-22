@@ -94,12 +94,16 @@ export const useRealReportsData = (selectedProject?: string) => {
         .select('*')
         .eq('workspace_id', currentWorkspace.id);
 
+      // Convert dates to ISO strings for JSON compatibility
       const reportData = {
         generatedAt: new Date().toISOString(),
         type: config.type,
         frequency: config.frequency,
         sections: config.sections,
-        dateRange: config.dateRange,
+        dateRange: {
+          from: config.dateRange.from.toISOString(),
+          to: config.dateRange.to.toISOString()
+        },
         summary: {
           totalProjects: projectsData?.length || 0,
           totalResources: resourcesData?.length || 0,

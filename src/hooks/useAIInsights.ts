@@ -140,9 +140,8 @@ export const useAIInsights = (projectId?: string) => {
 
       if (projects && resources) {
         const activeProjects = projects.filter(p => p.status === 'Active');
-        const overloadedResources = resources.filter(r => r.utilization > 90);
-        const underutilizedResources = resources.filter(r => r.utilization < 30);
-
+        
+        // Simple capacity insights without utilization property
         if (activeProjects.length > resources.length * 2) {
           workspaceInsights.push({
             id: `insight-${Date.now()}-1`,
@@ -155,25 +154,13 @@ export const useAIInsights = (projectId?: string) => {
           });
         }
 
-        if (overloadedResources.length > 0) {
+        if (resources.length > 0) {
           workspaceInsights.push({
             id: `insight-${Date.now()}-2`,
-            type: 'error',
-            title: 'Overloaded Resources',
-            description: `${overloadedResources.length} resources are operating at >90% capacity`,
-            category: 'Workload',
-            actionable: true,
-            createdAt: new Date()
-          });
-        }
-
-        if (underutilizedResources.length > 0) {
-          workspaceInsights.push({
-            id: `insight-${Date.now()}-3`,
             type: 'info',
-            title: 'Available Capacity',
-            description: `${underutilizedResources.length} resources have available capacity for new work`,
-            category: 'Opportunity',
+            title: 'Resource Overview',
+            description: `${resources.length} resources available for ${activeProjects.length} active projects`,
+            category: 'Overview',
             actionable: false,
             createdAt: new Date()
           });
