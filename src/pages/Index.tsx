@@ -23,7 +23,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
       <Header />
-      <main>
+      <main className="pt-20">
         <HeroSection />
         <Features />
         <ProductShowcase />

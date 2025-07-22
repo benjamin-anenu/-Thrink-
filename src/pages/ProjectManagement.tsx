@@ -39,7 +39,7 @@ const ProjectManagement = () => {
     return (
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
             <Button onClick={() => navigate('/projects')}>
@@ -54,7 +54,7 @@ const ProjectManagement = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
         {/* Breadcrumb and Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
