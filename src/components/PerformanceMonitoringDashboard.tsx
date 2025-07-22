@@ -206,9 +206,9 @@ const PerformanceMonitoringDashboard = () => {
                     }`} />
                     <div>
                       <div className="font-medium">Recommendation {index + 1}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {Math.round(recommendation.success_probability)}% success probability
-                      </div>
+                        <div className="text-sm text-muted-foreground">
+                          Overall fit: {Math.round(recommendation.overall_fit_score * 10)}%
+                        </div>
                     </div>
                   </div>
                   <div className="text-right">

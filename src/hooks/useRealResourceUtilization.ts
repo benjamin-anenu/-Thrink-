@@ -34,6 +34,12 @@ export interface AIAssignmentRecommendation {
   learning_opportunity_score: number;
   overall_fit_score: number;
   reasoning: any;
+  // Optional fields that may not always be present
+  recommended_task_count?: number;
+  quality_prediction?: number;
+  success_probability?: number;
+  overload_risk_score?: number;
+  task_completion_forecast?: number;
 }
 
 export const useRealResourceUtilization = (resourceIds: string[]) => {

@@ -11,7 +11,7 @@ import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import { ResourceComparisonModal } from '@/components/ResourceComparisonModal';
 import ResourceComparisonToolbar from '@/components/ResourceComparisonToolbar';
 import EnhancedResourceStats from '@/components/EnhancedResourceStats';
-import AIInsightsDashboard from '@/components/AIInsightsDashboard';
+import { AIInsightsDashboard } from '@/components/AIInsightsDashboard';
 import PerformanceMonitoringDashboard from '@/components/PerformanceMonitoringDashboard';
 import ViewToggle from '@/components/ViewToggle';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';

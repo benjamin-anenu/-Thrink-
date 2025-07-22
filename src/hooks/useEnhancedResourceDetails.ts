@@ -16,8 +16,8 @@ export interface EnhancedResourceProfile {
   work_days: string[];
   peak_productivity_periods: string[];
   contract_end_date?: string;
-  planned_time_off: any[];
-  recurring_commitments: any[];
+  planned_time_off: any; // Changed from any[] to any to handle Json type
+  recurring_commitments: any; // Changed from any[] to any to handle Json type
   career_aspirations: string[];
   mentorship_capacity: boolean;
   complexity_handling_score: number;
@@ -77,7 +77,7 @@ export const useEnhancedResourceDetails = (resourceId: string) => {
         setProfile(profileData);
       }
 
-      // Load skills
+      // Load skills - map database fields to interface
       const { data: skillsData, error: skillsError } = await supabase
         .from('skill_proficiencies')
         .select('*')
@@ -87,7 +87,16 @@ export const useEnhancedResourceDetails = (resourceId: string) => {
       if (skillsError) {
         console.error('Error loading skills:', skillsError);
       } else {
-        setSkills(skillsData || []);
+        // Map database fields to interface
+        const mappedSkills = (skillsData || []).map((skill: any) => ({
+          skill_name: skill.skill_name,
+          proficiency_level: skill.proficiency_level,
+          years_experience: skill.years_experience,
+          confidence_score: skill.confidence_score,
+          last_used: skill.last_used,
+          improvement_trend: skill.improvement_trend
+        }));
+        setSkills(mappedSkills);
       }
 
       // Load project history from tasks
