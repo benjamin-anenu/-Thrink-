@@ -11,7 +11,7 @@ import { AvailabilityPatternsStep } from './resource-creation/AvailabilityPatter
 import { PerformanceBaselineStep } from './resource-creation/PerformanceBaselineStep';
 import { ReviewStep } from './resource-creation/ReviewStep';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useResources } from '@/hooks/useResources';
+import { useEnhancedResourceCreation } from '@/hooks/useEnhancedResourceCreation';
 import { toast } from 'sonner';
 
 interface ResourceCreationWizardProps {
@@ -111,7 +111,7 @@ export function ResourceCreationWizard({ open, onOpenChange }: ResourceCreationW
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { currentWorkspace } = useWorkspace();
-  const { createResource } = useResources();
+  const { createEnhancedResource } = useEnhancedResourceCreation();
 
   const updateFormData = (updates: Partial<ResourceFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -137,17 +137,7 @@ export function ResourceCreationWizard({ open, onOpenChange }: ResourceCreationW
 
     setIsSubmitting(true);
     try {
-      // Create resource with enhanced data
-      const resourceData = {
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-        department: formData.department,
-        workspace_id: currentWorkspace.id,
-        // Enhanced fields will be handled by resource profiles
-      };
-
-      const newResource = await createResource(resourceData);
+      const newResource = await createEnhancedResource(formData, currentWorkspace.id);
       
       if (newResource) {
         toast.success('Resource created successfully with enhanced profile!');
