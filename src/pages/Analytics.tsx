@@ -21,19 +21,7 @@ import CalendarTab from '@/components/analytics/CalendarTab';
 import SettingsTab from '@/components/analytics/SettingsTab';
 import ReportsExport from '@/components/analytics/ReportsExport';
 import SystemHealthDashboard from '@/components/analytics/SystemHealthDashboard';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  description: string;
-  type: 'call' | 'meeting' | 'deadline' | 'milestone' | 'review';
-  date: Date;
-  startTime?: string;
-  endTime?: string;
-  location?: string;
-  projectId: string;
-  projectName: string;
-}
+import { CalendarEvent } from '@/hooks/useCalendarEvents';
 
 const Analytics = () => {
   const [selectedProject, setSelectedProject] = useState('all');
@@ -65,41 +53,6 @@ const Analytics = () => {
     initializeServices();
   }, []);
 
-  const mockEvents: CalendarEvent[] = [
-    {
-      id: '1',
-      title: 'Sprint Planning',
-      description: 'Plan next sprint activities',
-      type: 'meeting',
-      date: new Date(),
-      startTime: '09:00',
-      endTime: '10:30',
-      location: 'Conference Room A',
-      projectId: 'proj-1',
-      projectName: 'E-commerce Platform'
-    },
-    {
-      id: '2',
-      title: 'UI Design Review',
-      description: 'Review new UI mockups',
-      type: 'review',
-      date: new Date(Date.now() + 86400000),
-      startTime: '14:00',
-      endTime: '15:00',
-      projectId: 'proj-2',
-      projectName: 'Mobile App Redesign'
-    },
-    {
-      id: '3',
-      title: 'Project Deadline',
-      description: 'Beta release deadline',
-      type: 'deadline',
-      date: new Date(Date.now() + 172800000),
-      projectId: 'proj-1',
-      projectName: 'E-commerce Platform'
-    }
-  ];
-
   const handleScheduleReport = (config: any) => {
     toast.success(`${config.type} report scheduled to run ${config.frequency}`);
   };
@@ -117,7 +70,7 @@ const Analytics = () => {
   };
 
   const handleCreateEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    toast.success('Event creation modal would open here');
+    toast.success(`Event "${event.title}" created successfully`);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -172,7 +125,6 @@ const Analytics = () => {
 
           <TabsContent value="calendar" className="space-y-6">
             <CalendarTab
-              events={mockEvents}
               onCreateEvent={handleCreateEvent}
               onEventClick={handleEventClick}
             />

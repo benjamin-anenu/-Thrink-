@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,23 +12,6 @@ interface BasicInfoStepProps {
   formData: ResourceFormData;
   updateFormData: (updates: Partial<ResourceFormData>) => void;
 }
-
-const COMMON_ROLES = [
-  'Software Engineer',
-  'Frontend Developer',
-  'Backend Developer',
-  'Full Stack Developer',
-  'DevOps Engineer',
-  'QA Engineer',
-  'Product Manager',
-  'Project Manager',
-  'UX/UI Designer',
-  'Data Analyst',
-  'Business Analyst',
-  'Technical Lead',
-  'Architect',
-  'Consultant'
-];
 
 export function BasicInfoStep({ formData, updateFormData }: BasicInfoStepProps) {
   const { departments, loading: departmentsLoading } = useDepartments();
@@ -82,21 +66,13 @@ export function BasicInfoStep({ formData, updateFormData }: BasicInfoStepProps) 
                 <Briefcase className="h-4 w-4" />
                 Job Role *
               </Label>
-              <Select
+              <Input
+                id="role"
+                placeholder="Enter job role (e.g., Software Engineer, Product Manager)"
                 value={formData.role}
-                onValueChange={(value) => updateFormData({ role: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select or type a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COMMON_ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => updateFormData({ role: e.target.value })}
+                required
+              />
             </div>
 
             <div className="space-y-2">
