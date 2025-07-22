@@ -25,6 +25,7 @@ export interface ResourceFormData {
   email: string;
   role: string;
   department: string;
+  hourlyRate?: number;
   
   // Skills & Proficiencies
   skills: Array<{

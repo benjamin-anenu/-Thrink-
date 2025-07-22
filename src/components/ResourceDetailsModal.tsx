@@ -24,10 +24,13 @@ import {
   Award,
   Clock,
   Target,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Resource } from '@/contexts/ResourceContext';
+import { useEnhancedResourceDetails } from '@/hooks/useEnhancedResourceDetails';
+import { useRealResourceUtilization } from '@/hooks/useRealResourceUtilization';
 
 interface ResourceDetailsModalProps {
   isOpen: boolean;
@@ -42,11 +45,13 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
   resource,
   onAssignTask
 }) => {
+  const { profile, skills, projectHistory, loading: detailsLoading } = useEnhancedResourceDetails(resource?.id || '');
+  const { utilizationMetrics } = useRealResourceUtilization(resource ? [resource.id] : []);
+  
   if (!resource) return null;
 
-  // Safe defaults for arrays that might be undefined
-  const skills = resource.skills || [];
-  const currentProjects = resource.currentProjects || [];
+  const resourceMetrics = utilizationMetrics[resource.id];
+  const currentProjects = projectHistory.filter(p => p.status === 'Active');
 
   const getStatusValue = (status: string): 'active' | 'inactive' | 'pending' => {
     if (status.toLowerCase() === 'available') return 'active';
@@ -99,24 +104,47 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Utilization</span>
-                      <span className="text-sm text-muted-foreground">{resource.utilization}%</span>
+                  {detailsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
-                    <Progress value={resource.utilization} />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Availability</span>
-                      <span className="text-sm text-muted-foreground">{resource.availability}%</span>
-                    </div>
-                    <Progress value={resource.availability} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Hourly Rate</span>
-                    <span className="text-sm">{resource.hourlyRate}</span>
-                  </div>
+                  ) : (
+                    <>
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Utilization</span>
+                          <span className="text-sm text-muted-foreground">
+                            {resourceMetrics?.utilization_percentage || 0}%
+                          </span>
+                        </div>
+                        <Progress value={resourceMetrics?.utilization_percentage || 0} />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Task Load</span>
+                          <span className="text-sm text-muted-foreground">
+                            {resourceMetrics?.task_count || 0}/{resourceMetrics?.task_capacity || 10}
+                          </span>
+                        </div>
+                        <Progress value={((resourceMetrics?.task_count || 0) / (resourceMetrics?.task_capacity || 10)) * 100} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Hourly Rate</span>
+                        <span className="text-sm">
+                          Not available
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Status</span>
+                        <Badge variant={
+                          resourceMetrics?.status === 'Overloaded' ? 'destructive' :
+                          resourceMetrics?.status === 'Well Utilized' ? 'default' : 'secondary'
+                        }>
+                          {resourceMetrics?.status || 'Available'}
+                        </Badge>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -129,17 +157,36 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.length > 0 ? (
-                      skills.map((skill, index) => (
-                        <Badge key={index} variant="secondary">
-                          {skill}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No skills listed</p>
-                    )}
-                  </div>
+                  {detailsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {skills.length > 0 ? (
+                        skills.map((skill, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                            <div>
+                              <span className="font-medium">{skill.skill_name}</span>
+                              <div className="text-xs text-muted-foreground">
+                                {skill.years_experience} years experience
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <Badge variant="secondary">
+                                {skill.proficiency_level}/10
+                              </Badge>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Confidence: {skill.confidence_score}/10
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No skills data available</p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -156,36 +203,106 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {currentProjects.length > 0 ? (
-                    currentProjects.map((project, index) => (
-                      <Badge key={index} variant="outline">
-                        {project}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No current projects</p>
-                  )}
-                </div>
+                {detailsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {currentProjects.length > 0 ? (
+                      currentProjects.map((project, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <div>
+                            <p className="font-medium">{project.project_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {project.tasks_completed} tasks completed
+                            </p>
+                          </div>
+                          <Badge variant="secondary">{project.status}</Badge>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No current projects</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Overview</CardTitle>
-                <CardDescription>
-                  Track performance metrics and productivity trends
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Performance metrics will be available soon</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task Performance</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {detailsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Tasks Completed (30 days):</span>
+                        <span className="font-medium">{resourceMetrics?.tasks_completed || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Complexity Handling:</span>
+                        <span className="font-medium">{profile?.complexity_handling_score || 5}/10</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Collaboration Score:</span>
+                        <span className="font-medium">{profile?.collaboration_effectiveness || 5}/10</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Bottleneck Risk:</span>
+                        <Badge variant={
+                          (resourceMetrics?.bottleneck_risk || 0) > 7 ? 'destructive' : 
+                          (resourceMetrics?.bottleneck_risk || 0) > 4 ? 'secondary' : 'outline'
+                        }>
+                          {resourceMetrics?.bottleneck_risk || 0}/10
+                        </Badge>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Work Preferences</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {detailsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Seniority Level:</span>
+                        <span className="font-medium">{profile?.seniority_level || 'Mid'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Work Style:</span>
+                        <span className="font-medium">{profile?.preferred_work_style || 'Mixed'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Optimal Tasks/Day:</span>
+                        <span className="font-medium">{profile?.optimal_task_count_per_day || 5}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Mentorship:</span>
+                        <Badge variant={profile?.mentorship_capacity ? 'default' : 'outline'}>
+                          {profile?.mentorship_capacity ? 'Available' : 'Not Available'}
+                        </Badge>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="projects" className="space-y-6">
@@ -197,21 +314,31 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {currentProjects.length > 0 ? (
-                    currentProjects.map((project, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <div>
-                          <p className="font-medium">{project}</p>
-                          <p className="text-sm text-muted-foreground">Active Project</p>
+                {detailsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {projectHistory.length > 0 ? (
+                      projectHistory.map((project, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <div>
+                            <p className="font-medium">{project.project_name}</p>
+                             <p className="text-sm text-muted-foreground">
+                               {project.tasks_completed} tasks completed • {project.role}
+                             </p>
+                          </div>
+                          <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>
+                            {project.status}
+                          </Badge>
                         </div>
-                        <Badge variant="secondary">Ongoing</Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No project history available</p>
-                  )}
-                </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No project history available</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

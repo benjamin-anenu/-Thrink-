@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Mail, Briefcase, Building } from 'lucide-react';
+import { User, Mail, Briefcase, Building, DollarSign } from 'lucide-react';
 import { useDepartments } from '@/hooks/useDepartments';
 import { ResourceFormData } from '../ResourceCreationWizard';
 
@@ -120,6 +120,24 @@ export function BasicInfoStep({ formData, updateFormData }: BasicInfoStepProps) 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="hourlyRate" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Hourly Rate
+              </Label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                placeholder="Enter hourly rate"
+                value={formData.hourlyRate || ''}
+                onChange={(e) => updateFormData({ hourlyRate: parseFloat(e.target.value) || 0 })}
+                min="0"
+                step="0.01"
+              />
             </div>
           </div>
         </CardContent>

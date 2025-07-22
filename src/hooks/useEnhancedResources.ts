@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import type { Resource } from '@/types/resource';
-import { useResourceUtilization } from './useResourceUtilization';
+import { useRealResourceUtilization } from './useRealResourceUtilization';
 
 export const useEnhancedResources = () => {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -91,7 +91,7 @@ export const useEnhancedResources = () => {
 
   // Get resource IDs for utilization hook
   const resourceIds = resources.map(r => r.id);
-  const { utilizationMetrics, aiRecommendations, refreshUtilizationData } = useResourceUtilization(resourceIds);
+  const { utilizationMetrics, aiRecommendations, refreshUtilizationData } = useRealResourceUtilization(resourceIds);
 
   return {
     resources,
