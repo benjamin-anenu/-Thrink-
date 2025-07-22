@@ -32,7 +32,6 @@ export interface ResourceFormData {
     proficiencyLevel: number;
     yearsExperience: number;
     confidenceScore: number;
-    certificationLevel?: string;
   }>;
   
   // Work Preferences

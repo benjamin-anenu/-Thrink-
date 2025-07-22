@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -60,7 +61,7 @@ export const useEnhancedResourceCreation = () => {
 
       if (profileError) throw profileError;
 
-      // Create skill proficiencies
+      // Create skill proficiencies (without certification level)
       if (formData.skills.length > 0) {
         const skillProficiencies = formData.skills.map(skill => ({
           resource_id: resourceId,
@@ -69,7 +70,6 @@ export const useEnhancedResourceCreation = () => {
           proficiency_level: skill.proficiencyLevel,
           years_experience: skill.yearsExperience,
           confidence_score: skill.confidenceScore,
-          certification_level: skill.certificationLevel,
         }));
 
         const { error: skillsError } = await supabase
@@ -78,23 +78,6 @@ export const useEnhancedResourceCreation = () => {
 
         if (skillsError) throw skillsError;
       }
-
-      // Log the enhanced data for now - tables will be created in future migration
-      console.log('Enhanced resource profile data:', {
-        performance: {
-          complexityHandling: formData.complexityHandlingScore,
-          collaboration: formData.collaborationEffectiveness,
-          learningVelocity: formData.learningTaskSuccessRate,
-          taskVelocity: formData.historicalTaskVelocity
-        },
-        preferences: {
-          taskCount: formData.optimalTaskCountPerDay,
-          workStyle: formData.preferredWorkStyle,
-          timezone: formData.timezone,
-          workDays: formData.workDays
-        },
-        skills: formData.skills
-      });
 
       return resourceData;
     } catch (error) {

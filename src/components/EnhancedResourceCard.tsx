@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   User, 
   Mail, 
@@ -18,13 +19,12 @@ import {
   AlertTriangle,
   CheckCircle,
   Eye,
-  Brain,
-  Clock,
-  Target
+  Trash2
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Resource } from '@/contexts/ResourceContext';
 import { TaskUtilizationMetrics } from '@/types/enhanced-resource';
+import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 interface EnhancedResourceCardProps {
   resource: Resource;
@@ -43,6 +43,9 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
   isSelectedForComparison = false,
   onCompareToggle 
 }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteResource } = useEnhancedResources();
+
   const {
     id,
     name,
@@ -60,21 +63,20 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
   } = resource;
 
   const getStatusValue = (status: string): 'active' | 'inactive' | 'pending' => {
-    if (status.toLowerCase() === 'available') return 'active';
-    if (status.toLowerCase() === 'busy') return 'pending';
+    if (status?.toLowerCase() === 'available') return 'active';
+    if (status?.toLowerCase() === 'busy') return 'pending';
     return 'inactive';
   };
 
-  const getUtilizationColor = (utilization: number) => {
-    if (utilization >= 90) return 'text-red-600';
-    if (utilization >= 70) return 'text-yellow-600';
-    return 'text-green-600';
-  };
-
-  const getBottleneckRiskColor = (risk: number) => {
-    if (risk >= 7) return 'text-red-600';
-    if (risk >= 4) return 'text-yellow-600';
-    return 'text-green-600';
+  const getPerformanceIndicator = () => {
+    const utilizationPct = utilizationMetrics?.utilization_percentage || utilization || 0;
+    if (utilizationPct >= 90) {
+      return <TrendingUp className="h-4 w-4 text-red-500" />;
+    } else if (utilizationPct >= 70) {
+      return <TrendingUp className="h-4 w-4 text-green-500" />;
+    } else {
+      return <TrendingDown className="h-4 w-4 text-yellow-500" />;
+    }
   };
 
   const getInitials = (name: string) => {
@@ -82,18 +84,22 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
     return name.substring(0, 2).toUpperCase();
   };
 
-  return (
-    <Card className="relative overflow-hidden">
-      {/* AI Enhancement Indicator */}
-      {utilizationMetrics && (
-        <div className="absolute top-2 right-2">
-          <Badge variant="secondary" className="flex items-center gap-1">
-            <Brain className="h-3 w-3" />
-            AI Enhanced
-          </Badge>
-        </div>
-      )}
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteResource(resource.id);
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
+  const currentUtilization = utilizationMetrics?.utilization_percentage || utilization || 0;
+  const currentStatus = utilizationMetrics?.status || status || 'Available';
+
+  return (
+    <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -108,11 +114,15 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
             )}
             <CardTitle className="text-lg font-semibold">{name || 'Unknown'}</CardTitle>
           </div>
-          <StatusBadge status={getStatusValue(status)} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={getStatusValue(currentStatus)} />
+            {utilizationMetrics?.bottleneck_risk && utilizationMetrics.bottleneck_risk > 7 && (
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            )}
+          </div>
         </div>
         <CardDescription>{role} • {department}</CardDescription>
       </CardHeader>
-
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
           <Avatar>
@@ -124,60 +134,64 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
             <p className="text-sm text-muted-foreground">{email}</p>
           </div>
         </div>
-
-        {/* Enhanced Utilization Metrics */}
-        {utilizationMetrics && (
-          <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium flex items-center gap-1">
-                <Target className="h-3 w-3" />
-                Task Utilization
-              </span>
-              <Badge variant="outline" className={getUtilizationColor(utilizationMetrics.utilization_percentage)}>
-                {utilizationMetrics.utilization_percentage}%
-              </Badge>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span>Tasks: {utilizationMetrics.task_count}/{utilizationMetrics.task_capacity}</span>
-                <span className="font-medium">{utilizationMetrics.status}</span>
-              </div>
-              <Progress value={utilizationMetrics.utilization_percentage} className="h-2" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>Weighted: {Math.round(utilizationMetrics.weighted_utilization)}%</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <AlertTriangle className={`h-3 w-3 ${getBottleneckRiskColor(utilizationMetrics.bottleneck_risk)}`} />
-                <span>Risk: {utilizationMetrics.bottleneck_risk}/10</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Traditional Metrics */}
+        
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <Mail className="h-4 w-4 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">{email}</p>
           </div>
+          {phone && (
+            <div className="flex items-center space-x-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{phone}</p>
+            </div>
+          )}
+          {location && (
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{location}</p>
+            </div>
+          )}
+          {hourlyRate && (
+            <div className="flex items-center space-x-2">
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Rate: {hourlyRate}</p>
+            </div>
+          )}
           <div className="flex items-center space-x-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{phone}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{location}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Rate: {hourlyRate}</p>
+            {getPerformanceIndicator()}
+            <p className="text-sm text-muted-foreground">
+              Utilization: {currentUtilization}%
+            </p>
           </div>
         </div>
+
+        {/* Enhanced Metrics */}
+        {utilizationMetrics && (
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex justify-between text-sm">
+              <span>Tasks:</span>
+              <span>{utilizationMetrics.task_count}/{utilizationMetrics.task_capacity}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Status:</span>
+              <Badge variant={
+                utilizationMetrics.status === 'Overloaded' ? 'destructive' :
+                utilizationMetrics.status === 'Well Utilized' ? 'default' : 'secondary'
+              }>
+                {utilizationMetrics.status}
+              </Badge>
+            </div>
+            {utilizationMetrics.bottleneck_risk > 0 && (
+              <div className="flex justify-between text-sm">
+                <span>Risk Level:</span>
+                <Badge variant={utilizationMetrics.bottleneck_risk > 7 ? 'destructive' : 'outline'}>
+                  {utilizationMetrics.bottleneck_risk}/10
+                </Badge>
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <p className="text-sm font-medium mb-2">Availability</p>
@@ -187,37 +201,84 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
           </div>
         </div>
 
-        <div>
-          <p className="text-sm font-medium mb-2">Skills</p>
-          <div className="flex flex-wrap gap-1">
-            {skills?.map((skill, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {skill}
-              </Badge>
-            ))}
+        {skills && skills.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-2">Skills</p>
+            <div className="flex flex-wrap gap-1">
+              {skills?.slice(0, 3).map((skill, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {skill}
+                </Badge>
+              ))}
+              {skills.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{skills.length - 3} more
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <p className="text-sm font-medium mb-2">Current Projects</p>
-          <div className="flex flex-wrap gap-1">
-            {currentProjects?.map((project, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {project}
-              </Badge>
-            ))}
+        {currentProjects && currentProjects.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-2">Current Projects</p>
+            <div className="flex flex-wrap gap-1">
+              {currentProjects?.slice(0, 2).map((project, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {project}
+                </Badge>
+              ))}
+              {currentProjects.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{currentProjects.length - 2} more
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        <Button 
-          onClick={() => onViewDetails(resource)} 
-          className="w-full"
-          size="sm"
-          variant="outline"
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View AI Insights
-        </Button>
+        <div className="flex gap-2 pt-2">
+          <Button 
+            onClick={() => onViewDetails(resource)} 
+            className="flex-1"
+            size="sm"
+            variant="outline"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
+          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete {name}? This action cannot be undone and will remove all associated data including skills, profiles, and assignments.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Resource'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardContent>
     </Card>
   );
