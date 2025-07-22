@@ -26,26 +26,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Brain, Zap, Activity, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Context Resource type for compatibility
-interface ContextResource {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  availability: number;
-  currentProjects: string[];
-  hourlyRate: string;
-  utilization: number;
-  status: string;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-  lastActive: string;
-}
+// Import the Resource type from the context for component compatibility
+import type { Resource as ContextResource } from '@/contexts/ResourceContext';
 
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
@@ -174,6 +156,20 @@ const Resources = () => {
     }
   };
 
+  // Helper function to normalize status values
+  const normalizeStatus = (status?: string): "Available" | "Busy" | "Overallocated" => {
+    if (!status) return "Available";
+    
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus.includes('busy') || lowerStatus.includes('allocated')) {
+      return "Busy";
+    }
+    if (lowerStatus.includes('over')) {
+      return "Overallocated";
+    }
+    return "Available";
+  };
+
   // Convert database resources to context resources format
   const mappedResources: ContextResource[] = resources.map(resource => ({
     id: resource.id,
@@ -188,7 +184,7 @@ const Resources = () => {
     currentProjects: [], // Will be calculated from assignments
     hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
     utilization: 75, // Default utilization
-    status: 'Available',
+    status: normalizeStatus('Available'), // Use normalized status
     workspaceId: resource.workspace_id || '',
     createdAt: resource.created_at,
     updatedAt: resource.updated_at,
