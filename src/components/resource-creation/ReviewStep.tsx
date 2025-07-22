@@ -76,9 +76,6 @@ export function ReviewStep({ formData, onSubmit, isSubmitting }: ReviewStepProps
                       Level: {skill.proficiencyLevel}/10 • 
                       Experience: {skill.yearsExperience} years • 
                       Confidence: {skill.confidenceScore}/10
-                      {skill.certificationLevel && skill.certificationLevel !== 'None' && (
-                        <> • Certified: {skill.certificationLevel}</>
-                      )}
                     </div>
                   </div>
                 </div>

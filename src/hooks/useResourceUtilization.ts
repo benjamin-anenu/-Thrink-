@@ -60,11 +60,11 @@ export const useResourceUtilization = (resourceIds: string[]) => {
             medium_tasks: item.medium_tasks || 0,
             complex_tasks: item.complex_tasks || 0,
             tasks_completed: item.tasks_completed || 0,
-            status: item.status || 'Available',
-            utilization_trend: item.utilization_trend || 0,
-            optimal_task_range: item.optimal_task_range || [5, 15],
-            predicted_completion_count: item.predicted_completion_count || 0,
-            bottleneck_risk: item.bottleneck_risk || 0,
+            status: 'Well Utilized' as const,
+            utilization_trend: 0,
+            optimal_task_range: [5, 15] as [number, number],
+            predicted_completion_count: 0,
+            bottleneck_risk: item.bottleneck_risk_score || 0,
             context_switch_penalty: item.context_switch_penalty || 0
           };
         });
@@ -86,7 +86,7 @@ export const useResourceUtilization = (resourceIds: string[]) => {
             medium_tasks: Math.floor(taskCount * 0.4),
             complex_tasks: Math.floor(taskCount * 0.2),
             tasks_completed: Math.floor(Math.random() * 20),
-            status: utilizationPct > 90 ? 'Overloaded' : utilizationPct > 70 ? 'Well Utilized' : 'Available',
+            status: utilizationPct > 90 ? 'Overloaded' : utilizationPct > 70 ? 'Well Utilized' : 'Underutilized',
             utilization_trend: Math.floor(Math.random() * 21) - 10,
             optimal_task_range: [5, 15] as [number, number],
             predicted_completion_count: Math.floor(Math.random() * 10),
