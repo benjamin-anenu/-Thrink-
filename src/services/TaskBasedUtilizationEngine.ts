@@ -7,6 +7,11 @@ import {
   ResourceProfile,
   TaskIntelligence 
 } from "@/types/enhanced-resource";
+import { 
+  adaptDatabaseTask, 
+  adaptDatabaseResourceProfile, 
+  isPeriodType 
+} from "@/types/database-adapters";
 
 export class TaskBasedUtilizationEngine {
   async calculateTaskUtilization(
@@ -102,13 +107,7 @@ export class TaskBasedUtilizationEngine {
       return [];
     }
 
-    return data?.map(task => ({
-      ...task,
-      required_skills: task.task_skill_requirements?.map((req: any) => ({
-        ...req,
-        skill_name: req.skills?.name || 'Unknown Skill'
-      })) || []
-    })) || [];
+    return data?.map(task => adaptDatabaseTask(task)) || [];
   }
 
   private async getTaskCapacity(resourceId: string, period: string): Promise<TaskCapacity> {
@@ -325,7 +324,7 @@ export class TaskBasedUtilizationEngine {
     return Math.min((taskCount * penaltyScore) / 50, 1.0);
   }
 
-  private async predictNextPeriodAvailability(resourceId: string, windowPeriod: string): Promise<number> {
+  private async predictNextPeriodAvailability(resourceId: string, windowPeriod: 'day' | 'week'): Promise<number> {
     // Simple prediction - assume some tasks will complete
     const currentAvailability = await this.calculateTaskAvailability(resourceId, windowPeriod);
     const completionRate = 0.7; // Assume 70% of tasks complete each period
@@ -334,7 +333,7 @@ export class TaskBasedUtilizationEngine {
                    (currentAvailability.available_task_slots * completionRate), 100);
   }
 
-  private async forecastTaskCompletions(resourceId: string, windowPeriod: string): Promise<number> {
+  private async forecastTaskCompletions(resourceId: string, windowPeriod: 'day' | 'week'): Promise<number> {
     return this.predictTaskCompletions(resourceId, windowPeriod);
   }
 

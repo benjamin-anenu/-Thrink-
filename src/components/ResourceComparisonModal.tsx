@@ -23,6 +23,7 @@ import {
 import { Users, Brain, Clock, DollarSign, TrendingUp, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Resource } from '@/contexts/ResourceContext';
+import { adaptDatabaseResource } from '@/types/database-adapters';
 import { 
   ResourceComparison, 
   SkillProficiency,
@@ -59,13 +60,14 @@ export const ResourceComparisonModal: React.FC<ResourceComparisonModalProps> = (
     try {
       setLoading(true);
       
-      // Load basic resource data
+      // Load basic resource data and adapt to Resource interface
       const { data: resourcesData } = await supabase
         .from('resources')
         .select('*')
         .in('id', selectedResourceIds);
 
-      setResources(resourcesData || []);
+      const adaptedResources = resourcesData?.map(adaptDatabaseResource) || [];
+      setResources(adaptedResources);
 
       // Load skill proficiencies for each resource
       const { data: skillsData } = await supabase
@@ -92,9 +94,9 @@ export const ResourceComparisonModal: React.FC<ResourceComparisonModalProps> = (
         .in('resource_id', selectedResourceIds);
 
       // Process and set the data
-      processSkillComparison(skillsData || [], resourcesData || []);
-      processUtilizationData(utilizationMetrics || [], resourcesData || []);
-      processPerformanceData(profiles || [], resourcesData || []);
+      processSkillComparison(skillsData || [], adaptedResources);
+      processUtilizationData(utilizationMetrics || [], adaptedResources);
+      processPerformanceData(profiles || [], adaptedResources);
       
       // Generate AI insights
       await generateAIInsights();

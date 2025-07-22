@@ -7,6 +7,11 @@ import {
   CapacityAnalysis,
   AlternativeAssignment 
 } from "@/types/enhanced-resource";
+import { 
+  adaptDatabaseTask, 
+  adaptDatabaseResourceProfile, 
+  adaptAIRecommendationToDb 
+} from "@/types/database-adapters";
 import { taskUtilizationEngine } from "./TaskBasedUtilizationEngine";
 
 export class TaskBasedAssignmentAI {
@@ -110,10 +115,11 @@ export class TaskBasedAssignmentAI {
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
     };
 
-    // Save recommendation to database
+    // Save recommendation to database using adapter
+    const dbRecommendation = adaptAIRecommendationToDb(recommendation);
     const { data, error } = await supabase
       .from('ai_assignment_recommendations')
-      .insert(recommendation)
+      .insert(dbRecommendation)
       .select()
       .single();
 
@@ -122,7 +128,14 @@ export class TaskBasedAssignmentAI {
       return recommendation;
     }
 
-    return data;
+    // Convert back from database format
+    return {
+      ...recommendation,
+      id: data.id,
+      reasoning: typeof data.reasoning === 'string' ? JSON.parse(data.reasoning) : data.reasoning,
+      alternative_assignments: typeof data.alternative_assignments === 'string' ? 
+        JSON.parse(data.alternative_assignments) : data.alternative_assignments
+    };
   }
 
   private async getProjectTasks(projectId: string): Promise<TaskIntelligence[]> {
@@ -146,13 +159,7 @@ export class TaskBasedAssignmentAI {
       return [];
     }
 
-    return data?.map(task => ({
-      ...task,
-      required_skills: task.task_skill_requirements?.map((req: any) => ({
-        ...req,
-        skill_name: req.skills?.name || 'Unknown Skill'
-      })) || []
-    })) || [];
+    return data?.map(task => adaptDatabaseTask(task)) || [];
   }
 
   private async getResourceProfile(resourceId: string): Promise<ResourceProfile | null> {
@@ -162,12 +169,9 @@ export class TaskBasedAssignmentAI {
       .eq('resource_id', resourceId)
       .single();
 
-    if (error) {
-      console.error('Error fetching resource profile:', error);
-      return null;
-    }
+    if (!data) return null;
 
-    return data;
+    return adaptDatabaseResourceProfile(data);
   }
 
   private calculateTaskCapacityFit(

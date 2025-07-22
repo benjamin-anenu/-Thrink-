@@ -7,15 +7,15 @@ export interface ResourceProfile {
   resource_id: string;
   workspace_id: string;
   employee_id?: string;
-  seniority_level: 'Junior' | 'Mid' | 'Senior' | 'Lead' | 'Principal';
+  seniority_level?: 'Junior' | 'Mid' | 'Senior' | 'Lead' | 'Principal';
   
   // Task Handling Patterns
   optimal_task_count_per_day: number;
   optimal_task_count_per_week: number;
   timezone: string;
   work_days: string[];
-  preferred_work_style: 'Deep Focus' | 'Collaborative' | 'Mixed';
-  task_switching_preference: 'Sequential' | 'Parallel' | 'Batched';
+  preferred_work_style?: 'Deep Focus' | 'Collaborative' | 'Mixed';
+  task_switching_preference?: 'Sequential' | 'Parallel' | 'Batched';
   
   // Performance Metrics (Auto-calculated)
   historical_task_velocity: number;
@@ -29,7 +29,7 @@ export interface ResourceProfile {
   new_project_ramp_up_tasks: number;
   
   // Contract & Availability
-  employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Consultant';
+  employment_type?: 'Full-time' | 'Part-time' | 'Contract' | 'Consultant';
   contract_end_date?: string;
   planned_time_off: DateRange[];
   recurring_commitments: RecurringCommitment[];
@@ -59,7 +59,7 @@ export interface SkillProficiency {
   last_used: string;
   confidence_score: number; // 1-10 scale
   certification_level?: string;
-  improvement_trend: 'Improving' | 'Stable' | 'Declining';
+  improvement_trend?: 'Improving' | 'Stable' | 'Declining';
   created_at: string;
   updated_at: string;
 }
@@ -73,7 +73,7 @@ export interface TaskIntelligence {
   // Task Complexity & Effort
   complexity_score: number; // 1-10 scale
   effort_points: number;
-  task_size: 'XS' | 'S' | 'M' | 'L' | 'XL';
+  task_size?: 'XS' | 'S' | 'M' | 'L' | 'XL';
   confidence_level: number; // 1-10 scale
   
   // Dependencies & Relationships
@@ -86,7 +86,7 @@ export interface TaskIntelligence {
   
   // Context & Environment
   requires_deep_focus: boolean;
-  collaboration_intensity: 'Low' | 'Medium' | 'High';
+  collaboration_intensity?: 'Low' | 'Medium' | 'High';
   context_switching_penalty: number; // 1-10 scale
   knowledge_transfer_required: boolean;
   
@@ -110,7 +110,7 @@ export interface TaskSkillRequirement {
   task_id: string;
   skill_id: string;
   skill_name: string; // Populated from join
-  requirement_type: 'primary' | 'secondary' | 'nice_to_have' | 'learning_opportunity';
+  requirement_type?: 'primary' | 'secondary' | 'nice_to_have' | 'learning_opportunity';
   minimum_proficiency: number; // 1-10 scale
   created_at: string;
 }
@@ -123,7 +123,7 @@ export interface ResourceUtilizationMetrics {
   // Period
   period_start: string;
   period_end: string;
-  period_type: 'day' | 'week' | 'month';
+  period_type?: 'day' | 'week' | 'month';
   
   // Task-based metrics
   task_count: number;
