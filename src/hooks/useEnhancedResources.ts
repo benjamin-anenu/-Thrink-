@@ -20,53 +20,88 @@ export const useEnhancedResources = () => {
   const utilizationEngine = new TaskBasedUtilizationEngine();
   const assignmentAI = new TaskBasedAssignmentAI();
 
+  // Helper function to ensure resource has required array properties
+  const sanitizeResource = (resource: any): any => {
+    return {
+      ...resource,
+      skills: Array.isArray(resource.skills) ? resource.skills : [],
+      currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : [],
+      workspace_id: resource.workspace_id || currentWorkspace?.id || '',
+      created_at: resource.created_at || new Date().toISOString(),
+      updated_at: resource.updated_at || new Date().toISOString()
+    };
+  };
+
   // Load enhanced resource data
   const loadEnhancedData = async () => {
     if (!currentWorkspace?.id) return;
     
     try {
       setLoading(true);
+      console.log('Loading enhanced resource data for workspace:', currentWorkspace.id);
       
       // Load resource profiles with proper type adaptation
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('resource_profiles')
         .select('*')
         .eq('workspace_id', currentWorkspace.id);
       
-      if (profiles) {
-        // Properly adapt database profiles to interface
+      if (profilesError) {
+        console.error('Error loading resource profiles:', profilesError);
+      } else if (profiles) {
+        console.log('Loaded resource profiles:', profiles.length);
         const adaptedProfiles = profiles.map(profile => adaptDatabaseResourceProfile(profile));
         setResourceProfiles(adaptedProfiles);
       }
 
-      // Load utilization metrics for each resource using correct method name
-      const metricsPromises = basicResources.resources.map(async (resource) => {
-        const metrics = await utilizationEngine.calculateTaskUtilization(
-          resource.id,
-          'week' // Fix: Use correct parameter order
-        );
-        return { resourceId: resource.id, metrics };
-      });
+      // Load utilization metrics
+      const { data: metrics, error: metricsError } = await supabase
+        .from('resource_utilization_metrics')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .order('created_at', { ascending: false });
 
-      const metricsResults = await Promise.all(metricsPromises);
-      const metricsMap = metricsResults.reduce((acc, { resourceId, metrics }) => {
-        acc[resourceId] = metrics;
-        return acc;
-      }, {} as Record<string, TaskUtilizationMetrics>);
+      if (metricsError) {
+        console.error('Error loading utilization metrics:', metricsError);
+      } else if (metrics) {
+        console.log('Loaded utilization metrics:', metrics.length);
+        const metricsMap = metrics.reduce((acc, metric) => {
+          acc[metric.resource_id] = {
+            task_count: metric.task_count,
+            task_capacity: metric.task_capacity,
+            utilization_percentage: metric.utilization_percentage,
+            weighted_task_load: metric.weighted_task_load,
+            weighted_capacity: metric.weighted_capacity,
+            weighted_utilization: metric.weighted_utilization,
+            simple_tasks: metric.simple_tasks,
+            medium_tasks: metric.medium_tasks,
+            complex_tasks: metric.complex_tasks,
+            status: metric.utilization_status as any,
+            utilization_trend: 0,
+            optimal_task_range: [5, 15] as [number, number],
+            predicted_completion_count: metric.tasks_completed,
+            bottleneck_risk: metric.bottleneck_risk_score,
+            context_switch_penalty: metric.context_switch_penalty
+          };
+          return acc;
+        }, {} as Record<string, TaskUtilizationMetrics>);
 
-      setUtilizationMetrics(metricsMap);
+        setUtilizationMetrics(metricsMap);
+      }
 
       // Load AI recommendations with proper type handling
-      const { data: recommendations } = await supabase
+      const { data: recommendations, error: recommendationsError } = await supabase
         .from('ai_assignment_recommendations')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
         .gte('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
-      if (recommendations) {
-        // Properly adapt database recommendations
+      if (recommendationsError) {
+        console.error('Error loading AI recommendations:', recommendationsError);
+      } else if (recommendations) {
+        console.log('Loaded AI recommendations:', recommendations.length);
         const adaptedRecommendations = recommendations.map(rec => ({
           ...rec,
           reasoning: typeof rec.reasoning === 'string' ? JSON.parse(rec.reasoning) : rec.reasoning,
@@ -86,53 +121,24 @@ export const useEnhancedResources = () => {
     }
   };
 
-  // Generate AI assignment recommendations - simplified implementation
+  // Generate AI assignment recommendations - enhanced implementation
   const generateAssignmentRecommendations = async (projectId: string) => {
     if (!currentWorkspace?.id) return;
 
     try {
-      // For now, return mock recommendations since the AI service needs more setup
-      const mockRecommendations: AIAssignmentRecommendation[] = [{
-        id: `mock-${Date.now()}`,
-        project_id: projectId,
-        resource_id: basicResources.resources[0]?.id || '',
-        workspace_id: currentWorkspace.id,
-        task_capacity_fit_score: 8.5,
-        complexity_handling_fit_score: 7.2,
-        skill_match_score: 9.1,
-        availability_score: 6.8,
-        collaboration_fit_score: 8.0,
-        learning_opportunity_score: 7.5,
-        overall_fit_score: 8.2,
-        task_completion_forecast: 85,
-        quality_prediction: 90,
-        timeline_confidence: 75,
-        success_probability: 82,
-        overload_risk_score: 3,
-        skill_gap_risk_score: 2,
-        context_switching_impact: 0.15,
-        recommended_task_count: 5,
-        reasoning: {
-          task_matches: [],
-          capacity_analysis: {
-            current_utilization: 75,
-            additional_capacity_needed: 25,
-            optimal_task_distribution: "Balanced mix of simple and complex tasks",
-            timeline_impact: "Minimal impact expected"
-          },
-          potential_blockers: [],
-          success_factors: ["Strong skill match", "Good availability"],
-          risk_factors: ["Minor overload risk"]
-        },
-        alternative_assignments: [],
-        created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }];
+      console.log('Generating AI recommendations for project:', projectId);
       
-      setAiRecommendations(prev => [...mockRecommendations, ...prev]);
-      toast.success(`Generated ${mockRecommendations.length} AI recommendations`);
+      const recommendations = await assignmentAI.generateRecommendations(
+        projectId, 
+        currentWorkspace.id
+      );
       
-      return mockRecommendations;
+      if (recommendations.length > 0) {
+        setAiRecommendations(prev => [...recommendations, ...prev]);
+        toast.success(`Generated ${recommendations.length} AI recommendations`);
+      }
+      
+      return recommendations;
     } catch (error) {
       console.error('Error generating AI recommendations:', error);
       toast.error('Failed to generate AI recommendations');
@@ -145,6 +151,8 @@ export const useEnhancedResources = () => {
     if (!currentWorkspace?.id) return;
 
     try {
+      console.log('Updating utilization for resource:', resourceId);
+      
       const metrics = await utilizationEngine.calculateTaskUtilization(
         resourceId,
         'week'
@@ -161,6 +169,61 @@ export const useEnhancedResources = () => {
       toast.error('Failed to update resource utilization');
     }
   };
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!currentWorkspace?.id) return;
+
+    console.log('Setting up real-time subscriptions for workspace:', currentWorkspace.id);
+
+    const channel = supabase
+      .channel(`enhanced_resources_${currentWorkspace.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'resource_utilization_metrics',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        (payload) => {
+          console.log('Utilization metrics updated:', payload);
+          loadEnhancedData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ai_assignment_recommendations',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        (payload) => {
+          console.log('AI recommendations updated:', payload);
+          loadEnhancedData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'resource_profiles',
+          filter: `workspace_id=eq.${currentWorkspace.id}`
+        },
+        (payload) => {
+          console.log('Resource profiles updated:', payload);
+          loadEnhancedData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Unsubscribing from real-time updates');
+      supabase.removeChannel(channel);
+    };
+  }, [currentWorkspace?.id]);
 
   useEffect(() => {
     loadEnhancedData();

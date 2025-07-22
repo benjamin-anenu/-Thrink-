@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
 import ResourceForm from '@/components/ResourceForm';
@@ -12,15 +12,18 @@ import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import { ResourceComparisonModal } from '@/components/ResourceComparisonModal';
 import ResourceComparisonToolbar from '@/components/ResourceComparisonToolbar';
 import EnhancedResourceStats from '@/components/EnhancedResourceStats';
+import AIInsightsDashboard from '@/components/AIInsightsDashboard';
+import PerformanceMonitoringDashboard from '@/components/PerformanceMonitoringDashboard';
 import ViewToggle from '@/components/ViewToggle';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { Resource as ContextResource } from '@/contexts/ResourceContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { realTimeResourceService } from '@/services/RealTimeResourceService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Brain, Zap } from 'lucide-react';
+import { Plus, Search, Brain, Zap, Activity, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Resources = () => {
@@ -43,10 +46,41 @@ const Resources = () => {
     aiRecommendations,
     enhancedLoading,
     generateAssignmentRecommendations,
-    updateResourceUtilization
+    updateResourceUtilization,
+    refreshEnhancedData
   } = useEnhancedResources();
   
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, currentUser } = useWorkspace();
+
+  // Set up real-time updates
+  useEffect(() => {
+    if (!currentWorkspace?.id || !currentUser?.id) return;
+
+    const unsubscribeUpdates = realTimeResourceService.subscribeToResourceUpdates(
+      currentWorkspace.id,
+      (data) => {
+        console.log('Real-time resource update:', data);
+        refreshEnhancedData();
+      }
+    );
+
+    const unsubscribePresence = realTimeResourceService.subscribeToResourcePresence(
+      currentWorkspace.id,
+      currentUser.id
+    );
+
+    return () => {
+      unsubscribeUpdates();
+      unsubscribePresence();
+    };
+  }, [currentWorkspace?.id, currentUser?.id, refreshEnhancedData]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      realTimeResourceService.unsubscribeAll();
+    };
+  }, []);
 
   const handleResourceSave = async (resource: any) => {
     console.log('Saving resource:', resource);
@@ -197,8 +231,16 @@ const Resources = () => {
         <EnhancedResourceStats />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">AI-Enhanced Overview</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              AI Insights
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Performance
+            </TabsTrigger>
             <TabsTrigger value="skills">Skills Matrix</TabsTrigger>
             <TabsTrigger value="assignments">Smart Assignments</TabsTrigger>
           </TabsList>
@@ -245,6 +287,14 @@ const Resources = () => {
                 />
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="ai-insights">
+            <AIInsightsDashboard />
+          </TabsContent>
+
+          <TabsContent value="performance">
+            <PerformanceMonitoringDashboard />
           </TabsContent>
 
           <TabsContent value="skills">
