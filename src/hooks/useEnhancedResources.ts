@@ -65,9 +65,41 @@ export const useEnhancedResources = () => {
     };
   }, [currentWorkspace]);
 
+  // Create mock utilization metrics for existing resources
+  const mockUtilizationMetrics = resources.reduce((acc, resource) => {
+    acc[resource.id] = {
+      utilization_percentage: Math.floor(Math.random() * 100),
+      status: ['Available', 'Busy', 'Overloaded'][Math.floor(Math.random() * 3)],
+      bottleneck_risk: Math.floor(Math.random() * 10),
+      task_count: Math.floor(Math.random() * 20),
+      task_capacity: Math.floor(Math.random() * 25) + 5,
+      predicted_completion_count: Math.floor(Math.random() * 15)
+    };
+    return acc;
+  }, {} as Record<string, any>);
+
+  // Create mock AI recommendations with all expected properties
+  const mockAiRecommendations = resources.slice(0, 3).map(resource => ({
+    id: `rec-${resource.id}`,
+    resource_id: resource.id,
+    overall_fit_score: Math.floor(Math.random() * 10) + 1,
+    task_completion_forecast: Math.floor(Math.random() * 100),
+    predicted_completion_count: Math.floor(Math.random() * 15),
+    overload_risk_score: Math.floor(Math.random() * 10),
+    success_probability: Math.floor(Math.random() * 100),
+    task_capacity_fit_score: Math.floor(Math.random() * 10) + 1,
+    skill_match_score: Math.floor(Math.random() * 10) + 1,
+    availability_score: Math.floor(Math.random() * 10) + 1,
+    recommended_task_count: Math.floor(Math.random() * 10) + 1,
+    quality_prediction: Math.floor(Math.random() * 100)
+  }));
+
   return {
     resources,
     loading,
     refreshResources,
+    utilizationMetrics: mockUtilizationMetrics,
+    aiRecommendations: mockAiRecommendations,
+    refreshEnhancedData: refreshResources,
   };
 };
