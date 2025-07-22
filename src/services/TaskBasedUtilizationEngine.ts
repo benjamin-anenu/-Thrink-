@@ -23,6 +23,7 @@ export class TaskBasedUtilizationEngine {
     
     const weightedTaskLoad = this.calculateWeightedTaskLoad(currentTasks);
     const weightedCapacity = await this.getWeightedCapacity(resourceId);
+    const tasksCompleted = await this.predictTaskCompletions(resourceId, windowPeriod);
     
     return {
       // Core Metrics
@@ -43,13 +44,16 @@ export class TaskBasedUtilizationEngine {
       }).length,
       complex_tasks: currentTasks.filter(t => (t.complexity_score || 5) > 6).length,
       
+      // Include tasks_completed
+      tasks_completed: tasksCompleted,
+      
       // Status Indicators
       status: this.determineUtilizationStatus(currentTasks.length, taskCapacity.base_capacity),
       utilization_trend: await this.calculateTrend(resourceId, windowPeriod),
       optimal_task_range: await this.getOptimalTaskRange(resourceId),
       
       // Predictions
-      predicted_completion_count: await this.predictTaskCompletions(resourceId, windowPeriod),
+      predicted_completion_count: tasksCompleted,
       bottleneck_risk: this.assessBottleneckRisk(resourceId, currentTasks),
       context_switch_penalty: this.calculateContextSwitchPenalty(currentTasks)
     };

@@ -76,10 +76,11 @@ export const useEnhancedResources = () => {
             simple_tasks: metric.simple_tasks,
             medium_tasks: metric.medium_tasks,
             complex_tasks: metric.complex_tasks,
+            tasks_completed: metric.tasks_completed || 0, // Include tasks_completed
             status: metric.utilization_status as any,
             utilization_trend: 0,
             optimal_task_range: [5, 15] as [number, number],
-            predicted_completion_count: metric.tasks_completed,
+            predicted_completion_count: metric.tasks_completed || 0,
             bottleneck_risk: metric.bottleneck_risk_score,
             context_switch_penalty: metric.context_switch_penalty
           };
