@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { 
   User, 
   Settings, 
@@ -23,11 +25,17 @@ import {
 } from 'lucide-react'
 
 export function UserButton() {
-  const { user, profile, role, signOut } = useAuth()
+  const { user, profile, role, signOut, loading } = useAuth()
   const navigate = useNavigate()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
-  if (!user || !profile) return null
+  // Show loading skeleton while auth is loading
+  if (loading) {
+    return <Skeleton className="h-10 w-10 rounded-full" />
+  }
+
+  // Don't render if no user
+  if (!user) return null
 
   const handleSignOut = async () => {
     setIsSigningOut(true)
@@ -57,17 +65,21 @@ export function UserButton() {
     }
   }
 
+  // Use profile data if available, fallback to user email
+  const displayName = profile?.full_name || user.email?.split('@')[0] || 'User'
+  const displayEmail = user.email || ''
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
             <AvatarImage 
-              src={profile.avatar_url || ''} 
-              alt={profile.full_name || user.email || ''} 
+              src={profile?.avatar_url || ''} 
+              alt={displayName} 
             />
             <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials(profile.full_name)}
+              {getInitials(displayName)}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -77,7 +89,7 @@ export function UserButton() {
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2">
               <p className="text-sm font-medium leading-none">
-                {profile.full_name || 'User'}
+                {displayName}
               </p>
               {role && (
                 <Badge variant="secondary" className={getRoleColor(role)}>
@@ -86,9 +98,9 @@ export function UserButton() {
               )}
             </div>
             <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
+              {displayEmail}
             </p>
-            {profile.company_name && (
+            {profile?.company_name && (
               <p className="text-xs leading-none text-muted-foreground">
                 {profile.company_name}
               </p>

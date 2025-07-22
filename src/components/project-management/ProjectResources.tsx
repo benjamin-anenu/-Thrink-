@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useResources } from '@/contexts/ResourceContext';
+import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { useProject } from '@/contexts/ProjectContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,27 +13,39 @@ interface ProjectResourcesProps {
 }
 
 const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
-  const { getResourcesByProject, resources } = useResources();
+  const { resources, loading } = useEnhancedResources();
   const { getProject } = useProject();
   
   // Get real project data
   const project = getProject(projectId);
   
-  // Get resources assigned to this project from real data
-  const projectResources = getResourcesByProject(projectId);
+  // Filter resources that are assigned to this project
+  const projectResources = resources.filter(resource => 
+    project?.resources?.includes(resource.id) || 
+    project?.resources?.includes(resource.name)
+  );
 
-  // If no resources assigned, show resources from the project's resource list
-  const displayResources = projectResources.length > 0 
-    ? projectResources 
-    : project?.resources?.map(resourceId => resources.find(r => r.id === resourceId)).filter(Boolean) || [];
+  // Map database resources to display format with defaults
+  const displayResources = projectResources.map(resource => ({
+    id: resource.id,
+    name: resource.name || 'Unknown',
+    role: resource.role || 'Team Member',
+    department: resource.department || 'General',
+    email: resource.email || '',
+    phone: '',
+    location: '',
+    skills: [], // Will be enhanced later with skills table
+    availability: 100, // Default availability
+    currentProjects: [project?.name || ''].filter(Boolean),
+    hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
+    utilization: 75, // Default utilization - can be calculated from assignments
+    status: 'Available' // Default status
+  }));
 
   const getAvailabilityColor = (availability: string) => {
-    switch (availability) {
-      case 'Available': return 'bg-green-100 text-green-800';
-      case 'Busy': return 'bg-yellow-100 text-yellow-800';
-      case 'Overallocated': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    if (availability === 'Available') return 'bg-green-100 text-green-800';
+    if (availability === 'Busy') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
   };
 
   const getUtilizationColor = (utilization: number) => {
@@ -49,6 +61,14 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
     ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / totalResources)
     : 0;
   const totalHours = displayResources.reduce((acc, r) => acc + (r.utilization * 40 / 100), 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-muted-foreground">Loading project resources...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -107,7 +127,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {projectResources.length > 0 ? 'Project Team Members' : 'Available Resources'}
+            {displayResources.length > 0 ? 'Project Team Members' : 'Available Resources'}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -118,12 +138,15 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
                       <AvatarFallback>
-                        {resource.name.split(' ').map(n => n[0]).join('')}
+                        {resource.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <h3 className="font-semibold">{resource.name}</h3>
                       <p className="text-sm text-muted-foreground">{resource.role}</p>
+                      {resource.department && (
+                        <p className="text-xs text-muted-foreground">{resource.department}</p>
+                      )}
                     </div>
                   </div>
                   <Badge variant="secondary" className={getAvailabilityColor(resource.status)}>
@@ -157,16 +180,12 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <div>
-                    <p className="text-sm font-medium mb-2">Skills</p>
-                    <div className="flex flex-wrap gap-2">
-                      {resource.skills.map((skill, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
+                  {resource.email && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Contact</p>
+                      <p className="text-sm text-muted-foreground">{resource.email}</p>
                     </div>
-                  </div>
+                  )}
                   
                   {resource.currentProjects.length > 0 && (
                     <div>
@@ -185,14 +204,20 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
             )) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No resources assigned to this project</p>
+                <p>No resources assigned to this project yet</p>
+                <p className="text-sm mt-2">
+                  {resources.length > 0 
+                    ? `${resources.length} resources available in workspace` 
+                    : 'Create resources in the Resources section to assign them to projects'
+                  }
+                </p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Resource Allocation Chart */}
+      {/* Resource Allocation Chart Placeholder */}
       <Card>
         <CardHeader>
           <CardTitle>Resource Allocation Timeline</CardTitle>
@@ -202,8 +227,8 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
             <div className="text-sm text-muted-foreground">
               Weekly allocation across project timeline
             </div>
-            <div className="h-64 flex items-end justify-center text-muted-foreground">
-              <p>Resource allocation timeline chart would be displayed here</p>
+            <div className="h-64 flex items-end justify-center text-muted-foreground bg-muted/10 rounded-lg">
+              <p>Resource allocation timeline chart will be available soon</p>
             </div>
           </div>
         </CardContent>

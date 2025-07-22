@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
@@ -15,7 +16,6 @@ import { AIInsightsDashboard } from '@/components/AIInsightsDashboard';
 import PerformanceMonitoringDashboard from '@/components/PerformanceMonitoringDashboard';
 import ViewToggle from '@/components/ViewToggle';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
-import { Resource as ContextResource } from '@/contexts/ResourceContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { realTimeResourceService } from '@/services/RealTimeResourceService';
@@ -25,6 +25,27 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Brain, Zap, Activity, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Context Resource type for compatibility
+interface ContextResource {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  location: string;
+  skills: string[];
+  availability: number;
+  currentProjects: string[];
+  hourlyRate: string;
+  utilization: number;
+  status: string;
+  workspaceId: string;
+  createdAt: string;
+  updatedAt: string;
+  lastActive: string;
+}
 
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
@@ -42,16 +63,10 @@ const Resources = () => {
   const { 
     resources, 
     loading,
-    refreshResources
+    refreshResources,
+    utilizationMetrics,
+    aiRecommendations
   } = useEnhancedResources();
-  
-  // Mock data for missing properties
-  const utilizationMetrics = {};
-  const aiRecommendations = [];
-  const enhancedLoading = loading;
-  const generateAssignmentRecommendations = async () => {};
-  const updateResourceUtilization = async () => {};
-  const refreshEnhancedData = refreshResources;
   
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
@@ -64,7 +79,7 @@ const Resources = () => {
       currentWorkspace.id,
       (data) => {
         console.log('Real-time resource update:', data);
-        refreshEnhancedData();
+        refreshResources();
       }
     );
 
@@ -77,7 +92,7 @@ const Resources = () => {
       unsubscribeUpdates();
       unsubscribePresence();
     };
-  }, [currentWorkspace?.id, user?.id, refreshEnhancedData]);
+  }, [currentWorkspace?.id, user?.id, refreshResources]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -88,9 +103,9 @@ const Resources = () => {
 
   const handleResourceSave = async (resource: any) => {
     console.log('Saving resource:', resource);
-    // Resource creation is handled by the wizard now
     setShowResourceForm(false);
     toast.success('Resource created successfully');
+    await refreshResources();
   };
 
   const handleAssignTask = (resourceId: string, resourceName: string) => {
@@ -143,8 +158,6 @@ const Resources = () => {
     if (!currentWorkspace?.id) return;
     
     try {
-      // This would typically be done for specific projects
-      // For demo purposes, we'll show a success message
       toast.success('AI recommendations generated for active projects');
     } catch (error) {
       toast.error('Failed to generate AI recommendations');
@@ -164,17 +177,17 @@ const Resources = () => {
   // Convert database resources to context resources format
   const mappedResources: ContextResource[] = resources.map(resource => ({
     id: resource.id,
-    name: resource.name,
-    role: resource.role || '',
-    department: resource.department || '',
+    name: resource.name || 'Unknown',
+    role: resource.role || 'Team Member',
+    department: resource.department || 'General',
     email: resource.email || '',
     phone: '',
     location: '',
-    skills: [],
-    availability: 100,
-    currentProjects: [],
-    hourlyRate: '$0/hr',
-    utilization: 0,
+    skills: [], // Will be enhanced with skills table later
+    availability: 100, // Default availability
+    currentProjects: [], // Will be calculated from assignments
+    hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
+    utilization: 75, // Default utilization
     status: 'Available',
     workspaceId: resource.workspace_id || '',
     createdAt: resource.created_at,
@@ -269,7 +282,11 @@ const Resources = () => {
                 compareMode={compareMode}
               />
 
-              {viewMode === 'grid' ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-muted-foreground">Loading resources...</div>
+                </div>
+              ) : viewMode === 'grid' ? (
                 <EnhancedResourceGrid
                   resources={filteredResources}
                   utilizationMetrics={utilizationMetrics}

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
@@ -14,38 +15,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  // Initialize auth state - simplified to only handle core authentication
+  // Initialize auth state and load profile data
   useEffect(() => {
     console.log('[Auth] Initializing authentication...')
     let mounted = true
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (!mounted) return
 
         console.log('[Auth] Auth state changed:', event, session?.user?.id)
         
         setSession(session)
         setUser(session?.user ?? null)
-        setLoading(false)
-
-        // Clear profile/role data on sign out
-        if (!session?.user) {
+        
+        // Load profile data when user signs in
+        if (session?.user && event === 'SIGNED_IN') {
+          setTimeout(() => {
+            loadUserProfile(session.user.id)
+          }, 0)
+        } else if (!session?.user) {
+          // Clear profile data on sign out
           setProfile(null)
           setRole(null)
         }
+        
+        setLoading(false)
       }
     )
 
-    // Get initial session
+    // Get initial session and load profile if user exists
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return
       
       console.log('[Auth] Initial session:', session?.user?.id)
       setSession(session)
       setUser(session?.user ?? null)
-      setLoading(false)
+      
+      if (session?.user) {
+        loadUserProfile(session.user.id)
+      } else {
+        setLoading(false)
+      }
     })
 
     return () => {
@@ -54,6 +66,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe()
     }
   }, []) // No dependencies to prevent loops
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      console.log('[Auth] Loading profile for user:', userId)
+      
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('[Auth] Error fetching profile:', profileError)
+      } else if (profileData) {
+        console.log('[Auth] Profile loaded:', profileData)
+        setProfile(profileData)
+      }
+
+      // Fetch role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (roleError && roleError.code !== 'PGRST116') {
+        console.error('[Auth] Error fetching role:', roleError)
+      } else if (roleData) {
+        console.log('[Auth] Role loaded:', roleData.role)
+        setRole(roleData.role)
+      } else {
+        // Default role if none found
+        setRole('member')
+      }
+      
+    } catch (err) {
+      console.error('[Auth] Exception loading profile:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -198,7 +254,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Simplified profile update without immediate refetch
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error('User not authenticated') }
 
@@ -234,7 +289,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Basic role checking - will be enhanced by useProfile hook
   const hasRole = (requiredRole: AppRole): boolean => {
     if (!role) return false
     return ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[requiredRole]
@@ -250,30 +304,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return permissions.includes(permission)
   }
 
-  // Simple refresh without complex fetching
   const refreshProfile = async () => {
     if (!user) return
     
-    try {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      setProfile(profileData)
-      setRole(roleData?.role || 'member')
-    } catch (error) {
-      console.error('[Auth] Error refreshing profile:', error)
-    }
+    await loadUserProfile(user.id)
   }
 
   const value: AuthContextType = {
