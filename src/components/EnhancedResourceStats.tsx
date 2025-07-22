@@ -19,8 +19,8 @@ const EnhancedResourceStats = () => {
 
   // Calculate enhanced metrics
   const totalResources = resources.length;
-  // Fix: Use workspaceId instead of type to identify human resources
-  const activeResources = resources.filter(r => r.workspaceId).length;
+  // Fix: Use workspace_id instead of workspaceId to identify human resources
+  const activeResources = resources.filter(r => r.workspace_id).length;
   
   const utilizationData = Object.values(utilizationMetrics);
   const avgUtilization = utilizationData.length > 0 
