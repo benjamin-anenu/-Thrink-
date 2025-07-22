@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import TinkAssistant from '@/components/TinkAssistant';
-import ResourceForm from '@/components/ResourceForm';
+import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import SkillsMatrix from '@/components/SkillsMatrix';
 import AssignmentModal from '@/components/AssignmentModal';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
@@ -315,10 +315,9 @@ const Resources = () => {
       </main>
 
       {/* Modals */}
-      <ResourceForm
-        isOpen={showResourceForm}
-        onClose={() => setShowResourceForm(false)}
-        onSave={handleResourceSave}
+      <ResourceCreationWizard
+        open={showResourceForm}
+        onOpenChange={setShowResourceForm}
       />
 
       <ResourceDetailsModal
