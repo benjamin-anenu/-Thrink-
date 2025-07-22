@@ -19,7 +19,8 @@ const EnhancedResourceStats = () => {
 
   // Calculate enhanced metrics
   const totalResources = resources.length;
-  const activeResources = resources.filter(r => r.type === 'human').length;
+  // Fix: Use workspaceId instead of type to identify human resources
+  const activeResources = resources.filter(r => r.workspaceId).length;
   
   const utilizationData = Object.values(utilizationMetrics);
   const avgUtilization = utilizationData.length > 0 
@@ -44,7 +45,7 @@ const EnhancedResourceStats = () => {
         <CardContent>
           <div className="text-2xl font-bold">{totalResources}</div>
           <p className="text-xs text-muted-foreground">
-            {activeResources} active human resources
+            {activeResources} active resources
           </p>
         </CardContent>
       </Card>

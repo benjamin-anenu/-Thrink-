@@ -17,6 +17,7 @@ import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { Resource as ContextResource } from '@/contexts/ResourceContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Brain, Zap } from 'lucide-react';
