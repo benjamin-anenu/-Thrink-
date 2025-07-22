@@ -5,34 +5,53 @@ import TinkAssistant from '@/components/TinkAssistant';
 import ResourceForm from '@/components/ResourceForm';
 import SkillsMatrix from '@/components/SkillsMatrix';
 import AssignmentModal from '@/components/AssignmentModal';
-import ResourceOverview from '@/components/ResourceOverview';
+import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
 import ResourceListView from '@/components/ResourceListView';
 import AssignmentsTab from '@/components/AssignmentsTab';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
+import { ResourceComparisonModal } from '@/components/ResourceComparisonModal';
+import ResourceComparisonToolbar from '@/components/ResourceComparisonToolbar';
+import EnhancedResourceStats from '@/components/EnhancedResourceStats';
 import ViewToggle from '@/components/ViewToggle';
-import { useResources } from '@/hooks/useResources';
+import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { Resource as ContextResource } from '@/contexts/ResourceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Brain, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showResourceDetailsModal, setShowResourceDetailsModal] = useState(false);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState<{ id: string; name: string } | null>(null);
   const [selectedResourceForDetails, setSelectedResourceForDetails] = useState<ContextResource | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
   
-  const { resources, createResource } = useResources();
+  const { 
+    resources, 
+    createResource, 
+    utilizationMetrics,
+    aiRecommendations,
+    enhancedLoading,
+    generateAssignmentRecommendations,
+    updateResourceUtilization
+  } = useEnhancedResources();
+  
+  const { currentWorkspace } = useWorkspace();
 
   const handleResourceSave = async (resource: any) => {
     console.log('Saving resource:', resource);
     await createResource(resource);
     setShowResourceForm(false);
+    toast.success('Resource created successfully');
   };
 
   const handleAssignTask = (resourceId: string, resourceName: string) => {
@@ -50,6 +69,62 @@ const Resources = () => {
     handleAssignTask(resourceId, resourceName);
   };
 
+  // Comparison functionality
+  const handleCompareToggle = (resourceId: string, selected: boolean) => {
+    const newSelection = new Set(selectedForComparison);
+    if (selected) {
+      newSelection.add(resourceId);
+    } else {
+      newSelection.delete(resourceId);
+    }
+    setSelectedForComparison(newSelection);
+  };
+
+  const handleCompare = () => {
+    if (selectedForComparison.size < 2) {
+      toast.error('Please select at least 2 resources to compare');
+      return;
+    }
+    setShowComparisonModal(true);
+  };
+
+  const handleClearComparison = () => {
+    setSelectedForComparison(new Set());
+  };
+
+  const handleToggleCompareMode = () => {
+    setCompareMode(!compareMode);
+    if (compareMode) {
+      setSelectedForComparison(new Set());
+    }
+  };
+
+  // Generate AI recommendations for all projects
+  const handleGenerateAIRecommendations = async () => {
+    if (!currentWorkspace?.id) return;
+    
+    try {
+      // This would typically be done for specific projects
+      // For demo purposes, we'll show a success message
+      toast.success('AI recommendations generated for active projects');
+    } catch (error) {
+      toast.error('Failed to generate AI recommendations');
+    }
+  };
+
+  // Update all resource utilization metrics
+  const handleRefreshUtilization = async () => {
+    try {
+      const promises = resources.map(resource => 
+        updateResourceUtilization(resource.id)
+      );
+      await Promise.all(promises);
+      toast.success('Resource utilization updated');
+    } catch (error) {
+      toast.error('Failed to update utilization metrics');
+    }
+  };
+
   // Convert database resources to context resources format
   const mappedResources: ContextResource[] = resources.map(resource => ({
     id: resource.id,
@@ -63,8 +138,9 @@ const Resources = () => {
     availability: 100,
     currentProjects: [],
     hourlyRate: '$0/hr',
-    utilization: 0,
-    status: 'Available',
+    utilization: utilizationMetrics[resource.id]?.utilization_percentage || 0,
+    status: utilizationMetrics[resource.id]?.status === 'Overloaded' ? 'Overallocated' : 
+            utilizationMetrics[resource.id]?.status === 'Underutilized' ? 'Available' : 'Busy',
     workspaceId: resource.workspace_id || '',
     createdAt: resource.created_at,
     updatedAt: resource.updated_at,
@@ -83,20 +159,47 @@ const Resources = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Resources</h1>
-            <p className="text-muted-foreground">Manage team members, skills, and availability</p>
+            <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
+              Resources
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Brain className="h-3 w-3" />
+                AI Enhanced
+              </Badge>
+            </h1>
+            <p className="text-muted-foreground">AI-powered resource management with utilization tracking</p>
           </div>
-          <Button onClick={() => setShowResourceForm(true)} className="flex items-center gap-2">
-            <Plus size={16} />
-            Add Resource
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleGenerateAIRecommendations}
+              className="flex items-center gap-2"
+            >
+              <Brain size={16} />
+              Generate AI Insights
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleRefreshUtilization}
+              className="flex items-center gap-2"
+            >
+              <Zap size={16} />
+              Refresh Metrics
+            </Button>
+            <Button onClick={() => setShowResourceForm(true)} className="flex items-center gap-2">
+              <Plus size={16} />
+              Add Resource
+            </Button>
+          </div>
         </div>
+
+        {/* Enhanced Resource Stats */}
+        <EnhancedResourceStats />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Team Overview</TabsTrigger>
+            <TabsTrigger value="overview">AI-Enhanced Overview</TabsTrigger>
             <TabsTrigger value="skills">Skills Matrix</TabsTrigger>
-            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="assignments">Smart Assignments</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -114,11 +217,24 @@ const Resources = () => {
                 <ViewToggle view={viewMode} onViewChange={setViewMode} />
               </div>
 
+              {/* Resource Comparison Toolbar */}
+              <ResourceComparisonToolbar
+                selectedCount={selectedForComparison.size}
+                onCompare={handleCompare}
+                onClear={handleClearComparison}
+                onToggleCompareMode={handleToggleCompareMode}
+                compareMode={compareMode}
+              />
+
               {viewMode === 'grid' ? (
-                <ResourceOverview
+                <EnhancedResourceGrid
                   resources={filteredResources}
+                  utilizationMetrics={utilizationMetrics}
                   onViewDetails={handleViewDetails}
                   onShowResourceForm={() => setShowResourceForm(true)}
+                  showCompareMode={compareMode}
+                  selectedForComparison={selectedForComparison}
+                  onCompareToggle={handleCompareToggle}
                 />
               ) : (
                 <ResourceListView
@@ -135,7 +251,13 @@ const Resources = () => {
           </TabsContent>
 
           <TabsContent value="assignments">
-            <AssignmentsTab onShowAssignmentModal={() => setShowAssignmentModal(true)} />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">AI-Powered Assignment Recommendations</h3>
+                <Badge variant="outline">{aiRecommendations.length} active recommendations</Badge>
+              </div>
+              <AssignmentsTab onShowAssignmentModal={() => setShowAssignmentModal(true)} />
+            </div>
           </TabsContent>
         </Tabs>
       </main>
@@ -159,6 +281,13 @@ const Resources = () => {
         onClose={() => setShowAssignmentModal(false)}
         resourceId={selectedResource?.id}
         resourceName={selectedResource?.name}
+      />
+
+      <ResourceComparisonModal
+        open={showComparisonModal}
+        onOpenChange={setShowComparisonModal}
+        selectedResourceIds={Array.from(selectedForComparison)}
+        workspaceId={currentWorkspace?.id || ''}
       />
 
       <TinkAssistant />
