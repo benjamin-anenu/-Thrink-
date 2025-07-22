@@ -9,13 +9,15 @@ interface InlineTextEditProps {
   onSave: (value: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 const InlineTextEdit: React.FC<InlineTextEditProps> = ({
   value,
   onSave,
   placeholder,
-  className = ""
+  className = "",
+  disabled = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -72,9 +74,9 @@ const InlineTextEdit: React.FC<InlineTextEditProps> = ({
 
   return (
     <div
-      className={`cursor-pointer hover:bg-muted/50 p-1 rounded ${className}`}
-      onClick={() => setIsEditing(true)}
-      title="Click to edit"
+      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'} p-1 rounded ${className}`}
+      onClick={() => !disabled && setIsEditing(true)}
+      title={disabled ? "Editing disabled" : "Click to edit"}
     >
       {value || <span className="text-muted-foreground italic">{placeholder}</span>}
     </div>

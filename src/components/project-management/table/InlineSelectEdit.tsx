@@ -11,6 +11,7 @@ interface InlineSelectEditProps {
   className?: string;
   allowEmpty?: boolean;
   renderValue?: (value: string) => React.ReactNode;
+  disabled?: boolean;
 }
 
 const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
@@ -20,7 +21,8 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
   placeholder,
   className = "",
   allowEmpty = false,
-  renderValue
+  renderValue,
+  disabled = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -64,9 +66,9 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
 
   return (
     <div
-      className={`cursor-pointer hover:bg-muted/50 p-1 rounded ${className}`}
-      onClick={() => setIsEditing(true)}
-      title="Click to edit"
+      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'} p-1 rounded ${className}`}
+      onClick={() => !disabled && setIsEditing(true)}
+      title={disabled ? "Editing disabled" : "Click to edit"}
     >
       {renderValue ? (
         renderValue(value)

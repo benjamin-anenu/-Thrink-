@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Edit2 } from 'lucide-react';
 import { ProjectTask } from '@/types/project';
-import { useDependencyCalculator } from '@/hooks/useDependencyCalculator';
+import { cn } from '@/lib/utils';
+import DependencyEditModal from './DependencyEditModal';
 
 interface InlineDependencyEditProps {
   value: string[];
@@ -13,6 +13,14 @@ interface InlineDependencyEditProps {
   currentTaskId: string;
   onSave: (dependencies: string[]) => void;
   className?: string;
+  disabled?: boolean;
+}
+
+interface ParsedDependency {
+  taskId: string;
+  type: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish';
+  lag: number;
+  taskName?: string;
 }
 
 const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
@@ -20,150 +28,132 @@ const InlineDependencyEdit: React.FC<InlineDependencyEditProps> = ({
   allTasks,
   currentTaskId,
   onSave,
-  className = ""
+  className = "",
+  disabled = false
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [dependencies, setDependencies] = useState<string[]>(value || []);
-  const [newDependency, setNewDependency] = useState('');
-  const { parseDependency, checkCircularDependency } = useDependencyCalculator(allTasks);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    setDependencies(value || []);
-  }, [value]);
+  // Parse dependency string into components
+  const parseDependencyString = (depString: string): ParsedDependency => {
+    const parts = depString.split(':');
+    const taskId = parts[0];
+    const type = (parts[1] as ParsedDependency['type']) || 'finish-to-start';
+    const lag = parseInt(parts[2]) || 0;
+    const task = allTasks.find(t => t.id === taskId);
+    
+    return {
+      taskId,
+      type,
+      lag,
+      taskName: task?.name || 'Unknown Task'
+    };
+  };
 
-  // Get available tasks (excluding current task and already selected dependencies)
-  const availableTasks = allTasks.filter(task => {
-    if (task.id === currentTaskId) return false;
-    const existingTaskIds = dependencies.map(dep => parseDependency(dep).taskId);
-    return !existingTaskIds.includes(task.id);
-  });
-
-  const handleAddDependency = async () => {
-    if (!newDependency) return;
-
-    // Check for circular dependency
-    const isCircular = await checkCircularDependency(currentTaskId, newDependency);
-    if (isCircular) {
-      alert('This dependency would create a circular reference');
-      return;
+  const getDependencyTypeColor = (type: string) => {
+    switch (type) {
+      case 'finish-to-start': return 'bg-blue-100 text-blue-800';
+      case 'start-to-start': return 'bg-green-100 text-green-800';
+      case 'finish-to-finish': return 'bg-orange-100 text-orange-800';
+      case 'start-to-finish': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-
-    // Default to finish-to-start dependency with 0 lag
-    const formattedDependency = `${newDependency}:finish-to-start:0`;
-    const newDependencies = [...dependencies, formattedDependency];
-    setDependencies(newDependencies);
-    setNewDependency('');
   };
 
-  const handleRemoveDependency = (depToRemove: string) => {
-    const newDependencies = dependencies.filter(dep => dep !== depToRemove);
-    setDependencies(newDependencies);
-  };
-
-  const handleSave = () => {
-    onSave(dependencies);
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setDependencies(value || []);
-    setNewDependency('');
-    setIsEditing(false);
+  const getDependencyTypeAbbr = (type: string) => {
+    switch (type) {
+      case 'finish-to-start': return 'FS';
+      case 'start-to-start': return 'SS';
+      case 'finish-to-finish': return 'FF';
+      case 'start-to-finish': return 'SF';
+      default: return 'FS';
+    }
   };
 
   const renderDependencyBadge = (dep: string) => {
-    const parsed = parseDependency(dep);
-    const task = allTasks.find(t => t.id === parsed.taskId);
-    const taskName = task?.name || 'Unknown Task';
+    const parsed = parseDependencyString(dep);
+    const typeAbbr = getDependencyTypeAbbr(parsed.type);
+    const lagText = parsed.lag !== 0 ? ` ${parsed.lag > 0 ? '+' : ''}${parsed.lag}d` : '';
     
     return (
-      <Badge key={dep} variant="outline" className="text-xs">
-        {taskName.substring(0, 15)}...
-        {parsed.type !== 'finish-to-start' && (
-          <span className="ml-1 text-muted-foreground">
-            ({parsed.type})
-          </span>
+      <Badge 
+        key={dep} 
+        variant="outline" 
+        className={cn("text-xs flex items-center gap-1", getDependencyTypeColor(parsed.type))}
+      >
+        <span className="font-medium">{typeAbbr}</span>
+        <span className="truncate max-w-[80px]" title={parsed.taskName}>
+          {parsed.taskName}
+        </span>
+        {lagText && (
+          <span className="text-xs opacity-75">{lagText}</span>
         )}
       </Badge>
     );
   };
 
-  if (isEditing) {
-    return (
-      <div className={`space-y-2 ${className}`}>
-        <div className="flex flex-wrap gap-1">
-          {dependencies.map((dep) => (
-            <div key={dep} className="flex items-center">
-              {renderDependencyBadge(dep)}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-4 w-4 p-0 ml-1"
-                onClick={() => handleRemoveDependency(dep)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Select value={newDependency} onValueChange={setNewDependency}>
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue placeholder="Add dependency" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableTasks.map((task) => (
-                <SelectItem key={task.id} value={task.id}>
-                  {task.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddDependency}
-            disabled={!newDependency}
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleSave}>
-            Save
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleCancel}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const handleSave = (dependencies: string[]) => {
+    console.log('InlineDependencyEdit: Saving dependencies:', dependencies);
+    onSave(dependencies);
+  };
+
+  const handleOpenModal = () => {
+    if (!disabled) {
+      setIsModalOpen(true);
+    }
+  };
 
   return (
-    <div
-      className={`cursor-pointer hover:bg-muted/50 p-1 rounded ${className}`}
-      onClick={() => setIsEditing(true)}
-      title="Click to edit dependencies"
-    >
-      <div className="flex flex-wrap gap-1">
-        {dependencies.length > 0 ? (
-          <>
-            {dependencies.slice(0, 2).map((dep) => renderDependencyBadge(dep))}
-            {dependencies.length > 2 && (
-              <Badge variant="outline" className="text-xs">
-                +{dependencies.length - 2} more
-              </Badge>
-            )}
-          </>
-        ) : (
-          <span className="text-muted-foreground italic text-sm">None</span>
+    <>
+      <div
+        className={cn(
+          "group cursor-pointer hover:bg-muted/50 p-2 rounded min-h-[32px] flex items-center justify-between gap-2",
+          disabled && "opacity-50 cursor-not-allowed",
+          className
         )}
+        onClick={handleOpenModal}
+        title={disabled ? "Updating..." : "Click to manage dependencies"}
+      >
+        <div className="flex flex-wrap gap-1 items-center flex-1">
+          {value && value.length > 0 ? (
+            <>
+              {value.slice(0, 2).map((dep) => renderDependencyBadge(dep))}
+              {value.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{value.length - 2} more
+                </Badge>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground italic text-sm">No dependencies</span>
+          )}
+        </div>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+            disabled && "opacity-0"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenModal();
+          }}
+          disabled={disabled}
+        >
+          <Edit2 className="h-3 w-3" />
+        </Button>
       </div>
-    </div>
+
+      <DependencyEditModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        value={value}
+        allTasks={allTasks}
+        currentTaskId={currentTaskId}
+        onSave={handleSave}
+      />
+    </>
   );
 };
 

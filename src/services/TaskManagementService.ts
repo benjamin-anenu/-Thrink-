@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone } from '@/types/project';
 
@@ -20,6 +19,31 @@ export interface TaskCreationData {
 }
 
 export class TaskManagementService {
+  // Helper function to map database task to ProjectTask
+  static mapDatabaseTaskToProjectTask(dbTask: any): ProjectTask {
+    return {
+      id: dbTask.id,
+      name: dbTask.name,
+      description: dbTask.description || '',
+      milestoneId: dbTask.milestone_id,
+      priority: dbTask.priority as "High" | "Medium" | "Low" | "Critical",
+      status: dbTask.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
+      startDate: dbTask.start_date,
+      endDate: dbTask.end_date,
+      baselineStartDate: dbTask.baseline_start_date || dbTask.start_date,
+      baselineEndDate: dbTask.baseline_end_date || dbTask.end_date,
+      dependencies: dbTask.dependencies || [],
+      assignedResources: dbTask.assigned_resources || [],
+      assignedStakeholders: dbTask.assigned_stakeholders || [],
+      progress: dbTask.progress || 0,
+      duration: dbTask.duration || 1,
+      hierarchyLevel: dbTask.hierarchy_level || 0,
+      sortOrder: dbTask.sort_order || 0,
+      parentTaskId: dbTask.parent_task_id,
+      manualOverrideDates: dbTask.manual_override_dates || false
+    };
+  }
+
   static async createTasksFromMilestone(
     projectId: string,
     milestone: ProjectMilestone,
@@ -44,25 +68,7 @@ export class TaskManagementService {
 
       if (error) throw error;
 
-      return tasks.map(task => ({
-        id: task.id,
-        name: task.name,
-        description: task.description || '',
-        milestoneId: null,
-        priority: task.priority as "High" | "Medium" | "Low" | "Critical",
-        status: task.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
-        startDate: task.start_date,
-        endDate: task.end_date,
-        baselineStartDate: task.start_date,
-        baselineEndDate: task.end_date,
-        dependencies: [],
-        assignedResources: task.assignee_id ? [task.assignee_id] : [],
-        assignedStakeholders: [],
-        progress: 0,
-        duration: 1,
-        hierarchyLevel: task.hierarchy_level || 0,
-        sortOrder: task.sort_order || 0
-      }));
+      return tasks.map(task => this.mapDatabaseTaskToProjectTask(task));
     } catch (error) {
       console.error('Error creating tasks from milestone:', error);
       throw error;
@@ -92,25 +98,7 @@ export class TaskManagementService {
 
       if (error) throw error;
 
-      return {
-        id: task.id,
-        name: task.name,
-        description: task.description || '',
-        milestoneId: null,
-        priority: task.priority as "High" | "Medium" | "Low" | "Critical",
-        status: task.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
-        startDate: task.start_date,
-        endDate: task.end_date,
-        baselineStartDate: task.start_date,
-        baselineEndDate: task.end_date,
-        dependencies: taskData.dependencies,
-        assignedResources: task.assignee_id ? [task.assignee_id] : [],
-        assignedStakeholders: [],
-        progress: 0,
-        duration: 1,
-        hierarchyLevel: task.hierarchy_level || 0,
-        sortOrder: task.sort_order || 0
-      };
+      return this.mapDatabaseTaskToProjectTask(task);
     } catch (error) {
       console.error('Error creating task:', error);
       throw error;
@@ -119,6 +107,8 @@ export class TaskManagementService {
 
   static async updateTask(taskId: string, updates: Partial<ProjectTask>): Promise<void> {
     try {
+      console.log('TaskManagementService: Updating task', taskId, 'with updates:', updates);
+      
       const updateData: any = {
         name: updates.name,
         description: updates.description,
@@ -145,12 +135,19 @@ export class TaskManagementService {
         }
       });
 
+      console.log('TaskManagementService: Final update data:', updateData);
+
       const { error } = await supabase
         .from('project_tasks')
         .update(updateData)
         .eq('id', taskId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('TaskManagementService: Database update error:', error);
+        throw error;
+      }
+
+      console.log('TaskManagementService: Task updated successfully');
     } catch (error) {
       console.error('Error updating task:', error);
       throw error;
@@ -173,35 +170,25 @@ export class TaskManagementService {
 
   static async getProjectTasks(projectId: string): Promise<ProjectTask[]> {
     try {
+      console.log('TaskManagementService: Fetching tasks for project:', projectId);
+      
       const { data: tasks, error } = await supabase
         .from('project_tasks')
         .select('*')
         .eq('project_id', projectId)
         .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('TaskManagementService: Error fetching tasks:', error);
+        throw error;
+      }
 
-      return tasks.map(task => ({
-        id: task.id,
-        name: task.name,
-        description: task.description || '',
-        milestoneId: task.milestone_id,
-        priority: task.priority as "High" | "Medium" | "Low" | "Critical",
-        status: task.status as "Not Started" | "In Progress" | "Completed" | "On Hold" | "Cancelled",
-        startDate: task.start_date,
-        endDate: task.end_date,
-        baselineStartDate: task.baseline_start_date || task.start_date,
-        baselineEndDate: task.baseline_end_date || task.end_date,
-        dependencies: task.dependencies || [],
-        assignedResources: task.assigned_resources || [],
-        assignedStakeholders: task.assigned_stakeholders || [],
-        progress: task.progress || 0,
-        duration: task.duration || 1,
-        hierarchyLevel: task.hierarchy_level || 0,
-        sortOrder: task.sort_order || 0,
-        parentTaskId: task.parent_task_id,
-        manualOverrideDates: task.manual_override_dates || false
-      }));
+      console.log('TaskManagementService: Raw tasks from database:', tasks);
+      
+      const mappedTasks = tasks.map(task => this.mapDatabaseTaskToProjectTask(task));
+      console.log('TaskManagementService: Mapped tasks:', mappedTasks);
+      
+      return mappedTasks;
     } catch (error) {
       console.error('Error fetching project tasks:', error);
       throw error;
@@ -219,7 +206,6 @@ export class TaskManagementService {
     }
   }
 
-  // New hierarchy-related methods
   static async moveTaskToParent(
     taskId: string, 
     newParentId: string | null, 
