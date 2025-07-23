@@ -142,13 +142,12 @@ const TinkAssistant = () => {
 
   return (
     <>
-      {/* Floating Chat Button - Larger with no hover effects */}
+      {/* Floating Chat Button - Static with no hover effects */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
-          <Button
+          <div
             onClick={() => setIsOpen(true)}
-            className="relative w-44 h-44 rounded-full bg-transparent border-none shadow-none p-0"
-            size="icon"
+            className="relative w-44 h-44 rounded-full cursor-pointer"
           >
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
@@ -157,10 +156,11 @@ const TinkAssistant = () => {
               style={{
                 width: '180px',
                 height: '180px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                background: 'transparent'
               }}
             />
-          </Button>
+          </div>
         </div>
       )}
 

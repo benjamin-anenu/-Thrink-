@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -7,63 +6,261 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Enhanced intent detection patterns
-const INTENT_PATTERNS = {
-  data_query: [
-    /(?:show|display|get|fetch|analytics|performance|metrics|utilization)/i,
-    /(?:team|resource|project)\s+(?:performance|utilization|analytics)/i,
-    /(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?(projects?|tasks?|resources?|milestones?|deadlines?|issues?)/i,
-    /what\s+(?:projects?|tasks?|resources?)\s+(?:do\s+i\s+have|are\s+there)/i,
-    /(?:status|progress)\s+(?:of|for)\s+(?:my\s+)?(projects?|tasks?)/i,
-    /(?:how\s+is|what's\s+the\s+status\s+of)\s+(?:my\s+)?(project|task)/i,
-    /(?:tasks?|deadlines?|milestones?)\s+(?:for\s+)?(?:today|tomorrow|this\s+week|next\s+week|upcoming)/i,
-    /(?:what's\s+)?(?:due|overdue)\s+(?:today|tomorrow|this\s+week)/i,
-    /(?:team|resource)\s+(?:utilization|allocation|capacity|workload)/i,
-    /(?:who\s+is\s+assigned\s+to|assignments?\s+for)/i,
-  ],
-  insight_query: [
-    /(?:analyze|insights?|recommendations?|advice|suggestions?)/i,
-    /(?:what\s+should\s+i|how\s+can\s+i|what's\s+the\s+best\s+way\s+to)/i,
-    /(?:risks?|issues?|problems?)\s+(?:with|in)/i,
-    /(?:optimize|improve|enhance)/i
-  ]
-};
+// OpenRouter API integration for natural language to SQL conversion
+class OpenRouterAI {
+  private apiKey: string;
+  
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
 
-// Enhanced database query engine
-class TinkQueryEngine {
-  constructor(private supabase: any, private userId: string, private workspaceId: string) {}
+  async generateSQLQuery(userQuestion: string, conversationHistory: any[] = []): Promise<{ sql: string, queryType: string }> {
+    const databaseSchema = `
+    Database Schema:
+    - projects: id, name, description, status, priority, start_date, end_date, progress, workspace_id
+    - project_tasks: id, name, description, status, priority, assignee_id, start_date, end_date, progress, project_id, milestone_id
+    - resources: id, name, email, role, department, workspace_id
+    - milestones: id, name, description, due_date, progress, project_id, status
+    - performance_metrics: id, resource_id, type, value, timestamp, workspace_id, description
+    - performance_profiles: id, resource_id, resource_name, current_score, monthly_score, trend, risk_level, workspace_id
+    - project_issues: id, title, description, status, priority, severity, project_id, created_by, assignee_id
+    - client_satisfaction: id, client_name, satisfaction_score, survey_date, project_id, workspace_id
+    - project_budgets: id, project_id, budget_category, allocated_amount, spent_amount, currency
+    - calendar_events: id, title, start_date, end_date, project_id, task_id, workspace_id
+    `;
 
-  async executeQuery(intent: string, entities: string[], query: string): Promise<any> {
-    console.log(`Executing query - Intent: ${intent}, Entities: ${entities.join(', ')}, Query: ${query}`);
-    
+    const contextPrompt = conversationHistory.length > 0 
+      ? `Previous conversation context: ${conversationHistory.slice(-3).map(h => `${h.message_role}: ${h.message_content}`).join('\n')}`
+      : '';
+
+    const prompt = `You are a SQL query generator. Convert the following natural language question into a SQL query.
+
+${databaseSchema}
+
+${contextPrompt}
+
+User Question: "${userQuestion}"
+
+Rules:
+1. Only use tables and columns from the schema above
+2. Always filter by workspace_id when querying main tables
+3. Use proper JOINs for related data
+4. Return SELECT queries only
+5. Limit results to 50 for performance
+6. Use appropriate WHERE clauses for date/time filters
+
+Return JSON with: {"sql": "your_sql_query", "queryType": "descriptive_name"}
+
+Examples:
+- "Show me my projects" -> {"sql": "SELECT * FROM projects WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 50", "queryType": "projects_list"}
+- "Team performance this month" -> {"sql": "SELECT pm.*, r.name as resource_name FROM performance_metrics pm JOIN resources r ON pm.resource_id = r.id WHERE pm.workspace_id = $1 AND pm.timestamp >= date_trunc('month', CURRENT_DATE) LIMIT 50", "queryType": "performance_metrics"}
+`;
+
     try {
-      switch (intent) {
-        case 'list_projects':
-          return await this.getProjects();
-        case 'list_tasks':
-          return await this.getTasks(entities);
-        case 'list_resources':
-          return await this.getResources();
-        case 'project_status':
-          return await this.getProjectStatus(entities);
-        case 'task_status':
-          return await this.getTaskStatus(entities);
-        case 'deadlines':
-          return await this.getDeadlines(entities);
-        case 'performance':
-          return await this.getPerformanceMetrics(entities);
-        case 'team_utilization':
-          return await this.getTeamUtilization();
-        case 'assignments':
-          return await this.getAssignments(entities);
-        case 'analytics':
-          return await this.getAnalytics(entities);
-        default:
-          return { error: 'Query type not supported yet' };
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://lovable.dev',
+          'X-Title': 'Tink AI Assistant'
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-3.5-sonnet',
+          messages: [
+            { role: 'system', content: 'You are a helpful SQL query generator. Always respond with valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.1,
+          max_tokens: 500
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || '{}';
+      
+      try {
+        const parsed = JSON.parse(content);
+        return {
+          sql: parsed.sql || '',
+          queryType: parsed.queryType || 'general'
+        };
+      } catch (parseError) {
+        console.error('Failed to parse OpenRouter response:', content);
+        return { sql: '', queryType: 'error' };
       }
     } catch (error) {
-      console.error('Query execution error:', error);
-      return { error: 'Failed to execute query', details: error.message };
+      console.error('OpenRouter API error:', error);
+      return { sql: '', queryType: 'error' };
+    }
+  }
+
+  async generateConversationalResponse(userQuestion: string, queryResults: any, conversationHistory: any[] = []): Promise<string> {
+    const contextPrompt = conversationHistory.length > 0 
+      ? `Previous conversation: ${conversationHistory.slice(-3).map(h => `${h.message_role}: ${h.message_content}`).join('\n')}`
+      : '';
+
+    const prompt = `You are Tink, a friendly and knowledgeable AI project management assistant. 
+
+${contextPrompt}
+
+User asked: "${userQuestion}"
+
+Query results: ${JSON.stringify(queryResults, null, 2)}
+
+Generate a natural, conversational response that:
+1. Addresses the user's question directly
+2. Presents the data in an easy-to-understand format
+3. Offers insights or observations about the data
+4. Asks relevant follow-up questions when appropriate
+5. Uses a friendly, professional tone
+6. Keeps the response concise but informative
+
+If there's no data or an error occurred, politely explain and offer alternative ways to help.
+`;
+
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://lovable.dev',
+          'X-Title': 'Tink AI Assistant'
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-3.5-sonnet',
+          messages: [
+            { role: 'system', content: 'You are Tink, a friendly AI assistant specializing in project management. Be conversational and helpful.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 800
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || "I'm having trouble generating a response right now. Could you try rephrasing your question?";
+    } catch (error) {
+      console.error('OpenRouter response generation error:', error);
+      return "I'm experiencing some technical difficulties right now. Let me try to help you in a different way.";
+    }
+  }
+}
+
+// Enhanced database query engine with OpenRouter integration
+class TinkQueryEngine {
+  constructor(private supabase: any, private userId: string, private workspaceId: string, private openRouter: OpenRouterAI) {}
+
+  async processNaturalLanguageQuery(userQuestion: string, conversationHistory: any[] = []): Promise<any> {
+    console.log(`Processing natural language query: ${userQuestion}`);
+    
+    try {
+      // Step 1: Generate SQL using OpenRouter
+      const { sql, queryType } = await this.openRouter.generateSQLQuery(userQuestion, conversationHistory);
+      
+      if (!sql || sql.trim() === '') {
+        return {
+          type: 'error',
+          message: "I couldn't understand how to query that data. Could you try rephrasing your question?",
+          error: 'SQL generation failed'
+        };
+      }
+
+      console.log(`Generated SQL (${queryType}):`, sql);
+
+      // Step 2: Execute the generated SQL
+      const queryResult = await this.executeSQLQuery(sql, queryType);
+      
+      // Step 3: Generate conversational response
+      const conversationalResponse = await this.openRouter.generateConversationalResponse(
+        userQuestion, 
+        queryResult, 
+        conversationHistory
+      );
+
+      return {
+        type: queryType,
+        data: queryResult.data,
+        message: conversationalResponse,
+        sql: sql, // For debugging
+        count: queryResult.count || 0
+      };
+    } catch (error) {
+      console.error('Natural language query processing error:', error);
+      return {
+        type: 'error',
+        message: "I encountered an issue processing your request. Let me try to help you in another way.",
+        error: error.message
+      };
+    }
+  }
+
+  async executeSQLQuery(sql: string, queryType: string): Promise<any> {
+    try {
+      // Replace $1 placeholder with actual workspace_id
+      const processedSQL = sql.replace(/\$1/g, `'${this.workspaceId}'`);
+      
+      // Use Supabase's .rpc() method to execute raw SQL safely
+      const { data, error } = await this.supabase.rpc('execute_sql', { 
+        query: processedSQL 
+      });
+
+      if (error) {
+        console.error('SQL execution error:', error);
+        // Fall back to predefined queries for common requests
+        return await this.fallbackQuery(queryType);
+      }
+
+      return {
+        type: queryType,
+        data: data || [],
+        count: Array.isArray(data) ? data.length : 0
+      };
+    } catch (error) {
+      console.error('SQL execution error:', error);
+      return await this.fallbackQuery(queryType);
+    }
+  }
+
+  async fallbackQuery(queryType: string): Promise<any> {
+    console.log(`Using fallback query for type: ${queryType}`);
+    
+    try {
+      switch (queryType) {
+        case 'projects_list':
+          return await this.getProjects();
+        case 'tasks_list':
+          return await this.getTasks([]);
+        case 'resources_list':
+          return await this.getResources();
+        case 'performance_metrics':
+          return await this.getPerformanceMetrics([]);
+        case 'team_utilization':
+          return await this.getTeamUtilization();
+        case 'deadlines':
+          return await this.getDeadlines(['upcoming']);
+        case 'analytics':
+          return await this.getAnalytics([]);
+        default:
+          return await this.getAnalytics([]); // Default to analytics overview
+      }
+    } catch (error) {
+      console.error('Fallback query error:', error);
+      return {
+        type: 'error',
+        data: [],
+        count: 0,
+        message: "I'm having trouble accessing your data right now."
+      };
     }
   }
 
@@ -72,12 +269,11 @@ class TinkQueryEngine {
       .from('projects')
       .select(`
         id, name, description, status, priority, start_date, end_date, 
-        progress, created_at, updated_at, workspace_id,
-        milestones(id, name, status, due_date, progress),
-        project_tasks(id, name, status, assignee_id, start_date, end_date, progress)
+        progress, created_at, updated_at, workspace_id
       `)
       .eq('workspace_id', this.workspaceId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Error fetching projects:', error);
@@ -87,7 +283,6 @@ class TinkQueryEngine {
     return {
       type: 'projects_list',
       data: data || [],
-      summary: `Found ${data?.length || 0} projects in your workspace`,
       count: data?.length || 0
     };
   }
@@ -97,11 +292,14 @@ class TinkQueryEngine {
       .from('project_tasks')
       .select(`
         id, name, description, status, priority, assignee_id, 
-        start_date, end_date, progress, created_at,
-        projects!inner(id, name, workspace_id),
-        milestones(id, name)
+        start_date, end_date, progress, created_at, project_id
       `)
-      .eq('projects.workspace_id', this.workspaceId);
+      .in('project_id', 
+        this.supabase
+          .from('projects')
+          .select('id')
+          .eq('workspace_id', this.workspaceId)
+      );
 
     // Apply filters based on entities
     if (entities.includes('today')) {
@@ -121,7 +319,9 @@ class TinkQueryEngine {
       query = query.gte('start_date', today).lte('start_date', futureDate.toISOString().split('T')[0]);
     }
 
-    const { data, error } = await query.order('start_date', { ascending: true });
+    const { data, error } = await query
+      .order('start_date', { ascending: true })
+      .limit(50);
     
     if (error) {
       console.error('Error fetching tasks:', error);
@@ -131,7 +331,6 @@ class TinkQueryEngine {
     return {
       type: 'tasks_list',
       data: data || [],
-      summary: `Found ${data?.length || 0} tasks matching your criteria`,
       count: data?.length || 0
     };
   }
@@ -143,7 +342,8 @@ class TinkQueryEngine {
         id, name, email, role, department, created_at, updated_at
       `)
       .eq('workspace_id', this.workspaceId)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .limit(50);
 
     if (error) {
       console.error('Error fetching resources:', error);
@@ -153,7 +353,6 @@ class TinkQueryEngine {
     return {
       type: 'resources_list',
       data: data || [],
-      summary: `Found ${data?.length || 0} resources in your workspace`,
       count: data?.length || 0
     };
   }
@@ -166,7 +365,8 @@ class TinkQueryEngine {
       `)
       .eq('workspace_id', this.workspaceId)
       .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp', { ascending: false });
+      .order('timestamp', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Error fetching performance metrics:', error);
@@ -176,23 +376,18 @@ class TinkQueryEngine {
     return {
       type: 'performance_metrics',
       data: data || [],
-      summary: `Performance metrics for the last 30 days`,
       count: data?.length || 0
     };
   }
 
   async getTeamUtilization(): Promise<any> {
-    // Get resources and their current assignments
     const { data: resources, error: resourceError } = await this.supabase
       .from('resources')
       .select(`
-        id, name, role, department,
-        project_assignments(
-          id, project_id, role,
-          projects(id, name, status)
-        )
+        id, name, role, department
       `)
-      .eq('workspace_id', this.workspaceId);
+      .eq('workspace_id', this.workspaceId)
+      .limit(50);
 
     if (resourceError) {
       console.error('Error fetching team utilization:', resourceError);
@@ -202,7 +397,6 @@ class TinkQueryEngine {
     return {
       type: 'team_utilization',
       data: resources || [],
-      summary: `Team utilization data for ${resources?.length || 0} resources`,
       count: resources?.length || 0
     };
   }
@@ -221,14 +415,18 @@ class TinkQueryEngine {
     const { data, error } = await this.supabase
       .from('project_tasks')
       .select(`
-        id, name, end_date, status, priority,
-        projects!inner(id, name, workspace_id),
-        milestones(id, name, due_date)
+        id, name, end_date, status, priority, project_id
       `)
-      .eq('projects.workspace_id', this.workspaceId)
+      .in('project_id', 
+        this.supabase
+          .from('projects')
+          .select('id')
+          .eq('workspace_id', this.workspaceId)
+      )
       .gte('end_date', today)
       .lte('end_date', futureDateStr)
-      .order('end_date', { ascending: true });
+      .order('end_date', { ascending: true })
+      .limit(50);
 
     if (error) {
       console.error('Error fetching deadlines:', error);
@@ -238,157 +436,47 @@ class TinkQueryEngine {
     return {
       type: 'deadlines',
       data: data || [],
-      summary: `Found ${data?.length || 0} upcoming deadlines`,
       count: data?.length || 0
     };
   }
 
   async getAnalytics(entities: string[]): Promise<any> {
-    // Get comprehensive analytics data
-    const [projectsData, tasksData, resourcesData, metricsData] = await Promise.all([
-      this.getProjects(),
-      this.getTasks([]),
-      this.getResources(),
-      this.getPerformanceMetrics([])
-    ]);
+    try {
+      // Get basic analytics data
+      const [projectsData, tasksData, resourcesData] = await Promise.all([
+        this.getProjects(),
+        this.getTasks([]),
+        this.getResources()
+      ]);
 
-    const analytics = {
-      projects: {
-        total: projectsData.count,
-        byStatus: this.groupByStatus(projectsData.data, 'status'),
-        byPriority: this.groupByStatus(projectsData.data, 'priority')
-      },
-      tasks: {
-        total: tasksData.count,
-        byStatus: this.groupByStatus(tasksData.data, 'status'),
-        byPriority: this.groupByStatus(tasksData.data, 'priority')
-      },
-      resources: {
-        total: resourcesData.count,
-        byDepartment: this.groupByStatus(resourcesData.data, 'department'),
-        byRole: this.groupByStatus(resourcesData.data, 'role')
-      },
-      performance: {
-        totalMetrics: metricsData.count,
-        averagePerformance: this.calculateAveragePerformance(metricsData.data)
-      }
-    };
-
-    return {
-      type: 'analytics',
-      data: analytics,
-      summary: `Comprehensive analytics for your workspace`,
-      count: Object.keys(analytics).length
-    };
-  }
-
-  private groupByStatus(data: any[], field: string): Record<string, number> {
-    return data.reduce((acc, item) => {
-      const value = item[field] || 'Unknown';
-      acc[value] = (acc[value] || 0) + 1;
-      return acc;
-    }, {});
-  }
-
-  private calculateAveragePerformance(metrics: any[]): number {
-    if (metrics.length === 0) return 0;
-    const sum = metrics.reduce((acc, metric) => acc + (metric.value || 0), 0);
-    return sum / metrics.length;
-  }
-
-  async getProjectStatus(entities: string[]): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('projects')
-      .select(`
-        id, name, status, progress, start_date, end_date,
-        project_tasks(id, status)
-      `)
-      .eq('workspace_id', this.workspaceId);
-
-    if (error) throw error;
-
-    const projectsWithStats = data?.map(project => {
-      const totalTasks = project.project_tasks?.length || 0;
-      const completedTasks = project.project_tasks?.filter(task => task.status === 'Completed').length || 0;
-      
-      return {
-        ...project,
-        total_tasks: totalTasks,
-        completed_tasks: completedTasks,
-        health_status: this.calculateProjectHealth(project)
+      const analytics = {
+        projects: {
+          total: projectsData.count,
+          data: projectsData.data?.slice(0, 5) || [] // Show top 5 projects
+        },
+        tasks: {
+          total: tasksData.count,
+          data: tasksData.data?.slice(0, 5) || [] // Show top 5 tasks
+        },
+        resources: {
+          total: resourcesData.count,
+          data: resourcesData.data?.slice(0, 5) || [] // Show top 5 resources
+        }
       };
-    });
 
-    return {
-      type: 'project_status',
-      data: projectsWithStats || [],
-      summary: `Status overview for ${data?.length || 0} projects`
-    };
-  }
-
-  async getTaskStatus(entities: string[]): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('project_tasks')
-      .select(`
-        id, name, status, priority, progress, start_date, end_date,
-        projects!inner(id, name, workspace_id)
-      `)
-      .eq('projects.workspace_id', this.workspaceId)
-      .order('status', { ascending: true });
-
-    if (error) throw error;
-
-    // Group tasks by status for better overview
-    const tasksByStatus = data?.reduce((acc: any, task: any) => {
-      const status = task.status || 'Unknown';
-      if (!acc[status]) acc[status] = [];
-      acc[status].push(task);
-      return acc;
-    }, {});
-
-    return {
-      type: 'task_status',
-      data: data || [],
-      groupedData: tasksByStatus || {},
-      summary: `Task status overview: ${data?.length || 0} total tasks`
-    };
-  }
-
-  async getAssignments(entities: string[]): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('project_tasks')
-      .select(`
-        id, name, assignee_id, status, start_date, end_date,
-        projects!inner(id, name, workspace_id)
-      `)
-      .eq('projects.workspace_id', this.workspaceId)
-      .not('assignee_id', 'is', null)
-      .order('start_date', { ascending: true });
-
-    if (error) throw error;
-
-    return {
-      type: 'assignments',
-      data: data || [],
-      summary: `Found ${data?.length || 0} task assignments`
-    };
-  }
-
-  private calculateProjectHealth(project: any): string {
-    const progress = project.progress || 0;
-    const now = new Date();
-    const endDate = project.end_date ? new Date(project.end_date) : null;
-    
-    if (!endDate) return 'unknown';
-    
-    const isOverdue = now > endDate && progress < 100;
-    const isAtRisk = endDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000 && progress < 80;
-    
-    if (isOverdue) return 'critical';
-    if (isAtRisk) return 'warning';
-    if (progress >= 90) return 'excellent';
-    if (progress >= 70) return 'good';
-    return 'on-track';
+      return {
+        type: 'analytics',
+        data: analytics,
+        count: Object.keys(analytics).length
+      };
+    } catch (error) {
+      console.error('Error in getAnalytics:', error);
+      return {
+        type: 'analytics',
+        data: { projects: { total: 0, data: [] }, tasks: { total: 0, data: [] }, resources: { total: 0, data: [] } },
+        count: 0
+      };
+    }
   }
 }
 
@@ -399,6 +487,21 @@ serve(async (req) => {
   }
 
   try {
+    // Check for OpenRouter API key
+    const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
+    if (!openRouterApiKey) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'OpenRouter API key not configured',
+          message: "I need the OpenRouter API key to provide intelligent responses. Please configure it in your environment." 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -418,40 +521,27 @@ serve(async (req) => {
 
     console.log('Processing message:', message, 'for user:', userId, 'in workspace:', workspaceId);
 
-    // Initialize query engine
-    const queryEngine = new TinkQueryEngine(supabase, userId, workspaceId);
+    // Initialize OpenRouter AI and query engine
+    const openRouter = new OpenRouterAI(openRouterApiKey);
+    const queryEngine = new TinkQueryEngine(supabase, userId, workspaceId, openRouter);
 
-    // Enhanced intent detection and entity extraction
-    const { intent, entities, isDataQuery } = detectIntentAndEntities(message);
-    console.log('Intent detection result:', { intent, entities, isDataQuery, message });
+    // Load recent conversation history for context
+    const { data: conversationHistory } = await supabase
+      .from('ai_conversation_history')
+      .select('message_role, message_content, created_at')
+      .eq('user_id', userId)
+      .eq('workspace_id', workspaceId)
+      .eq('conversation_type', 'tink_assistant')
+      .order('created_at', { ascending: false })
+      .limit(6); // Last 3 exchanges (6 messages)
 
-    let assistantMessage = '';
-    let queryResult = null;
-    let responseType = 'conversational';
+    // Process the query using OpenRouter intelligence
+    const queryResult = await queryEngine.processNaturalLanguageQuery(
+      message, 
+      conversationHistory?.reverse() || []
+    );
 
-    if (isDataQuery && intent) {
-      // Handle data queries directly
-      console.log('Processing data query:', intent);
-      queryResult = await queryEngine.executeQuery(intent, entities, message);
-      
-      if (queryResult.error) {
-        assistantMessage = `I encountered an issue retrieving that data: ${queryResult.error}. Let me try to help in another way.`;
-      } else {
-        // Format the data response
-        assistantMessage = formatDataResponse(queryResult, message);
-        responseType = 'data_with_insights';
-      }
-    } else {
-      // Handle conversational queries with contextual information
-      console.log('Processing conversational query');
-      
-      // Get some context data to help with responses
-      const contextData = await queryEngine.getAnalytics([]);
-      
-      // Build a contextual response
-      assistantMessage = buildContextualResponse(message, contextData);
-      responseType = 'conversational';
-    }
+    const assistantMessage = queryResult.message || "I'm having trouble generating a response right now. Could you try rephrasing your question?";
 
     // Save conversation history
     await supabase.from('ai_conversation_history').insert([
@@ -463,9 +553,7 @@ serve(async (req) => {
         message_content: message,
         context_data: { 
           timestamp: new Date().toISOString(),
-          intent,
-          entities,
-          isDataQuery
+          queryType: queryResult.type
         }
       },
       {
@@ -476,8 +564,11 @@ serve(async (req) => {
         message_content: assistantMessage,
         context_data: { 
           timestamp: new Date().toISOString(),
-          responseType,
-          queryResult: queryResult ? { type: queryResult.type, summary: queryResult.summary } : null
+          responseType: 'openrouter_enhanced',
+          queryResult: queryResult ? { 
+            type: queryResult.type, 
+            dataCount: queryResult.count || 0 
+          } : null
         }
       }
     ]);
@@ -486,14 +577,12 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: assistantMessage,
-        responseType,
+        responseType: 'openrouter_enhanced',
         queryResult: queryResult ? { 
           type: queryResult.type, 
-          summary: queryResult.summary,
-          dataCount: queryResult.count || 0
-        } : null,
-        intent,
-        entities
+          dataCount: queryResult.count || 0,
+          hasData: (queryResult.count || 0) > 0
+        } : null
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -501,11 +590,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in tink-ai-chat:', error);
+    console.error('Error in tink-ai-chat function:', error);
+    
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to process chat request',
-        details: error.message
+        error: 'Internal server error',
+        message: "I'm experiencing technical difficulties right now. Please try again in a moment."
       }),
       { 
         status: 500, 
@@ -514,157 +604,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Enhanced intent detection and entity extraction
-function detectIntentAndEntities(message: string): { intent: string | null, entities: string[], isDataQuery: boolean } {
-  const lowerMessage = message.toLowerCase();
-  const entities: string[] = [];
-  
-  // Extract time entities
-  if (/\btoday\b/i.test(message)) entities.push('today');
-  if (/\btomorrow\b/i.test(message)) entities.push('tomorrow');
-  if (/\bthis\s+week\b/i.test(message)) entities.push('week');
-  if (/\bnext\s+week\b/i.test(message)) entities.push('week');
-  if (/\bupcoming\b/i.test(message)) entities.push('upcoming');
-  if (/\boverdue\b/i.test(message)) entities.push('overdue');
-  
-  // Extract object entities
-  if (/\bprojects?\b/i.test(message)) entities.push('projects');
-  if (/\btasks?\b/i.test(message)) entities.push('tasks');
-  if (/\bresources?\b/i.test(message)) entities.push('resources');
-  if (/\bdeadlines?\b/i.test(message)) entities.push('deadlines');
-  if (/\bmilestones?\b/i.test(message)) entities.push('milestones');
-  if (/\bperformance\b/i.test(message)) entities.push('performance');
-  if (/\banalytics?\b/i.test(message)) entities.push('analytics');
-  if (/\bteam\b/i.test(message)) entities.push('team');
-  if (/\butilization\b/i.test(message)) entities.push('utilization');
-
-  // Check for data query patterns
-  let intent = null;
-  let isDataQuery = false;
-
-  for (const pattern of INTENT_PATTERNS.data_query) {
-    if (pattern.test(message)) {
-      isDataQuery = true;
-      
-      // Determine specific intent
-      if (/(?:analytics|performance|metrics)/i.test(message)) {
-        intent = 'analytics';
-      } else if (/(?:team|resource)\s+(?:utilization|allocation|capacity)/i.test(message)) {
-        intent = 'team_utilization';
-      } else if (/(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?projects?/i.test(message)) {
-        intent = 'list_projects';
-      } else if (/(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?tasks?/i.test(message)) {
-        intent = 'list_tasks';
-      } else if (/(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?resources?/i.test(message)) {
-        intent = 'list_resources';
-      } else if (/(?:status|progress)\s+(?:of|for)\s+(?:my\s+)?projects?/i.test(message)) {
-        intent = 'project_status';
-      } else if (/(?:status|progress)\s+(?:of|for)\s+(?:my\s+)?tasks?/i.test(message)) {
-        intent = 'task_status';
-      } else if (/(?:deadlines?|due)\s+/i.test(message)) {
-        intent = 'deadlines';
-      } else if (/(?:performance|metrics)/i.test(message)) {
-        intent = 'performance';
-      } else if (/(?:assignments?|assigned)/i.test(message)) {
-        intent = 'assignments';
-      } else {
-        intent = 'analytics'; // Default to analytics for data queries
-      }
-      break;
-    }
-  }
-
-  return { intent, entities, isDataQuery };
-}
-
-// Enhanced data response formatting
-function formatDataResponse(queryResult: any, originalMessage: string): string {
-  const { type, data, summary, count } = queryResult;
-  
-  if (!data || (Array.isArray(data) && data.length === 0)) {
-    return `${summary}. No items found matching your request.`;
-  }
-
-  let response = `📊 **${summary}**\n\n`;
-
-  switch (type) {
-    case 'projects_list':
-      response += data.slice(0, 8).map((project: any, index: number) => 
-        `${index + 1}. **${project.name}** (${project.status || 'Unknown'})\n   📈 Progress: ${project.progress || 0}% | 🔥 Priority: ${project.priority || 'Medium'}\n   📅 ${project.start_date ? new Date(project.start_date).toLocaleDateString() : 'No start date'} - ${project.end_date ? new Date(project.end_date).toLocaleDateString() : 'No end date'}`
-      ).join('\n\n');
-      if (data.length > 8) response += `\n\n... and ${data.length - 8} more projects`;
-      break;
-      
-    case 'tasks_list':
-      response += data.slice(0, 8).map((task: any, index: number) => 
-        `${index + 1}. **${task.name}** (${task.status || 'Unknown'})\n   📋 Project: ${task.projects?.name || 'N/A'} | 📅 Due: ${task.end_date ? new Date(task.end_date).toLocaleDateString() : 'Not set'}\n   📊 Progress: ${task.progress || 0}% | 🔥 Priority: ${task.priority || 'Medium'}`
-      ).join('\n\n');
-      if (data.length > 8) response += `\n\n... and ${data.length - 8} more tasks`;
-      break;
-      
-    case 'resources_list':
-      response += data.slice(0, 8).map((resource: any, index: number) => 
-        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 Department: ${resource.department || 'Not set'} | 📧 ${resource.email || 'No email'}`
-      ).join('\n\n');
-      if (data.length > 8) response += `\n\n... and ${data.length - 8} more resources`;
-      break;
-      
-    case 'deadlines':
-      response += data.slice(0, 8).map((task: any, index: number) => 
-        `${index + 1}. **${task.name}** - 📅 Due: ${new Date(task.end_date).toLocaleDateString()}\n   📋 Project: ${task.projects?.name || 'N/A'} | 🔥 Priority: ${task.priority || 'Medium'}\n   📊 Status: ${task.status || 'Unknown'}`
-      ).join('\n\n');
-      if (data.length > 8) response += `\n\n... and ${data.length - 8} more deadlines`;
-      break;
-      
-    case 'analytics':
-      response += `📊 **Workspace Overview:**\n\n`;
-      response += `🚀 **Projects:** ${data.projects.total} total\n`;
-      response += `   • Status: ${Object.entries(data.projects.byStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}\n\n`;
-      response += `✅ **Tasks:** ${data.tasks.total} total\n`;
-      response += `   • Status: ${Object.entries(data.tasks.byStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}\n\n`;
-      response += `👥 **Resources:** ${data.resources.total} total\n`;
-      response += `   • By Department: ${Object.entries(data.resources.byDepartment).map(([k, v]) => `${k}: ${v}`).join(', ')}\n\n`;
-      response += `📈 **Performance:** ${data.performance.totalMetrics} metrics tracked\n`;
-      response += `   • Average Performance: ${data.performance.averagePerformance.toFixed(1)}/10`;
-      break;
-      
-    case 'team_utilization':
-      response += data.slice(0, 8).map((resource: any, index: number) => 
-        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 ${resource.department || 'No department'}\n   📋 Active Projects: ${resource.project_assignments?.length || 0}`
-      ).join('\n\n');
-      if (data.length > 8) response += `\n\n... and ${data.length - 8} more team members`;
-      break;
-      
-    case 'performance_metrics':
-      response += data.slice(0, 8).map((metric: any, index: number) => 
-        `${index + 1}. **${metric.type}** - Value: ${metric.value}\n   📅 Date: ${new Date(metric.timestamp).toLocaleDateString()}\n   📝 ${metric.description || 'No description'}`
-      ).join('\n\n');
-      if (data.length > 8) response += `\n\n... and ${data.length - 8} more metrics`;
-      break;
-      
-    default:
-      response += 'Data retrieved successfully, but formatting is not yet implemented for this query type.';
-  }
-
-  return response;
-}
-
-// Build contextual response for conversational queries
-function buildContextualResponse(message: string, contextData: any): string {
-  const lowerMessage = message.toLowerCase();
-  
-  if (/hello|hi|hey/i.test(message)) {
-    return `Hello! I'm Tink, your AI assistant. I can help you with:\n\n• 📊 Project analytics and performance metrics\n• 📅 Deadlines and task management\n• 👥 Team utilization and resource allocation\n• 📈 Performance insights and recommendations\n\nWhat would you like to know about your workspace?`;
-  }
-  
-  if (/help|what can you do/i.test(message)) {
-    return `I'm here to help you manage your workspace efficiently! Here's what I can do:\n\n**📊 Analytics & Insights:**\n• Show project performance metrics\n• Analyze team productivity\n• Generate utilization reports\n\n**📅 Project Management:**\n• List upcoming deadlines\n• Track task progress\n• Monitor project status\n\n**👥 Team Management:**\n• Show resource allocation\n• Display team utilization\n• Track individual performance\n\n**🤖 Smart Queries:**\nJust ask me naturally! For example:\n• "Show me our team utilization"\n• "What deadlines are coming up?"\n• "How are our projects performing?"`;
-  }
-  
-  if (/thank/i.test(message)) {
-    return `You're welcome! I'm always here to help you stay on top of your projects and team performance. Feel free to ask me anything about your workspace data! 😊`;
-  }
-  
-  return `I'd be happy to help you with that! To get the most relevant information, try asking me about:\n\n• 📊 "Show me project analytics"\n• 📅 "What are our upcoming deadlines?"\n• 👥 "How is our team utilization?"\n• 📈 "Show me performance metrics"\n\nWhat specific information would you like to see?`;
-}
