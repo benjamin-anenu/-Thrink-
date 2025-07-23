@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,8 +70,8 @@ const Header = () => {
       <header className={cn(
         "w-full max-w-7xl mx-auto transition-all duration-300 rounded-2xl border",
         scrolled 
-          ? "bg-card/80 backdrop-blur-xl border-border/50 shadow-lg py-3 px-6" 
-          : "bg-card/60 backdrop-blur-md border-border/30 py-4 px-8"
+          ? "bg-card/95 backdrop-blur-xl border-border/50 shadow-lg py-3 px-6" 
+          : "bg-card/90 backdrop-blur-md border-border/30 py-4 px-8"
       )}>
         <div className="flex items-center justify-between">
           {/* Logo - Left */}
@@ -98,26 +99,26 @@ const Header = () => {
                     <ToggleGroupItem 
                       value="features"
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'features' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       )}
                       onClick={handleNavClick('features')}
                     >
-                      <CircleDot size={12} className="mr-1.5" /> Features
+                      <CircleDot size={12} className="mr-1" /> Features
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="pricing" 
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'pricing' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       )}
                       onClick={handleNavClick('pricing')}
                     >
-                      <DollarSign size={12} className="mr-1.5" /> Pricing
+                      <DollarSign size={12} className="mr-1" /> Pricing
                     </ToggleGroupItem>
                   </>
                 ) : user && (
@@ -125,7 +126,7 @@ const Header = () => {
                     <ToggleGroupItem 
                       value="dashboard"
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'dashboard' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -133,13 +134,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/dashboard">
-                        <LayoutDashboard size={12} className="mr-1.5" /> Dashboard
+                        <LayoutDashboard size={12} className="mr-1" /> Dashboard
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="projects" 
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'projects' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -147,13 +148,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/projects">
-                        <FolderOpen size={12} className="mr-1.5" /> Projects
+                        <FolderOpen size={12} className="mr-1" /> Projects
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="resources" 
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'resources' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -161,13 +162,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/resources">
-                        <Users size={12} className="mr-1.5" /> Resources
+                        <Users size={12} className="mr-1" /> Resources
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="stakeholders" 
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'stakeholders' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -175,13 +176,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/stakeholders">
-                        <UserCheck size={12} className="mr-1.5" /> Stakeholders
+                        <UserCheck size={12} className="mr-1" /> Stakeholders
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="analytics" 
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'analytics' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -189,13 +190,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/analytics">
-                        <BarChart3 size={12} className="mr-1.5" /> Analytics
+                        <BarChart3 size={12} className="mr-1" /> Analytics
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="ai-hub" 
                       className={cn(
-                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
                         activePage === 'ai-hub' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -203,7 +204,7 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/ai-hub">
-                        <Brain size={12} className="mr-1.5" /> AI Hub
+                        <Brain size={12} className="mr-1" /> AI Hub
                       </Link>
                     </ToggleGroupItem>
                   </>

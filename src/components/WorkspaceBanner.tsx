@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,11 +19,11 @@ const WorkspaceBanner = () => {
   }
   
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 px-4">
+    <div className="fixed top-20 left-0 right-0 z-30 px-4">
       <div className="max-w-7xl mx-auto">
         <div className={cn(
-          "bg-muted/30 backdrop-blur-md border border-border/30 rounded-lg px-3 py-1.5",
-          "flex items-center justify-center gap-2"
+          "bg-card/90 backdrop-blur-sm border border-border/40 rounded-lg px-4 py-2",
+          "flex items-center justify-center gap-2 shadow-sm"
         )}>
           <span className="text-xs text-muted-foreground">Workspace:</span>
           <span className="font-medium text-foreground text-sm">{currentWorkspace.name}</span>

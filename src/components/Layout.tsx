@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Header from './Header';
 import WorkspaceBanner from './WorkspaceBanner';
@@ -12,7 +13,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <>
       <Header />
       <WorkspaceBanner />
-      <main className="pt-28">
+      <main className="pt-32">
         {children}
       </main>
       <TinkAssistant />
