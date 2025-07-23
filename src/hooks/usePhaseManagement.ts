@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ProjectPhase, ProjectMilestone, PhaseStatus, Priority } from '@/types/project';
+import { calculatePhaseHealth, calculatePhaseDates, updatePhaseDates, HealthStatus } from '@/utils/phaseCalculations';
 
 export interface CreatePhaseData {
   projectId: string;
@@ -299,19 +300,50 @@ export function usePhaseManagement(projectId?: string) {
     return Math.round(avgMilestoneProgress);
   };
 
-  // Get phase health
-  const getPhaseHealth = (phase: ProjectPhase) => {
-    const today = new Date();
-    const endDate = phase.endDate ? new Date(phase.endDate) : null;
-    const progress = phase.progress || calculatePhaseProgress(phase);
-    
-    if (endDate && endDate < today && progress < 100) {
-      return { status: 'red' as const, score: 30 };
+  // Get enhanced phase health using new calculation system
+  const getPhaseHealth = async (phase: ProjectPhase) => {
+    try {
+      const healthStatus = await calculatePhaseHealth(phase);
+      
+      // Convert HealthStatus to ProjectHealth format
+      switch (healthStatus) {
+        case 'on-track':
+          return { status: 'green' as const, score: 95 };
+        case 'caution':
+          return { status: 'yellow' as const, score: 70 };
+        case 'at-risk':
+          return { status: 'red' as const, score: 40 };
+        case 'critical':
+          return { status: 'red' as const, score: 20 };
+        default:
+          return { status: 'yellow' as const, score: 50 };
+      }
+    } catch (error) {
+      console.error('Error calculating phase health:', error);
+      // Fallback to basic calculation
+      const today = new Date();
+      const endDate = phase.endDate ? new Date(phase.endDate) : null;
+      const progress = phase.progress || calculatePhaseProgress(phase);
+      
+      if (endDate && endDate < today && progress < 100) {
+        return { status: 'red' as const, score: 30 };
+      }
+      
+      if (progress >= 90) return { status: 'green' as const, score: 95 };
+      if (progress >= 50) return { status: 'yellow' as const, score: 70 };
+      return { status: 'red' as const, score: 40 };
     }
-    
-    if (progress >= 90) return { status: 'green' as const, score: 95 };
-    if (progress >= 50) return { status: 'yellow' as const, score: 70 };
-    return { status: 'red' as const, score: 40 };
+  };
+
+  // Auto-update phase dates when tasks change
+  const refreshPhaseDates = async (phaseId: string): Promise<void> => {
+    try {
+      await updatePhaseDates(phaseId);
+      // Refresh the phases to get updated dates
+      await fetchPhases();
+    } catch (error) {
+      console.error('Error refreshing phase dates:', error);
+    }
   };
 
   // Get current active phase
@@ -340,6 +372,7 @@ export function usePhaseManagement(projectId?: string) {
     calculatePhaseProgress,
     getPhaseHealth,
     getCurrentPhase,
-    refreshPhases: fetchPhases
+    refreshPhases: fetchPhases,
+    refreshPhaseDates
   };
 }
