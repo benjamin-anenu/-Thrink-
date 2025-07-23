@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// OpenRouter API integration for natural language to SQL conversion
-class OpenRouterAI {
+// Enhanced OpenRouter AI integration with natural response processing
+class EnhancedOpenRouterAI {
   private apiKey: string;
   
   constructor(apiKey: string) {
@@ -176,51 +176,61 @@ Respond with only a JSON object in this exact format:
     }
   }
 
-  async generateConversationalResponse(userQuestion: string, queryResults: any, conversationHistory: any[] = []): Promise<string> {
+  async generateNaturalResponse(userQuestion: string, queryResults: any, conversationHistory: any[] = [], mode: string = 'agent'): Promise<string> {
     const conversationContext = conversationHistory.length > 0 
       ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-3).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
 
     let prompt: string;
 
-    if (queryResults === null) {
+    if (mode === 'chat') {
       // Chat mode: No database query, just conversation
-      prompt = `You are Tink, a helpful AI assistant specializing in project management and productivity. 
-You help users with analysis, planning, advice, and general questions about project management best practices.
+      prompt = `You are Tink, a friendly and intelligent AI assistant specializing in project management and productivity. 
+You're knowledgeable, helpful, and genuinely interested in helping users succeed with their projects.
 
 User Question: "${userQuestion}"${conversationContext}
 
 Instructions:
-- Be conversational, friendly, and helpful
-- Provide expert advice on project management topics
-- Offer actionable insights and recommendations
-- Help with planning, analysis, and decision-making
-- If the user asks for specific data, suggest they switch to Agent mode for database queries
-- Keep responses informative but not overly long
-- End with helpful suggestions when appropriate
+- Be conversational, warm, and engaging like a helpful colleague
+- Provide expert advice on project management topics with specific, actionable insights
+- Share best practices, methodologies, and practical tips
+- Help with planning, analysis, problem-solving, and decision-making
+- Use examples and scenarios to illustrate your points
+- If the user asks for specific data, suggest they try Agent mode for database queries
+- Show genuine interest in their success and challenges
+- Keep responses informative but conversational, not overly technical
+- End with helpful follow-up questions or suggestions when appropriate
 
-Respond as Tink:`;
+Respond as Tink with enthusiasm and expertise:`;
     } else {
-      // Agent mode: Use database results
+      // Agent mode: Use database results for intelligent analysis
       const dataContext = queryResults && queryResults.length > 0 
-        ? `\n\nQuery Results:\n${JSON.stringify(queryResults, null, 2)}`
+        ? `\n\nQuery Results (${queryResults.length} records):\n${JSON.stringify(queryResults, null, 2)}`
         : '\n\nNo data was found for this query.';
 
-      prompt = `You are Tink, a helpful AI assistant for project management. 
-Respond to the user's question in a conversational, friendly way using the provided data.
+      prompt = `You are Tink, an intelligent AI assistant specializing in project management data analysis. 
+You excel at turning raw data into actionable insights and recommendations.
 
 User Question: "${userQuestion}"${dataContext}${conversationContext}
 
 Instructions:
-- Be conversational and helpful
-- Use the query results to provide specific, actionable insights
-- If no data is found, explain what might be the reason and suggest alternatives
-- Keep responses concise but informative
-- Use bullet points or formatting to make information easy to read
-- Include relevant numbers and metrics from the data
-- End with a helpful suggestion or follow-up question when appropriate
+- Analyze the data thoroughly and provide specific, actionable insights
+- Use exact numbers, percentages, and metrics from the data
+- Identify patterns, trends, and potential issues or opportunities
+- Provide clear recommendations based on the analysis
+- If no data is found, explain possible reasons and suggest alternatives
+- Use bullet points or formatting to make complex information digestible
+- Highlight key metrics and what they mean for project success
+- Include comparisons, benchmarks, or context when relevant
+- End with specific next steps or follow-up suggestions
+- Be conversational but data-driven and analytical
 
-Respond as Tink:`;
+Examples of great responses:
+- "I analyzed your team's performance data and found some interesting patterns..."
+- "Based on the 23 active tasks I found, here's what stands out..."
+- "Your resource utilization shows 3 key trends that need attention..."
+
+Respond as Tink with analytical expertise:`;
     }
 
     try {
@@ -235,11 +245,11 @@ Respond as Tink:`;
         body: JSON.stringify({
           model: 'anthropic/claude-3.5-sonnet',
           messages: [
-            { role: 'system', content: 'You are Tink, a friendly AI assistant specializing in project management. Be conversational and helpful.' },
+            { role: 'system', content: 'You are Tink, an intelligent and helpful AI assistant specializing in project management. Be conversational, insightful, and genuinely helpful.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
-          max_tokens: 800
+          temperature: mode === 'chat' ? 0.8 : 0.7, // Higher temperature for chat mode
+          max_tokens: 1000
         })
       });
 
@@ -251,25 +261,28 @@ Respond as Tink:`;
       return data.choices[0]?.message?.content || "I'm having trouble generating a response right now. Could you try rephrasing your question?";
     } catch (error) {
       console.error('OpenRouter response generation error:', error);
-      return "I'm experiencing some technical difficulties right now. Let me try to help you in a different way.";
+      return mode === 'chat' 
+        ? "I'm experiencing some technical difficulties right now. Let me try to help you in a different way - what specific project management challenge are you facing?"
+        : "I'm having trouble analyzing that data right now. Could you try asking about a specific aspect of your projects or team?";
     }
   }
 }
 
-// Enhanced database query engine with OpenRouter integration
-class TinkQueryEngine {
-  constructor(private supabase: any, private userId: string, private workspaceId: string, private openRouter: OpenRouterAI) {}
+// Enhanced database query engine with intelligent processing
+class EnhancedTinkQueryEngine {
+  constructor(private supabase: any, private userId: string, private workspaceId: string, private openRouter: EnhancedOpenRouterAI) {}
 
-  async processNaturalLanguageQuery(userQuestion: string, conversationHistory: any[] = [], mode: string = 'agent'): Promise<any> {
-    console.log(`Processing natural language query: ${userQuestion} (mode: ${mode})`);
+  async processIntelligentQuery(userQuestion: string, conversationHistory: any[] = [], mode: string = 'agent'): Promise<any> {
+    console.log(`[Enhanced Tink] Processing: "${userQuestion}" (mode: ${mode})`);
     
     try {
       if (mode === 'chat') {
-        // Chat mode: Use OpenRouter for conversational responses only
-        const conversationalResponse = await this.openRouter.generateConversationalResponse(
+        // Chat mode: Pure conversational AI
+        const conversationalResponse = await this.openRouter.generateNaturalResponse(
           userQuestion, 
-          null, // No query results in chat mode
-          conversationHistory
+          null, 
+          conversationHistory,
+          'chat'
         );
         
         return {
@@ -281,22 +294,31 @@ class TinkQueryEngine {
           mode: 'chat'
         };
       } else {
-        // Agent mode: Generate SQL and execute queries
+        // Agent mode: 3-step intelligent processing
+        
+        // Step 1: Generate SQL with enhanced context
         const { sql, queryType } = await this.openRouter.generateSQLQuery(userQuestion, conversationHistory);
-        console.log(`Generated SQL (${queryType}): ${sql}`);
+        console.log(`[Enhanced Tink] Generated SQL (${queryType}): ${sql}`);
         
-        // Execute the SQL query
-        const queryResults = await this.executeSQLQuery(sql, queryType);
+        // Step 2: Execute SQL query with fallback
+        let queryResults;
+        try {
+          queryResults = await this.executeSQLQuery(sql, queryType);
+        } catch (sqlError) {
+          console.error('[Enhanced Tink] SQL execution failed, using fallback:', sqlError);
+          queryResults = await this.intelligentFallback(userQuestion, queryType);
+        }
         
-        // Generate conversational response with data
-        const conversationalResponse = await this.openRouter.generateConversationalResponse(
+        // Step 3: Generate natural, insightful response
+        const intelligentResponse = await this.openRouter.generateNaturalResponse(
           userQuestion, 
           queryResults.data, 
-          conversationHistory
+          conversationHistory,
+          'agent'
         );
         
         return {
-          message: conversationalResponse,
+          message: intelligentResponse,
           queryType,
           sql,
           results: queryResults.data,
@@ -305,29 +327,32 @@ class TinkQueryEngine {
         };
       }
     } catch (error) {
-      console.error('Error processing natural language query:', error);
+      console.error('[Enhanced Tink] Error processing query:', error);
       return {
-        message: "I apologize, but I encountered an error while processing your request. Could you please rephrase your question or try asking something different?",
+        message: this.generateIntelligentErrorResponse(userQuestion, error.message, mode),
         error: error.message,
-        success: false
+        success: false,
+        mode
       };
     }
   }
 
   async executeSQLQuery(sql: string, queryType: string): Promise<any> {
     try {
+      if (!sql || sql.trim() === '') {
+        throw new Error('Empty SQL query generated');
+      }
+
       // Replace $1 placeholder with actual workspace_id
       const processedSQL = sql.replace(/\$1/g, `'${this.workspaceId}'`);
       
-      // Use Supabase's .rpc() method to execute raw SQL safely
       const { data, error } = await this.supabase.rpc('execute_sql', { 
-        query: processedSQL 
+        sql_query: processedSQL 
       });
 
       if (error) {
-        console.error('SQL execution error:', error);
-        // Fall back to predefined queries for common requests
-        return await this.fallbackQuery(queryType);
+        console.error('[Enhanced Tink] SQL execution error:', error);
+        throw new Error(`Database error: ${error.message}`);
       }
 
       return {
@@ -336,41 +361,55 @@ class TinkQueryEngine {
         count: Array.isArray(data) ? data.length : 0
       };
     } catch (error) {
-      console.error('SQL execution error:', error);
-      return await this.fallbackQuery(queryType);
+      console.error('[Enhanced Tink] SQL execution error:', error);
+      throw error;
     }
   }
 
-  async fallbackQuery(queryType: string): Promise<any> {
-    console.log(`Using fallback query for type: ${queryType}`);
+  async intelligentFallback(userQuestion: string, queryType: string): Promise<any> {
+    console.log(`[Enhanced Tink] Using intelligent fallback for: ${queryType}`);
+    
+    // Try to understand user intent and provide relevant fallback data
+    const fallbackQueries = {
+      'projects_list': () => this.getProjects(),
+      'tasks_list': () => this.getTasks([]),
+      'resources_list': () => this.getResources(),
+      'performance_metrics': () => this.getPerformanceMetrics([]),
+      'team_utilization': () => this.getTeamUtilization(),
+      'deadlines': () => this.getDeadlines(['upcoming']),
+      'analytics': () => this.getAnalytics([])
+    };
+
+    const fallbackFunction = fallbackQueries[queryType] || fallbackQueries['analytics'];
     
     try {
-      switch (queryType) {
-        case 'projects_list':
-          return await this.getProjects();
-        case 'tasks_list':
-          return await this.getTasks([]);
-        case 'resources_list':
-          return await this.getResources();
-        case 'performance_metrics':
-          return await this.getPerformanceMetrics([]);
-        case 'team_utilization':
-          return await this.getTeamUtilization();
-        case 'deadlines':
-          return await this.getDeadlines(['upcoming']);
-        case 'analytics':
-          return await this.getAnalytics([]);
-        default:
-          return await this.getAnalytics([]); // Default to analytics overview
-      }
+      return await fallbackFunction();
     } catch (error) {
-      console.error('Fallback query error:', error);
+      console.error('[Enhanced Tink] Fallback query error:', error);
       return {
         type: 'error',
         data: [],
-        count: 0,
-        message: "I'm having trouble accessing your data right now."
+        count: 0
       };
+    }
+  }
+
+  generateIntelligentErrorResponse(userQuestion: string, errorMessage: string, mode: string): string {
+    if (mode === 'chat') {
+      return `I'm having a bit of trouble right now, but I'd love to help you with your project management questions. What specific challenge are you facing? I can provide advice on planning, team management, risk assessment, or any other project-related topic.`;
+    } else {
+      const suggestions = [
+        "Try asking about your current projects: 'What projects are active?'",
+        "Check on your team: 'How is my team performing?'",
+        "Look at deadlines: 'What's due this week?'",
+        "Analyze workload: 'Show me resource utilization'"
+      ];
+      
+      const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+      
+      return `I'm having trouble accessing that specific data right now. ${randomSuggestion}
+
+Feel free to ask me about your projects, tasks, team performance, or any other data in your workspace. I'm here to help you make better project decisions!`;
     }
   }
 
@@ -411,7 +450,6 @@ class TinkQueryEngine {
           .eq('workspace_id', this.workspaceId)
       );
 
-    // Apply filters based on entities
     if (entities.includes('today')) {
       const today = new Date().toISOString().split('T')[0];
       query = query.lte('start_date', today).gte('end_date', today);
@@ -469,13 +507,13 @@ class TinkQueryEngine {
 
   async getPerformanceMetrics(entities: string[]): Promise<any> {
     const { data, error } = await this.supabase
-      .from('performance_metrics')
+      .from('performance_profiles')
       .select(`
-        id, resource_id, type, value, timestamp, description, workspace_id
+        id, resource_id, resource_name, current_score, monthly_score, 
+        trend, risk_level, workspace_id, created_at, updated_at
       `)
       .eq('workspace_id', this.workspaceId)
-      .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp', { ascending: false })
+      .order('current_score', { ascending: false })
       .limit(50);
 
     if (error) {
@@ -552,7 +590,6 @@ class TinkQueryEngine {
 
   async getAnalytics(entities: string[]): Promise<any> {
     try {
-      // Get basic analytics data
       const [projectsData, tasksData, resourcesData] = await Promise.all([
         this.getProjects(),
         this.getTasks([]),
@@ -562,15 +599,15 @@ class TinkQueryEngine {
       const analytics = {
         projects: {
           total: projectsData.count,
-          data: projectsData.data?.slice(0, 5) || [] // Show top 5 projects
+          data: projectsData.data?.slice(0, 5) || []
         },
         tasks: {
           total: tasksData.count,
-          data: tasksData.data?.slice(0, 5) || [] // Show top 5 tasks
+          data: tasksData.data?.slice(0, 5) || []
         },
         resources: {
           total: resourcesData.count,
-          data: resourcesData.data?.slice(0, 5) || [] // Show top 5 resources
+          data: resourcesData.data?.slice(0, 5) || []
         }
       };
 
@@ -591,13 +628,11 @@ class TinkQueryEngine {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Check for OpenRouter API key
     const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
     if (!openRouterApiKey) {
       return new Response(
@@ -629,13 +664,13 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Processing message: ${message} for user: ${userId} in workspace: ${workspaceId} (mode: ${mode})`);
+    console.log(`[Enhanced Tink] Processing message: ${message} for user: ${userId} in workspace: ${workspaceId} (mode: ${mode})`);
 
-    // Initialize OpenRouter AI and query engine
-    const openRouter = new OpenRouterAI(openRouterApiKey);
-    const queryEngine = new TinkQueryEngine(supabase, userId, workspaceId, openRouter);
+    // Initialize enhanced services
+    const openRouter = new EnhancedOpenRouterAI(openRouterApiKey);
+    const queryEngine = new EnhancedTinkQueryEngine(supabase, userId, workspaceId, openRouter);
 
-    // Load recent conversation history for context
+    // Load conversation history for intelligent context
     const { data: conversationHistory } = await supabase
       .from('ai_conversation_history')
       .select('message_role, message_content, created_at')
@@ -643,10 +678,10 @@ serve(async (req) => {
       .eq('workspace_id', workspaceId)
       .eq('conversation_type', 'tink_assistant')
       .order('created_at', { ascending: false })
-      .limit(6); // Last 3 exchanges (6 messages)
+      .limit(6);
 
-    // Process the query using OpenRouter intelligence
-    const queryResult = await queryEngine.processNaturalLanguageQuery(
+    // Process with enhanced intelligence
+    const queryResult = await queryEngine.processIntelligentQuery(
       message, 
       conversationHistory?.reverse() || [],
       mode
@@ -654,7 +689,7 @@ serve(async (req) => {
 
     const assistantMessage = queryResult.message || "I'm having trouble generating a response right now. Could you try rephrasing your question?";
 
-    // Save conversation history
+    // Save conversation history with enhanced context
     await supabase.from('ai_conversation_history').insert([
       {
         user_id: userId,
@@ -664,7 +699,8 @@ serve(async (req) => {
         message_content: message,
         context_data: { 
           timestamp: new Date().toISOString(),
-          queryType: queryResult.type
+          queryType: queryResult.queryType || 'general',
+          mode: mode
         }
       },
       {
@@ -675,10 +711,12 @@ serve(async (req) => {
         message_content: assistantMessage,
         context_data: { 
           timestamp: new Date().toISOString(),
-          responseType: 'openrouter_enhanced',
+          responseType: 'enhanced_openrouter',
           queryResult: queryResult ? { 
-            type: queryResult.type, 
-            dataCount: queryResult.count || 0 
+            type: queryResult.queryType, 
+            dataCount: queryResult.results?.length || 0,
+            mode: mode,
+            success: queryResult.success
           } : null
         }
       }
@@ -688,11 +726,12 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: assistantMessage,
-        responseType: 'openrouter_enhanced',
+        responseType: 'enhanced_openrouter',
         queryResult: queryResult ? { 
-          type: queryResult.type, 
-          dataCount: queryResult.count || 0,
-          hasData: (queryResult.count || 0) > 0
+          type: queryResult.queryType, 
+          dataCount: queryResult.results?.length || 0,
+          hasData: (queryResult.results?.length || 0) > 0,
+          mode: mode
         } : null
       }),
       { 
@@ -701,7 +740,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in tink-ai-chat function:', error);
+    console.error('[Enhanced Tink] Error in tink-ai-chat function:', error);
     
     return new Response(
       JSON.stringify({ 
