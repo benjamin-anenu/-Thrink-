@@ -3334,6 +3334,10 @@ export type Database = {
         }
         Returns: string
       }
+      execute_sql: {
+        Args: { query: string }
+        Returns: Json
+      }
       get_critical_path: {
         Args: { project_uuid: string }
         Returns: string[]
