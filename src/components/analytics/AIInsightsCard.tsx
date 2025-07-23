@@ -28,16 +28,16 @@ const AIInsightsCard: React.FC = () => {
     switch (type) {
       case 'success':
         const successColors = getStatusColors('success');
-        return `${successColors.bg} ${successColors.text} ${successColors.border}`;
+        return `${successColors.muted} ${successColors.text} border border-green-800/20`;
       case 'warning':
         const warningColors = getStatusColors('warning');
-        return `${warningColors.bg} ${warningColors.text} ${warningColors.border}`;
+        return `${warningColors.muted} ${warningColors.text} border border-amber-800/20`;
       case 'error':
         const errorColors = getStatusColors('error');
-        return `${errorColors.bg} ${errorColors.text} ${errorColors.border}`;
+        return `${errorColors.muted} ${errorColors.text} border border-red-800/20`;
       default:
         const infoColors = getStatusColors('info');
-        return `${infoColors.bg} ${infoColors.text} ${infoColors.border}`;
+        return `${infoColors.muted} ${infoColors.text} border border-blue-800/20`;
     }
   };
 

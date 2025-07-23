@@ -60,7 +60,9 @@ export const useAIInsights = (projectId?: string) => {
         if (recommendationsError) throw recommendationsError;
 
         // Transform AI recommendations into actionable insights
-        const transformedInsights: AIInsight[] = (data || []).map(rec => {
+        const transformedInsights: AIInsight[] = [];
+        
+        for (const rec of data || []) {
           const overallScore = rec.overall_fit_score || 0;
           const skillScore = rec.skill_match_score || 0;
           const successProb = rec.success_probability || 0;
@@ -84,14 +86,22 @@ export const useAIInsights = (projectId?: string) => {
             description = `${rec.resources?.name || 'Resource'} may face challenges with ${overallScore}% compatibility`;
           }
 
-          // Add skill-specific insights
+          // Add skill-specific insights with detailed analysis
           if (skillScore < 50) {
-            type = 'warning';
-            title = 'Skill Gap Detected';
-            description = `${rec.resources?.name || 'Resource'} may need additional training (${skillScore}% skill match)`;
+            try {
+              // Enhance description with specific skill gap analysis
+              const skillGapAnalysis = await getDetailedSkillAnalysis(rec);
+              type = 'warning';
+              title = 'Specific Skill Gap Detected';
+              description = skillGapAnalysis || `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
+            } catch (error) {
+              type = 'warning';
+              title = 'Skill Gap Detected';
+              description = `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
+            }
           }
 
-          return {
+          transformedInsights.push({
             id: rec.id,
             type,
             title,
@@ -105,8 +115,8 @@ export const useAIInsights = (projectId?: string) => {
             successProbability: successProb,
             reasoning: rec.reasoning,
             createdAt: new Date(rec.created_at)
-          };
-        });
+          });
+        }
 
         // Add general workspace insights
         const workspaceInsights = await generateWorkspaceInsights();
@@ -171,6 +181,67 @@ export const useAIInsights = (projectId?: string) => {
     } catch (err) {
       console.error('Error generating workspace insights:', err);
       return [];
+    }
+  };
+
+  const getDetailedSkillAnalysis = async (recommendation: any): Promise<string> => {
+    try {
+      // Get detailed resource and project data
+      const { data: resourceData } = await supabase
+        .from('resources')
+        .select('*, resource_skills(skill_id, proficiency, skills(name))')
+        .eq('id', recommendation.resource_id)
+        .single();
+
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('*, tasks(*)')
+        .eq('id', recommendation.project_id)
+        .single();
+
+      if (!resourceData || !projectData) return null;
+
+      // Extract skill data
+      const resourceSkills = resourceData.resource_skills?.map(rs => ({
+        name: rs.skills?.name,
+        proficiency: rs.proficiency
+      })) || [];
+
+      const taskTypes = projectData.tasks?.map(t => t.name) || [];
+
+      // Call enhanced analysis function
+      const response = await fetch('/functions/v1/enhanced-skill-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resourceName: resourceData.name,
+          resourceSkills,
+          projectRequirements: projectData.description,
+          taskTypes,
+          overallFitScore: recommendation.overall_fit_score,
+          skillMatchScore: recommendation.skill_match_score
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.analysis) {
+          const analysis = result.analysis;
+          
+          // Format specific recommendations
+          const skillGaps = analysis.specificSkillGaps?.slice(0, 2).join(', ') || 'various skills';
+          const trainingNeeded = analysis.trainingRecommendations?.[0]?.training || 'additional training';
+          
+          return `${resourceData.name} needs training in ${skillGaps}. Recommended: ${trainingNeeded}. Priority: ${analysis.priority}.`;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting detailed skill analysis:', error);
+      return null;
     }
   };
 
