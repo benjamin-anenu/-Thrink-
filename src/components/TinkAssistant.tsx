@@ -8,6 +8,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { EnhancedTinkService } from '@/services/EnhancedTinkService';
 import ModelSelector from './ModelSelector';
+import FormattedMessage from './FormattedMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface TinkMessage {
@@ -40,6 +41,7 @@ const TinkAssistant = () => {
   const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [tinkService, setTinkService] = useState<EnhancedTinkService | null>(null);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -47,10 +49,13 @@ const TinkAssistant = () => {
       if (user && currentWorkspace) {
         setUserId(user.id);
         
-        // Initialize Enhanced Tink Service
+        // Check for OpenRouter API key
         const openRouterKey = await getOpenRouterKey();
         if (openRouterKey) {
           setTinkService(new EnhancedTinkService(openRouterKey, selectedModel));
+          setApiKeyMissing(false);
+        } else {
+          setApiKeyMissing(true);
         }
         
         const welcomeMessage: TinkMessage = {
@@ -74,9 +79,17 @@ What would you like to explore today?`,
 
   const getOpenRouterKey = async (): Promise<string | null> => {
     try {
-      // In production, this would come from your secure environment
-      // For now, we'll use a placeholder - you'd need to implement secure key management
-      return process.env.REACT_APP_OPENROUTER_API_KEY || null;
+      // Try to get from Supabase edge function secrets
+      const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
+        body: { action: 'check_key' }
+      });
+      
+      if (error) {
+        console.error('Error checking OpenRouter key:', error);
+        return null;
+      }
+      
+      return data?.hasKey ? 'available' : null;
     } catch (error) {
       console.error('Error getting OpenRouter key:', error);
       return null;
@@ -94,7 +107,7 @@ What would you like to explore today?`,
     const modelChangeMessage: TinkMessage = {
       id: `model-change-${Date.now()}`,
       type: 'tink',
-      content: `Great! I've switched to ${EnhancedTinkService.getAvailableModels().find(m => m.id === modelId)?.name}. This model is optimized for ${modelId.includes('claude') ? 'thoughtful analysis and reasoning' : modelId.includes('gpt') ? 'creative problem-solving' : 'efficient processing'}. How can I help you now?`,
+      content: `Great! I've switched to **${EnhancedTinkService.getAvailableModels().find(m => m.id === modelId)?.name}**. This model is optimized for ${modelId.includes('claude') ? 'thoughtful analysis and reasoning' : modelId.includes('gpt') ? 'creative problem-solving' : 'efficient processing'}. How can I help you now?`,
       timestamp: new Date(),
       metadata: { model: modelId }
     };
@@ -102,7 +115,27 @@ What would you like to explore today?`,
   };
 
   const sendMessage = async () => {
-    if (!inputValue.trim() || !userId || !currentWorkspace || isLoading || !tinkService) return;
+    if (!inputValue.trim() || !userId || !currentWorkspace || isLoading) return;
+
+    // Check if API key is missing
+    if (apiKeyMissing) {
+      toast({
+        title: "API Key Required",
+        description: "Please set up your OpenRouter API key to use Tink AI Assistant.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if service is available
+    if (!tinkService) {
+      toast({
+        title: "Service Unavailable",
+        description: "Tink AI service is not properly initialized. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const userMessage: TinkMessage = {
       id: Date.now().toString(),
@@ -208,6 +241,37 @@ What would you like to explore today?`,
   };
 
   const currentModel = EnhancedTinkService.getAvailableModels().find(m => m.id === selectedModel);
+
+  // Show API key missing message if needed
+  if (apiKeyMissing && isOpen) {
+    return (
+      <div className="fixed bottom-6 right-6 w-[400px] h-[300px] z-50">
+        <div className="relative w-full h-full bg-background border border-border rounded-2xl shadow-2xl flex flex-col p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground">Setup Required</h3>
+            <Button
+              onClick={() => setIsOpen(false)}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 flex flex-col justify-center">
+            <p className="text-muted-foreground text-center mb-4">
+              To use Tink AI Assistant, you need to set up your OpenRouter API key.
+            </p>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Please add your OpenRouter API key in the project settings.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -363,7 +427,7 @@ What would you like to explore today?`,
                       </div>
                     ) : (
                       <>
-                        <div className="whitespace-pre-wrap">{message.content}</div>
+                        <FormattedMessage content={message.content} type={message.type} />
                         {message.metadata && message.type === 'tink' && (
                           <div className="text-xs opacity-60 mt-2 pt-2 border-t border-current/20">
                             {message.metadata.dataCount !== undefined && (
@@ -429,7 +493,7 @@ What would you like to explore today?`,
                   className="h-12 w-12 rounded-xl bg-primary hover:bg-primary/90
                            shadow-sm hover:shadow-md transition-all duration-200 
                            disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!inputValue.trim() || isLoading}
+                  disabled={!inputValue.trim() || isLoading || apiKeyMissing || !tinkService}
                 >
                   <Send className="h-4 w-4 text-primary-foreground" />
                 </Button>
