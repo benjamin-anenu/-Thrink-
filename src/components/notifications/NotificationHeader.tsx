@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { DarkModeCard, DarkModeCardHeader } from '@/components/ui/dark-mode-card';
+import { DarkModeBadge } from '@/components/ui/dark-mode-badge';
+import { CardDescription, CardTitle } from '@/components/ui/card';
 import { Bell } from 'lucide-react';
 
 interface NotificationHeaderProps {
@@ -10,25 +11,25 @@ interface NotificationHeaderProps {
 
 export const NotificationHeader: React.FC<NotificationHeaderProps> = ({ unreadCount }) => {
   return (
-    <Card className="bg-surface border-border">
-      <CardHeader>
+    <DarkModeCard variant="elevated">
+      <DarkModeCardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Bell className="h-6 w-6" />
+            <Bell className="h-6 w-6 text-blue-400" />
             <div>
-              <CardTitle className="text-2xl font-bold">Notification Center</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl font-bold text-foreground">Notification Center</CardTitle>
+              <CardDescription className="text-zinc-400">
                 Stay updated with project activities and team communications
               </CardDescription>
             </div>
           </div>
           {unreadCount > 0 && (
-            <Badge variant="destructive" className="ml-auto">
+            <DarkModeBadge variant="error" compact>
               {unreadCount} unread
-            </Badge>
+            </DarkModeBadge>
           )}
         </div>
-      </CardHeader>
-    </Card>
+      </DarkModeCardHeader>
+    </DarkModeCard>
   );
 };

@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import Header from '@/components/Header';
-import TinkAssistant from '@/components/TinkAssistant';
+import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import PerformanceDashboard from '@/components/performance/PerformanceDashboard';
@@ -21,19 +20,8 @@ import CalendarTab from '@/components/analytics/CalendarTab';
 import SettingsTab from '@/components/analytics/SettingsTab';
 import ReportsExport from '@/components/analytics/ReportsExport';
 import SystemHealthDashboard from '@/components/analytics/SystemHealthDashboard';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  description: string;
-  type: 'call' | 'meeting' | 'deadline' | 'milestone' | 'review';
-  date: Date;
-  startTime?: string;
-  endTime?: string;
-  location?: string;
-  projectId: string;
-  projectName: string;
-}
+import RebaselineManagement from '@/components/analytics/RebaselineManagement';
+import { CalendarEvent } from '@/hooks/useCalendarEvents';
 
 const Analytics = () => {
   const [selectedProject, setSelectedProject] = useState('all');
@@ -65,41 +53,6 @@ const Analytics = () => {
     initializeServices();
   }, []);
 
-  const mockEvents: CalendarEvent[] = [
-    {
-      id: '1',
-      title: 'Sprint Planning',
-      description: 'Plan next sprint activities',
-      type: 'meeting',
-      date: new Date(),
-      startTime: '09:00',
-      endTime: '10:30',
-      location: 'Conference Room A',
-      projectId: 'proj-1',
-      projectName: 'E-commerce Platform'
-    },
-    {
-      id: '2',
-      title: 'UI Design Review',
-      description: 'Review new UI mockups',
-      type: 'review',
-      date: new Date(Date.now() + 86400000),
-      startTime: '14:00',
-      endTime: '15:00',
-      projectId: 'proj-2',
-      projectName: 'Mobile App Redesign'
-    },
-    {
-      id: '3',
-      title: 'Project Deadline',
-      description: 'Beta release deadline',
-      type: 'deadline',
-      date: new Date(Date.now() + 172800000),
-      projectId: 'proj-1',
-      projectName: 'E-commerce Platform'
-    }
-  ];
-
   const handleScheduleReport = (config: any) => {
     toast.success(`${config.type} report scheduled to run ${config.frequency}`);
   };
@@ -117,7 +70,7 @@ const Analytics = () => {
   };
 
   const handleCreateEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    toast.success('Event creation modal would open here');
+    toast.success(`Event "${event.title}" created successfully`);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -125,17 +78,17 @@ const Analytics = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
+    <Layout>
+      <div className="flex-1 container mx-auto px-4 pb-8">
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8 h-12">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
+            <TabsTrigger value="rebaseline">Rebaseline</TabsTrigger>
             <TabsTrigger value="health">System</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -166,13 +119,16 @@ const Analytics = () => {
             <ReportsExport />
           </TabsContent>
 
+          <TabsContent value="rebaseline" className="space-y-6">
+            <RebaselineManagement />
+          </TabsContent>
+
           <TabsContent value="health" className="space-y-6">
             <SystemHealthDashboard />
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-6">
             <CalendarTab
-              events={mockEvents}
               onCreateEvent={handleCreateEvent}
               onEventClick={handleEventClick}
             />
@@ -182,10 +138,8 @@ const Analytics = () => {
             <SettingsTab />
           </TabsContent>
         </Tabs>
-      </main>
-
-      <TinkAssistant />
-    </div>
+      </div>
+    </Layout>
   );
 };
 

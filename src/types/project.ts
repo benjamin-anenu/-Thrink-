@@ -14,7 +14,8 @@ export interface ProjectData {
   workspaceId: string;
   resources: string[];
   stakeholders: string[];
-  milestones: ProjectMilestone[];
+  phases?: ProjectPhase[]; // New field for enhanced hierarchy
+  milestones: ProjectMilestone[]; // Kept for backward compatibility
   tasks: ProjectTask[];
   createdAt?: string;
   updatedAt?: string;
@@ -65,6 +66,36 @@ export interface ProjectTask {
   manualOverrideDates?: boolean;
 }
 
+export interface ProjectPhase {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  baselineStartDate?: string;
+  baselineEndDate?: string;
+  status: PhaseStatus;
+  priority: Priority;
+  progress: number;
+  sortOrder: number;
+  color?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  
+  // Computed/derived fields
+  milestones?: ProjectMilestone[];
+  taskCount?: number;
+  completedTaskCount?: number;
+  duration?: number; // in days
+  isOverdue?: boolean;
+  health?: ProjectHealth;
+}
+
+export type PhaseStatus = 'planned' | 'active' | 'completed' | 'paused' | 'cancelled';
+export type Priority = 'Low' | 'Medium' | 'High' | 'Critical';
+
 export interface ProjectMilestone {
   id: string;
   name: string;
@@ -74,6 +105,11 @@ export interface ProjectMilestone {
   status: 'upcoming' | 'in-progress' | 'completed' | 'overdue';
   tasks: string[];
   progress: number;
+  phaseId?: string; // New field - nullable for backward compatibility
+  sortOrderInPhase?: number; // New field for ordering within phase
+  
+  // Computed fields
+  phase?: ProjectPhase; // Reference to parent phase
 }
 
 export interface RebaselineRequest {

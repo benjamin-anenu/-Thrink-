@@ -1,137 +1,153 @@
-import React from 'react';
-import { ArrowRight, Play, Brain } from 'lucide-react';
 
-const brandLogos = [
-  '/public/placeholder.svg',
-  '/public/placeholder.svg',
-  '/public/placeholder.svg',
-  '/public/placeholder.svg',
-];
+import React from 'react';
+import { ArrowRight, Play, Brain, Sparkles, Zap, Network } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 const HeroSection = () => {
   return (
-    <section
-      className="relative w-full min-h-[90vh] flex items-center justify-center px-4 md:px-0 overflow-hidden"
-      style={{
-        background:
-          'radial-gradient(circle at 20% 50%, hsla(217,91%,60%,0.15) 0%, transparent 50%),' +
-          'radial-gradient(circle at 80% 50%, hsla(217,91%,60%,0.1) 0%, transparent 50%),' +
-          'hsl(var(--background))',
-        fontFamily: 'Inter, Helvetica Neue, Helvetica, Arial, sans-serif',
-      }}
-    >
-      {/* Animated background effect */}
+    <section className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
+      {/* Animated background effects */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute -top-32 -left-32 w-[600px] h-[600px] bg-gradient-to-br from-primary/20 to-blue-400/10 rounded-full blur-3xl opacity-60 animate-float" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tr from-primary/10 to-cyan-300/20 rounded-full blur-2xl opacity-50 animate-float-slow" />
         <div className="absolute top-1/2 left-1/3 w-[200px] h-[200px] bg-gradient-to-tr from-primary/20 to-purple-400/20 rounded-full blur-2xl opacity-40 animate-float" />
       </div>
-      <div className="relative z-10 flex flex-col-reverse md:flex-row items-center justify-between w-full max-w-7xl mx-auto gap-12 py-16 md:py-32">
-        {/* Left: Content */}
-        <div className="w-full md:w-3/5 flex flex-col items-start justify-center text-left">
-          {/* Creative Thrink Branding */}
-          <div className="flex items-center gap-3 mb-4 select-none">
-            <Brain className="h-8 w-8 text-primary drop-shadow-lg" />
-            <span className="text-3xl font-extrabold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent tracking-tight drop-shadow-lg" style={{fontFamily: 'Poppins, sans-serif', letterSpacing: '-0.04em'}}>Thrink</span>
-          </div>
-          <h1
-            className="font-bold text-4xl md:text-6xl leading-tight mb-6 bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent"
-            style={{fontFamily: 'Poppins, sans-serif', letterSpacing: '-0.03em'}}
-          >
-            Engineered to Think.<br className="hidden md:block" /> Designed to Lead.
-          </h1>
-          <p className="text-muted-foreground text-lg md:text-2xl mb-8 max-w-2xl" style={{lineHeight: '1.5'}}>
-            Thrink is an enterprise-grade, AI-powered project management solution designed to empower leaders, not just task managers. It intelligently analyzes workflows, anticipates project risks, automates coordination, and delivers real-time clarity to executives and teams — all in one elegant platform.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
-            <button
-              className="btn-primary font-semibold text-base md:text-lg px-8 py-3 rounded-lg shadow-sm transition-all animate-fade-in-up"
-              style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'Poppins, sans-serif' }}
-            >
-              Start Free Trial <ArrowRight className="inline-block ml-2 h-5 w-5 align-middle" />
-            </button>
-            <button
-              className="btn-secondary font-semibold text-base md:text-lg px-8 py-3 rounded-lg border-2 border-primary text-primary transition-all animate-fade-in-up"
-              style={{ background: 'transparent', color: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary))', fontFamily: 'Poppins, sans-serif' }}
-            >
-              <Play className="inline-block mr-2 h-5 w-5 align-middle" /> See Tink in Action
-            </button>
-          </div>
-          {/* Trust indicators */}
-          <div className="flex items-center gap-6 mb-8">
-            <div className="flex items-center gap-2">
-              <span className="text-yellow-400 text-xl">★★★★★</span>
-              <span className="text-sm text-muted-foreground">4.9/5 from 2,000+ leaders</span>
+
+      <div className="relative z-10 w-full max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-16">
+          {/* Left: Content */}
+          <div className="flex flex-col items-start text-left space-y-8">
+            {/* Brand Badge */}
+            <div className="inline-flex items-center gap-3 px-6 py-3 bg-card/60 backdrop-blur-md rounded-full border border-primary/20 shadow-lg">
+              <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
+              <Brain className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">Enterprise AI Project Intelligence</span>
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-primary font-bold text-lg">10,000+</span>
-              <span className="text-sm text-muted-foreground">teams onboarded</span>
+
+            {/* Main Headline */}
+            <div className="space-y-6">
+              <h1 className="text-6xl lg:text-7xl font-black tracking-tighter leading-none">
+                <span className="block bg-gradient-to-r from-foreground via-primary to-blue-400 bg-clip-text text-transparent">
+                  Engineered to Think.
+                </span>
+                <span className="block bg-gradient-to-r from-primary via-purple-400 to-cyan-400 bg-clip-text text-transparent mt-2">
+                  Designed to Lead.
+                </span>
+              </h1>
+              
+              <p className="text-xl lg:text-2xl text-muted-foreground max-w-2xl leading-relaxed">
+                Thrink is an enterprise-grade, AI-powered project management solution designed to empower leaders, not just task managers. Unite human intelligence with AI insights for exceptional results.
+              </p>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Link to="/auth?tab=signup">
+                <Button className="group bg-gradient-to-r from-primary to-blue-600 text-white text-lg h-14 px-8 rounded-2xl font-bold shadow-lg hover:shadow-xl transform transition-all duration-300 hover:scale-105">
+                  <Play className="mr-3 h-5 w-5 fill-current" />
+                  Start Free Trial
+                  <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              
+              <Button variant="outline" className="group bg-card/60 backdrop-blur-md text-foreground hover:bg-primary/10 text-lg h-14 px-8 rounded-2xl font-bold border-primary/30 hover:border-primary/60 transition-all duration-300 transform hover:scale-105 shadow-lg">
+                <Network className="mr-3 h-5 w-5" />
+                Watch Demo
+                <Sparkles className="ml-3 h-5 w-5 group-hover:animate-pulse" />
+              </Button>
+            </div>
+
+            {/* Feature Pills */}
+            <div className="flex flex-wrap gap-4 pt-6">
+              {[
+                { label: "Real-time Risk Prediction", color: "from-emerald-400 to-cyan-400" },
+                { label: "Intelligent Automation", color: "from-blue-400 to-purple-400" },
+                { label: "Predictive Analytics", color: "from-purple-400 to-pink-400" }
+              ].map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-4 py-2 bg-card/60 backdrop-blur-md rounded-full border border-border/50 hover:scale-105 transition-transform cursor-pointer">
+                  <div className={`w-3 h-3 bg-gradient-to-r ${feature.color} rounded-full animate-pulse`} style={{ animationDelay: `${idx * 500}ms` }}></div>
+                  <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">{feature.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Trust Indicators */}
+            <div className="flex items-center gap-8 pt-6">
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-400 text-xl">★★★★★</span>
+                <span className="text-sm text-muted-foreground">4.9/5 from 2,000+ leaders</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-primary font-bold text-lg">10,000+</span>
+                <span className="text-sm text-muted-foreground">teams onboarded</span>
+              </div>
             </div>
           </div>
-          {/* Logo carousel */}
-          <div className="flex flex-wrap items-center gap-x-10 gap-y-4 opacity-80">
-            {brandLogos.map((logo, i) => (
-              <img
-                key={i}
-                src={logo}
-                alt={`Brand logo ${i + 1}`}
-                className="h-8 md:h-10 w-auto object-contain grayscale hover:grayscale-0 transition"
-                style={{ maxWidth: 100 }}
-              />
-            ))}
-          </div>
-        </div>
-        {/* Right: Visual/Floating UI */}
-        <div className="w-full md:w-2/5 flex items-center justify-center mb-12 md:mb-0">
-          <div className="relative w-full max-w-md h-[340px] md:h-[420px] flex items-center justify-center">
-            {/* Placeholder for floating UI/AI visual */}
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/30 to-blue-400/20 shadow-xl backdrop-blur-lg border border-primary/20 flex items-center justify-center animate-float overflow-hidden">
-              <iframe
-                src="https://drive.google.com/file/d/18J_bjT1AMH_VNfYfDTDJnvY0BpvTqQjh/preview?autoplay=1&loop=1"
-                title="Thrink AI Assistant Demo"
-                className="w-full h-full rounded-2xl"
-                frameBorder="0"
-                allowFullScreen
-                allow="autoplay; encrypted-media"
-                onLoad={(e) => {
-                  // Add event listener for when video ends
-                  const iframe = e.target as HTMLIFrameElement;
-                  iframe.addEventListener('load', () => {
-                    // Try to access iframe content and add loop functionality
-                    try {
-                      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                      if (iframeDoc) {
-                        const video = iframeDoc.querySelector('video');
-                        if (video) {
-                          video.loop = true;
-                          video.autoplay = true;
-                        }
-                      }
-                    } catch (error) {
-                      // Cross-origin restrictions might prevent this
-                      console.log('Video autoplay setup complete');
-                    }
-                  });
-                }}
-              />
+
+          {/* Right: Interactive Visual */}
+          <div className="flex items-center justify-center">
+            <div className="relative w-full max-w-md h-[420px] flex items-center justify-center">
+              {/* Main Visual Container */}
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-card/80 to-card/60 backdrop-blur-lg border border-primary/20 shadow-2xl overflow-hidden animate-float">
+                {/* AI Side (Left) */}
+                <div className="absolute left-0 top-0 w-1/2 h-full bg-gradient-to-br from-primary/30 to-blue-600/20 flex flex-col justify-center items-center p-6">
+                  <Brain className="h-12 w-12 text-primary mb-4 animate-pulse" />
+                  <div className="text-center">
+                    <h3 className="text-lg font-bold text-primary mb-2">AI Intelligence</h3>
+                    <div className="space-y-2">
+                      <div className="h-2 bg-primary/40 rounded animate-pulse"></div>
+                      <div className="h-2 bg-primary/30 rounded animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                      <div className="h-2 bg-primary/20 rounded animate-pulse" style={{ animationDelay: '1s' }}></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Human Side (Right) */}
+                <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-bl from-orange-400/30 to-amber-500/20 flex flex-col justify-center items-center p-6">
+                  <Zap className="h-12 w-12 text-orange-500 mb-4 animate-bounce" />
+                  <div className="text-center">
+                    <h3 className="text-lg font-bold text-orange-600 mb-2">Human Expertise</h3>
+                    <div className="space-y-2">
+                      <div className="h-2 bg-orange-400/40 rounded animate-pulse"></div>
+                      <div className="h-2 bg-orange-400/30 rounded animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                      <div className="h-2 bg-orange-400/20 rounded animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center Connection */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-r from-primary to-orange-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                  <Network className="h-8 w-8 text-white" />
+                </div>
+              </div>
+
+              {/* Floating Elements */}
+              <div className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br from-primary/20 to-blue-400/30 rounded-2xl backdrop-blur-sm border border-primary/20 flex items-center justify-center animate-float" style={{ animationDelay: '1s' }}>
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              
+              <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-br from-orange-400/20 to-amber-500/30 rounded-2xl backdrop-blur-sm border border-orange-400/20 flex items-center justify-center animate-float" style={{ animationDelay: '2s' }}>
+                <Brain className="h-6 w-6 text-orange-500" />
+              </div>
             </div>
-            {/* Add floating UI elements or animated SVGs here for more creativity */}
           </div>
         </div>
       </div>
-      {/* Keyframes for subtle motion */}
+
+      {/* Floating Animation Keyframes */}
       <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16,1,0.3,1) both; }
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-16px); }
+          50% { transform: translateY(-12px); }
         }
-        .animate-float { animation: float 7s ease-in-out infinite; }
-        .animate-float-slow { animation: float 14s ease-in-out infinite; }
+        @keyframes float-slow {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
       `}</style>
     </section>
   );

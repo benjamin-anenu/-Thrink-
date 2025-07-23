@@ -8,9 +8,19 @@ interface ResourceGridProps {
   resources: Resource[];
   onViewDetails: (resource: Resource) => void;
   onShowResourceForm: () => void;
+  showCompareMode?: boolean;
+  selectedForComparison?: Set<string>;
+  onCompareToggle?: (resourceId: string, selected: boolean) => void;
 }
 
-const ResourceGrid = ({ resources, onViewDetails, onShowResourceForm }: ResourceGridProps) => {
+const ResourceGrid = ({ 
+  resources, 
+  onViewDetails, 
+  onShowResourceForm,
+  showCompareMode = false,
+  selectedForComparison = new Set(),
+  onCompareToggle
+}: ResourceGridProps) => {
   if (resources.length === 0) {
     return (
       <div className="text-center py-12">
@@ -27,6 +37,9 @@ const ResourceGrid = ({ resources, onViewDetails, onShowResourceForm }: Resource
           key={resource.id}
           resource={resource}
           onViewDetails={onViewDetails}
+          showCompareCheckbox={showCompareMode}
+          isSelectedForComparison={selectedForComparison.has(resource.id)}
+          onCompareToggle={onCompareToggle}
         />
       ))}
     </div>

@@ -5,77 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Filter, Users, TrendingUp } from 'lucide-react';
-
-interface SkillData {
-  skill: string;
-  totalPeople: number;
-  departments: string[];
-  avgExperience: number;
-  inDemand: boolean;
-}
+import { Search, Filter, Users, TrendingUp, Loader2 } from 'lucide-react';
+import { useRealSkillsMatrix } from '@/hooks/useRealSkillsMatrix';
 
 const SkillsMatrix = () => {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const skillsData: SkillData[] = [
-    {
-      skill: 'React',
-      totalPeople: 8,
-      departments: ['Engineering', 'Design'],
-      avgExperience: 3.2,
-      inDemand: true
-    },
-    {
-      skill: 'TypeScript',
-      totalPeople: 6,
-      departments: ['Engineering'],
-      avgExperience: 2.8,
-      inDemand: true
-    },
-    {
-      skill: 'UI/UX',
-      totalPeople: 4,
-      departments: ['Design', 'Marketing'],
-      avgExperience: 4.1,
-      inDemand: false
-    },
-    {
-      skill: 'Project Management',
-      totalPeople: 5,
-      departments: ['Operations', 'Engineering'],
-      avgExperience: 5.2,
-      inDemand: false
-    },
-    {
-      skill: 'Node.js',
-      totalPeople: 5,
-      departments: ['Engineering'],
-      avgExperience: 3.5,
-      inDemand: true
-    },
-    {
-      skill: 'Python',
-      totalPeople: 3,
-      departments: ['Engineering'],
-      avgExperience: 4.0,
-      inDemand: true
-    },
-    {
-      skill: 'Figma',
-      totalPeople: 6,
-      departments: ['Design', 'Marketing'],
-      avgExperience: 2.5,
-      inDemand: false
-    },
-    {
-      skill: 'SEO',
-      totalPeople: 2,
-      departments: ['Marketing'],
-      avgExperience: 3.8,
-      inDemand: false
-    }
-  ];
+  const { skillsData, loading, refreshSkillsData } = useRealSkillsMatrix();
 
   const filteredSkills = skillsData.filter(skill =>
     skill.skill.toLowerCase().includes(searchTerm.toLowerCase())
@@ -83,7 +18,9 @@ const SkillsMatrix = () => {
 
   const totalSkills = skillsData.length;
   const inDemandSkills = skillsData.filter(skill => skill.inDemand).length;
-  const averageTeamSize = Math.round(skillsData.reduce((acc, skill) => acc + skill.totalPeople, 0) / skillsData.length);
+  const averageTeamSize = skillsData.length > 0 
+    ? Math.round(skillsData.reduce((acc, skill) => acc + skill.totalPeople, 0) / skillsData.length)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -92,10 +29,16 @@ const SkillsMatrix = () => {
           <h2 className="text-2xl font-bold">Skills Matrix</h2>
           <p className="text-muted-foreground">Overview of team skills and capabilities</p>
         </div>
-        <Button variant="outline">
-          <Filter size={16} className="mr-2" />
-          Export Report
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={refreshSkillsData} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Refresh
+          </Button>
+          <Button variant="outline">
+            <Filter size={16} className="mr-2" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
       {/* Skills Overview */}
@@ -152,44 +95,61 @@ const SkillsMatrix = () => {
           <CardTitle>Skills Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Skill</TableHead>
-                <TableHead>Team Members</TableHead>
-                <TableHead>Departments</TableHead>
-                <TableHead>Avg. Experience</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSkills.map((skill) => (
-                <TableRow key={skill.skill}>
-                  <TableCell className="font-medium">{skill.skill}</TableCell>
-                  <TableCell>{skill.totalPeople}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {skill.departments.map(dept => (
-                        <Badge key={dept} variant="outline" className="text-xs">
-                          {dept}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>{skill.avgExperience} years</TableCell>
-                  <TableCell>
-                    {skill.inDemand ? (
-                      <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-                        High Demand
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">Stable</Badge>
-                    )}
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading skills data...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Skill</TableHead>
+                  <TableHead>Team Members</TableHead>
+                  <TableHead>Departments</TableHead>
+                  <TableHead>Avg. Experience</TableHead>
+                  <TableHead>Avg. Proficiency</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredSkills.length > 0 ? (
+                  filteredSkills.map((skill) => (
+                    <TableRow key={skill.skill}>
+                      <TableCell className="font-medium">{skill.skill}</TableCell>
+                      <TableCell>{skill.totalPeople}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {skill.departments.map(dept => (
+                            <Badge key={dept} variant="outline" className="text-xs">
+                              {dept}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>{skill.avgExperience} years</TableCell>
+                      <TableCell>{skill.avgProficiency}/10</TableCell>
+                      <TableCell>
+                        {skill.inDemand ? (
+                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
+                            High Demand
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Stable</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No skills data available. Add resources with skills to see the matrix.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

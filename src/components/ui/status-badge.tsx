@@ -2,6 +2,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getStatusColors } from '@/utils/darkModeColors';
 
 interface StatusBadgeProps {
   status?: 'active' | 'inactive' | 'pending';
@@ -15,28 +16,37 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, variant, children, cl
     if (status) {
       switch (status) {
         case 'active':
-          return 'bg-green-100 text-green-800 border-green-200';
+          const activeColors = getStatusColors('success');
+          return `${activeColors.bg} ${activeColors.text} ${activeColors.border}`;
         case 'inactive':
-          return 'bg-gray-100 text-gray-800 border-gray-200';
+          const inactiveColors = getStatusColors('neutral');
+          return `${inactiveColors.bg} ${inactiveColors.text} ${inactiveColors.border}`;
         case 'pending':
-          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+          const pendingColors = getStatusColors('warning');
+          return `${pendingColors.bg} ${pendingColors.text} ${pendingColors.border}`;
         default:
-          return 'bg-gray-100 text-gray-800 border-gray-200';
+          const defaultColors = getStatusColors('neutral');
+          return `${defaultColors.bg} ${defaultColors.text} ${defaultColors.border}`;
       }
     }
     
     // Fallback for variant-based styling
     switch (variant) {
       case 'success':
-        return 'bg-green-100 text-green-800 border-green-200';
+        const successColors = getStatusColors('success');
+        return `${successColors.bg} ${successColors.text} ${successColors.border}`;
       case 'warning':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        const warningColors = getStatusColors('warning');
+        return `${warningColors.bg} ${warningColors.text} ${warningColors.border}`;
       case 'error':
-        return 'bg-red-100 text-red-800 border-red-200';
+        const errorColors = getStatusColors('error');
+        return `${errorColors.bg} ${errorColors.text} ${errorColors.border}`;
       case 'info':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        const infoColors = getStatusColors('info');
+        return `${infoColors.bg} ${infoColors.text} ${infoColors.border}`;
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        const neutralColors = getStatusColors('neutral');
+        return `${neutralColors.bg} ${neutralColors.text} ${neutralColors.border}`;
     }
   };
 
@@ -45,7 +55,11 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, variant, children, cl
   return (
     <Badge 
       variant="outline" 
-      className={cn(getStatusColor(), className)}
+      className={cn(
+        getStatusColor(), 
+        'text-xs font-medium border transition-colors',
+        className
+      )}
     >
       {displayText}
     </Badge>

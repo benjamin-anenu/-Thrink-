@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -24,9 +25,18 @@ import { Resource } from '@/contexts/ResourceContext';
 interface ResourceCardProps {
   resource: Resource;
   onViewDetails: (resource: Resource) => void;
+  showCompareCheckbox?: boolean;
+  isSelectedForComparison?: boolean;
+  onCompareToggle?: (resourceId: string, selected: boolean) => void;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails }) => {
+const ResourceCard: React.FC<ResourceCardProps> = ({ 
+  resource, 
+  onViewDetails, 
+  showCompareCheckbox = false,
+  isSelectedForComparison = false,
+  onCompareToggle 
+}) => {
   const {
     id,
     name,
@@ -68,7 +78,18 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onViewDetails }) 
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">{name || 'Unknown'}</CardTitle>
+          <div className="flex items-center gap-2">
+            {showCompareCheckbox && (
+              <Checkbox
+                checked={isSelectedForComparison}
+                onCheckedChange={(checked) => 
+                  onCompareToggle?.(resource.id, checked as boolean)
+                }
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <CardTitle className="text-lg font-semibold">{name || 'Unknown'}</CardTitle>
+          </div>
           <StatusBadge status={getStatusValue(status)} />
         </div>
         <CardDescription>{role} • {department}</CardDescription>

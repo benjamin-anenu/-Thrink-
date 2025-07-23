@@ -1,11 +1,14 @@
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getStatusColors } from "@/utils/darkModeColors";
 
 interface IssueStatusBadgeProps {
-  status: 'Open' | 'In Progress' | 'Escalated' | 'Resolved' | 'Closed';
+  status?: 'Open' | 'In Progress' | 'Escalated' | 'Resolved' | 'Closed';
   severity?: 'Low' | 'Medium' | 'High' | 'Critical';
   priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
   type?: 'status' | 'severity' | 'priority';
+  value?: string; // For direct value passing
 }
 
 export const IssueStatusBadge = ({ 
@@ -14,72 +17,77 @@ export const IssueStatusBadge = ({
   priority, 
   type = 'status' 
 }: IssueStatusBadgeProps) => {
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
     switch (status) {
       case 'Open':
-        return 'destructive';
+        return 'error';
       case 'In Progress':
-        return 'default';
+        return 'warning';
       case 'Escalated':
-        return 'destructive';
+        return 'error';
       case 'Resolved':
-        return 'secondary';
+        return 'success';
       case 'Closed':
-        return 'secondary';
+        return 'neutral';
       default:
-        return 'default';
+        return 'neutral';
     }
   };
 
-  const getSeverityClasses = (severity: string) => {
+  const getSeverityVariant = (severity: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
     switch (severity) {
       case 'Low':
-        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200';
+        return 'info';
       case 'Medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200';
+        return 'warning';
       case 'High':
-        return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900 dark:text-orange-200';
+        return 'error';
       case 'Critical':
-        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200';
+        return 'error';
       default:
-        return '';
+        return 'neutral';
     }
   };
 
-  const getPriorityClasses = (priority: string) => {
+  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
     switch (priority) {
       case 'Low':
-        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900 dark:text-gray-200';
+        return 'neutral';
       case 'Medium':
-        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200';
+        return 'info';
       case 'High':
-        return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900 dark:text-orange-200';
+        return 'warning';
       case 'Urgent':
-        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200';
+        return 'error';
       default:
-        return '';
+        return 'neutral';
     }
   };
 
+  let variant: 'success' | 'warning' | 'error' | 'info' | 'neutral' = 'neutral';
+  let displayText: string = status || '';
+
   if (type === 'severity' && severity) {
-    return (
-      <Badge className={cn('border', getSeverityClasses(severity))}>
-        {severity}
-      </Badge>
-    );
+    variant = getSeverityVariant(severity);
+    displayText = severity;
+  } else if (type === 'priority' && priority) {
+    variant = getPriorityVariant(priority);
+    displayText = priority;
+  } else if (status) {
+    variant = getStatusVariant(status);
+    displayText = status;
   }
 
-  if (type === 'priority' && priority) {
-    return (
-      <Badge className={cn('border', getPriorityClasses(priority))}>
-        {priority}
-      </Badge>
-    );
-  }
+  const colors = getStatusColors(variant);
 
   return (
-    <Badge variant={getStatusVariant(status)}>
-      {status}
+    <Badge className={cn(
+      colors.bg,
+      colors.text,
+      colors.border,
+      'border text-xs font-medium transition-colors'
+    )}>
+      {displayText}
     </Badge>
   );
 };
