@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 import { getStatusColors } from "@/utils/darkModeColors";
 
 interface IssueStatusBadgeProps {
-  status: 'Open' | 'In Progress' | 'Escalated' | 'Resolved' | 'Closed';
+  status?: 'Open' | 'In Progress' | 'Escalated' | 'Resolved' | 'Closed';
   severity?: 'Low' | 'Medium' | 'High' | 'Critical';
   priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
   type?: 'status' | 'severity' | 'priority';
+  value?: string; // For direct value passing
 }
 
 export const IssueStatusBadge = ({ 
@@ -64,7 +65,7 @@ export const IssueStatusBadge = ({
   };
 
   let variant: 'success' | 'warning' | 'error' | 'info' | 'neutral' = 'neutral';
-  let displayText = status;
+  let displayText: string = status || '';
 
   if (type === 'severity' && severity) {
     variant = getSeverityVariant(severity);
@@ -72,7 +73,7 @@ export const IssueStatusBadge = ({
   } else if (type === 'priority' && priority) {
     variant = getPriorityVariant(priority);
     displayText = priority;
-  } else {
+  } else if (status) {
     variant = getStatusVariant(status);
     displayText = status;
   }
