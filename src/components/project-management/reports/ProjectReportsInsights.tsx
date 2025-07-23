@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useProjectInsights } from '@/hooks/useProjectInsights';
 import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
+import { getStatusColors } from '@/utils/darkModeColors';
 
 interface ProjectReportsInsightsProps {
   projectId?: string;
@@ -65,13 +66,17 @@ const ProjectReportsInsights: React.FC<ProjectReportsInsightsProps> = ({ project
   const getInsightColor = (type: string) => {
     switch (type) {
       case 'success':
-        return 'text-green-800 bg-green-50 border-green-200';
+        const successColors = getStatusColors('success');
+        return `${successColors.bg} ${successColors.text} ${successColors.border}`;
       case 'warning':
-        return 'text-yellow-800 bg-yellow-50 border-yellow-200';
+        const warningColors = getStatusColors('warning');
+        return `${warningColors.bg} ${warningColors.text} ${warningColors.border}`;
       case 'error':
-        return 'text-red-800 bg-red-50 border-red-200';
+        const errorColors = getStatusColors('error');
+        return `${errorColors.bg} ${errorColors.text} ${errorColors.border}`;
       default:
-        return 'text-blue-800 bg-blue-50 border-blue-200';
+        const infoColors = getStatusColors('info');
+        return `${infoColors.bg} ${infoColors.text} ${infoColors.border}`;
     }
   };
 
