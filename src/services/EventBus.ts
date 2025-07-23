@@ -21,7 +21,9 @@ export type EventType =
   | 'ai_insights_updated'
   | 'ai_insights_requested'
   | 'risk_event'
-  | 'system_error';
+  | 'system_error'
+  | 'escalation_triggered'
+  | 'escalation_notification';
 
 export interface Event {
   id: string;

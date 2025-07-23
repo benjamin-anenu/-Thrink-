@@ -7,7 +7,7 @@ export interface ProjectNotification {
   title: string;
   message: string;
   type: 'info' | 'warning' | 'success' | 'error';
-  category: 'project' | 'deadline' | 'team' | 'system' | 'performance';
+  category: 'project' | 'deadline' | 'team' | 'system' | 'performance' | 'escalation';
   timestamp: Date;
   read: boolean;
   priority: 'low' | 'medium' | 'high' | 'critical';
