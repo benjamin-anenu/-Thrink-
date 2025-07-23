@@ -5,16 +5,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, UserCheck, Mail, Building2 } from 'lucide-react';
-
-interface Recipient {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  role: string;
-  type: 'stakeholder' | 'resource';
-}
+import { Users, UserCheck, Mail, Building2, Loader2 } from 'lucide-react';
+import { useRecipients, type Recipient } from '@/hooks/useRecipients';
 
 interface RecipientSelectorProps {
   selectedRecipients: string[];
@@ -23,20 +15,11 @@ interface RecipientSelectorProps {
 
 const RecipientSelector: React.FC<RecipientSelectorProps> = ({ selectedRecipients, onRecipientsChange }) => {
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const { recipients, departments, loading, error, getRecipientsByType } = useRecipients();
 
-  const stakeholders: Recipient[] = [
-    { id: 'sh-1', name: 'John Smith', email: 'john@company.com', department: 'Executive', role: 'CEO', type: 'stakeholder' },
-    { id: 'sh-2', name: 'Sarah Johnson', email: 'sarah@company.com', department: 'Product', role: 'Product Manager', type: 'stakeholder' },
-    { id: 'sh-3', name: 'Mike Wilson', email: 'mike@company.com', department: 'Engineering', role: 'CTO', type: 'stakeholder' }
-  ];
-
-  const resources: Recipient[] = [
-    { id: 'res-1', name: 'Alice Brown', email: 'alice@company.com', department: 'Engineering', role: 'Senior Developer', type: 'resource' },
-    { id: 'res-2', name: 'Bob Davis', email: 'bob@company.com', department: 'Design', role: 'UI Designer', type: 'resource' },
-    { id: 'res-3', name: 'Carol Miller', email: 'carol@company.com', department: 'QA', role: 'QA Engineer', type: 'resource' }
-  ];
-
-  const departments = ['Executive', 'Product', 'Engineering', 'Design', 'QA'];
+  const stakeholders = getRecipientsByType('stakeholder');
+  const resources = getRecipientsByType('resource');
+  const workspaceMembers = getRecipientsByType('workspace_member');
 
   const handleIndividualToggle = (recipientId: string) => {
     const updated = selectedRecipients.includes(recipientId)
@@ -46,7 +29,7 @@ const RecipientSelector: React.FC<RecipientSelectorProps> = ({ selectedRecipient
   };
 
   const handleDepartmentToggle = (department: string) => {
-    const allInDept = [...stakeholders, ...resources].filter(r => r.department === department);
+    const allInDept = recipients.filter(r => r.department === department);
     const allDeptIds = allInDept.map(r => r.id);
     
     const isSelected = selectedDepartments.includes(department);
@@ -87,6 +70,32 @@ const RecipientSelector: React.FC<RecipientSelectorProps> = ({ selectedRecipient
     </div>
   );
 
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-6">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="ml-2">Loading recipients...</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-red-600">
+            <p>Error loading recipients: {error}</p>
+            <Button variant="outline" onClick={() => window.location.reload()} className="mt-2">
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -106,30 +115,48 @@ const RecipientSelector: React.FC<RecipientSelectorProps> = ({ selectedRecipient
           </TabsList>
 
           <TabsContent value="individual" className="space-y-4">
-            <RecipientList recipients={stakeholders} title="Stakeholders" />
-            <RecipientList recipients={resources} title="Resources" />
+            {workspaceMembers.length > 0 && (
+              <RecipientList recipients={workspaceMembers} title="Workspace Members" />
+            )}
+            {stakeholders.length > 0 && (
+              <RecipientList recipients={stakeholders} title="Stakeholders" />
+            )}
+            {resources.length > 0 && (
+              <RecipientList recipients={resources} title="Resources" />
+            )}
+            {recipients.length === 0 && (
+              <div className="text-center text-muted-foreground py-4">
+                No recipients found in this workspace.
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="department" className="space-y-4">
             <div className="space-y-3">
               <h4 className="font-medium text-sm">Departments</h4>
-              {departments.map((dept) => {
-                const deptCount = [...stakeholders, ...resources].filter(r => r.department === dept).length;
-                return (
-                  <div key={dept} className="flex items-center space-x-3 p-2 rounded border">
-                    <Checkbox
-                      id={dept}
-                      checked={selectedDepartments.includes(dept)}
-                      onCheckedChange={() => handleDepartmentToggle(dept)}
-                    />
-                    <div className="flex items-center gap-2 flex-1">
-                      <Building2 className="h-4 w-4" />
-                      <span className="font-medium">{dept}</span>
-                      <Badge variant="outline">{deptCount} members</Badge>
+              {departments.length === 0 ? (
+                <div className="text-center text-muted-foreground py-4">
+                  No departments found.
+                </div>
+              ) : (
+                departments.map((dept) => {
+                  const deptCount = recipients.filter(r => r.department === dept).length;
+                  return (
+                    <div key={dept} className="flex items-center space-x-3 p-2 rounded border">
+                      <Checkbox
+                        id={dept}
+                        checked={selectedDepartments.includes(dept)}
+                        onCheckedChange={() => handleDepartmentToggle(dept)}
+                      />
+                      <div className="flex items-center gap-2 flex-1">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">{dept}</span>
+                        <Badge variant="outline">{deptCount} members</Badge>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </TabsContent>
         </Tabs>

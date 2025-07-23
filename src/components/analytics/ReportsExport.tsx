@@ -4,16 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
-import { Download, FileText, Mail, Calendar as CalendarIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Download, FileText, Mail, Calendar as CalendarIcon, Loader2, Edit, Trash2, Play, Pause } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRealReportsData } from '@/hooks/useRealReportsData';
+import { useScheduledReports } from '@/hooks/useScheduledReports';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
 
 const ReportsExport: React.FC = () => {
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
   const { generateReport, downloadReport } = useRealReportsData();
+  const { 
+    scheduledReports, 
+    loading: scheduledLoading, 
+    createScheduledReport, 
+    deleteScheduledReport, 
+    toggleReportStatus 
+  } = useScheduledReports();
   const [exportFormat, setExportFormat] = useState<string>('pdf');
   const [selectedSections, setSelectedSections] = useState<string[]>([
     'summary', 'progress', 'resources', 'timeline'
@@ -113,30 +122,62 @@ const ReportsExport: React.FC = () => {
     }
 
     try {
-      const reportData = await generateReport({
-        type: 'scheduled_analytics',
+      await createScheduledReport({
+        report_type: 'analytics_export',
         frequency: 'weekly',
-        recipients: ['current_user@company.com'],
         sections: selectedSections,
-        dateRange: {
-          from: dateRange.from?.toISOString(),
-          to: dateRange.to?.toISOString()
-        }
+        date_range_start: dateRange.from?.toISOString(),
+        date_range_end: dateRange.to?.toISOString(),
+        format: exportFormat,
+        recipients: [{
+          recipient_id: 'current-user',
+          recipient_name: 'Current User',
+          recipient_email: 'current.user@company.com',
+          recipient_type: 'workspace_member'
+        }]
       });
 
-      if (reportData) {
-        toast({
-          title: "Report scheduled",
-          description: "Weekly reports will be sent to your email every Monday at 9:00 AM.",
-        });
-      } else {
-        throw new Error('Failed to schedule report');
-      }
+      toast({
+        title: "Report scheduled",
+        description: "Weekly reports will be sent to your email every Monday at 9:00 AM.",
+      });
     } catch (error) {
       console.error('Schedule error:', error);
       toast({
         title: "Schedule failed",
         description: "Failed to schedule the report. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteSchedule = async (reportId: string) => {
+    try {
+      await deleteScheduledReport(reportId);
+      toast({
+        title: "Schedule deleted",
+        description: "The scheduled report has been removed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete the scheduled report.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleSchedule = async (reportId: string, isActive: boolean) => {
+    try {
+      await toggleReportStatus(reportId, !isActive);
+      toast({
+        title: isActive ? "Schedule paused" : "Schedule activated",
+        description: `The scheduled report has been ${isActive ? 'paused' : 'activated'}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update the scheduled report.",
         variant: "destructive"
       });
     }
@@ -218,51 +259,98 @@ const ReportsExport: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">Current Schedules</h4>
-            <div className="border rounded-lg p-3 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Weekly Summary</span>
-                <span className="text-xs text-muted-foreground">Every Monday</span>
+          {scheduledLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading scheduled reports...
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Current Schedules</h4>
+                {scheduledReports.length === 0 ? (
+                  <div className="border rounded-lg p-3 text-center text-muted-foreground">
+                    No scheduled reports configured
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {scheduledReports.map((report) => (
+                      <div key={report.id} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {report.report_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                              <Badge variant={report.is_active ? 'default' : 'secondary'}>
+                                {report.is_active ? 'Active' : 'Paused'}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {report.frequency.charAt(0).toUpperCase() + report.frequency.slice(1)} • {report.format.toUpperCase()}
+                            </div>
+                            {report.next_run_at && (
+                              <div className="text-xs text-muted-foreground">
+                                Next run: {format(new Date(report.next_run_at), 'MMM dd, yyyy HH:mm')}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleSchedule(report.id, report.is_active)}
+                            >
+                              {report.is_active ? (
+                                <Pause className="h-3 w-3" />
+                              ) : (
+                                <Play className="h-3 w-3" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteSchedule(report.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        {report.recipients.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Recipients: {report.recipients.map(r => r.recipient_email).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Monthly Analytics</span>
-                <span className="text-xs text-muted-foreground">1st of each month</span>
+
+              <Button 
+                variant="outline" 
+                onClick={handleScheduleReport}
+                className="w-full"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Add New Schedule
+              </Button>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Mail className="mr-1 h-3 w-3" />
+                    Email Now
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Download className="mr-1 h-3 w-3" />
+                    Download
+                  </Button>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Recipients</label>
-            <div className="text-sm text-muted-foreground">
-              • project.manager@company.com<br/>
-              • stakeholder@company.com<br/>
-              • team.lead@company.com
-            </div>
-          </div>
-
-          <Button 
-            variant="outline" 
-            onClick={handleScheduleReport}
-            className="w-full"
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            Configure Schedule
-          </Button>
-
-          <div className="pt-4 border-t">
-            <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm">
-                <Mail className="mr-1 h-3 w-3" />
-                Email Now
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="mr-1 h-3 w-3" />
-                Download
-              </Button>
-            </div>
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1770,6 +1770,44 @@ export type Database = {
         }
         Relationships: []
       }
+      report_recipients: {
+        Row: {
+          created_at: string
+          id: string
+          recipient_email: string
+          recipient_id: string
+          recipient_name: string
+          recipient_type: string
+          scheduled_report_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipient_email: string
+          recipient_id: string
+          recipient_name: string
+          recipient_type: string
+          scheduled_report_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipient_email?: string
+          recipient_id?: string
+          recipient_name?: string
+          recipient_type?: string
+          scheduled_report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_recipients_scheduled_report_id_fkey"
+            columns: ["scheduled_report_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string
@@ -2202,6 +2240,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          created_by: string
+          date_range_end: string | null
+          date_range_start: string | null
+          format: string | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          next_run_at: string | null
+          report_type: string
+          sections: string[] | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date_range_end?: string | null
+          date_range_start?: string | null
+          format?: string | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          report_type: string
+          sections?: string[] | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date_range_end?: string | null
+          date_range_start?: string | null
+          format?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          report_type?: string
+          sections?: string[] | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       skill_proficiencies: {
         Row: {
