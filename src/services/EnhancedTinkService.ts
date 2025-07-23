@@ -26,43 +26,36 @@ export class EnhancedTinkService {
   private baseURL = 'https://openrouter.ai/api/v1/chat/completions';
   private selectedModel: string;
 
-  constructor(apiKey: string, selectedModel: string = 'anthropic/claude-3.5-sonnet') {
+  constructor(apiKey: string, selectedModel: string = 'deepseek/deepseek-chat') {
     this.openRouterApiKey = apiKey;
     this.selectedModel = selectedModel;
   }
 
   static getAvailableModels(): ModelOption[] {
     return [
+      // Cost-effective options first
       {
-        id: 'anthropic/claude-3.5-sonnet',
-        name: 'Claude 3.5 Sonnet',
-        provider: 'Anthropic',
-        description: 'Most capable model for analysis and reasoning',
-        contextWindow: 200000,
-        costTier: 'high'
+        id: 'deepseek/deepseek-chat',
+        name: 'DeepSeek Chat',
+        provider: 'DeepSeek',
+        description: 'Very cost-effective general purpose model',
+        contextWindow: 32000,
+        costTier: 'free'
       },
       {
-        id: 'anthropic/claude-3.5-haiku',
-        name: 'Claude 3.5 Haiku',
-        provider: 'Anthropic',
-        description: 'Fast and efficient for quick responses',
-        contextWindow: 200000,
-        costTier: 'low'
+        id: 'deepseek/deepseek-coder',
+        name: 'DeepSeek Coder',
+        provider: 'DeepSeek',
+        description: 'Cost-effective coding and analysis model',
+        contextWindow: 32000,
+        costTier: 'free'
       },
       {
-        id: 'openai/gpt-4o',
-        name: 'GPT-4o',
-        provider: 'OpenAI',
-        description: 'Excellent for complex reasoning and analysis',
-        contextWindow: 128000,
-        costTier: 'high'
-      },
-      {
-        id: 'openai/gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        provider: 'OpenAI',
-        description: 'Cost-effective with good performance',
-        contextWindow: 128000,
+        id: 'google/gemini-pro',
+        name: 'Gemini Pro',
+        provider: 'Google',
+        description: 'Balanced performance and cost',
+        contextWindow: 32000,
         costTier: 'low'
       },
       {
@@ -74,12 +67,45 @@ export class EnhancedTinkService {
         costTier: 'free'
       },
       {
+        id: 'anthropic/claude-3.5-haiku',
+        name: 'Claude 3.5 Haiku',
+        provider: 'Anthropic',
+        description: 'Fast and efficient for quick responses',
+        contextWindow: 200000,
+        costTier: 'low'
+      },
+      {
+        id: 'openai/gpt-4o-mini',
+        name: 'GPT-4o Mini',
+        provider: 'OpenAI',
+        description: 'Cost-effective with good performance',
+        contextWindow: 128000,
+        costTier: 'low'
+      },
+      {
         id: 'microsoft/wizardlm-2-8x22b',
         name: 'WizardLM 2 8x22B',
         provider: 'Microsoft',
         description: 'Strong reasoning capabilities',
         contextWindow: 65536,
         costTier: 'medium'
+      },
+      // Premium options
+      {
+        id: 'anthropic/claude-3.5-sonnet',
+        name: 'Claude 3.5 Sonnet',
+        provider: 'Anthropic',
+        description: 'Most capable model for analysis and reasoning',
+        contextWindow: 200000,
+        costTier: 'high'
+      },
+      {
+        id: 'openai/gpt-4o',
+        name: 'GPT-4o',
+        provider: 'OpenAI',
+        description: 'Excellent for complex reasoning and analysis',
+        contextWindow: 128000,
+        costTier: 'high'
       }
     ];
   }
