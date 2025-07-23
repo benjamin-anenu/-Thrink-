@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -6,32 +7,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-
 // Enhanced intent detection patterns
 const INTENT_PATTERNS = {
   data_query: [
-    // Analytics and performance patterns
     /(?:show|display|get|fetch|analytics|performance|metrics|utilization)/i,
     /(?:team|resource|project)\s+(?:performance|utilization|analytics)/i,
-    
-    // List/show patterns
     /(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?(projects?|tasks?|resources?|milestones?|deadlines?|issues?)/i,
     /what\s+(?:projects?|tasks?|resources?)\s+(?:do\s+i\s+have|are\s+there)/i,
-    
-    // Status/progress patterns
     /(?:status|progress)\s+(?:of|for)\s+(?:my\s+)?(projects?|tasks?)/i,
     /(?:how\s+is|what's\s+the\s+status\s+of)\s+(?:my\s+)?(project|task)/i,
-    
-    // Time-based patterns
     /(?:tasks?|deadlines?|milestones?)\s+(?:for\s+)?(?:today|tomorrow|this\s+week|next\s+week|upcoming)/i,
     /(?:what's\s+)?(?:due|overdue)\s+(?:today|tomorrow|this\s+week)/i,
-    
-    // Team and resource patterns
     /(?:team|resource)\s+(?:utilization|allocation|capacity|workload)/i,
     /(?:who\s+is\s+assigned\s+to|assignments?\s+for)/i,
   ],
-  
   insight_query: [
     /(?:analyze|insights?|recommendations?|advice|suggestions?)/i,
     /(?:what\s+should\s+i|how\s+can\s+i|what's\s+the\s+best\s+way\s+to)/i,
@@ -109,23 +98,10 @@ class TinkQueryEngine {
       .select(`
         id, name, description, status, priority, assignee_id, 
         start_date, end_date, progress, created_at,
-        projects(id, name, workspace_id),
+        projects!inner(id, name, workspace_id),
         milestones(id, name)
-      `);
-
-    // Get projects in workspace first
-    const { data: workspaceProjects } = await this.supabase
-      .from('projects')
-      .select('id')
-      .eq('workspace_id', this.workspaceId);
-
-    const projectIds = workspaceProjects?.map(p => p.id) || [];
-    
-    if (projectIds.length > 0) {
-      query = query.in('project_id', projectIds);
-    } else {
-      return { type: 'tasks_list', data: [], summary: 'No tasks found in workspace' };
-    }
+      `)
+      .eq('projects.workspace_id', this.workspaceId);
 
     // Apply filters based on entities
     if (entities.includes('today')) {
@@ -164,8 +140,7 @@ class TinkQueryEngine {
     const { data, error } = await this.supabase
       .from('resources')
       .select(`
-        id, name, email, role, department, hourly_rate,
-        created_at, updated_at
+        id, name, email, role, department, created_at, updated_at
       `)
       .eq('workspace_id', this.workspaceId)
       .order('name', { ascending: true });
@@ -187,8 +162,7 @@ class TinkQueryEngine {
     const { data, error } = await this.supabase
       .from('performance_metrics')
       .select(`
-        id, resource_id, type, value, timestamp, description,
-        resources(id, name, role, department)
+        id, resource_id, type, value, timestamp, description, workspace_id
       `)
       .eq('workspace_id', this.workspaceId)
       .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
@@ -208,7 +182,7 @@ class TinkQueryEngine {
   }
 
   async getTeamUtilization(): Promise<any> {
-    // Get resources and their current project assignments
+    // Get resources and their current assignments
     const { data: resources, error: resourceError } = await this.supabase
       .from('resources')
       .select(`
@@ -225,18 +199,9 @@ class TinkQueryEngine {
       throw resourceError;
     }
 
-    // Get performance metrics for utilization calculation
-    const { data: metrics } = await this.supabase
-      .from('performance_metrics')
-      .select('resource_id, type, value, timestamp')
-      .eq('workspace_id', this.workspaceId)
-      .eq('type', 'utilization')
-      .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
     return {
       type: 'team_utilization',
       data: resources || [],
-      metrics: metrics || [],
       summary: `Team utilization data for ${resources?.length || 0} resources`,
       count: resources?.length || 0
     };
@@ -253,26 +218,14 @@ class TinkQueryEngine {
     futureDate.setDate(futureDate.getDate() + days);
     const futureDateStr = futureDate.toISOString().split('T')[0];
 
-    // Get projects in workspace
-    const { data: workspaceProjects } = await this.supabase
-      .from('projects')
-      .select('id')
-      .eq('workspace_id', this.workspaceId);
-
-    const projectIds = workspaceProjects?.map(p => p.id) || [];
-    
-    if (projectIds.length === 0) {
-      return { type: 'deadlines', data: [], summary: 'No deadlines found' };
-    }
-
     const { data, error } = await this.supabase
       .from('project_tasks')
       .select(`
         id, name, end_date, status, priority,
-        projects(id, name),
+        projects!inner(id, name, workspace_id),
         milestones(id, name, due_date)
       `)
-      .in('project_id', projectIds)
+      .eq('projects.workspace_id', this.workspaceId)
       .gte('end_date', today)
       .lte('end_date', futureDateStr)
       .order('end_date', { ascending: true });
@@ -348,18 +301,20 @@ class TinkQueryEngine {
       .from('projects')
       .select(`
         id, name, status, progress, start_date, end_date,
-        project_tasks(count),
-        project_tasks!inner(status)
+        project_tasks(id, status)
       `)
       .eq('workspace_id', this.workspaceId);
 
     if (error) throw error;
 
     const projectsWithStats = data?.map(project => {
-      // Count tasks by status (this is a simplified approach)
+      const totalTasks = project.project_tasks?.length || 0;
+      const completedTasks = project.project_tasks?.filter(task => task.status === 'Completed').length || 0;
+      
       return {
         ...project,
-        total_tasks: project.project_tasks?.length || 0,
+        total_tasks: totalTasks,
+        completed_tasks: completedTasks,
         health_status: this.calculateProjectHealth(project)
       };
     });
@@ -376,16 +331,9 @@ class TinkQueryEngine {
       .from('project_tasks')
       .select(`
         id, name, status, priority, progress, start_date, end_date,
-        projects(id, name),
-        resources(id, name, email)
+        projects!inner(id, name, workspace_id)
       `)
-      .in('project_id', 
-        await this.supabase
-          .from('projects')
-          .select('id')
-          .eq('workspace_id', this.workspaceId)
-          .then(({ data }) => data?.map(p => p.id) || [])
-      )
+      .eq('projects.workspace_id', this.workspaceId)
       .order('status', { ascending: true });
 
     if (error) throw error;
@@ -411,16 +359,9 @@ class TinkQueryEngine {
       .from('project_tasks')
       .select(`
         id, name, assignee_id, status, start_date, end_date,
-        projects(id, name),
-        resources(id, name, email, role)
+        projects!inner(id, name, workspace_id)
       `)
-      .in('project_id', 
-        await this.supabase
-          .from('projects')
-          .select('id')
-          .eq('workspace_id', this.workspaceId)
-          .then(({ data }) => data?.map(p => p.id) || [])
-      )
+      .eq('projects.workspace_id', this.workspaceId)
       .not('assignee_id', 'is', null)
       .order('start_date', { ascending: true });
 
@@ -448,11 +389,6 @@ class TinkQueryEngine {
     if (progress >= 90) return 'excellent';
     if (progress >= 70) return 'good';
     return 'on-track';
-  }
-
-  private calculateUtilization(resource: any): number {
-    // Placeholder logic - replace with actual utilization calculation
-    return Math.floor(Math.random() * 100);
   }
 }
 
@@ -669,7 +605,7 @@ function formatDataResponse(queryResult: any, originalMessage: string): string {
       
     case 'resources_list':
       response += data.slice(0, 8).map((resource: any, index: number) => 
-        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 Department: ${resource.department || 'Not set'} | 📧 ${resource.email || 'No email'}\n   💰 Rate: $${resource.hourly_rate || 'Not set'}/hr`
+        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 Department: ${resource.department || 'Not set'} | 📧 ${resource.email || 'No email'}`
       ).join('\n\n');
       if (data.length > 8) response += `\n\n... and ${data.length - 8} more resources`;
       break;
@@ -695,14 +631,14 @@ function formatDataResponse(queryResult: any, originalMessage: string): string {
       
     case 'team_utilization':
       response += data.slice(0, 8).map((resource: any, index: number) => 
-        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 ${resource.department || 'No department'}\n   📋 Active Projects: ${resource.project_assignments?.length || 0}\n   📊 Current Utilization: ${this.calculateUtilization(resource)}%`
+        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 ${resource.department || 'No department'}\n   📋 Active Projects: ${resource.project_assignments?.length || 0}`
       ).join('\n\n');
       if (data.length > 8) response += `\n\n... and ${data.length - 8} more team members`;
       break;
       
     case 'performance_metrics':
       response += data.slice(0, 8).map((metric: any, index: number) => 
-        `${index + 1}. **${metric.resources?.name || 'Unknown'}** - ${metric.type}\n   📊 Value: ${metric.value} | 📅 Date: ${new Date(metric.timestamp).toLocaleDateString()}\n   📝 ${metric.description || 'No description'}`
+        `${index + 1}. **${metric.type}** - Value: ${metric.value}\n   📅 Date: ${new Date(metric.timestamp).toLocaleDateString()}\n   📝 ${metric.description || 'No description'}`
       ).join('\n\n');
       if (data.length > 8) response += `\n\n... and ${data.length - 8} more metrics`;
       break;

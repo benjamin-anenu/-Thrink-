@@ -142,27 +142,21 @@ const TinkAssistant = () => {
 
   return (
     <>
-      {/* Modern Floating Chat Button */}
+      {/* Floating Chat Button - Larger with no hover effects */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
           <Button
             onClick={() => setIsOpen(true)}
-            className="relative w-32 h-32 rounded-full bg-transparent 
-                     hover:scale-110 active:scale-95
-                     transition-all duration-300 ease-out
-                     will-change-transform border-none shadow-none"
+            className="relative w-44 h-44 rounded-full bg-transparent border-none shadow-none p-0"
             size="icon"
-            style={{
-              transform: 'translate3d(0, 0, 0)',
-            }}
           >
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
               loop
               autoplay
               style={{
-                width: '120px',
-                height: '120px',
+                width: '180px',
+                height: '180px',
                 cursor: 'pointer'
               }}
             />
@@ -170,16 +164,13 @@ const TinkAssistant = () => {
         </div>
       )}
 
-      {/* Modern Chat Interface - Cursor-style */}
+      {/* Enhanced Chat Interface - Wider with no scroll issues */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[500px] z-50 animate-[scale-in_300ms_ease-out]">
+        <div className="fixed bottom-6 right-6 w-[500px] h-[600px] z-50 animate-[scale-in_300ms_ease-out]">
           <div className="relative w-full h-full bg-background border border-border rounded-2xl 
-                        shadow-2xl backdrop-blur-sm flex flex-col will-change-transform"
-               style={{
-                 transform: 'translate3d(0, 0, 0)',
-               }}>
+                        shadow-2xl backdrop-blur-sm flex flex-col">
             
-            {/* Modern Header */}
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border rounded-t-2xl">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -209,8 +200,8 @@ const TinkAssistant = () => {
               </Button>
             </div>
 
-            {/* Messages Container */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages Container - Fixed scrolling issues */}
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[420px]">
               {messages.map((message, index) => (
                 <div
                   key={message.id}
@@ -223,7 +214,7 @@ const TinkAssistant = () => {
                   }}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm break-words
                               ${message.type === 'user'
                                 ? 'bg-primary text-primary-foreground ml-4'
                                 : 'bg-muted text-foreground mr-4'
@@ -248,7 +239,7 @@ const TinkAssistant = () => {
 
             {/* Quick Actions */}
             <div className="px-4 py-2 border-t border-border/50">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {[
                   { label: '📊 Analytics', action: 'Show me project performance analytics' },
                   { label: '⏰ Deadlines', action: 'What are our upcoming deadlines?' },
@@ -269,7 +260,7 @@ const TinkAssistant = () => {
               </div>
             </div>
             
-            {/* Modern Input with Formatting Toolbar */}
+            {/* Input Area with Formatting Toolbar */}
             <div className="p-4 border-t border-border bg-muted/30 rounded-b-2xl">
               {/* Formatting Toolbar */}
               <div className="flex items-center gap-1 mb-3 pb-2 border-b border-border/30">
@@ -313,17 +304,17 @@ const TinkAssistant = () => {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder="Ask about performance, deadlines, or resources..."
-                  className="flex-1 min-h-[40px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
+                  className="flex-1 min-h-[60px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
                            rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 
                            focus:border-primary/50 transition-all duration-200 resize-none
                            placeholder:text-muted-foreground/60"
-                  rows={1}
+                  rows={2}
                 />
                 
                 <Button 
                   onClick={sendMessage} 
                   size="icon" 
-                  className="h-10 w-10 rounded-xl bg-primary hover:bg-primary/90
+                  className="h-12 w-12 rounded-xl bg-primary hover:bg-primary/90
                            shadow-sm hover:shadow-md transition-all duration-200 
                            disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!inputValue.trim() || isLoading}
