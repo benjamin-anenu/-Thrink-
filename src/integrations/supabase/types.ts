@@ -754,8 +754,10 @@ export type Database = {
           due_date: string | null
           id: string
           name: string
+          phase_id: string | null
           progress: number | null
           project_id: string | null
+          sort_order_in_phase: number | null
           status: string | null
           task_ids: string[] | null
           updated_at: string
@@ -767,8 +769,10 @@ export type Database = {
           due_date?: string | null
           id?: string
           name: string
+          phase_id?: string | null
           progress?: number | null
           project_id?: string | null
+          sort_order_in_phase?: number | null
           status?: string | null
           task_ids?: string[] | null
           updated_at?: string
@@ -780,13 +784,22 @@ export type Database = {
           due_date?: string | null
           id?: string
           name?: string
+          phase_id?: string | null
           progress?: number | null
           project_id?: string | null
+          sort_order_in_phase?: number | null
           status?: string | null
           task_ids?: string[] | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "milestones_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "phases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "milestones_project_id_fkey"
             columns: ["project_id"]
@@ -975,6 +988,71 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: []
+      }
+      phases: {
+        Row: {
+          baseline_end_date: string | null
+          baseline_start_date: string | null
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          priority: string | null
+          progress: number | null
+          project_id: string
+          sort_order: number
+          start_date: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          baseline_end_date?: string | null
+          baseline_start_date?: string | null
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          priority?: string | null
+          progress?: number | null
+          project_id: string
+          sort_order?: number
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          baseline_end_date?: string | null
+          baseline_start_date?: string | null
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          priority?: string | null
+          progress?: number | null
+          project_id?: string
+          sort_order?: number
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

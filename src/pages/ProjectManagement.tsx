@@ -11,9 +11,10 @@ import ProjectTimeline from '@/components/project-management/ProjectTimeline';
 import ProjectReports from '@/components/project-management/ProjectReports';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target, FolderOpen, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target, FolderOpen, AlertTriangle, Layers } from 'lucide-react';
 import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
 import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
+import { PhaseView } from '@/components/project-management/phases/PhaseView';
 
 const ProjectManagement = () => {
   const { id } = useParams();
@@ -75,10 +76,14 @@ const ProjectManagement = () => {
 
         {/* Project Management Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="phases" className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Phases
             </TabsTrigger>
             <TabsTrigger value="gantt" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -108,6 +113,10 @@ const ProjectManagement = () => {
 
           <TabsContent value="overview">
             <ProjectOverview project={project} />
+          </TabsContent>
+
+          <TabsContent value="phases">
+            <PhaseView projectId={project.id} />
           </TabsContent>
 
           <TabsContent value="gantt">
