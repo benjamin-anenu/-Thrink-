@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Send, TrendingUp, AlertTriangle } from 'lucide-react';
@@ -100,23 +99,21 @@ const TinkAssistant = () => {
     }
   };
 
-  // Note: Old performance tracking functions removed as AI now uses database context
-
   return (
     <>
-      {/* Refined Floating Chat Button */}
+      {/* Enhanced Floating Chat Button - 3x Larger with No Background */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
-          {/* Simplified ambient ring - single layer */}
+          {/* Adjusted ambient ring for larger size */}
           <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" 
                style={{ animationDuration: '3s' }}></div>
           
           <Button
             onClick={() => setIsOpen(true)}
-            className="relative w-14 h-14 rounded-full bg-primary text-primary-foreground 
+            className="relative w-48 h-48 rounded-full bg-transparent hover:bg-white/10 
                      shadow-lg hover:shadow-xl transition-all duration-300 ease-out
                      animate-[float_4s_ease-in-out_infinite] hover:scale-105 active:scale-[0.98]
-                     will-change-transform"
+                     will-change-transform border-0"
             size="icon"
             style={{
               transform: 'translate3d(0, 0, 0)',
@@ -131,23 +128,23 @@ const TinkAssistant = () => {
               loop
               autoplay
               style={{
-                width: '60px',
-                height: '60px',
+                width: '180px',
+                height: '180px',
                 cursor: 'pointer'
               }}
             />
             
-            {/* Refined Performance Indicator */}
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning rounded-full 
+            {/* Adjusted Performance Indicator for larger button */}
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-warning rounded-full 
                           flex items-center justify-center animate-pulse shadow-sm"
                  style={{ animationDuration: '2s' }}>
-              <TrendingUp className="h-2 w-2 text-warning-foreground" />
+              <TrendingUp className="h-3 w-3 text-warning-foreground" />
             </div>
           </Button>
         </div>
       )}
 
-      {/* Refined Chat Interface */}
+      {/* Chat Interface - Keep existing */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 w-80 h-96 z-50 animate-[scale-in_300ms_ease-out]">
           <div className="relative w-full h-full bg-card border border-border rounded-xl 
@@ -160,16 +157,14 @@ const TinkAssistant = () => {
                  `
                }}>
             
-            {/* Refined Header */}
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border rounded-t-xl bg-muted/30">
               <div className="flex items-center gap-3">
-                {/* Simplified Avatar with breathing effect */}
                 <div className="relative">
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center 
                                 shadow-sm animate-[pulse_3s_ease-in-out_infinite]">
                     <span className="text-primary-foreground font-semibold text-sm">T</span>
                   </div>
-                  {/* Refined Status Indicator */}
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full 
                                 border border-card shadow-sm"></div>
                 </div>
@@ -194,7 +189,7 @@ const TinkAssistant = () => {
               </Button>
             </div>
 
-            {/* Refined Messages Container */}
+            {/* Messages Container */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((message, index) => (
                 <div
@@ -222,9 +217,8 @@ const TinkAssistant = () => {
               ))}
             </div>
 
-            {/* Refined Input Section */}
+            {/* Input Section */}
             <div className="p-4 border-t border-border space-y-3 bg-muted/20 rounded-b-xl">
-              {/* Streamlined Quick Actions */}
               <div className="flex gap-2">
                 {[
                   { label: '📊 Performance', action: 'Show team performance' },
@@ -245,7 +239,6 @@ const TinkAssistant = () => {
                 ))}
               </div>
               
-              {/* Refined Input Container */}
               <div className="flex gap-2">
                 <input
                   type="text"
