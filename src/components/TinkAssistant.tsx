@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, X, Send, TrendingUp, AlertTriangle } from 'lucide-react';
+import { X, Send, TrendingUp, AlertTriangle } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -124,7 +126,16 @@ const TinkAssistant = () => {
               `
             }}
           >
-            <MessageSquare className="h-6 w-6" />
+            <DotLottieReact
+              src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
+              loop
+              autoplay
+              style={{
+                width: '60px',
+                height: '60px',
+                cursor: 'pointer'
+              }}
+            />
             
             {/* Refined Performance Indicator */}
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning rounded-full 
