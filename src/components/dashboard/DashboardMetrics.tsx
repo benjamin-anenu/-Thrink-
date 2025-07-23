@@ -1,7 +1,9 @@
+
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { DarkModeCard, DarkModeCardHeader, DarkModeCardContent } from '@/components/ui/dark-mode-card';
+import { DarkModeBadge } from '@/components/ui/dark-mode-badge';
+import { CardDescription, CardTitle } from '@/components/ui/card';
 import { 
   TrendingUp, TrendingDown, Calendar, Users, 
   DollarSign, Target, Clock, CheckCircle,
@@ -25,49 +27,51 @@ const MetricCard: React.FC<MetricCardProps> = ({
   change,
   changeLabel,
   icon: Icon,
-  color = 'text-muted-foreground',
+  color = 'text-zinc-400',
   progress,
   trend = 'neutral'
 }) => {
   const getTrendIcon = () => {
     switch (trend) {
-      case 'up': return <ArrowUpRight className="h-4 w-4 text-success" />;
-      case 'down': return <ArrowDownRight className="h-4 w-4 text-error" />;
+      case 'up': return <ArrowUpRight className="h-4 w-4 text-green-400" />;
+      case 'down': return <ArrowDownRight className="h-4 w-4 text-red-400" />;
       default: return null;
     }
   };
 
   const getTrendColor = () => {
     switch (trend) {
-      case 'up': return 'text-success';
-      case 'down': return 'text-error';
-      default: return 'text-muted-foreground';
+      case 'up': return 'text-green-400';
+      case 'down': return 'text-red-400';
+      default: return 'text-zinc-400';
     }
   };
 
   return (
-    <Card className="transition-all duration-200 hover:shadow-lg bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={`h-4 w-4 ${color}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+    <DarkModeCard variant="elevated" compact>
+      <DarkModeCardHeader>
+        <div className="flex items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+          <Icon className={`h-4 w-4 ${color}`} />
+        </div>
+      </DarkModeCardHeader>
+      <DarkModeCardContent>
+        <div className="text-2xl font-bold text-foreground">{value}</div>
         {change !== undefined && (
-          <div className={`flex items-center gap-1 text-xs ${getTrendColor()}`}>
+          <div className={`flex items-center gap-1 text-xs mt-1 ${getTrendColor()}`}>
             {getTrendIcon()}
             <span>{change > 0 ? '+' : ''}{change}%</span>
-            {changeLabel && <span className="text-muted-foreground">from {changeLabel}</span>}
+            {changeLabel && <span className="text-zinc-400">from {changeLabel}</span>}
           </div>
         )}
         {progress !== undefined && (
           <div className="mt-3">
             <Progress value={progress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-1">{progress}% complete</p>
+            <p className="text-xs text-zinc-400 mt-1">{progress}% complete</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </DarkModeCardContent>
+    </DarkModeCard>
   );
 };
 
@@ -79,7 +83,7 @@ const DashboardMetrics = () => {
       change: 15.8,
       changeLabel: 'last month',
       icon: Target,
-      color: 'text-info',
+      color: 'text-blue-400',
       trend: 'up' as const
     },
     {
@@ -88,7 +92,7 @@ const DashboardMetrics = () => {
       change: 8.2,
       changeLabel: 'last quarter',
       icon: Users,
-      color: 'text-success',
+      color: 'text-green-400',
       trend: 'up' as const
     },
     {
@@ -97,7 +101,7 @@ const DashboardMetrics = () => {
       change: -5.4,
       changeLabel: 'last month',
       icon: DollarSign,
-      color: 'text-primary',
+      color: 'text-blue-500',
       progress: 78,
       trend: 'down' as const
     },
@@ -107,7 +111,7 @@ const DashboardMetrics = () => {
       change: -12.3,
       changeLabel: 'last quarter',
       icon: Clock,
-      color: 'text-warning',
+      color: 'text-amber-400',
       trend: 'up' as const
     },
     {
@@ -116,7 +120,7 @@ const DashboardMetrics = () => {
       change: 25.0,
       changeLabel: 'last month',
       icon: CheckCircle,
-      color: 'text-success',
+      color: 'text-green-400',
       trend: 'up' as const
     },
     {
@@ -125,7 +129,7 @@ const DashboardMetrics = () => {
       change: 0,
       changeLabel: 'this week',
       icon: Calendar,
-      color: 'text-error',
+      color: 'text-red-400',
       trend: 'neutral' as const
     }
   ];
@@ -135,7 +139,7 @@ const DashboardMetrics = () => {
       label: 'Project Success Rate',
       value: 94,
       target: 95,
-      status: 'good'
+      status: 'success'
     },
     {
       label: 'On-Time Delivery',
@@ -147,31 +151,31 @@ const DashboardMetrics = () => {
       label: 'Budget Adherence',
       value: 92,
       target: 85,
-      status: 'excellent'
+      status: 'success'
     },
     {
       label: 'Client Satisfaction',
       value: 4.8,
       target: 4.5,
-      status: 'excellent',
+      status: 'success',
       isRating: true
     }
   ];
 
-  const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+  const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
     switch (status) {
-      case 'excellent': return 'success';
-      case 'good': return 'info';
+      case 'success': return 'success';
       case 'warning': return 'warning';
-      case 'danger': return 'error';
-      default: return 'default';
+      case 'error': return 'error';
+      case 'info': return 'info';
+      default: return 'neutral';
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {metrics.map((metric, index) => (
           <MetricCard
             key={index}
@@ -188,33 +192,33 @@ const DashboardMetrics = () => {
       </div>
 
       {/* Performance Indicators */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <DarkModeCard variant="elevated">
+        <DarkModeCardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <TrendingUp className="h-5 w-5" />
             Performance Indicators
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-zinc-400">
             Key performance metrics across all projects
           </CardDescription>
-        </CardHeader>
-        <CardContent>
+        </DarkModeCardHeader>
+        <DarkModeCardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {performanceIndicators.map((indicator, index) => (
               <div key={index} className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{indicator.label}</span>
-                  <StatusBadge variant={getStatusBadgeVariant(indicator.status)}>
+                  <span className="text-sm font-medium text-foreground">{indicator.label}</span>
+                  <DarkModeBadge variant={getStatusBadgeVariant(indicator.status)} compact>
                     {indicator.status}
-                  </StatusBadge>
+                  </DarkModeBadge>
                 </div>
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">
+                    <span className="text-2xl font-bold text-foreground">
                       {indicator.isRating ? `${indicator.value}/5` : `${indicator.value}%`}
                     </span>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-zinc-400">
                       Target: {indicator.isRating ? `${indicator.target}/5` : `${indicator.target}%`}
                     </span>
                   </div>
@@ -233,10 +237,10 @@ const DashboardMetrics = () => {
                           key={star}
                           className={`w-4 h-4 rounded-full ${
                             star <= Math.floor(indicator.value)
-                              ? 'bg-warning'
+                              ? 'bg-amber-500'
                               : star <= indicator.value
-                              ? 'bg-warning/50'
-                              : 'bg-muted'
+                              ? 'bg-amber-500/50'
+                              : 'bg-zinc-700'
                           }`}
                         />
                       ))}
@@ -246,27 +250,27 @@ const DashboardMetrics = () => {
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </DarkModeCardContent>
+      </DarkModeCard>
 
       {/* Quick Actions */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
+      <DarkModeCard variant="elevated">
+        <DarkModeCardHeader>
+          <CardTitle className="text-foreground">Quick Actions</CardTitle>
+          <CardDescription className="text-zinc-400">
             Frequently used actions and shortcuts
           </CardDescription>
-        </CardHeader>
-        <CardContent>
+        </DarkModeCardHeader>
+        <DarkModeCardContent>
           <div className="flex flex-wrap gap-2">
-            <StatusBadge variant="default">Export Reports</StatusBadge>
-            <StatusBadge variant="default">Schedule Review</StatusBadge>
-            <StatusBadge variant="default">Update Resources</StatusBadge>
-            <StatusBadge variant="default">View Analytics</StatusBadge>
-            <StatusBadge variant="default">Send Updates</StatusBadge>
+            <DarkModeBadge variant="neutral" compact>Export Reports</DarkModeBadge>
+            <DarkModeBadge variant="neutral" compact>Schedule Review</DarkModeBadge>
+            <DarkModeBadge variant="neutral" compact>Update Resources</DarkModeBadge>
+            <DarkModeBadge variant="neutral" compact>View Analytics</DarkModeBadge>
+            <DarkModeBadge variant="neutral" compact>Send Updates</DarkModeBadge>
           </div>
-        </CardContent>
-      </Card>
+        </DarkModeCardContent>
+      </DarkModeCard>
     </div>
   );
 };
