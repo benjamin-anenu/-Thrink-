@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationHeader } from './NotificationHeader';
 import { NotificationFilters } from './NotificationFilters';
+// Fixed import to use default export
 import NotificationList from './NotificationList';
 import { NotificationSettings } from './NotificationSettings';
 import BlackoutPeriodsManager from './BlackoutPeriodsManager';
