@@ -15,46 +15,123 @@ class OpenRouterAI {
   }
 
   async generateSQLQuery(userQuestion: string, conversationHistory: any[] = []): Promise<{ sql: string, queryType: string }> {
-    const databaseSchema = `
-    Database Schema:
-    - projects: id, name, description, status, priority, start_date, end_date, progress, workspace_id
-    - project_tasks: id, name, description, status, priority, assignee_id, start_date, end_date, progress, project_id, milestone_id
-    - resources: id, name, email, role, department, workspace_id
-    - milestones: id, name, description, due_date, progress, project_id, status
-    - performance_metrics: id, resource_id, type, value, timestamp, workspace_id, description
-    - performance_profiles: id, resource_id, resource_name, current_score, monthly_score, trend, risk_level, workspace_id
-    - project_issues: id, title, description, status, priority, severity, project_id, created_by, assignee_id
-    - client_satisfaction: id, client_name, satisfaction_score, survey_date, project_id, workspace_id
-    - project_budgets: id, project_id, budget_category, allocated_amount, spent_amount, currency
-    - calendar_events: id, title, start_date, end_date, project_id, task_id, workspace_id
-    `;
-
-    const contextPrompt = conversationHistory.length > 0 
-      ? `Previous conversation context: ${conversationHistory.slice(-3).map(h => `${h.message_role}: ${h.message_content}`).join('\n')}`
+    const conversationContext = conversationHistory.length > 0 
+      ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-3).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
 
-    const prompt = `You are a SQL query generator. Convert the following natural language question into a SQL query.
+    const prompt = `You are an expert SQL assistant for a project management platform. 
+Your job is to convert user requests into safe, correct SQL queries for a PostgreSQL database. 
+Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, or ALTER statements.
 
-${databaseSchema}
+## Database Schema
 
-${contextPrompt}
+### projects
+- id (UUID, primary key)
+- name (TEXT)
+- description (TEXT)
+- status (TEXT: 'Planning', 'In Progress', 'Completed', 'On Hold')
+- priority (TEXT: 'Low', 'Medium', 'High', 'Critical')
+- workspace_id (UUID)
+- start_date (DATE)
+- end_date (DATE)
+- progress (INTEGER 0-100)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+- resources (UUID[])
 
-User Question: "${userQuestion}"
+### project_tasks
+- id (UUID, primary key)
+- name (TEXT)
+- description (TEXT)
+- start_date (DATE)
+- end_date (DATE)
+- status (TEXT: 'Not Started', 'In Progress', 'Completed', 'Blocked')
+- priority (TEXT: 'Low', 'Medium', 'High', 'Critical')
+- progress (INTEGER 0-100)
+- project_id (UUID, foreign key to projects)
+- assignee_id (UUID, foreign key to resources)
+- milestone_id (UUID, foreign key to milestones)
+- dependencies (TEXT[])
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
 
-Rules:
-1. Only use tables and columns from the schema above
-2. Always filter by workspace_id when querying main tables
-3. Use proper JOINs for related data
-4. Return SELECT queries only
-5. Limit results to 50 for performance
-6. Use appropriate WHERE clauses for date/time filters
+### resources
+- id (UUID, primary key)
+- name (TEXT)
+- email (TEXT)
+- role (TEXT)
+- department (TEXT)
+- skills (TEXT[])
+- workspace_id (UUID)
+- availability_hours (INTEGER)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
 
-Return JSON with: {"sql": "your_sql_query", "queryType": "descriptive_name"}
+### milestones
+- id (UUID, primary key)
+- name (TEXT)
+- description (TEXT)
+- due_date (DATE)
+- project_id (UUID, foreign key to projects)
+- status (TEXT: 'Upcoming', 'In Progress', 'Completed', 'Overdue')
+- progress (INTEGER 0-100)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
 
-Examples:
-- "Show me my projects" -> {"sql": "SELECT * FROM projects WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 50", "queryType": "projects_list"}
-- "Team performance this month" -> {"sql": "SELECT pm.*, r.name as resource_name FROM performance_metrics pm JOIN resources r ON pm.resource_id = r.id WHERE pm.workspace_id = $1 AND pm.timestamp >= date_trunc('month', CURRENT_DATE) LIMIT 50", "queryType": "performance_metrics"}
-`;
+### performance_profiles
+- id (UUID, primary key)
+- resource_id (UUID, foreign key to resources)
+- resource_name (TEXT)
+- workspace_id (UUID)
+- current_score (NUMERIC)
+- monthly_score (NUMERIC)
+- trend (TEXT: 'improving', 'stable', 'declining')
+- risk_level (TEXT: 'low', 'medium', 'high')
+- strengths (TEXT[])
+- improvement_areas (TEXT[])
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+
+## Instructions
+
+- Only use the tables and columns listed above
+- Use parameterized values: $1 for workspace_id
+- If user asks for "today", use CURRENT_DATE
+- If user asks for "this month", use date functions to filter current month
+- Never return more than 50 rows unless user requests all results
+- Always include ORDER BY clause for consistent results
+- Use COUNT(*) for counting queries
+- Use aggregate functions (SUM, AVG, MAX, MIN) for summaries
+- For JOIN queries, use proper table aliases
+- Handle NULL values appropriately
+
+## Example Queries
+
+User: "Show me all projects in my workspace"
+Response: {
+  "sql": "SELECT id, name, status, priority, start_date, end_date, progress FROM projects WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 50",
+  "queryType": "projects_list"
+}
+
+User: "What tasks are due today?"
+Response: {
+  "sql": "SELECT pt.id, pt.name, pt.status, pt.end_date, r.name as assignee_name, p.name as project_name FROM project_tasks pt JOIN projects p ON pt.project_id = p.id LEFT JOIN resources r ON pt.assignee_id = r.id WHERE p.workspace_id = $1 AND DATE(pt.end_date) = CURRENT_DATE AND pt.status != 'Completed' ORDER BY pt.priority DESC, pt.end_date ASC LIMIT 50",
+  "queryType": "tasks_due_today"
+}
+
+User: "Team utilization this month"
+Response: {
+  "sql": "SELECT r.name as resource_name, r.role, r.department, pp.current_score, pp.monthly_score, pp.trend, pp.risk_level, COUNT(DISTINCT pt.id) as assigned_tasks, AVG(pt.progress) as avg_task_progress FROM resources r LEFT JOIN performance_profiles pp ON r.id = pp.resource_id AND pp.workspace_id = $1 LEFT JOIN project_tasks pt ON r.id = pt.assignee_id WHERE r.workspace_id = $1 GROUP BY r.id, r.name, r.role, r.department, pp.current_score, pp.monthly_score, pp.trend, pp.risk_level ORDER BY pp.current_score DESC LIMIT 50",
+  "queryType": "team_utilization_metrics"
+}
+
+User Question: "${userQuestion}"${conversationContext}
+
+Respond with only a JSON object in this exact format:
+{
+  "sql": "your SELECT query here with $1 as workspace_id parameter",
+  "queryType": "descriptive_name_for_query_type"
+}`;
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -100,28 +177,51 @@ Examples:
   }
 
   async generateConversationalResponse(userQuestion: string, queryResults: any, conversationHistory: any[] = []): Promise<string> {
-    const contextPrompt = conversationHistory.length > 0 
-      ? `Previous conversation: ${conversationHistory.slice(-3).map(h => `${h.message_role}: ${h.message_content}`).join('\n')}`
+    const conversationContext = conversationHistory.length > 0 
+      ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-3).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
 
-    const prompt = `You are Tink, a friendly and knowledgeable AI project management assistant. 
+    let prompt: string;
 
-${contextPrompt}
+    if (queryResults === null) {
+      // Chat mode: No database query, just conversation
+      prompt = `You are Tink, a helpful AI assistant specializing in project management and productivity. 
+You help users with analysis, planning, advice, and general questions about project management best practices.
 
-User asked: "${userQuestion}"
+User Question: "${userQuestion}"${conversationContext}
 
-Query results: ${JSON.stringify(queryResults, null, 2)}
+Instructions:
+- Be conversational, friendly, and helpful
+- Provide expert advice on project management topics
+- Offer actionable insights and recommendations
+- Help with planning, analysis, and decision-making
+- If the user asks for specific data, suggest they switch to Agent mode for database queries
+- Keep responses informative but not overly long
+- End with helpful suggestions when appropriate
 
-Generate a natural, conversational response that:
-1. Addresses the user's question directly
-2. Presents the data in an easy-to-understand format
-3. Offers insights or observations about the data
-4. Asks relevant follow-up questions when appropriate
-5. Uses a friendly, professional tone
-6. Keeps the response concise but informative
+Respond as Tink:`;
+    } else {
+      // Agent mode: Use database results
+      const dataContext = queryResults && queryResults.length > 0 
+        ? `\n\nQuery Results:\n${JSON.stringify(queryResults, null, 2)}`
+        : '\n\nNo data was found for this query.';
 
-If there's no data or an error occurred, politely explain and offer alternative ways to help.
-`;
+      prompt = `You are Tink, a helpful AI assistant for project management. 
+Respond to the user's question in a conversational, friendly way using the provided data.
+
+User Question: "${userQuestion}"${dataContext}${conversationContext}
+
+Instructions:
+- Be conversational and helpful
+- Use the query results to provide specific, actionable insights
+- If no data is found, explain what might be the reason and suggest alternatives
+- Keep responses concise but informative
+- Use bullet points or formatting to make information easy to read
+- Include relevant numbers and metrics from the data
+- End with a helpful suggestion or follow-up question when appropriate
+
+Respond as Tink:`;
+    }
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -160,46 +260,56 @@ If there's no data or an error occurred, politely explain and offer alternative 
 class TinkQueryEngine {
   constructor(private supabase: any, private userId: string, private workspaceId: string, private openRouter: OpenRouterAI) {}
 
-  async processNaturalLanguageQuery(userQuestion: string, conversationHistory: any[] = []): Promise<any> {
-    console.log(`Processing natural language query: ${userQuestion}`);
+  async processNaturalLanguageQuery(userQuestion: string, conversationHistory: any[] = [], mode: string = 'agent'): Promise<any> {
+    console.log(`Processing natural language query: ${userQuestion} (mode: ${mode})`);
     
     try {
-      // Step 1: Generate SQL using OpenRouter
-      const { sql, queryType } = await this.openRouter.generateSQLQuery(userQuestion, conversationHistory);
-      
-      if (!sql || sql.trim() === '') {
+      if (mode === 'chat') {
+        // Chat mode: Use OpenRouter for conversational responses only
+        const conversationalResponse = await this.openRouter.generateConversationalResponse(
+          userQuestion, 
+          null, // No query results in chat mode
+          conversationHistory
+        );
+        
         return {
-          type: 'error',
-          message: "I couldn't understand how to query that data. Could you try rephrasing your question?",
-          error: 'SQL generation failed'
+          message: conversationalResponse,
+          queryType: 'conversation',
+          sql: null,
+          results: null,
+          success: true,
+          mode: 'chat'
+        };
+      } else {
+        // Agent mode: Generate SQL and execute queries
+        const { sql, queryType } = await this.openRouter.generateSQLQuery(userQuestion, conversationHistory);
+        console.log(`Generated SQL (${queryType}): ${sql}`);
+        
+        // Execute the SQL query
+        const queryResults = await this.executeSQLQuery(sql, queryType);
+        
+        // Generate conversational response with data
+        const conversationalResponse = await this.openRouter.generateConversationalResponse(
+          userQuestion, 
+          queryResults.data, 
+          conversationHistory
+        );
+        
+        return {
+          message: conversationalResponse,
+          queryType,
+          sql,
+          results: queryResults.data,
+          success: true,
+          mode: 'agent'
         };
       }
-
-      console.log(`Generated SQL (${queryType}):`, sql);
-
-      // Step 2: Execute the generated SQL
-      const queryResult = await this.executeSQLQuery(sql, queryType);
-      
-      // Step 3: Generate conversational response
-      const conversationalResponse = await this.openRouter.generateConversationalResponse(
-        userQuestion, 
-        queryResult, 
-        conversationHistory
-      );
-
-      return {
-        type: queryType,
-        data: queryResult.data,
-        message: conversationalResponse,
-        sql: sql, // For debugging
-        count: queryResult.count || 0
-      };
     } catch (error) {
-      console.error('Natural language query processing error:', error);
+      console.error('Error processing natural language query:', error);
       return {
-        type: 'error',
-        message: "I encountered an issue processing your request. Let me try to help you in another way.",
-        error: error.message
+        message: "I apologize, but I encountered an error while processing your request. Could you please rephrase your question or try asking something different?",
+        error: error.message,
+        success: false
       };
     }
   }
@@ -507,7 +617,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { message, userId, workspaceId } = await req.json();
+    const { message, userId, workspaceId, mode = 'agent' } = await req.json();
 
     if (!message || !userId || !workspaceId) {
       return new Response(
@@ -519,7 +629,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing message:', message, 'for user:', userId, 'in workspace:', workspaceId);
+    console.log(`Processing message: ${message} for user: ${userId} in workspace: ${workspaceId} (mode: ${mode})`);
 
     // Initialize OpenRouter AI and query engine
     const openRouter = new OpenRouterAI(openRouterApiKey);
@@ -538,7 +648,8 @@ serve(async (req) => {
     // Process the query using OpenRouter intelligence
     const queryResult = await queryEngine.processNaturalLanguageQuery(
       message, 
-      conversationHistory?.reverse() || []
+      conversationHistory?.reverse() || [],
+      mode
     );
 
     const assistantMessage = queryResult.message || "I'm having trouble generating a response right now. Could you try rephrasing your question?";

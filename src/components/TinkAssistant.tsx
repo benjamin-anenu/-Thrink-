@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Send, Bold, Italic, List, Code, Type } from 'lucide-react';
+import { X, Send, Bold, Italic, List, Code, Database, MessageCircle } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -15,6 +14,8 @@ interface TinkMessage {
   isLoading?: boolean;
 }
 
+type ChatMode = 'agent' | 'chat';
+
 const TinkAssistant = () => {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -24,7 +25,8 @@ const TinkAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-
+  const [chatMode, setChatMode] = useState<ChatMode>('agent');
+  
   // Text formatting states
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
@@ -77,7 +79,7 @@ const TinkAssistant = () => {
     const typingMessage: TinkMessage = {
       id: 'typing',
       type: 'tink',
-      content: 'Analyzing your data...',
+      content: chatMode === 'agent' ? 'Analyzing your data...' : 'Thinking...',
       timestamp: new Date(),
       isLoading: true
     };
@@ -88,7 +90,8 @@ const TinkAssistant = () => {
         body: {
           message: inputValue,
           userId: userId,
-          workspaceId: currentWorkspace.id
+          workspaceId: currentWorkspace.id,
+          mode: chatMode
         }
       });
 
@@ -185,19 +188,42 @@ const TinkAssistant = () => {
                 <div>
                   <h3 className="font-semibold text-foreground">Tink AI</h3>
                   <p className="text-xs text-muted-foreground">
-                    {isTyping ? 'Analyzing...' : 'AI Assistant'}
+                    {chatMode === 'agent' ? 'SQL-powered data queries' : 'AI conversation & analysis'}
                   </p>
                 </div>
               </div>
               
-              <Button
-                onClick={() => setIsOpen(false)}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Mode Toggle */}
+                <div className="flex items-center gap-1 bg-background/50 rounded-lg p-1">
+                  <Button
+                    variant={chatMode === 'agent' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setChatMode('agent')}
+                    className="h-8 px-3 text-xs"
+                  >
+                    <Database className="w-3 h-3 mr-1" />
+                    Agent
+                  </Button>
+                  <Button
+                    variant={chatMode === 'chat' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setChatMode('chat')}
+                    className="h-8 px-3 text-xs"
+                  >
+                    <MessageCircle className="w-3 h-3 mr-1" />
+                    Chat
+                  </Button>
+                </div>
+                <Button
+                  onClick={() => setIsOpen(false)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Messages Container - Fixed scrolling issues */}
@@ -227,7 +253,9 @@ const TinkAssistant = () => {
                           <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                           <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                         </div>
-                        <span className="text-xs opacity-70">Analyzing your data...</span>
+                        <span className="text-xs opacity-70">
+                          {chatMode === 'agent' ? 'Analyzing your data...' : 'Thinking...'}
+                        </span>
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{message.content}</div>
@@ -240,23 +268,79 @@ const TinkAssistant = () => {
             {/* Quick Actions */}
             <div className="px-4 py-2 border-t border-border/50">
               <div className="flex gap-2 flex-wrap">
-                {[
-                  { label: '📊 Analytics', action: 'Show me project performance analytics' },
-                  { label: '⏰ Deadlines', action: 'What are our upcoming deadlines?' },
-                  { label: '👥 Team', action: 'Show me team utilization data' }
-                ].map((btn, index) => (
-                  <Button 
-                    key={index}
-                    variant="outline" 
-                    size="sm" 
-                    className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
-                             hover:bg-primary/5 hover:border-primary/30 hover:text-primary
-                             transition-all duration-200"
-                    onClick={() => setInputValue(btn.action)}
-                  >
-                    {btn.label}
-                  </Button>
-                ))}
+                {chatMode === 'agent' ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
+                                hover:bg-primary/5 hover:border-primary/30 hover:text-primary
+                                transition-all duration-200"
+                      onClick={() => setInputValue("What's our team utilization this month?")}
+                    >
+                      <Database className="w-3 h-3 mr-1" />
+                      Team Utilization
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
+                                hover:bg-primary/5 hover:border-primary/30 hover:text-primary
+                                transition-all duration-200"
+                      onClick={() => setInputValue("What are our upcoming deadlines?")}
+                    >
+                      <Database className="w-3 h-3 mr-1" />
+                      Deadlines
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
+                                hover:bg-primary/5 hover:border-primary/30 hover:text-primary
+                                transition-all duration-200"
+                      onClick={() => setInputValue("Show me project performance analytics")}
+                    >
+                      <Database className="w-3 h-3 mr-1" />
+                      Performance
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
+                                hover:bg-primary/5 hover:border-primary/30 hover:text-primary
+                                transition-all duration-200"
+                      onClick={() => setInputValue("Analyze our current project risks")}
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" />
+                      Risk Analysis
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
+                                hover:bg-primary/5 hover:border-primary/30 hover:text-primary
+                                transition-all duration-200"
+                      onClick={() => setInputValue("Suggest improvements for team productivity")}
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" />
+                      Improvements
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs px-3 py-1.5 h-7 rounded-full border-border/50
+                                hover:bg-primary/5 hover:border-primary/30 hover:text-primary
+                                transition-all duration-200"
+                      onClick={() => setInputValue("Help me write a project status report")}
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" />
+                      Report Help
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             
@@ -303,7 +387,11 @@ const TinkAssistant = () => {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  placeholder="Ask about performance, deadlines, or resources..."
+                  placeholder={
+                    chatMode === 'agent' 
+                      ? "Ask me about your data: projects, tasks, performance..." 
+                      : "Chat with me about your project needs..."
+                  }
                   className="flex-1 min-h-[60px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
                            rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 
                            focus:border-primary/50 transition-all duration-200 resize-none
