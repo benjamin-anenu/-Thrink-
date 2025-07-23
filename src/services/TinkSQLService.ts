@@ -143,7 +143,7 @@ Return ONLY the SQL query, nothing else:`;
       const processedSQL = sqlQuery.replace(/\$1/g, `'${workspaceId}'`);
       
       const { data, error } = await supabase.rpc('execute_sql', { 
-        sql_query: processedSQL 
+        query: processedSQL 
       });
 
       if (error) {
