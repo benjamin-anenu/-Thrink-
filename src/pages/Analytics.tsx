@@ -85,7 +85,7 @@ const Analytics = () => {
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground w-full overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-8 h-12">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
