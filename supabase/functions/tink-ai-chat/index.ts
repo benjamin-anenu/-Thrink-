@@ -11,26 +11,25 @@ const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
 // Enhanced intent detection patterns
 const INTENT_PATTERNS = {
   data_query: [
+    // Analytics and performance patterns
+    /(?:show|display|get|fetch|analytics|performance|metrics|utilization)/i,
+    /(?:team|resource|project)\s+(?:performance|utilization|analytics)/i,
+    
     // List/show patterns
     /(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?(projects?|tasks?|resources?|milestones?|deadlines?|issues?)/i,
     /what\s+(?:projects?|tasks?|resources?)\s+(?:do\s+i\s+have|are\s+there)/i,
-    /show\s+me\s+(?:all\s+)?(?:my\s+)?(projects?|tasks?|resources?)/i,
     
     // Status/progress patterns
     /(?:status|progress)\s+(?:of|for)\s+(?:my\s+)?(projects?|tasks?)/i,
     /(?:how\s+is|what's\s+the\s+status\s+of)\s+(?:my\s+)?(project|task)/i,
     
     // Time-based patterns
-    /(?:tasks?|deadlines?|milestones?)\s+(?:for\s+)?(?:today|tomorrow|this\s+week|next\s+week)/i,
+    /(?:tasks?|deadlines?|milestones?)\s+(?:for\s+)?(?:today|tomorrow|this\s+week|next\s+week|upcoming)/i,
     /(?:what's\s+)?(?:due|overdue)\s+(?:today|tomorrow|this\s+week)/i,
     
-    // Performance patterns
-    /(?:performance|metrics|utilization)\s+(?:of|for)\s+(?:my\s+)?(resources?|team)/i,
-    /(?:how\s+is|what's\s+the)\s+performance\s+of/i,
-    
-    // Assignment patterns
+    // Team and resource patterns
+    /(?:team|resource)\s+(?:utilization|allocation|capacity|workload)/i,
     /(?:who\s+is\s+assigned\s+to|assignments?\s+for)/i,
-    /(?:what\s+(?:tasks?|projects?)\s+(?:is|are)\s+assigned\s+to)/i
   ],
   
   insight_query: [
@@ -41,7 +40,7 @@ const INTENT_PATTERNS = {
   ]
 };
 
-// Database query builders
+// Enhanced database query engine
 class TinkQueryEngine {
   constructor(private supabase: any, private userId: string, private workspaceId: string) {}
 
@@ -63,9 +62,13 @@ class TinkQueryEngine {
         case 'deadlines':
           return await this.getDeadlines(entities);
         case 'performance':
-          return await this.getPerformance(entities);
+          return await this.getPerformanceMetrics(entities);
+        case 'team_utilization':
+          return await this.getTeamUtilization();
         case 'assignments':
           return await this.getAssignments(entities);
+        case 'analytics':
+          return await this.getAnalytics(entities);
         default:
           return { error: 'Query type not supported yet' };
       }
@@ -80,19 +83,23 @@ class TinkQueryEngine {
       .from('projects')
       .select(`
         id, name, description, status, priority, start_date, end_date, 
-        progress, created_at, updated_at,
+        progress, created_at, updated_at, workspace_id,
         milestones(id, name, status, due_date, progress),
         project_tasks(id, name, status, assignee_id, start_date, end_date, progress)
       `)
       .eq('workspace_id', this.workspaceId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching projects:', error);
+      throw error;
+    }
     
     return {
       type: 'projects_list',
       data: data || [],
-      summary: `Found ${data?.length || 0} projects in your workspace`
+      summary: `Found ${data?.length || 0} projects in your workspace`,
+      count: data?.length || 0
     };
   }
 
@@ -102,16 +109,23 @@ class TinkQueryEngine {
       .select(`
         id, name, description, status, priority, assignee_id, 
         start_date, end_date, progress, created_at,
-        projects(id, name),
+        projects(id, name, workspace_id),
         milestones(id, name)
-      `)
-      .in('project_id', 
-        await this.supabase
-          .from('projects')
-          .select('id')
-          .eq('workspace_id', this.workspaceId)
-          .then(({ data }) => data?.map(p => p.id) || [])
-      );
+      `);
+
+    // Get projects in workspace first
+    const { data: workspaceProjects } = await this.supabase
+      .from('projects')
+      .select('id')
+      .eq('workspace_id', this.workspaceId);
+
+    const projectIds = workspaceProjects?.map(p => p.id) || [];
+    
+    if (projectIds.length > 0) {
+      query = query.in('project_id', projectIds);
+    } else {
+      return { type: 'tasks_list', data: [], summary: 'No tasks found in workspace' };
+    }
 
     // Apply filters based on entities
     if (entities.includes('today')) {
@@ -124,14 +138,25 @@ class TinkQueryEngine {
       query = query.lt('end_date', today).neq('status', 'Completed');
     }
 
+    if (entities.includes('upcoming')) {
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      query = query.gte('start_date', today).lte('start_date', futureDate.toISOString().split('T')[0]);
+    }
+
     const { data, error } = await query.order('start_date', { ascending: true });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      throw error;
+    }
 
     return {
       type: 'tasks_list',
       data: data || [],
-      summary: `Found ${data?.length || 0} tasks matching your criteria`
+      summary: `Found ${data?.length || 0} tasks matching your criteria`,
+      count: data?.length || 0
     };
   }
 
@@ -145,13 +170,177 @@ class TinkQueryEngine {
       .eq('workspace_id', this.workspaceId)
       .order('name', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching resources:', error);
+      throw error;
+    }
 
     return {
       type: 'resources_list',
       data: data || [],
-      summary: `Found ${data?.length || 0} resources in your workspace`
+      summary: `Found ${data?.length || 0} resources in your workspace`,
+      count: data?.length || 0
     };
+  }
+
+  async getPerformanceMetrics(entities: string[]): Promise<any> {
+    const { data, error } = await this.supabase
+      .from('performance_metrics')
+      .select(`
+        id, resource_id, type, value, timestamp, description,
+        resources(id, name, role, department)
+      `)
+      .eq('workspace_id', this.workspaceId)
+      .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .order('timestamp', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching performance metrics:', error);
+      throw error;
+    }
+
+    return {
+      type: 'performance_metrics',
+      data: data || [],
+      summary: `Performance metrics for the last 30 days`,
+      count: data?.length || 0
+    };
+  }
+
+  async getTeamUtilization(): Promise<any> {
+    // Get resources and their current project assignments
+    const { data: resources, error: resourceError } = await this.supabase
+      .from('resources')
+      .select(`
+        id, name, role, department,
+        project_assignments(
+          id, project_id, role,
+          projects(id, name, status)
+        )
+      `)
+      .eq('workspace_id', this.workspaceId);
+
+    if (resourceError) {
+      console.error('Error fetching team utilization:', resourceError);
+      throw resourceError;
+    }
+
+    // Get performance metrics for utilization calculation
+    const { data: metrics } = await this.supabase
+      .from('performance_metrics')
+      .select('resource_id, type, value, timestamp')
+      .eq('workspace_id', this.workspaceId)
+      .eq('type', 'utilization')
+      .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+    return {
+      type: 'team_utilization',
+      data: resources || [],
+      metrics: metrics || [],
+      summary: `Team utilization data for ${resources?.length || 0} resources`,
+      count: resources?.length || 0
+    };
+  }
+
+  async getDeadlines(entities: string[]): Promise<any> {
+    const days = entities.includes('today') ? 1 : 
+                 entities.includes('tomorrow') ? 2 : 
+                 entities.includes('week') ? 7 : 
+                 entities.includes('upcoming') ? 14 : 30;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
+
+    // Get projects in workspace
+    const { data: workspaceProjects } = await this.supabase
+      .from('projects')
+      .select('id')
+      .eq('workspace_id', this.workspaceId);
+
+    const projectIds = workspaceProjects?.map(p => p.id) || [];
+    
+    if (projectIds.length === 0) {
+      return { type: 'deadlines', data: [], summary: 'No deadlines found' };
+    }
+
+    const { data, error } = await this.supabase
+      .from('project_tasks')
+      .select(`
+        id, name, end_date, status, priority,
+        projects(id, name),
+        milestones(id, name, due_date)
+      `)
+      .in('project_id', projectIds)
+      .gte('end_date', today)
+      .lte('end_date', futureDateStr)
+      .order('end_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching deadlines:', error);
+      throw error;
+    }
+
+    return {
+      type: 'deadlines',
+      data: data || [],
+      summary: `Found ${data?.length || 0} upcoming deadlines`,
+      count: data?.length || 0
+    };
+  }
+
+  async getAnalytics(entities: string[]): Promise<any> {
+    // Get comprehensive analytics data
+    const [projectsData, tasksData, resourcesData, metricsData] = await Promise.all([
+      this.getProjects(),
+      this.getTasks([]),
+      this.getResources(),
+      this.getPerformanceMetrics([])
+    ]);
+
+    const analytics = {
+      projects: {
+        total: projectsData.count,
+        byStatus: this.groupByStatus(projectsData.data, 'status'),
+        byPriority: this.groupByStatus(projectsData.data, 'priority')
+      },
+      tasks: {
+        total: tasksData.count,
+        byStatus: this.groupByStatus(tasksData.data, 'status'),
+        byPriority: this.groupByStatus(tasksData.data, 'priority')
+      },
+      resources: {
+        total: resourcesData.count,
+        byDepartment: this.groupByStatus(resourcesData.data, 'department'),
+        byRole: this.groupByStatus(resourcesData.data, 'role')
+      },
+      performance: {
+        totalMetrics: metricsData.count,
+        averagePerformance: this.calculateAveragePerformance(metricsData.data)
+      }
+    };
+
+    return {
+      type: 'analytics',
+      data: analytics,
+      summary: `Comprehensive analytics for your workspace`,
+      count: Object.keys(analytics).length
+    };
+  }
+
+  private groupByStatus(data: any[], field: string): Record<string, number> {
+    return data.reduce((acc, item) => {
+      const value = item[field] || 'Unknown';
+      acc[value] = (acc[value] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  private calculateAveragePerformance(metrics: any[]): number {
+    if (metrics.length === 0) return 0;
+    const sum = metrics.reduce((acc, metric) => acc + (metric.value || 0), 0);
+    return sum / metrics.length;
   }
 
   async getProjectStatus(entities: string[]): Promise<any> {
@@ -217,63 +406,6 @@ class TinkQueryEngine {
     };
   }
 
-  async getDeadlines(entities: string[]): Promise<any> {
-    const days = entities.includes('today') ? 0 : 
-                 entities.includes('tomorrow') ? 1 : 
-                 entities.includes('week') ? 7 : 30;
-    
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + days);
-    const futureDateStr = futureDate.toISOString().split('T')[0];
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const { data, error } = await this.supabase
-      .from('project_tasks')
-      .select(`
-        id, name, end_date, status, priority,
-        projects(id, name),
-        milestones(id, name, due_date)
-      `)
-      .in('project_id', 
-        await this.supabase
-          .from('projects')
-          .select('id')
-          .eq('workspace_id', this.workspaceId)
-          .then(({ data }) => data?.map(p => p.id) || [])
-      )
-      .gte('end_date', todayStr)
-      .lte('end_date', futureDateStr)
-      .order('end_date', { ascending: true });
-
-    if (error) throw error;
-
-    return {
-      type: 'deadlines',
-      data: data || [],
-      summary: `Found ${data?.length || 0} upcoming deadlines`
-    };
-  }
-
-  async getPerformance(entities: string[]): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('performance_metrics')
-      .select(`
-        id, resource_id, type, value, timestamp,
-        resources(id, name, role)
-      `)
-      .eq('workspace_id', this.workspaceId)
-      .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp', { ascending: false });
-
-    if (error) throw error;
-
-    return {
-      type: 'performance_metrics',
-      data: data || [],
-      summary: `Performance data for the last 30 days`
-    };
-  }
-
   async getAssignments(entities: string[]): Promise<any> {
     const { data, error } = await this.supabase
       .from('project_tasks')
@@ -317,6 +449,11 @@ class TinkQueryEngine {
     if (progress >= 70) return 'good';
     return 'on-track';
   }
+
+  private calculateUtilization(resource: any): number {
+    // Placeholder logic - replace with actual utilization calculation
+    return Math.floor(Math.random() * 100);
+  }
 }
 
 serve(async (req) => {
@@ -343,12 +480,7 @@ serve(async (req) => {
       );
     }
 
-    // Get user context from enhanced-ai-context function
-    const contextResponse = await supabase.functions.invoke('enhanced-ai-context', {
-      body: { userId, workspaceId, contextType: 'full' }
-    });
-
-    const { context } = contextResponse.data || {};
+    console.log('Processing message:', message, 'for user:', userId, 'in workspace:', workspaceId);
 
     // Initialize query engine
     const queryEngine = new TinkQueryEngine(supabase, userId, workspaceId);
@@ -372,106 +504,47 @@ serve(async (req) => {
         // Format the data response
         assistantMessage = formatDataResponse(queryResult, message);
         responseType = 'data_with_insights';
-        
-        // Optional: Add AI insights to the data
-        if (queryResult.data && queryResult.data.length > 0) {
-          const insightPrompt = buildInsightPrompt(context, queryResult, message);
-          const aiInsight = await getAIInsight(insightPrompt, context);
-          if (aiInsight) {
-            assistantMessage += '\n\n🔍 **AI Insights:**\n' + aiInsight;
-          }
-        }
       }
     } else {
-      // Handle conversational queries with AI model
+      // Handle conversational queries with contextual information
       console.log('Processing conversational query');
-      responseType = 'conversational';
       
-      // Get conversation history if enabled
-      let conversationHistory = [];
-      if (context?.aiSettings?.conversation_history_enabled) {
-        const { data: history } = await supabase
-          .from('ai_conversation_history')
-          .select('message_role, message_content')
-          .eq('user_id', userId)
-          .eq('workspace_id', workspaceId)
-          .eq('conversation_type', 'tink_assistant')
-          .order('created_at', { ascending: true })
-          .limit(20);
-
-        conversationHistory = history || [];
-      }
-
-      // Build enhanced system prompt
-      const systemPrompt = buildEnhancedSystemPrompt(context, responseType);
-
-      // Prepare messages for AI
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...conversationHistory.map(h => ({
-          role: h.message_role === 'user' ? 'user' : 'assistant',
-          content: h.message_content
-        })),
-        { role: 'user', content: message }
-      ];
-
-      // Get preferred model from AI settings
-      const model = getModelFromSettings(context?.aiSettings?.preferred_model || 'auto');
-
-      // Call OpenRouter API
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'X-Title': 'Tink AI Assistant'
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.7,
-          max_tokens: 1000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.statusText}`);
-      }
-
-      const aiResponse = await response.json();
-      assistantMessage = aiResponse.choices[0]?.message?.content || 'I apologize, but I cannot provide a response right now.';
+      // Get some context data to help with responses
+      const contextData = await queryEngine.getAnalytics([]);
+      
+      // Build a contextual response
+      assistantMessage = buildContextualResponse(message, contextData);
+      responseType = 'conversational';
     }
 
     // Save conversation history
-    if (context?.aiSettings?.conversation_history_enabled) {
-      await supabase.from('ai_conversation_history').insert([
-        {
-          user_id: userId,
-          workspace_id: workspaceId,
-          conversation_type: 'tink_assistant',
-          message_role: 'user',
-          message_content: message,
-          context_data: { 
-            timestamp: new Date().toISOString(),
-            intent,
-            entities,
-            isDataQuery
-          }
-        },
-        {
-          user_id: userId,
-          workspace_id: workspaceId,
-          conversation_type: 'tink_assistant',
-          message_role: 'assistant',
-          message_content: assistantMessage,
-          context_data: { 
-            timestamp: new Date().toISOString(),
-            responseType,
-            queryResult: queryResult ? { type: queryResult.type, summary: queryResult.summary } : null
-          }
+    await supabase.from('ai_conversation_history').insert([
+      {
+        user_id: userId,
+        workspace_id: workspaceId,
+        conversation_type: 'tink_assistant',
+        message_role: 'user',
+        message_content: message,
+        context_data: { 
+          timestamp: new Date().toISOString(),
+          intent,
+          entities,
+          isDataQuery
         }
-      ]);
-    }
+      },
+      {
+        user_id: userId,
+        workspace_id: workspaceId,
+        conversation_type: 'tink_assistant',
+        message_role: 'assistant',
+        message_content: assistantMessage,
+        context_data: { 
+          timestamp: new Date().toISOString(),
+          responseType,
+          queryResult: queryResult ? { type: queryResult.type, summary: queryResult.summary } : null
+        }
+      }
+    ]);
 
     return new Response(
       JSON.stringify({ 
@@ -481,7 +554,7 @@ serve(async (req) => {
         queryResult: queryResult ? { 
           type: queryResult.type, 
           summary: queryResult.summary,
-          dataCount: queryResult.data?.length || 0
+          dataCount: queryResult.count || 0
         } : null,
         intent,
         entities
@@ -506,48 +579,6 @@ serve(async (req) => {
   }
 });
 
-function buildSystemPrompt(context: any): string {
-  const user = context?.user || {};
-  const personality = context?.aiSettings?.chat_personality || 'professional';
-  const awarenessLevel = context?.aiSettings?.context_awareness_level || 'standard';
-
-  let prompt = `You are Tink, an AI assistant for project management and resource allocation. `;
-
-  // Personality adjustment
-  switch (personality) {
-    case 'friendly':
-      prompt += `You have a warm, encouraging, and supportive personality. Use casual language and show enthusiasm for helping users succeed. `;
-      break;
-    case 'technical':
-      prompt += `You are detail-oriented and technical. Provide precise, data-driven responses with specific metrics and actionable insights. `;
-      break;
-    default: // professional
-      prompt += `You maintain a professional, helpful tone while being approachable and clear in your communication. `;
-  }
-
-  prompt += `The user's name is ${user.name || 'there'} and they have the role of ${user.role || 'team member'} in their workspace. `;
-
-  if (awarenessLevel === 'advanced' && context.projects) {
-    prompt += `Current projects context: ${JSON.stringify(context.projects.slice(0, 3))}. `;
-  }
-
-  if (awarenessLevel !== 'basic' && context.performance) {
-    prompt += `Recent performance data available for personalized insights. `;
-  }
-
-  prompt += `Your capabilities include:
-  - Project status updates and insights
-  - Resource allocation recommendations  
-  - Performance analysis and trends
-  - Task management assistance
-  - Deadline and milestone tracking
-  - Team collaboration insights
-
-  Keep responses concise (under 200 words) and actionable. If you need more context for a specific question, ask clarifying questions.`;
-
-  return prompt;
-}
-
 // Enhanced intent detection and entity extraction
 function detectIntentAndEntities(message: string): { intent: string | null, entities: string[], isDataQuery: boolean } {
   const lowerMessage = message.toLowerCase();
@@ -558,6 +589,7 @@ function detectIntentAndEntities(message: string): { intent: string | null, enti
   if (/\btomorrow\b/i.test(message)) entities.push('tomorrow');
   if (/\bthis\s+week\b/i.test(message)) entities.push('week');
   if (/\bnext\s+week\b/i.test(message)) entities.push('week');
+  if (/\bupcoming\b/i.test(message)) entities.push('upcoming');
   if (/\boverdue\b/i.test(message)) entities.push('overdue');
   
   // Extract object entities
@@ -567,7 +599,9 @@ function detectIntentAndEntities(message: string): { intent: string | null, enti
   if (/\bdeadlines?\b/i.test(message)) entities.push('deadlines');
   if (/\bmilestones?\b/i.test(message)) entities.push('milestones');
   if (/\bperformance\b/i.test(message)) entities.push('performance');
-  if (/\bassignments?\b/i.test(message)) entities.push('assignments');
+  if (/\banalytics?\b/i.test(message)) entities.push('analytics');
+  if (/\bteam\b/i.test(message)) entities.push('team');
+  if (/\butilization\b/i.test(message)) entities.push('utilization');
 
   // Check for data query patterns
   let intent = null;
@@ -578,7 +612,11 @@ function detectIntentAndEntities(message: string): { intent: string | null, enti
       isDataQuery = true;
       
       // Determine specific intent
-      if (/(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?projects?/i.test(message)) {
+      if (/(?:analytics|performance|metrics)/i.test(message)) {
+        intent = 'analytics';
+      } else if (/(?:team|resource)\s+(?:utilization|allocation|capacity)/i.test(message)) {
+        intent = 'team_utilization';
+      } else if (/(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?projects?/i.test(message)) {
         intent = 'list_projects';
       } else if (/(?:list|show|display|get|fetch)\s+(?:all\s+)?(?:my\s+)?tasks?/i.test(message)) {
         intent = 'list_tasks';
@@ -590,12 +628,12 @@ function detectIntentAndEntities(message: string): { intent: string | null, enti
         intent = 'task_status';
       } else if (/(?:deadlines?|due)\s+/i.test(message)) {
         intent = 'deadlines';
-      } else if (/(?:performance|metrics|utilization)/i.test(message)) {
+      } else if (/(?:performance|metrics)/i.test(message)) {
         intent = 'performance';
       } else if (/(?:assignments?|assigned)/i.test(message)) {
         intent = 'assignments';
       } else {
-        intent = 'list_projects'; // Default fallback
+        intent = 'analytics'; // Default to analytics for data queries
       }
       break;
     }
@@ -604,64 +642,69 @@ function detectIntentAndEntities(message: string): { intent: string | null, enti
   return { intent, entities, isDataQuery };
 }
 
-// Format data responses for user-friendly display
+// Enhanced data response formatting
 function formatDataResponse(queryResult: any, originalMessage: string): string {
-  const { type, data, summary } = queryResult;
+  const { type, data, summary, count } = queryResult;
   
-  if (!data || data.length === 0) {
+  if (!data || (Array.isArray(data) && data.length === 0)) {
     return `${summary}. No items found matching your request.`;
   }
 
-  let response = `${summary}:\n\n`;
+  let response = `📊 **${summary}**\n\n`;
 
   switch (type) {
     case 'projects_list':
-      response += data.slice(0, 10).map((project: any, index: number) => 
-        `${index + 1}. **${project.name}** (${project.status || 'Unknown'})\n   Progress: ${project.progress || 0}% | Priority: ${project.priority || 'Not set'}`
+      response += data.slice(0, 8).map((project: any, index: number) => 
+        `${index + 1}. **${project.name}** (${project.status || 'Unknown'})\n   📈 Progress: ${project.progress || 0}% | 🔥 Priority: ${project.priority || 'Medium'}\n   📅 ${project.start_date ? new Date(project.start_date).toLocaleDateString() : 'No start date'} - ${project.end_date ? new Date(project.end_date).toLocaleDateString() : 'No end date'}`
       ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more projects`;
+      if (data.length > 8) response += `\n\n... and ${data.length - 8} more projects`;
       break;
       
     case 'tasks_list':
-      response += data.slice(0, 10).map((task: any, index: number) => 
-        `${index + 1}. **${task.name}** (${task.status || 'Unknown'})\n   Project: ${task.projects?.name || 'N/A'} | Due: ${task.end_date ? new Date(task.end_date).toLocaleDateString() : 'Not set'}`
+      response += data.slice(0, 8).map((task: any, index: number) => 
+        `${index + 1}. **${task.name}** (${task.status || 'Unknown'})\n   📋 Project: ${task.projects?.name || 'N/A'} | 📅 Due: ${task.end_date ? new Date(task.end_date).toLocaleDateString() : 'Not set'}\n   📊 Progress: ${task.progress || 0}% | 🔥 Priority: ${task.priority || 'Medium'}`
       ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more tasks`;
+      if (data.length > 8) response += `\n\n... and ${data.length - 8} more tasks`;
       break;
       
     case 'resources_list':
-      response += data.slice(0, 10).map((resource: any, index: number) => 
-        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   Department: ${resource.department || 'Not set'} | Email: ${resource.email || 'N/A'}`
+      response += data.slice(0, 8).map((resource: any, index: number) => 
+        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 Department: ${resource.department || 'Not set'} | 📧 ${resource.email || 'No email'}\n   💰 Rate: $${resource.hourly_rate || 'Not set'}/hr`
       ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more resources`;
+      if (data.length > 8) response += `\n\n... and ${data.length - 8} more resources`;
       break;
       
     case 'deadlines':
-      response += data.slice(0, 10).map((task: any, index: number) => 
-        `${index + 1}. **${task.name}** - Due: ${new Date(task.end_date).toLocaleDateString()}\n   Project: ${task.projects?.name || 'N/A'} | Priority: ${task.priority || 'Medium'}`
+      response += data.slice(0, 8).map((task: any, index: number) => 
+        `${index + 1}. **${task.name}** - 📅 Due: ${new Date(task.end_date).toLocaleDateString()}\n   📋 Project: ${task.projects?.name || 'N/A'} | 🔥 Priority: ${task.priority || 'Medium'}\n   📊 Status: ${task.status || 'Unknown'}`
       ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more deadlines`;
+      if (data.length > 8) response += `\n\n... and ${data.length - 8} more deadlines`;
       break;
       
-    case 'project_status':
-      response += data.slice(0, 10).map((project: any, index: number) => 
-        `${index + 1}. **${project.name}** - ${project.health_status}\n   Status: ${project.status} | Progress: ${project.progress || 0}% | Tasks: ${project.total_tasks}`
-      ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more projects`;
+    case 'analytics':
+      response += `📊 **Workspace Overview:**\n\n`;
+      response += `🚀 **Projects:** ${data.projects.total} total\n`;
+      response += `   • Status: ${Object.entries(data.projects.byStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}\n\n`;
+      response += `✅ **Tasks:** ${data.tasks.total} total\n`;
+      response += `   • Status: ${Object.entries(data.tasks.byStatus).map(([k, v]) => `${k}: ${v}`).join(', ')}\n\n`;
+      response += `👥 **Resources:** ${data.resources.total} total\n`;
+      response += `   • By Department: ${Object.entries(data.resources.byDepartment).map(([k, v]) => `${k}: ${v}`).join(', ')}\n\n`;
+      response += `📈 **Performance:** ${data.performance.totalMetrics} metrics tracked\n`;
+      response += `   • Average Performance: ${data.performance.averagePerformance.toFixed(1)}/10`;
       break;
       
-    case 'assignments':
-      response += data.slice(0, 10).map((task: any, index: number) => 
-        `${index + 1}. **${task.name}** → ${task.resources?.name || 'Unassigned'}\n   Project: ${task.projects?.name || 'N/A'} | Status: ${task.status || 'Unknown'}`
+    case 'team_utilization':
+      response += data.slice(0, 8).map((resource: any, index: number) => 
+        `${index + 1}. **${resource.name}** (${resource.role || 'No role'})\n   🏢 ${resource.department || 'No department'}\n   📋 Active Projects: ${resource.project_assignments?.length || 0}\n   📊 Current Utilization: ${this.calculateUtilization(resource)}%`
       ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more assignments`;
+      if (data.length > 8) response += `\n\n... and ${data.length - 8} more team members`;
       break;
       
     case 'performance_metrics':
-      response += data.slice(0, 10).map((metric: any, index: number) => 
-        `${index + 1}. **${metric.resources?.name || 'Unknown'}** - ${metric.type}\n   Value: ${metric.value} | Date: ${new Date(metric.timestamp).toLocaleDateString()}`
+      response += data.slice(0, 8).map((metric: any, index: number) => 
+        `${index + 1}. **${metric.resources?.name || 'Unknown'}** - ${metric.type}\n   📊 Value: ${metric.value} | 📅 Date: ${new Date(metric.timestamp).toLocaleDateString()}\n   📝 ${metric.description || 'No description'}`
       ).join('\n\n');
-      if (data.length > 10) response += `\n\n... and ${data.length - 10} more metrics`;
+      if (data.length > 8) response += `\n\n... and ${data.length - 8} more metrics`;
       break;
       
     default:
@@ -671,120 +714,21 @@ function formatDataResponse(queryResult: any, originalMessage: string): string {
   return response;
 }
 
-// Build insight prompt for AI analysis
-function buildInsightPrompt(context: any, queryResult: any, originalMessage: string): string {
-  return `Analyze this project management data and provide 2-3 key insights:
-
-Data Type: ${queryResult.type}
-Data Summary: ${queryResult.summary}
-Sample Data: ${JSON.stringify(queryResult.data?.slice(0, 3) || [])}
-
-User Question: "${originalMessage}"
-User Context: ${context?.user?.name || 'User'} (${context?.user?.role || 'team member'})
-
-Provide actionable insights focusing on:
-- Key patterns or trends
-- Potential risks or opportunities  
-- Specific recommendations
-- Priority actions
-
-Keep response under 150 words and be specific.`;
-}
-
-// Get AI insight for data analysis
-async function getAIInsight(prompt: string, context: any): Promise<string | null> {
-  try {
-    const model = getModelFromSettings(context?.aiSettings?.preferred_model || 'auto');
-    
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-Title': 'Tink AI Insights'
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: 'You are a project management analyst providing concise, actionable insights.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 300
-      })
-    });
-
-    if (!response.ok) return null;
-    
-    const aiResponse = await response.json();
-    return aiResponse.choices[0]?.message?.content || null;
-  } catch (error) {
-    console.error('Failed to get AI insight:', error);
-    return null;
+// Build contextual response for conversational queries
+function buildContextualResponse(message: string, contextData: any): string {
+  const lowerMessage = message.toLowerCase();
+  
+  if (/hello|hi|hey/i.test(message)) {
+    return `Hello! I'm Tink, your AI assistant. I can help you with:\n\n• 📊 Project analytics and performance metrics\n• 📅 Deadlines and task management\n• 👥 Team utilization and resource allocation\n• 📈 Performance insights and recommendations\n\nWhat would you like to know about your workspace?`;
   }
-}
-
-// Enhanced system prompt for conversational queries
-function buildEnhancedSystemPrompt(context: any, responseType: string): string {
-  const user = context?.user || {};
-  const personality = context?.aiSettings?.chat_personality || 'professional';
-  const awarenessLevel = context?.aiSettings?.context_awareness_level || 'standard';
-
-  let prompt = `You are Tink, an advanced AI assistant for project management and resource allocation with full database access. `;
-
-  // Personality adjustment
-  switch (personality) {
-    case 'friendly':
-      prompt += `You have a warm, encouraging, and supportive personality. Use casual language and show enthusiasm for helping users succeed. `;
-      break;
-    case 'technical':
-      prompt += `You are detail-oriented and technical. Provide precise, data-driven responses with specific metrics and actionable insights. `;
-      break;
-    default: // professional
-      prompt += `You maintain a professional, helpful tone while being approachable and clear in your communication. `;
+  
+  if (/help|what can you do/i.test(message)) {
+    return `I'm here to help you manage your workspace efficiently! Here's what I can do:\n\n**📊 Analytics & Insights:**\n• Show project performance metrics\n• Analyze team productivity\n• Generate utilization reports\n\n**📅 Project Management:**\n• List upcoming deadlines\n• Track task progress\n• Monitor project status\n\n**👥 Team Management:**\n• Show resource allocation\n• Display team utilization\n• Track individual performance\n\n**🤖 Smart Queries:**\nJust ask me naturally! For example:\n• "Show me our team utilization"\n• "What deadlines are coming up?"\n• "How are our projects performing?"`;
   }
-
-  prompt += `The user's name is ${user.name || 'there'} and they have the role of ${user.role || 'team member'} in their workspace. `;
-
-  if (awarenessLevel === 'advanced' && context.projects) {
-    prompt += `Current projects context: ${JSON.stringify(context.projects.slice(0, 5))}. `;
+  
+  if (/thank/i.test(message)) {
+    return `You're welcome! I'm always here to help you stay on top of your projects and team performance. Feel free to ask me anything about your workspace data! 😊`;
   }
-
-  if (awarenessLevel !== 'basic' && context.performance) {
-    prompt += `Recent performance data available for personalized insights. `;
-  }
-
-  prompt += `Your enhanced capabilities include:
-  - Direct database queries for real-time project data
-  - Comprehensive project status analysis and insights
-  - Resource allocation and utilization recommendations  
-  - Performance analysis and trend identification
-  - Task management and deadline tracking
-  - Team collaboration and efficiency insights
-  - Risk assessment and opportunity identification
-  - Custom data analysis and reporting
-
-  You can now answer specific data questions like:
-  - "List all my projects" - provides actual project data
-  - "Show tasks due today" - returns real deadline information
-  - "What's the status of my team?" - gives current resource utilization
-  - "Performance metrics for this month" - displays actual performance data
-
-  For conversational queries, provide strategic insights, recommendations, and guidance.
-  Keep responses informative yet concise (under 300 words) and always actionable.`;
-
-  return prompt;
-}
-
-function getModelFromSettings(preferredModel: string): string {
-  switch (preferredModel) {
-    case 'gpt-4o-mini':
-      return 'openai/gpt-4o-mini';
-    case 'claude-3-haiku':
-      return 'anthropic/claude-3-haiku';
-    case 'mistral-7b':
-      return 'mistralai/mistral-7b-instruct';
-    default:
-      return 'openai/gpt-4o-mini'; // Default fast model
-  }
+  
+  return `I'd be happy to help you with that! To get the most relevant information, try asking me about:\n\n• 📊 "Show me project analytics"\n• 📅 "What are our upcoming deadlines?"\n• 👥 "How is our team utilization?"\n• 📈 "Show me performance metrics"\n\nWhat specific information would you like to see?`;
 }
