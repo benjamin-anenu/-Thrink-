@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import ReportScheduler from '@/components/reports/ReportScheduler';
 import RecipientSelector from '@/components/reports/RecipientSelector';
 import { useScheduledReports } from '@/hooks/useScheduledReports';
+import { useRecipients } from '@/hooks/useRecipients';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Save, X } from 'lucide-react';
 
@@ -31,6 +32,7 @@ const ScheduleReportModal: React.FC<ScheduleReportModalProps> = ({
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
   const { createScheduledReport } = useScheduledReports();
+  const { recipients } = useRecipients();
   
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [reportConfig, setReportConfig] = useState<any>(null);
@@ -78,12 +80,15 @@ const ScheduleReportModal: React.FC<ScheduleReportModalProps> = ({
         date_range_start: reportConfig.dateRange?.start?.toISOString(),
         date_range_end: reportConfig.dateRange?.end?.toISOString(),
         format: initialConfig?.exportFormat || 'pdf',
-        recipients: selectedRecipients.map(id => ({
-          recipient_id: id,
-          recipient_name: 'Recipient',
-          recipient_email: 'recipient@company.com',
-          recipient_type: 'workspace_member'
-        }))
+        recipients: selectedRecipients.map(id => {
+          const recipient = recipients.find(r => r.id === id);
+          return {
+            recipient_id: id,
+            recipient_name: recipient?.name || 'Unknown',
+            recipient_email: recipient?.email || 'unknown@company.com',
+            recipient_type: recipient?.type || 'workspace_member'
+          };
+        })
       });
 
       toast({
