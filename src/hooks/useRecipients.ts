@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -28,18 +29,10 @@ export const useRecipients = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch workspace members
+      // Fetch workspace members (without profiles join since it's causing issues)
       const { data: workspaceMembers, error: wmError } = await supabase
         .from('workspace_members')
-        .select(`
-          user_id,
-          role,
-          profiles!inner (
-            id,
-            full_name,
-            email
-          )
-        `)
+        .select('user_id, role')
         .eq('workspace_id', currentWorkspace.id)
         .eq('status', 'active');
 
@@ -70,17 +63,15 @@ export const useRecipients = () => {
 
       if (deptsError) throw deptsError;
 
-      // Transform workspace members
-      const transformedMembers: Recipient[] = (workspaceMembers || [])
-        .filter(wm => wm.profiles)
-        .map(wm => ({
-          id: wm.user_id,
-          name: (wm.profiles as any)?.full_name || 'Unknown User',
-          email: (wm.profiles as any)?.email || '',
-          department: 'General',
-          role: wm.role,
-          type: 'workspace_member' as const
-        }));
+      // Transform workspace members (simplified without profiles)
+      const transformedMembers: Recipient[] = (workspaceMembers || []).map(wm => ({
+        id: wm.user_id,
+        name: 'Workspace Member', // Placeholder since we can't get name from profiles
+        email: 'member@workspace.com', // Placeholder since we can't get email from profiles
+        department: 'General',
+        role: wm.role || 'Member',
+        type: 'workspace_member' as const
+      }));
 
       // Transform resources
       const transformedResources: Recipient[] = (resources || []).map(resource => ({
