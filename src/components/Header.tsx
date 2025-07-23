@@ -5,7 +5,7 @@ import Logo from './Logo';
 import WorkspaceSelector from './WorkspaceSelector';
 import { UserButton } from './auth/UserButton';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck } from 'lucide-react';
+import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Link, useLocation } from 'react-router-dom';
@@ -36,6 +36,7 @@ const Header = () => {
     else if (path === '/resources') setActivePage('resources');
     else if (path === '/stakeholders') setActivePage('stakeholders');
     else if (path === '/analytics') setActivePage('analytics');
+    else if (path === '/ai-hub') setActivePage('ai-hub');
     else if (path === '/' && location.hash) {
       const section = location.hash.substring(1);
       setActivePage(section);
@@ -198,6 +199,20 @@ const Header = () => {
                         <BarChart3 size={14} className="mr-2" /> Analytics
                       </Link>
                     </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="ai-hub" 
+                      className={cn(
+                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        activePage === 'ai-hub' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/ai-hub">
+                        <Brain size={14} className="mr-2" /> AI Hub
+                      </Link>
+                    </ToggleGroupItem>
                   </>
                 )}
               </ToggleGroup>
@@ -312,6 +327,16 @@ const Header = () => {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <BarChart3 size={16} className="mr-2" /> Analytics
+                  </Link>
+                  <Link 
+                    to="/ai-hub" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'ai-hub' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Brain size={16} className="mr-2" /> AI Hub
                   </Link>
                 </>
               )}

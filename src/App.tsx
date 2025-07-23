@@ -10,6 +10,7 @@ import Projects from "./pages/Projects";
 import Resources from "./pages/Resources";
 import Stakeholders from "./pages/Stakeholders";
 import Analytics from "./pages/Analytics";
+import AIHub from "./pages/AIHub";
 import ProjectManagement from "./pages/ProjectManagement";
 import Auth from "./pages/Auth";
 import Login from "./pages/Login";
@@ -94,6 +95,11 @@ function App() {
                               <Route path="/analytics" element={
                                 <ErrorBoundary>
                                   <Analytics />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/ai-hub" element={
+                                <ErrorBoundary>
+                                  <AIHub />
                                 </ErrorBoundary>
                               } />
                               <Route path="/project/:id" element={
