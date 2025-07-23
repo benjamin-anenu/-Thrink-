@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, X, Send, TrendingUp, AlertTriangle } from 'lucide-react';
-import { PerformanceTracker } from '@/services/PerformanceTracker';
-import { EmailReminderService } from '@/services/EmailReminderService';
+import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface TinkMessage {
   id: string;
@@ -12,19 +13,36 @@ interface TinkMessage {
 }
 
 const TinkAssistant = () => {
+  const { currentWorkspace } = useWorkspace();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<TinkMessage[]>([
-    {
-      id: '1',
-      type: 'tink',
-      content: "Hi there! I'm Tink, your intelligent project assistant. I'm actively tracking team performance and sending smart deadline reminders. I noticed Sarah completed her UI task ahead of schedule - excellent work! 🎯 Would you like me to show you the latest team insights?",
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<TinkMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const sendMessage = () => {
-    if (!inputValue.trim()) return;
+  useEffect(() => {
+    const initializeChat = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && currentWorkspace) {
+        setUserId(user.id);
+        
+        // Set personalized welcome message
+        const welcomeMessage: TinkMessage = {
+          id: '1',
+          type: 'tink',
+          content: `Hi! I'm Tink, your AI project assistant. I can help you with project insights, performance analytics, and resource management tailored to your workspace. What would you like to know?`,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
+    };
+
+    initializeChat();
+  }, [currentWorkspace]);
+
+  const sendMessage = async () => {
+    if (!inputValue.trim() || !userId || !currentWorkspace || isLoading) return;
 
     const userMessage: TinkMessage = {
       id: Date.now().toString(),
@@ -34,105 +52,53 @@ const TinkAssistant = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
 
-    // Enhanced Tink responses with performance awareness
-    setTimeout(() => {
-      const tinkResponse: TinkMessage = {
+    try {
+      const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
+        body: {
+          message: inputValue,
+          userId: userId,
+          workspaceId: currentWorkspace.id
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const aiResponse: TinkMessage = {
         id: (Date.now() + 1).toString(),
         type: 'tink',
-        content: getTinkResponse(inputValue),
+        content: data.message || "I apologize, but I'm having trouble responding right now. Please try again.",
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, tinkResponse]);
-    }, 1000);
 
-    setInputValue('');
+      setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error sending message to Tink:', error);
+      
+      const errorResponse: TinkMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'tink',
+        content: "I'm sorry, I'm having trouble connecting right now. Please check your connection and try again.",
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, errorResponse]);
+      
+      toast({
+        title: "Connection Error",
+        description: "Unable to reach Tink AI. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const getTinkResponse = (userInput: string): string => {
-    const lowerInput = userInput.toLowerCase();
-    
-    // Performance-related queries
-    if (lowerInput.includes('performance') || lowerInput.includes('team') || lowerInput.includes('tracking')) {
-      return getPerformanceResponse();
-    }
-    
-    // Deadline-related queries
-    if (lowerInput.includes('deadline') || lowerInput.includes('reminder') || lowerInput.includes('email')) {
-      return getDeadlineResponse();
-    }
-    
-    // Resource-related queries
-    if (lowerInput.includes('resource') || lowerInput.includes('assign') || lowerInput.includes('workload')) {
-      return getResourceResponse();
-    }
-
-    // Default enhanced responses
-    const responses = [
-      "I've been monitoring team performance - Sarah's productivity is up 15% this month! 🚀 The automated email reminders are helping with deadline adherence too.",
-      "Great question! I noticed Michael needs support on the backend tasks - his confidence scores are dropping. Should I suggest some resources?",
-      "Performance tracking shows the design team is excelling, but we have 3 upcoming deadlines that need attention. Want me to send priority reminders?",
-      "I'm seeing positive trends across the board! 📈 Task completion rates are up 20% since implementing the smart reminder system.",
-      "The AI detected Emily might be approaching burnout based on her workload patterns. I recommend redistributing some tasks. Thoughts?"
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
-
-  const getPerformanceResponse = (): string => {
-    const tracker = PerformanceTracker.getInstance();
-    const profiles = tracker.getAllProfiles();
-    
-    if (profiles.length === 0) {
-      return "I'm actively tracking team performance now! 📊 I'll have insights available once I collect more activity data. The system monitors task completion, deadline adherence, quality scores, and collaboration patterns.";
-    }
-
-    const highPerformers = profiles.filter(p => p.currentScore > 80).length;
-    const atRiskResources = profiles.filter(p => p.riskLevel === 'high' || p.riskLevel === 'critical').length;
-    const improvingTrend = profiles.filter(p => p.trend === 'improving').length;
-
-    return `📈 **Performance Overview:**
-• ${highPerformers} team members performing excellently (80+ score)
-• ${improvingTrend} resources showing improvement trends
-• ${atRiskResources} resources need attention${atRiskResources > 0 ? ' - I recommend workload adjustment' : ''}
-
-Top insight: ${profiles.length > 0 ? `${profiles[0].resourceName} is leading with ${Math.round(profiles[0].currentScore)} performance score!` : 'Team performance tracking is initializing.'}`;
-  };
-
-  const getDeadlineResponse = (): string => {
-    const emailService = EmailReminderService.getInstance();
-    const reminders = emailService.getReminders();
-    const rebaselineRequests = emailService.getRebaselineRequests();
-    
-    const pendingReminders = reminders.filter(r => !r.sent);
-    const pendingRebaselines = rebaselineRequests.filter(r => r.status === 'pending');
-    
-    return `📧 **Smart Deadline System Status:**
-• ${reminders.length} total reminders scheduled
-• ${pendingReminders.length} pending email notifications
-• ${pendingRebaselines.length} rebaseline requests awaiting approval
-
-The system sends reminders at 7 days, 3 days, 1 day before, day of, and overdue. Resources can respond directly to indicate if they're on track or need extensions. ${pendingRebaselines.length > 0 ? 'You have deadline extension requests to review!' : 'All deadlines are being monitored actively.'}`;
-  };
-
-  const getResourceResponse = (): string => {
-    const tracker = PerformanceTracker.getInstance();
-    const profiles = tracker.getAllProfiles();
-    
-    if (profiles.length === 0) {
-      return "I'm learning about your team's work patterns! 🎯 Once I have more data, I'll provide smart resource allocation suggestions based on performance metrics, workload analysis, and skill matching.";
-    }
-
-    const available = profiles.filter(p => p.riskLevel === 'low' && p.currentScore > 70);
-    const overloaded = profiles.filter(p => p.riskLevel === 'high' || p.riskLevel === 'critical');
-    
-    return `👥 **Smart Resource Insights:**
-• ${available.length} resources optimal for new assignments
-• ${overloaded.length} resources showing overload signals
-• AI recommendation: ${overloaded.length > 0 ? 'Redistribute workload to prevent burnout' : 'Team capacity looks healthy for new projects'}
-
-💡 Pro tip: I can suggest the best resource for specific tasks based on performance history, current workload, and skill alignment!`;
-  };
+  // Note: Old performance tracking functions removed as AI now uses database context
 
   return (
     <>

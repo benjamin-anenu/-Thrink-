@@ -114,6 +114,94 @@ export type Database = {
           },
         ]
       }
+      ai_conversation_history: {
+        Row: {
+          context_data: Json | null
+          conversation_type: string
+          created_at: string
+          id: string
+          message_content: string
+          message_role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          conversation_type?: string
+          created_at?: string
+          id?: string
+          message_content: string
+          message_role: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          conversation_type?: string
+          created_at?: string
+          id?: string
+          message_content?: string
+          message_role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_conversation_workspace"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_user_settings: {
+        Row: {
+          chat_personality: string
+          context_awareness_level: string
+          conversation_history_enabled: boolean
+          created_at: string
+          id: string
+          preferred_model: string
+          updated_at: string
+          use_ai_analysis: boolean
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          chat_personality?: string
+          context_awareness_level?: string
+          conversation_history_enabled?: boolean
+          created_at?: string
+          id?: string
+          preferred_model?: string
+          updated_at?: string
+          use_ai_analysis?: boolean
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          chat_personality?: string
+          context_awareness_level?: string
+          conversation_history_enabled?: boolean
+          created_at?: string
+          id?: string
+          preferred_model?: string
+          updated_at?: string
+          use_ai_analysis?: boolean
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_ai_settings_workspace"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
