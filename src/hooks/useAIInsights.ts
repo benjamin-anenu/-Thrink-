@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAISettings } from '@/hooks/useAISettings';
 
 export interface AIInsight {
   id: string;
@@ -24,6 +24,7 @@ export const useAIInsights = (projectId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { currentWorkspace } = useWorkspace();
+  const { settings } = useAISettings();
 
   useEffect(() => {
     if (!currentWorkspace) return;
@@ -89,19 +90,27 @@ export const useAIInsights = (projectId?: string) => {
           // Add skill-specific insights with enhanced analysis
           if (skillScore < 50) {
             try {
-              const skillGapAnalysis = await getDetailedSkillAnalysis(rec);
-              if (skillGapAnalysis) {
-                type = 'warning';
-                title = 'Specific Skill Gap Detected';
-                description = skillGapAnalysis;
+              // Use AI analysis only if enabled in settings
+              if (settings.useAIAnalysis) {
+                const skillGapAnalysis = await getDetailedSkillAnalysis(rec, settings.preferredModel);
+                if (skillGapAnalysis) {
+                  type = 'warning';
+                  title = 'AI-Detected Skill Gap';
+                  description = skillGapAnalysis;
+                } else {
+                  // Fallback to basic analysis
+                  type = 'warning';
+                  title = 'Skill Gap Detected';
+                  description = `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
+                }
               } else {
-                // Fallback when AI service is unavailable
+                // Basic analysis mode
                 type = 'warning';
-                title = 'Skill Gap Detected';
-                description = `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
+                title = 'Basic Skill Gap Analysis';
+                description = `${rec.resources?.name || 'Resource'} may need additional training (${skillScore}% skill match). Enable AI analysis for detailed recommendations.`;
               }
             } catch (error) {
-              console.error('Error getting detailed skill analysis:', error);
+              console.error('Error getting skill analysis:', error);
               // Fallback description
               type = 'warning';
               title = 'Skill Gap Detected';
@@ -114,7 +123,7 @@ export const useAIInsights = (projectId?: string) => {
             type,
             title,
             description,
-            category: 'Assignment',
+            category: settings.useAIAnalysis ? 'AI Analysis' : 'Basic Analysis',
             actionable: overallScore < 60 || skillScore < 50,
             projectId: rec.project_id,
             resourceId: rec.resource_id,
@@ -143,7 +152,7 @@ export const useAIInsights = (projectId?: string) => {
     };
 
     fetchAIInsights();
-  }, [currentWorkspace, projectId]);
+  }, [currentWorkspace, projectId, settings.useAIAnalysis, settings.preferredModel]);
 
   const generateWorkspaceInsights = async (): Promise<AIInsight[]> => {
     try {
@@ -211,7 +220,7 @@ export const useAIInsights = (projectId?: string) => {
     ];
   };
 
-  const getDetailedSkillAnalysis = async (recommendation: any): Promise<string | null> => {
+  const getDetailedSkillAnalysis = async (recommendation: any, preferredModel: string): Promise<string | null> => {
     try {
       // Get detailed resource and project data
       const { data: resourceData } = await supabase
@@ -236,7 +245,7 @@ export const useAIInsights = (projectId?: string) => {
 
       const taskTypes = projectData.tasks?.map(t => t.name) || [];
 
-      // Call enhanced analysis function with better error handling
+      // Call enhanced analysis function with preferred model
       const response = await supabase.functions.invoke('enhanced-skill-analysis', {
         body: {
           resourceName: resourceData.name,
@@ -244,7 +253,8 @@ export const useAIInsights = (projectId?: string) => {
           projectRequirements: projectData.description,
           taskTypes,
           overallFitScore: recommendation.overall_fit_score,
-          skillMatchScore: recommendation.skill_match_score
+          skillMatchScore: recommendation.skill_match_score,
+          preferredModel: preferredModel !== 'auto' ? preferredModel : undefined
         }
       });
 
@@ -257,11 +267,12 @@ export const useAIInsights = (projectId?: string) => {
       if (result?.success && result?.analysis) {
         const analysis = result.analysis;
         
-        // Format specific recommendations
+        // Format AI-generated recommendations
         const skillGaps = analysis.specificSkillGaps?.slice(0, 2).join(', ') || 'various skills';
         const trainingNeeded = analysis.trainingRecommendations?.[0]?.training || 'additional training';
+        const aiModel = result.model || 'AI';
         
-        return `${resourceData.name} needs training in ${skillGaps}. Recommended: ${trainingNeeded}. Priority: ${analysis.priority || 'Medium'}.`;
+        return `[${aiModel}] ${resourceData.name} needs training in ${skillGaps}. Recommended: ${trainingNeeded}. Priority: ${analysis.priority || 'Medium'}.`;
       }
       
       return null;
