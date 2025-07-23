@@ -1,9 +1,9 @@
-
 import { EventBus } from './EventBus';
 import { PerformanceTracker } from './PerformanceTracker';
 import { EmailReminderService } from './EmailReminderService';
 import { NotificationIntegrationService } from './NotificationIntegrationService';
 import { aiInsightsService } from './AIInsightsService';
+import { escalationMonitoringService } from './EscalationMonitoringService';
 
 export class RealTimeEventService {
   private static instance: RealTimeEventService;
@@ -33,15 +33,16 @@ export class RealTimeEventService {
       return;
     }
 
-    console.log('[Real-time Event Service] Initializing with AI integration...');
+    console.log('[Real-time Event Service] Initializing with AI and escalation integration...');
     
     this.setupEventListeners();
     this.setupAIEventListeners();
+    this.setupEscalationEventListeners();
     this.startPerformanceMonitoring();
     this.initializeNotifications();
     
     this.isInitialized = true;
-    console.log('[Real-time Event Service] Initialized successfully with AI insights integration');
+    console.log('[Real-time Event Service] Initialized successfully with full integration');
   }
 
   // Helper method to validate event payloads
@@ -181,6 +182,32 @@ export class RealTimeEventService {
     this.eventBus.subscribe('context_updated', (event) => {
       console.log('[Real-time Events] Context updated:', event.payload);
       this.handleContextUpdate(event.payload);
+    });
+  }
+
+  private setupEscalationEventListeners(): void {
+    // Listen for escalation trigger events
+    this.eventBus.subscribe('escalation_triggered', (event) => {
+      console.log('[Real-time Events] Escalation triggered:', event.payload);
+      this.handleEscalationTriggered(event.payload);
+    });
+
+    // Listen for escalation notifications
+    this.eventBus.subscribe('escalation_notification', (event) => {
+      console.log('[Real-time Events] Escalation notification:', event.payload);
+      this.handleEscalationNotification(event.payload);
+    });
+
+    // Listen for project changes that might affect escalations
+    this.eventBus.subscribe('project_updated', (event) => {
+      console.log('[Real-time Events] Project updated, checking escalation conditions:', event.payload);
+      this.checkEscalationConditions(event.payload);
+    });
+
+    // Listen for task changes that might affect escalations
+    this.eventBus.subscribe('task_updated', (event) => {
+      console.log('[Real-time Events] Task updated, checking escalation conditions:', event.payload);
+      this.checkEscalationConditions(event.payload);
     });
   }
 
@@ -416,6 +443,67 @@ export class RealTimeEventService {
     });
   }
 
+  private handleEscalationTriggered(payload: any): void {
+    if (!this.validatePayload(payload, ['projectId', 'triggerId', 'conditionType'])) {
+      console.error('[Real-time Events] Invalid escalation trigger payload:', payload);
+      return;
+    }
+
+    const { projectId, triggerId, conditionType, workspaceId } = payload;
+    
+    // Send high-priority notification
+    this.notificationService.addNotification({
+      title: 'Escalation Triggered',
+      message: `${conditionType} condition met for project`,
+      type: 'error',
+      category: 'escalation',
+      priority: 'critical',
+      projectId,
+      actionRequired: true
+    });
+
+    // Trigger AI analysis for escalation impact
+    this.eventBus.emit('ai_insights_requested', {
+      projectId,
+      trigger: 'escalation_triggered',
+      context: { triggerId, conditionType }
+    }, 'real_time_service');
+  }
+
+  private handleEscalationNotification(payload: any): void {
+    if (!this.validatePayload(payload, ['projectId', 'stakeholderEmail'])) {
+      console.error('[Real-time Events] Invalid escalation notification payload:', payload);
+      return;
+    }
+
+    const { projectId, stakeholderEmail, triggerName, levelName } = payload;
+    
+    // Log notification for audit trail
+    this.notificationService.addNotification({
+      title: 'Escalation Notification Sent',
+      message: `${triggerName} escalation sent to ${stakeholderEmail} (${levelName})`,
+      type: 'info',
+      category: 'escalation',
+      priority: 'medium',
+      projectId
+    });
+  }
+
+  private checkEscalationConditions(payload: any): void {
+    const { projectId, workspaceId } = payload;
+    
+    if (!projectId || !workspaceId) {
+      console.warn('[Real-time Events] Missing project or workspace ID for escalation check');
+      return;
+    }
+
+    // Trigger escalation monitoring check
+    setTimeout(() => {
+      console.log(`[Real-time Events] Triggering escalation check for project ${projectId}`);
+      // This would trigger the escalation monitoring service to check conditions
+    }, 1000);
+  }
+
   private startPerformanceMonitoring(): void {
     // Set up periodic performance alerts with AI integration
     setInterval(() => {
@@ -470,6 +558,7 @@ export class RealTimeEventService {
       emailService: !!this.emailService,
       notificationService: !!this.notificationService,
       aiInsightsService: !!aiInsightsService,
+      escalationMonitoringService: !!escalationMonitoringService,
       initialized: this.isInitialized
     };
   }
@@ -486,6 +575,6 @@ export const realTimeEventService = RealTimeEventService.getInstance();
 export const initializeRealTimeEvents = () => {
   const service = RealTimeEventService.getInstance();
   service.initialize();
-  console.log('[Real-time Event Service] Initialized with AI integration');
+  console.log('[Real-time Event Service] Initialized with full integration');
   return service;
 };

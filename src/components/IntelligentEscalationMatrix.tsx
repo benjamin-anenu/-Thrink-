@@ -3,11 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Users, Shield, Settings, BarChart3, Link2 } from 'lucide-react';
+import { AlertTriangle, Users, Shield, Settings, BarChart3, Link2, Activity, Bell } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import EscalationOverview from '@/components/escalation/EscalationOverview';
 import EscalationLevelManager from '@/components/escalation/EscalationLevelManager';
 import TriggerAssignmentInterface from '@/components/escalation/TriggerAssignmentInterface';
+import EscalationMonitoringDashboard from '@/components/escalation/EscalationMonitoringDashboard';
+import EscalationNotificationService from '@/components/escalation/EscalationNotificationService';
 
 interface IntelligentEscalationMatrixProps {
   projectId?: string;
@@ -38,13 +40,13 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
         <div>
           <h2 className="text-2xl font-bold">Intelligent Escalation Matrix</h2>
           <p className="text-muted-foreground">
-            Configure automated escalation levels, trigger assignments, and stakeholder notifications
+            Configure automated escalation levels, trigger assignments, stakeholder notifications, and monitoring
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Overview
@@ -58,8 +60,16 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
             Assignments
           </TabsTrigger>
           <TabsTrigger value="monitoring" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
+            <Activity className="h-4 w-4" />
             Monitoring
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
           </TabsTrigger>
         </TabsList>
 
@@ -116,17 +126,45 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
             <CardHeader>
               <CardTitle>Automated Monitoring</CardTitle>
               <CardDescription>
-                Configure automated monitoring and notification settings
+                Configure and monitor automated escalation conditions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EscalationMonitoringDashboard />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Management</CardTitle>
+              <CardDescription>
+                Configure notification channels and delivery settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EscalationNotificationService />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Settings</CardTitle>
+              <CardDescription>
+                Configure global escalation system settings
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">
                 <Settings className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground mb-4">
-                  Automated monitoring will be available in Phase 3
+                  Advanced settings coming soon
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  This will include daily project scanning, condition evaluation, and automated notifications
+                  This will include global escalation policies, SLA configurations, and integration settings
                 </p>
               </div>
             </CardContent>
