@@ -12,6 +12,7 @@ import { useScheduledReports } from '@/hooks/useScheduledReports';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { addDays, format } from 'date-fns';
 import ScheduleReportModal from './ScheduleReportModal';
+import { useEmailService } from '@/hooks/useEmailService';
 
 const ReportsExport: React.FC = () => {
   const { toast } = useToast();
@@ -23,6 +24,7 @@ const ReportsExport: React.FC = () => {
     deleteScheduledReport, 
     toggleReportStatus 
   } = useScheduledReports();
+  const { sendReportEmail, isSending } = useEmailService();
 
   const [exportFormat, setExportFormat] = useState<string>('pdf');
   const [selectedSections, setSelectedSections] = useState<string[]>([
@@ -117,14 +119,23 @@ const ReportsExport: React.FC = () => {
     if (selectedSections.length === 0) {
       toast({
         title: "No sections selected",
-        description: "Please select at least one section to export.",
+        description: "Please select at least one section to email.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!currentWorkspace?.id) {
+      toast({
+        title: "No workspace selected",
+        description: "Please select a workspace to send reports.",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      // Generate and immediately email the report
+      // Generate report data for email
       const reportData = await generateReport({
         type: 'analytics_export',
         frequency: 'one_time',
@@ -136,11 +147,21 @@ const ReportsExport: React.FC = () => {
         }
       });
 
-      // TODO: Implement actual email sending
-      toast({
-        title: "Email sent",
-        description: `Report has been sent to your email as ${exportFormat.toUpperCase()}.`,
-      });
+      if (reportData) {
+        const success = await sendReportEmail({
+          recipients: ['current_user@company.com'], // You can make this configurable
+          reportType: 'analytics_export',
+          reportData: reportData.data,
+          format: exportFormat,
+          workspaceId: currentWorkspace.id
+        });
+
+        if (!success) {
+          throw new Error('Email sending failed');
+        }
+      } else {
+        throw new Error('Report generation failed');
+      }
     } catch (error) {
       console.error('Email error:', error);
       toast({
@@ -343,13 +364,23 @@ const ReportsExport: React.FC = () => {
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" onClick={handleEmailNow}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleEmailNow}
+                    disabled={isSending}
+                  >
                     <Mail className="mr-1 h-3 w-3" />
-                    Email Now
+                    {isSending ? 'Sending...' : 'Email Now'}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownloadNow}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadNow}
+                    disabled={isExporting}
+                  >
                     <Download className="mr-1 h-3 w-3" />
-                    Download
+                    {isExporting ? 'Downloading...' : 'Download'}
                   </Button>
                 </div>
               </div>
