@@ -4,9 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Users, Shield, Settings, History } from 'lucide-react';
-import EscalationMatrix from '@/components/EscalationMatrix';
+import { AlertTriangle, Users, Shield } from 'lucide-react';
 import IntelligentEscalationMatrix from '@/components/IntelligentEscalationMatrix';
 import { useProjects } from '@/hooks/useProjects';
 import { useEscalationMatrix } from '@/hooks/useEscalationMatrix';
@@ -60,7 +58,7 @@ const StakeholderEscalationMatrix: React.FC = () => {
             <div className="flex-1">
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a project for legacy escalation matrix" />
+                  <SelectValue placeholder="Select a project for escalation matrix" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((project) => (
@@ -131,94 +129,18 @@ const StakeholderEscalationMatrix: React.FC = () => {
         </div>
       )}
 
-      {/* Tabbed Interface */}
-      <Tabs defaultValue="intelligent" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="intelligent" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Intelligent Matrix
-          </TabsTrigger>
-          <TabsTrigger value="legacy" className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            Legacy Matrix
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="intelligent" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Intelligent Escalation Matrix</CardTitle>
-              <CardDescription>
-                Automated escalation system with stakeholder assignments and trigger monitoring
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <IntelligentEscalationMatrix projectId={selectedProjectId} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="legacy" className="space-y-4">
-          {/* Stakeholder Escalation Contacts */}
-          {selectedProjectId && escalationStakeholders.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Legacy Escalation Contacts</CardTitle>
-                <CardDescription>
-                  Stakeholders involved in the legacy escalation process for {selectedProject?.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {escalationStakeholders.map((stakeholder) => {
-                    const escalationEntry = escalationMatrix.find(entry => 
-                      entry.contact_email === stakeholder.email || 
-                      entry.contact_name === stakeholder.name
-                    );
-                    
-                    return (
-                      <div key={stakeholder.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <Users className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{stakeholder.name}</div>
-                            <div className="text-sm text-muted-foreground">{stakeholder.email}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">
-                            Level {escalationEntry?.level}
-                          </Badge>
-                          <Badge variant="outline">
-                            {escalationEntry?.contact_role}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Legacy Escalation Matrix */}
-          {selectedProjectId && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Legacy Escalation Matrix Configuration</CardTitle>
-                <CardDescription>
-                  Configure escalation levels and procedures for {selectedProject?.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <EscalationMatrix projectId={selectedProjectId} />
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Intelligent Matrix */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Intelligent Escalation Matrix</CardTitle>
+          <CardDescription>
+            Automated escalation system with stakeholder assignments and trigger monitoring
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <IntelligentEscalationMatrix projectId={selectedProjectId} />
+        </CardContent>
+      </Card>
     </div>
   );
 };

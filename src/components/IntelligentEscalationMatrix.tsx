@@ -36,14 +36,6 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Intelligent Escalation Matrix</h2>
-          <p className="text-muted-foreground">
-            Configure automated escalation levels, trigger assignments, stakeholder notifications, and monitoring
-          </p>
-        </div>
-      </div>
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-6">
