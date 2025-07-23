@@ -89,7 +89,7 @@ const ProjectManagement = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{project.name}</h1>
-          <p className="text-muted-foreground mt-2">{project.description}</p>
+          <p className="text-muted-foreground mt-2">Project details and information</p>
         </div>
         <div className="flex items-center gap-4">
           <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>
@@ -195,7 +195,7 @@ const ProjectManagement = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <ProjectOverview project={project} />
+          <div className="text-muted-foreground">Project overview coming soon...</div>
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">

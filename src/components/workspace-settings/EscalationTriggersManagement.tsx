@@ -8,28 +8,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const EscalationTriggersManagement: React.FC = () => {
   const { currentWorkspace } = useWorkspace();
-  const { triggers, loading, error, createTrigger } = useEscalationTriggers(currentWorkspace?.id || '');
+  const { triggers, loading, createTrigger } = useEscalationTriggers();
 
   const handleCreateTrigger = () => {
     createTrigger(
       'New Trigger',
-      'Task',
+      'Automatic trigger for overdue tasks',
       'overdue',
-      '1 day',
-      currentWorkspace?.id || ''
+      1,
+      'day'
     );
   };
 
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          {error}
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   return (
     <Card>
@@ -52,7 +42,7 @@ const EscalationTriggersManagement: React.FC = () => {
               <ul>
                 {triggers.map(trigger => (
                   <li key={trigger.id}>
-                    {trigger.name} - {trigger.trigger_type}
+                    {trigger.name} - {trigger.condition_type}
                   </li>
                 ))}
               </ul>
