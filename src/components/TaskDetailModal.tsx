@@ -9,18 +9,27 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Calendar, User, Clock, Target, MessageSquare, Paperclip,
-  Edit2, Save, X, Plus, Trash2, AlertCircle
+  Edit2, Save, X, Plus, Trash2, AlertCircle, CheckCircle,
+  Bold, Italic, Underline, List, ListOrdered
 } from 'lucide-react';
-import { Task } from './TaskCard';
+import { ProjectTask } from '@/types/project';
 
 interface TaskDetailModalProps {
-  task: Task | null;
+  task: ProjectTask | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (task: Task) => void;
+  onSave?: (task: ProjectTask) => void;
   onDelete?: (taskId: string) => void;
+}
+
+interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
+  order: number;
 }
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
@@ -31,12 +40,24 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onDelete
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedTask, setEditedTask] = useState<Task | null>(null);
+  const [editedTask, setEditedTask] = useState<ProjectTask | null>(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [newSubtask, setNewSubtask] = useState('');
+  const [richTextContent, setRichTextContent] = useState('');
 
   React.useEffect(() => {
     if (task) {
       setEditedTask({ ...task });
+      setRichTextContent(task.description || '');
+      // Mock subtasks for demonstration
+      setSubtasks([
+        { id: '1', title: 'Design wireframes', completed: true, order: 1 },
+        { id: '2', title: 'Create mockups', completed: true, order: 2 },
+        { id: '3', title: 'Get client approval', completed: false, order: 3 },
+        { id: '4', title: 'Implement frontend', completed: false, order: 4 },
+        { id: '5', title: 'Testing and QA', completed: false, order: 5 }
+      ]);
     }
   }, [task]);
 
@@ -44,14 +65,57 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const handleSave = () => {
     if (editedTask && onSave) {
-      onSave(editedTask);
+      const updatedTask = {
+        ...editedTask,
+        description: richTextContent,
+        progress: getProgressPercentage()
+      };
+      onSave(updatedTask);
       setIsEditing(false);
     }
   };
 
   const handleCancel = () => {
     setEditedTask({ ...task });
+    setRichTextContent(task.description || '');
     setIsEditing(false);
+  };
+
+  const getProgressPercentage = () => {
+    if (subtasks.length === 0) return 0;
+    const completed = subtasks.filter(st => st.completed).length;
+    return Math.round((completed / subtasks.length) * 100);
+  };
+
+  const handleSubtaskToggle = (subtaskId: string) => {
+    setSubtasks(prev => prev.map(st => 
+      st.id === subtaskId ? { ...st, completed: !st.completed } : st
+    ));
+  };
+
+  const addSubtask = () => {
+    if (newSubtask.trim()) {
+      const newTask: Subtask = {
+        id: Date.now().toString(),
+        title: newSubtask.trim(),
+        completed: false,
+        order: subtasks.length + 1
+      };
+      setSubtasks(prev => [...prev, newTask]);
+      setNewSubtask('');
+    }
+  };
+
+  const removeSubtask = (subtaskId: string) => {
+    setSubtasks(prev => prev.filter(st => st.id !== subtaskId));
+  };
+
+  const applyFormatting = (format: string) => {
+    // Basic rich text formatting - would need a proper rich text editor in production
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      document.execCommand(format, false, undefined);
+    }
   };
 
   const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
@@ -73,17 +137,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
-  const getHealthVariant = (health: string): 'success' | 'warning' | 'error' | 'default' => {
-    switch (health) {
-      case 'green': return 'success';
-      case 'yellow': return 'warning';
-      case 'red': return 'error';
-      default: return 'default';
-    }
-  };
-
   const currentTask = isEditing ? editedTask : task;
   if (!currentTask) return null;
+
+  const completedSubtasks = subtasks.filter(st => st.completed).length;
+  const totalSubtasks = subtasks.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -93,24 +151,22 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             <div className="flex-1">
               {isEditing ? (
                 <Input
-                  value={editedTask?.title || ''}
-                  onChange={(e) => setEditedTask(prev => prev ? { ...prev, title: e.target.value } : prev)}
+                  value={editedTask?.name || ''}
+                  onChange={(e) => setEditedTask(prev => prev ? { ...prev, name: e.target.value } : prev)}
                   className="text-xl font-bold border-none p-0 h-auto"
                 />
               ) : (
-                <DialogTitle className="text-2xl font-bold">{currentTask.title}</DialogTitle>
+                <DialogTitle className="text-2xl font-bold">{currentTask.name}</DialogTitle>
               )}
             </div>
             
             <div className="flex items-center gap-2">
-              <StatusBadge variant={getPriorityVariant(currentTask.tag.label)}>
-                {currentTask.tag.label}
+              <StatusBadge variant={getPriorityVariant(currentTask.priority)}>
+                {currentTask.priority}
               </StatusBadge>
-              {currentTask.health && (
-                <StatusBadge variant={getHealthVariant(currentTask.health.status)}>
-                  Health: {currentTask.health.score}/100
-                </StatusBadge>
-              )}
+              <StatusBadge variant={getStatusVariant(currentTask.status)}>
+                {currentTask.status}
+              </StatusBadge>
               {!isEditing ? (
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                   <Edit2 className="h-4 w-4" />
@@ -132,7 +188,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
+            <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="attachments">Files</TabsTrigger>
           </TabsList>
@@ -146,104 +202,201 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Description</label>
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        Description
+                      </label>
                       {isEditing ? (
-                        <Textarea
-                          value={editedTask?.description || ''}
-                          onChange={(e) => setEditedTask(prev => prev ? { ...prev, description: e.target.value } : prev)}
-                          className="mt-1"
-                          rows={3}
-                        />
+                        <div className="space-y-2">
+                          {/* Rich Text Formatting Toolbar */}
+                          <div className="flex items-center gap-1 p-2 border rounded-md bg-muted/50">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => applyFormatting('bold')}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Bold className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => applyFormatting('italic')}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Italic className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => applyFormatting('underline')}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Underline className="h-3 w-3" />
+                            </Button>
+                            <div className="w-px h-4 bg-border mx-1" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => applyFormatting('insertUnorderedList')}
+                              className="h-7 w-7 p-0"
+                            >
+                              <List className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => applyFormatting('insertOrderedList')}
+                              className="h-7 w-7 p-0"
+                            >
+                              <ListOrdered className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          
+                          <div
+                            contentEditable
+                            className="min-h-[120px] p-3 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            onInput={(e) => setRichTextContent(e.currentTarget.textContent || '')}
+                            dangerouslySetInnerHTML={{ __html: richTextContent }}
+                          />
+                        </div>
                       ) : (
-                        <p className="text-sm mt-1">{currentTask.description}</p>
+                        <div 
+                          className="text-sm mt-1 min-h-[60px] p-3 border rounded-md bg-muted/20"
+                          dangerouslySetInnerHTML={{ __html: richTextContent || 'No description provided' }}
+                        />
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Due: {currentTask.dueDate}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Start Date</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{currentTask.startDate}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{currentTask.assignees} assignees</span>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">End Date</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{currentTask.endDate}</span>
+                        </div>
                       </div>
                     </div>
 
-                    {currentTask.project && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Project</label>
-                        <p className="text-sm mt-1">{currentTask.project}</p>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Assigned Resources</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          {currentTask.assignedResources?.length || 0} assigned
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Status & Health</CardTitle>
+                    <CardTitle className="text-lg">Progress & Status</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Status</span>
-                      <StatusBadge variant="info">
-                        In Progress
-                      </StatusBadge>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Overall Progress</span>
+                        <span className="text-sm text-muted-foreground">
+                          {completedSubtasks}/{totalSubtasks} subtasks
+                        </span>
+                      </div>
+                      <Progress value={getProgressPercentage()} className="h-3" />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>{getProgressPercentage()}% complete</span>
+                        <span>{totalSubtasks - completedSubtasks} remaining</span>
+                      </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Priority</span>
-                      <StatusBadge variant={getPriorityVariant(currentTask.tag.label)}>
-                        {currentTask.tag.label}
-                      </StatusBadge>
-                    </div>
-
-                    {currentTask.health && (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Health Score</span>
-                          <StatusBadge variant={getHealthVariant(currentTask.health.status)}>
-                            {currentTask.health.score}/100
-                          </StatusBadge>
-                        </div>
-                        <Progress value={currentTask.health.score} className="h-2" />
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-success" />
+                        <span>Completed: {completedSubtasks}</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>Remaining: {totalSubtasks - completedSubtasks}</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
-            <TabsContent value="progress" className="space-y-6">
+            <TabsContent value="subtasks" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Task Progress</CardTitle>
-                  <CardDescription>Track completion and milestones</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Subtasks</CardTitle>
+                    <Badge variant="outline">
+                      {completedSubtasks}/{totalSubtasks} completed
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    Break down your task into smaller, manageable subtasks
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div>
+                    {/* Progress Overview */}
+                    <div className="p-4 bg-muted/30 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Overall Progress</span>
+                        <span className="font-medium">Subtasks Progress</span>
                         <span className="text-sm text-muted-foreground">
-                          {currentTask.progress.completed}/{currentTask.progress.total} subtasks
+                          {getProgressPercentage()}% complete
                         </span>
                       </div>
-                      <Progress 
-                        value={(currentTask.progress.completed / currentTask.progress.total) * 100} 
-                        className="h-3"
-                      />
+                      <Progress value={getProgressPercentage()} className="h-2" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-success" />
-                        <span>Completed: {currentTask.progress.completed}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Remaining: {currentTask.progress.total - currentTask.progress.completed}</span>
-                      </div>
+                    {/* Subtask List */}
+                    <div className="space-y-2">
+                      {subtasks.map((subtask) => (
+                        <div
+                          key={subtask.id}
+                          className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/20 transition-colors"
+                        >
+                          <Checkbox
+                            checked={subtask.completed}
+                            onCheckedChange={() => handleSubtaskToggle(subtask.id)}
+                          />
+                          <span className={`flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
+                            {subtask.title}
+                          </span>
+                          {subtask.completed && (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSubtask(subtask.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Add New Subtask */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add a new subtask..."
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addSubtask()}
+                        className="flex-1"
+                      />
+                      <Button onClick={addSubtask} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -313,7 +466,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         <div className="flex justify-between pt-4 border-t border-border">
           <div>
             {onDelete && (
-              <Button variant="outline" onClick={() => onDelete(task.id)} className="text-error">
+              <Button variant="outline" onClick={() => onDelete(task.id)} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Task
               </Button>

@@ -28,6 +28,11 @@ interface TinkMessage {
 
 type ChatMode = 'agent' | 'chat';
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 const TinkAssistant = () => {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -42,6 +47,24 @@ const TinkAssistant = () => {
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [tinkService, setTinkService] = useState<EnhancedTinkService | null>(null);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+
+  // Drag functionality state
+  const [position, setPosition] = useState<Position>({ x: 24, y: 24 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    // Load saved position from localStorage
+    const savedPosition = localStorage.getItem('chatIconPosition');
+    if (savedPosition) {
+      try {
+        const parsed = JSON.parse(savedPosition);
+        setPosition(parsed);
+      } catch (error) {
+        console.error('Error parsing saved position:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -76,6 +99,87 @@ What would you like to explore today?`,
 
     initializeChat();
   }, [currentWorkspace, selectedModel]);
+
+  // Drag event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const iconSize = 180;
+    const newX = Math.max(0, Math.min(window.innerWidth - iconSize, e.clientX - dragStart.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - iconSize, e.clientY - dragStart.y));
+    
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      // Save position to localStorage for persistence
+      localStorage.setItem('chatIconPosition', JSON.stringify(position));
+    }
+  };
+
+  // Touch event handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStart({
+      x: touch.clientX - position.x,
+      y: touch.clientY - position.y
+    });
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isDragging) return;
+    
+    const touch = e.touches[0];
+    const iconSize = 180;
+    const newX = Math.max(0, Math.min(window.innerWidth - iconSize, touch.clientX - dragStart.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - iconSize, touch.clientY - dragStart.y));
+    
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleTouchEnd = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      // Save position to localStorage for persistence
+      localStorage.setItem('chatIconPosition', JSON.stringify(position));
+    }
+  };
+
+  // Add global event listeners for drag
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, dragStart, position]);
+
+  const handleIconClick = () => {
+    if (!isDragging) {
+      setIsOpen(true);
+    }
+  };
 
   const getOpenRouterKey = async (): Promise<string | null> => {
     try {
@@ -245,7 +349,7 @@ What would you like to explore today?`,
   // Show API key missing message if needed
   if (apiKeyMissing && isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 w-[400px] h-[300px] z-50">
+      <div className="fixed w-[400px] h-[300px] z-50" style={{ bottom: '24px', right: '24px' }}>
         <div className="relative w-full h-full bg-background border border-border rounded-2xl shadow-2xl flex flex-col p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-foreground">Setup Required</h3>
@@ -277,10 +381,23 @@ What would you like to explore today?`,
     <>
       {/* Floating Chat Button */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div 
+          className="fixed z-50 select-none"
+          style={{ 
+            left: `${position.x}px`, 
+            top: `${position.y}px`,
+            cursor: isDragging ? 'grabbing' : 'grab'
+          }}
+        >
           <div
-            onClick={() => setIsOpen(true)}
-            className="relative w-44 h-44 rounded-full cursor-pointer hover:scale-105 transition-transform duration-300"
+            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105"
+            style={{ 
+              opacity: isDragging ? 0.8 : 1,
+              filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))' : 'none'
+            }}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onClick={handleIconClick}
           >
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
@@ -289,7 +406,7 @@ What would you like to explore today?`,
               style={{
                 width: '180px',
                 height: '180px',
-                cursor: 'pointer',
+                pointerEvents: 'none',
                 background: 'transparent'
               }}
             />
@@ -304,7 +421,7 @@ What would you like to explore today?`,
 
       {/* Enhanced Chat Interface */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[560px] h-[700px] z-50 animate-[scale-in_300ms_ease-out]">
+        <div className="fixed w-[560px] h-[700px] z-50 animate-[scale-in_300ms_ease-out]" style={{ bottom: '24px', right: '24px' }}>
           <div className="relative w-full h-full bg-background border border-border rounded-2xl 
                         shadow-2xl backdrop-blur-sm flex flex-col">
             
