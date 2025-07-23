@@ -6,6 +6,7 @@ import Logo from './Logo';
 import WorkspaceSelector from './WorkspaceSelector';
 import { UserButton } from './auth/UserButton';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { NotificationBell } from './notifications/NotificationModal';
 import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -232,7 +233,12 @@ const Header = () => {
               </div>
             )}
             
-            {user && <UserButton />}
+            {user && (
+              <>
+                <NotificationBell />
+                <UserButton />
+              </>
+            )}
             <ThemeToggle />
           </div>
         </div>
