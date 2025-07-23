@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import Header from '@/components/Header';
-import TinkAssistant from '@/components/TinkAssistant';
+import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import PerformanceDashboard from '@/components/performance/PerformanceDashboard';
@@ -79,9 +78,8 @@ const Analytics = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
+    <Layout>
+      <div className="flex-1 container mx-auto px-4 pb-8">
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -140,10 +138,8 @@ const Analytics = () => {
             <SettingsTab />
           </TabsContent>
         </Tabs>
-      </main>
-
-      <TinkAssistant />
-    </div>
+      </div>
+    </Layout>
   );
 };
 

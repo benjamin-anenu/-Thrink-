@@ -80,13 +80,6 @@ const Header = () => {
             </Link>
           </div>
           
-          {/* Current workspace for authenticated users */}
-          {!isLandingPage && !isAuthPage && user && currentWorkspace && (
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full">
-              <span className="text-sm text-muted-foreground">Workspace:</span>
-              <span className="font-semibold text-foreground">{currentWorkspace.name}</span>
-            </div>
-          )}
           
           {/* Mobile menu button */}
           <button 
@@ -105,26 +98,26 @@ const Header = () => {
                     <ToggleGroupItem 
                       value="features"
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'features' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       )}
                       onClick={handleNavClick('features')}
                     >
-                      <CircleDot size={14} className="mr-2" /> Features
+                      <CircleDot size={12} className="mr-1.5" /> Features
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="pricing" 
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'pricing' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       )}
                       onClick={handleNavClick('pricing')}
                     >
-                      <DollarSign size={14} className="mr-2" /> Pricing
+                      <DollarSign size={12} className="mr-1.5" /> Pricing
                     </ToggleGroupItem>
                   </>
                 ) : user && (
@@ -132,7 +125,7 @@ const Header = () => {
                     <ToggleGroupItem 
                       value="dashboard"
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'dashboard' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -140,13 +133,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/dashboard">
-                        <LayoutDashboard size={14} className="mr-2" /> Dashboard
+                        <LayoutDashboard size={12} className="mr-1.5" /> Dashboard
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="projects" 
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'projects' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -154,13 +147,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/projects">
-                        <FolderOpen size={14} className="mr-2" /> Projects
+                        <FolderOpen size={12} className="mr-1.5" /> Projects
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="resources" 
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'resources' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -168,13 +161,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/resources">
-                        <Users size={14} className="mr-2" /> Resources
+                        <Users size={12} className="mr-1.5" /> Resources
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="stakeholders" 
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'stakeholders' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -182,13 +175,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/stakeholders">
-                        <UserCheck size={14} className="mr-2" /> Stakeholders
+                        <UserCheck size={12} className="mr-1.5" /> Stakeholders
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="analytics" 
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'analytics' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -196,13 +189,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/analytics">
-                        <BarChart3 size={14} className="mr-2" /> Analytics
+                        <BarChart3 size={12} className="mr-1.5" /> Analytics
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="ai-hub" 
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all relative text-sm font-medium",
+                        "px-3 py-1.5 rounded-full transition-all relative text-sm font-medium",
                         activePage === 'ai-hub' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -210,7 +203,7 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/ai-hub">
-                        <Brain size={14} className="mr-2" /> AI Hub
+                        <Brain size={12} className="mr-1.5" /> AI Hub
                       </Link>
                     </ToggleGroupItem>
                   </>
