@@ -101,19 +101,15 @@ const TinkAssistant = () => {
 
   return (
     <>
-      {/* Enhanced Floating Chat Button - 3x Larger with No Background */}
+      {/* Mature Floating Chat Button - Large with Subtle Styling */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
-          {/* Adjusted ambient ring for larger size */}
-          <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" 
-               style={{ animationDuration: '3s' }}></div>
-          
           <Button
             onClick={() => setIsOpen(true)}
-            className="relative w-48 h-48 rounded-full bg-transparent hover:bg-white/10 
+            className="relative w-48 h-48 rounded-full bg-card/80 hover:bg-card 
                      shadow-lg hover:shadow-xl transition-all duration-300 ease-out
-                     animate-[float_4s_ease-in-out_infinite] hover:scale-105 active:scale-[0.98]
-                     will-change-transform border-0"
+                     hover:scale-105 active:scale-[0.98] border border-border/20
+                     will-change-transform backdrop-blur-sm"
             size="icon"
             style={{
               transform: 'translate3d(0, 0, 0)',
@@ -133,13 +129,6 @@ const TinkAssistant = () => {
                 cursor: 'pointer'
               }}
             />
-            
-            {/* Adjusted Performance Indicator for larger button */}
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-warning rounded-full 
-                          flex items-center justify-center animate-pulse shadow-sm"
-                 style={{ animationDuration: '2s' }}>
-              <TrendingUp className="h-3 w-3 text-warning-foreground" />
-            </div>
           </Button>
         </div>
       )}
@@ -171,9 +160,8 @@ const TinkAssistant = () => {
                 
                 <div>
                   <h3 className="font-medium text-foreground">Tink AI</h3>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3 text-success" />
-                    <span>Performance Active</span>
+                  <p className="text-xs text-muted-foreground">
+                    AI Assistant
                   </p>
                 </div>
               </div>
