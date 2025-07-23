@@ -26,8 +26,8 @@ import ProjectResources from '@/components/project-management/ProjectResources';
 import ProjectReports from '@/components/project-management/ProjectReports';
 import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
 import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
-import ProjectIssueLog from '@/components/project-management/issues/ProjectIssueLog';
-import PhaseView from '@/components/project-management/phases/PhaseView';
+import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
+import { PhaseView } from '@/components/project-management/phases/PhaseView';
 import KanbanBoard from '@/components/project-management/KanbanBoard';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import { ProjectTask } from '@/types/project';
@@ -195,7 +195,7 @@ const ProjectManagement = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <ProjectOverview projectId={id!} />
+          <ProjectOverview project={project} />
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
