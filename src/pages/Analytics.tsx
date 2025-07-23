@@ -21,6 +21,7 @@ import CalendarTab from '@/components/analytics/CalendarTab';
 import SettingsTab from '@/components/analytics/SettingsTab';
 import ReportsExport from '@/components/analytics/ReportsExport';
 import SystemHealthDashboard from '@/components/analytics/SystemHealthDashboard';
+import RebaselineManagement from '@/components/analytics/RebaselineManagement';
 import { CalendarEvent } from '@/hooks/useCalendarEvents';
 
 const Analytics = () => {
@@ -84,11 +85,12 @@ const Analytics = () => {
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
+            <TabsTrigger value="rebaseline">Rebaseline</TabsTrigger>
             <TabsTrigger value="health">System</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -117,6 +119,10 @@ const Analytics = () => {
 
           <TabsContent value="export" className="space-y-6">
             <ReportsExport />
+          </TabsContent>
+
+          <TabsContent value="rebaseline" className="space-y-6">
+            <RebaselineManagement />
           </TabsContent>
 
           <TabsContent value="health" className="space-y-6">

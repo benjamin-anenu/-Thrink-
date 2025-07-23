@@ -6,10 +6,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Download, FileText, Mail, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRealReportsData } from '@/hooks/useRealReportsData';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { addDays } from 'date-fns';
 
 const ReportsExport: React.FC = () => {
   const { toast } = useToast();
+  const { currentWorkspace } = useWorkspace();
+  const { generateReport, downloadReport } = useRealReportsData();
   const [exportFormat, setExportFormat] = useState<string>('pdf');
   const [selectedSections, setSelectedSections] = useState<string[]>([
     'summary', 'progress', 'resources', 'timeline'
@@ -47,17 +51,47 @@ const ReportsExport: React.FC = () => {
       return;
     }
 
+    if (!currentWorkspace?.id) {
+      toast({
+        title: "No workspace selected",
+        description: "Please select a workspace to export reports.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsExporting(true);
     
     try {
-      // Simulate export process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Export completed",
-        description: `Report exported as ${exportFormat.toUpperCase()} with ${selectedSections.length} sections.`,
+      // Generate the report with real data
+      const reportData = await generateReport({
+        type: 'analytics_export',
+        frequency: 'one_time',
+        recipients: ['current_user@company.com'],
+        sections: selectedSections,
+        dateRange: {
+          from: dateRange.from?.toISOString(),
+          to: dateRange.to?.toISOString()
+        }
       });
+
+      if (reportData) {
+        // Download the report
+        const success = await downloadReport(reportData.id, exportFormat);
+        
+        if (success) {
+          toast({
+            title: "Export completed",
+            description: `Report exported as ${exportFormat.toUpperCase()} with ${selectedSections.length} sections.`,
+          });
+        } else {
+          throw new Error('Download failed');
+        }
+      } else {
+        throw new Error('Report generation failed');
+      }
     } catch (error) {
+      console.error('Export error:', error);
       toast({
         title: "Export failed",
         description: "There was an error exporting the report. Please try again.",
@@ -68,11 +102,44 @@ const ReportsExport: React.FC = () => {
     }
   };
 
-  const handleScheduleReport = () => {
-    toast({
-      title: "Report scheduled",
-      description: "Weekly reports will be sent to your email every Monday at 9:00 AM.",
-    });
+  const handleScheduleReport = async () => {
+    if (!currentWorkspace?.id) {
+      toast({
+        title: "No workspace selected",
+        description: "Please select a workspace to schedule reports.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const reportData = await generateReport({
+        type: 'scheduled_analytics',
+        frequency: 'weekly',
+        recipients: ['current_user@company.com'],
+        sections: selectedSections,
+        dateRange: {
+          from: dateRange.from?.toISOString(),
+          to: dateRange.to?.toISOString()
+        }
+      });
+
+      if (reportData) {
+        toast({
+          title: "Report scheduled",
+          description: "Weekly reports will be sent to your email every Monday at 9:00 AM.",
+        });
+      } else {
+        throw new Error('Failed to schedule report');
+      }
+    } catch (error) {
+      console.error('Schedule error:', error);
+      toast({
+        title: "Schedule failed",
+        description: "Failed to schedule the report. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

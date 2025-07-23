@@ -708,6 +708,69 @@ export type Database = {
           },
         ]
       }
+      monthly_performance_reports: {
+        Row: {
+          achievements: string[] | null
+          ai_insights: string[] | null
+          challenges: string[] | null
+          collaboration_score: number
+          communication_score: number
+          created_at: string
+          deadline_adherence_score: number
+          generated_at: string
+          goals: string[] | null
+          id: string
+          manager_notes: string | null
+          month: string
+          overall_score: number
+          productivity_score: number
+          quality_score: number
+          resource_id: string
+          workspace_id: string
+          year: number
+        }
+        Insert: {
+          achievements?: string[] | null
+          ai_insights?: string[] | null
+          challenges?: string[] | null
+          collaboration_score?: number
+          communication_score?: number
+          created_at?: string
+          deadline_adherence_score?: number
+          generated_at?: string
+          goals?: string[] | null
+          id?: string
+          manager_notes?: string | null
+          month: string
+          overall_score?: number
+          productivity_score?: number
+          quality_score?: number
+          resource_id: string
+          workspace_id: string
+          year: number
+        }
+        Update: {
+          achievements?: string[] | null
+          ai_insights?: string[] | null
+          challenges?: string[] | null
+          collaboration_score?: number
+          communication_score?: number
+          created_at?: string
+          deadline_adherence_score?: number
+          generated_at?: string
+          goals?: string[] | null
+          id?: string
+          manager_notes?: string | null
+          month?: string
+          overall_score?: number
+          productivity_score?: number
+          quality_score?: number
+          resource_id?: string
+          workspace_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -732,6 +795,96 @@ export type Database = {
           read?: boolean | null
           type?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      performance_metrics: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          project_id: string | null
+          resource_id: string
+          task_id: string | null
+          timestamp: string
+          type: string
+          value: number
+          weight: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          project_id?: string | null
+          resource_id: string
+          task_id?: string | null
+          timestamp?: string
+          type: string
+          value?: number
+          weight?: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          project_id?: string | null
+          resource_id?: string
+          task_id?: string | null
+          timestamp?: string
+          type?: string
+          value?: number
+          weight?: number
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      performance_profiles: {
+        Row: {
+          created_at: string
+          current_score: number
+          id: string
+          improvement_areas: string[] | null
+          last_updated: string
+          monthly_score: number
+          resource_id: string
+          resource_name: string
+          risk_level: string
+          strengths: string[] | null
+          trend: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_score?: number
+          id?: string
+          improvement_areas?: string[] | null
+          last_updated?: string
+          monthly_score?: number
+          resource_id: string
+          resource_name: string
+          risk_level?: string
+          strengths?: string[] | null
+          trend?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          current_score?: number
+          id?: string
+          improvement_areas?: string[] | null
+          last_updated?: string
+          monthly_score?: number
+          resource_id?: string
+          resource_name?: string
+          risk_level?: string
+          strengths?: string[] | null
+          trend?: string
+          updated_at?: string
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -1563,6 +1716,60 @@ export type Database = {
           },
         ]
       }
+      rebaseline_requests: {
+        Row: {
+          created_at: string
+          id: string
+          impact: string | null
+          original_deadline: string
+          proposed_deadline: string
+          reasons: string[]
+          resource_id: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          task_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          impact?: string | null
+          original_deadline: string
+          proposed_deadline: string
+          reasons?: string[]
+          resource_id: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          task_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          impact?: string | null
+          original_deadline?: string
+          proposed_deadline?: string
+          reasons?: string[]
+          resource_id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          task_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
@@ -2194,6 +2401,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_deadline_reminders: {
+        Row: {
+          created_at: string
+          deadline: string
+          id: string
+          project_id: string
+          project_name: string
+          reminder_type: string
+          resource_email: string
+          resource_id: string
+          resource_name: string
+          response_data: Json | null
+          response_received: boolean | null
+          response_required: boolean
+          sent: boolean
+          sent_at: string | null
+          task_id: string
+          task_name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          deadline: string
+          id?: string
+          project_id: string
+          project_name: string
+          reminder_type: string
+          resource_email: string
+          resource_id: string
+          resource_name: string
+          response_data?: Json | null
+          response_received?: boolean | null
+          response_required?: boolean
+          sent?: boolean
+          sent_at?: string | null
+          task_id: string
+          task_name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string
+          id?: string
+          project_id?: string
+          project_name?: string
+          reminder_type?: string
+          resource_email?: string
+          resource_id?: string
+          resource_name?: string
+          response_data?: Json | null
+          response_received?: boolean | null
+          response_required?: boolean
+          sent?: boolean
+          sent_at?: string | null
+          task_id?: string
+          task_name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       task_dependencies: {
         Row: {
