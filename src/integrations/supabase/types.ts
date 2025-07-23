@@ -602,6 +602,159 @@ export type Database = {
           },
         ]
       }
+      escalation_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          level_id: string
+          stakeholder_id: string
+          trigger_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_id: string
+          stakeholder_id: string
+          trigger_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_id?: string
+          stakeholder_id?: string
+          trigger_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_assignments_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_assignments_stakeholder_id_fkey"
+            columns: ["stakeholder_id"]
+            isOneToOne: false
+            referencedRelation: "stakeholders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_assignments_trigger_id_fkey"
+            columns: ["trigger_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_triggers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalation_history: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledgment_token: string | null
+          created_at: string
+          id: string
+          level_id: string
+          project_id: string
+          sent_at: string
+          stakeholder_id: string
+          status: string
+          trigger_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledgment_token?: string | null
+          created_at?: string
+          id?: string
+          level_id: string
+          project_id: string
+          sent_at?: string
+          stakeholder_id: string
+          status?: string
+          trigger_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledgment_token?: string | null
+          created_at?: string
+          id?: string
+          level_id?: string
+          project_id?: string
+          sent_at?: string
+          stakeholder_id?: string
+          status?: string
+          trigger_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_history_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_history_stakeholder_id_fkey"
+            columns: ["stakeholder_id"]
+            isOneToOne: false
+            referencedRelation: "stakeholders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_history_trigger_id_fkey"
+            columns: ["trigger_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_triggers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalation_levels: {
+        Row: {
+          created_at: string
+          id: string
+          level_order: number
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_order: number
+          name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_order?: number
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       escalation_triggers: {
         Row: {
           condition_type: string
@@ -3333,6 +3486,10 @@ export type Database = {
           workspace_slug?: string
         }
         Returns: string
+      }
+      execute_sql: {
+        Args: { query: string }
+        Returns: Json
       }
       get_critical_path: {
         Args: { project_uuid: string }

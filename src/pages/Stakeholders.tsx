@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import Header from '@/components/Header';
@@ -6,6 +5,7 @@ import TinkAssistant from '@/components/TinkAssistant';
 import StakeholderForm from '@/components/StakeholderForm';
 import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderListView from '@/components/StakeholderListView';
+import StakeholderEscalationMatrix from '@/components/StakeholderEscalationMatrix';
 import ViewToggle from '@/components/ViewToggle';
 import { useStakeholders } from '@/hooks/useStakeholders';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -129,9 +129,10 @@ const Stakeholders = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="escalation">Escalation Matrix</TabsTrigger>
             <TabsTrigger value="engagement">Engagement</TabsTrigger>
           </TabsList>
 
@@ -258,6 +259,10 @@ const Stakeholders = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="escalation" className="space-y-6">
+            <StakeholderEscalationMatrix />
           </TabsContent>
 
           <TabsContent value="engagement" className="space-y-6">

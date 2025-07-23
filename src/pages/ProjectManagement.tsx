@@ -1,108 +1,193 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useProject } from '@/contexts/ProjectContext';
-import Header from '@/components/Header';
-import TinkAssistant from '@/components/TinkAssistant';
-import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
-import ProjectOverview from '@/components/project-management/ProjectOverview';
-import ProjectResources from '@/components/project-management/ProjectResources';
-import ProjectTimeline from '@/components/project-management/ProjectTimeline';
-import ProjectReports from '@/components/project-management/ProjectReports';
+import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BarChart3, Calendar, Users, FileText, Target, FolderOpen, AlertTriangle, Layers } from 'lucide-react';
+import { 
+  BarChart3, 
+  Calendar, 
+  FileText, 
+  Settings, 
+  Users, 
+  CheckSquare,
+  Kanban,
+  AlertCircle,
+  Clock,
+  Target,
+  TrendingUp
+} from 'lucide-react';
+import { useProjects } from '@/hooks/useProjects';
+import { useTaskManagement } from '@/hooks/useTaskManagement';
+import Layout from '@/components/Layout';
+import ProjectTimeline from '@/components/project-management/ProjectTimeline';
+import ProjectResources from '@/components/project-management/ProjectResources';
+import ProjectReports from '@/components/project-management/ProjectReports';
 import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
+import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
 import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
 import { PhaseView } from '@/components/project-management/phases/PhaseView';
+import KanbanBoard from '@/components/project-management/KanbanBoard';
+import TaskDetailModal from '@/components/TaskDetailModal';
+import { ProjectTask } from '@/types/project';
 
 const ProjectManagement = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { getProject, setCurrentProject } = useProject();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [issueLogTaskFilter, setIssueLogTaskFilter] = useState<string | undefined>();
+  const { id } = useParams<{ id: string }>();
+  const { projects, loading: projectsLoading } = useProjects();
+  const { tasks, loading: tasksLoading } = useTaskManagement(id || '');
+  const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [activeProjectPlanTab, setActiveProjectPlanTab] = useState('gantt');
 
-  const project = getProject(id || '');
+  const project = projects.find(p => p.id === id);
 
   useEffect(() => {
-    if (id) {
-      setCurrentProject(id);
+    if (!projectsLoading && !project) {
+      console.error('Project not found');
     }
-  }, [id, setCurrentProject]);
+  }, [project, projectsLoading]);
 
-  const handleSwitchToIssueLog = (taskId?: string) => {
-    setIssueLogTaskFilter(taskId);
-    setActiveTab('issues');
+  const handleTaskClick = (task: ProjectTask) => {
+    setSelectedTask(task);
+    setIsTaskModalOpen(true);
   };
 
-  if (!project) {
+  const handleCloseTaskModal = () => {
+    setSelectedTask(null);
+    setIsTaskModalOpen(false);
+  };
+
+  if (projectsLoading || tasksLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
-            <Button onClick={() => navigate('/projects')}>
-              Back to Projects
-            </Button>
-          </div>
-        </main>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading project...</div>
+        </div>
+      </Layout>
     );
   }
 
+  if (!project) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Project not found</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Calculate project statistics
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+  const inProgressTasks = tasks.filter(task => task.status === 'In Progress').length;
+  const overdueTasks = tasks.filter(task => 
+    task.status !== 'Completed' && new Date(task.endDate) < new Date()
+  ).length;
+
+  const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
-        {/* Breadcrumb and Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/projects')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
-          </Button>
-          <div className="h-4 w-px bg-border"></div>
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
+        {/* Project Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">{project.name}</h1>
-            <p className="text-muted-foreground">Project Management Dashboard</p>
+            <h1 className="text-3xl font-bold">{project.name}</h1>
+            <p className="text-muted-foreground mt-2">Project details and information</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>
+              {project.status}
+            </Badge>
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Project Settings
+            </Button>
           </div>
         </div>
 
-        {/* Project Management Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Project Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
+                  <p className="text-2xl font-bold">{totalTasks}</p>
+                </div>
+                <CheckSquare className="h-8 w-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                  <p className="text-2xl font-bold text-green-600">{completedTasks}</p>
+                </div>
+                <Target className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                  <p className="text-2xl font-bold text-blue-600">{inProgressTasks}</p>
+                </div>
+                <Clock className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Overdue</p>
+                  <p className="text-2xl font-bold text-red-600">{overdueTasks}</p>
+                </div>
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="phases" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Phases
-            </TabsTrigger>
-            <TabsTrigger value="gantt" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+            <TabsTrigger value="project-plan" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
               Project Plan
-            </TabsTrigger>
-            <TabsTrigger value="resources" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Resources
             </TabsTrigger>
             <TabsTrigger value="timeline" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Timeline
             </TabsTrigger>
+            <TabsTrigger value="phases" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Phases
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Resources
+            </TabsTrigger>
             <TabsTrigger value="issues" className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Issue Log
+              <AlertCircle className="h-4 w-4" />
+              Issues
             </TabsTrigger>
             <TabsTrigger value="documentation" className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
               Documentation
             </TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center gap-2">
@@ -111,49 +196,77 @@ const ProjectManagement = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <ProjectOverview project={project} />
+          <TabsContent value="overview" className="space-y-4">
+            <div className="text-muted-foreground">Project overview coming soon...</div>
           </TabsContent>
 
-          <TabsContent value="phases">
-            <PhaseView projectId={project.id} />
+          <TabsContent value="project-plan" className="space-y-4">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Project Plan</h2>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant={activeProjectPlanTab === 'gantt' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveProjectPlanTab('gantt')}
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Gantt Chart
+                  </Button>
+                  <Button 
+                    variant={activeProjectPlanTab === 'kanban' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveProjectPlanTab('kanban')}
+                  >
+                    <Kanban className="h-4 w-4 mr-2" />
+                    Kanban Board
+                  </Button>
+                </div>
+              </div>
+
+              {activeProjectPlanTab === 'gantt' && (
+                <ProjectGanttChart projectId={id!} />
+              )}
+
+              {activeProjectPlanTab === 'kanban' && (
+                <KanbanBoard projectId={id!} onTaskClick={handleTaskClick} />
+              )}
+            </div>
           </TabsContent>
 
-          <TabsContent value="gantt">
-            <ProjectGanttChart 
-              projectId={project.id} 
-              onSwitchToIssueLog={handleSwitchToIssueLog}
-            />
+          <TabsContent value="timeline" className="space-y-4">
+            <ProjectTimeline projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="resources">
-            <ProjectResources projectId={project.id} />
+          <TabsContent value="phases" className="space-y-4">
+            <PhaseView projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="timeline">
-            <ProjectTimeline projectId={project.id} />
+          <TabsContent value="resources" className="space-y-4">
+            <ProjectResources projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="issues">
-            <ProjectIssueLog 
-              projectId={project.id} 
-              taskFilter={issueLogTaskFilter}
-              onClearTaskFilter={() => setIssueLogTaskFilter(undefined)}
-            />
+          <TabsContent value="issues" className="space-y-4">
+            <ProjectIssueLog projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="documentation">
-            <ProjectDocumentation />
+          <TabsContent value="documentation" className="space-y-4">
+            <ProjectDocumentation projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="reports">
-            <ProjectReports projectId={project.id} />
+          <TabsContent value="reports" className="space-y-4">
+            <ProjectReports projectId={id!} />
           </TabsContent>
         </Tabs>
-      </main>
 
-      <TinkAssistant />
-    </div>
+        {/* Task Detail Modal */}
+        <TaskDetailModal
+          task={selectedTask}
+          isOpen={isTaskModalOpen}
+          onClose={handleCloseTaskModal}
+        />
+      </div>
+    </Layout>
   );
 };
 

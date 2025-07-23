@@ -1,25 +1,18 @@
+
 import React from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Bell, 
-  CheckCircle, 
-  AlertTriangle, 
-  Info, 
-  Calendar, 
-  Users, 
-  Settings,
-  Archive,
-  TrendingUp
-} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trash2, CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
   id: string;
   title: string;
   message: string;
   type: 'info' | 'warning' | 'success' | 'error';
-  category: 'project' | 'deadline' | 'team' | 'system' | 'performance';
+  category: 'project' | 'deadline' | 'team' | 'system' | 'performance' | 'escalation';
   timestamp: Date;
   read: boolean;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -33,143 +26,128 @@ interface NotificationListProps {
   onDelete: (id: string) => void;
 }
 
-export const NotificationList: React.FC<NotificationListProps> = ({
+const NotificationList: React.FC<NotificationListProps> = ({
   notifications,
   onMarkAsRead,
-  onDelete
+  onDelete,
 }) => {
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-success" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-warning" />;
-      case 'error': return <AlertTriangle className="h-4 w-4 text-error" />;
-      default: return <Info className="h-4 w-4 text-info" />;
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Info className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'project':
+        return 'bg-blue-500';
+      case 'deadline':
+        return 'bg-red-500';
+      case 'team':
+        return 'bg-green-500';
+      case 'system':
+        return 'bg-gray-500';
+      case 'performance':
+        return 'bg-purple-500';
+      case 'escalation':
+        return 'bg-orange-500';
+      default:
+        return 'bg-gray-500';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'bg-error text-error-foreground';
-      case 'high': return 'bg-warning text-warning-foreground';
-      case 'medium': return 'bg-info text-info-foreground';
-      default: return 'bg-muted text-muted-foreground';
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'default';
+      case 'medium':
+        return 'secondary';
+      case 'low':
+        return 'outline';
+      default:
+        return 'outline';
     }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'deadline': return <Calendar className="h-4 w-4" />;
-      case 'team': return <Users className="h-4 w-4" />;
-      case 'system': return <Settings className="h-4 w-4" />;
-      case 'performance': return <TrendingUp className="h-4 w-4" />;
-      default: return <Info className="h-4 w-4" />;
-    }
-  };
-
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - timestamp.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
   };
 
   if (notifications.length === 0) {
     return (
-      <Card className="bg-card border-border">
-        <CardContent className="p-0">
-          <div className="text-center py-8">
-            <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground">No notifications found</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="text-center py-8">
+        <div className="text-muted-foreground">No notifications to display</div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-card border-border">
-      <CardContent className="p-0">
-        <div className="divide-y divide-border">
-          {notifications.map(notification => (
-            <div
-              key={notification.id}
-              className={`p-4 hover:bg-surface-hover transition-colors ${
-                !notification.read ? 'bg-primary/5 border-l-4 border-l-primary' : ''
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1">
-                  {getTypeIcon(notification.type)}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className={`font-medium text-sm ${!notification.read ? 'font-semibold' : ''}`}>
-                      {notification.title}
-                    </h4>
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${getPriorityColor(notification.priority)}`}>
-                        {notification.priority}
+    <ScrollArea className="h-[400px]">
+      <div className="space-y-3">
+        {notifications.map((notification) => (
+          <Card key={notification.id} className={`${notification.read ? 'bg-muted/20' : 'bg-background'}`}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`w-1 h-12 rounded-full ${getCategoryColor(notification.category)}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {getTypeIcon(notification.type)}
+                      <h3 className={`font-medium ${notification.read ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        {notification.title}
+                      </h3>
+                      <Badge variant={getPriorityColor(notification.priority)} className="text-xs">
+                        {notification.priority.toUpperCase()}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {formatTimestamp(notification.timestamp)}
-                      </span>
                     </div>
-                  </div>
-                  
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {notification.message}
-                  </p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getCategoryIcon(notification.category)}
-                      <span className="text-xs text-muted-foreground capitalize">
+                    <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                      {notification.message}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline" className="capitalize">
                         {notification.category}
-                      </span>
+                      </Badge>
                       {notification.projectName && (
-                        <>
-                          <span className="text-xs text-muted-foreground">•</span>
-                          <span className="text-xs text-muted-foreground">
-                            {notification.projectName}
-                          </span>
-                        </>
+                        <span>• {notification.projectName}</span>
                       )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      {!notification.read && (
-                        <Button
-                          onClick={() => onMarkAsRead(notification.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                        >
-                          Mark Read
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() => onDelete(notification.id)}
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs text-muted-foreground hover:text-error"
-                      >
-                        <Archive className="h-3 w-3" />
-                      </Button>
+                      <span>• {formatDistanceToNow(notification.timestamp, { addSuffix: true })}</span>
                     </div>
                   </div>
+                </div>
+                <div className="flex items-center gap-1 ml-2">
+                  {!notification.read && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onMarkAsRead(notification.id)}
+                      className="h-8 w-8 p-0"
+                      title="Mark as read"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDelete(notification.id)}
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                    title="Delete notification"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </ScrollArea>
   );
 };
+
+export default NotificationList;
