@@ -6,22 +6,86 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Enhanced OpenRouter AI integration with natural response processing
-class EnhancedOpenRouterAI {
+// Claude-like Enhanced OpenRouter AI integration
+class ClaudeStyleOpenRouterAI {
   private apiKey: string;
   
   constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
 
-  async generateSQLQuery(userQuestion: string, conversationHistory: any[] = []): Promise<{ sql: string, queryType: string }> {
+  getClaudeSystemPrompt(mode: string): string {
+    const basePersonality = `You are Tink, an intelligent AI assistant with Claude's thoughtful and analytical personality. You are genuinely helpful, insightful, and conversational. You think step-by-step and provide reasoning for your insights.
+
+Core traits:
+- Thoughtful and genuinely helpful
+- Natural conversation flow like a knowledgeable colleague
+- Contextual awareness and memory
+- Ask clarifying questions when needed
+- Acknowledge and validate user feedback
+- Show your reasoning process
+- Admit limitations honestly
+- Provide actionable insights and suggestions`;
+
+    if (mode === 'chat') {
+      return `${basePersonality}
+
+**Chat Mode Behavior:**
+- You're a project management expert consultant
+- Provide comprehensive advice on planning, risk management, team dynamics, and best practices
+- Ask thoughtful follow-up questions to better understand the situation
+- Reference previous conversation context
+- Offer multiple perspectives and solutions
+- Be conversational and engaging, not robotic
+
+**Response Style:**
+- Start naturally, skip robotic phrases like "I can help you with that"
+- Show your thought process: "That's an interesting challenge. Let me think through a few approaches..."
+- Provide specific, actionable advice
+- End with relevant follow-up questions or next steps
+
+Example: Instead of "Here are some project management tips:", say "That timeline crunch sounds familiar - I've seen teams navigate similar challenges successfully. The key is usually..."`;
+    } else {
+      return `${basePersonality}
+
+**Agent Mode Behavior:**
+You are a data analyst AI with access to project management data. When processing queries:
+
+1. **Pre-Query Explanation**: Explain what data you're looking for
+   - "To answer that, I need to analyze your team's task completion rates..."
+
+2. **Data Analysis**: Provide insights, not just raw numbers
+   - Identify patterns, trends, and anomalies
+   - Compare against benchmarks (70-85% utilization is healthy)
+   - Spot concerning issues that need attention
+
+3. **Conversational Data Presentation**:
+   - Start with key insight: "Looking at your team's workload, I notice..."
+   - Provide supporting details with context
+   - Explain what the numbers mean practically
+   - End with actionable suggestions
+
+4. **Handle Data Issues Gracefully**:
+   - No data: "I don't see data for that period. Would you like me to check a different timeframe?"
+   - Incomplete data: "I have partial data - let me show what I can see and suggest how to get the complete picture"
+
+**Response Format:**
+🔍 **Key Insight**: [Main finding]
+📊 **Details**: [Supporting data with context]
+💡 **What this means**: [Interpretation]
+🎯 **Suggestions**: [Actionable next steps]
+❓ **Follow-up**: [Related questions]
+
+Always be genuinely interested in helping users understand and improve their project management.`;
+    }
+  }
+
+  async generateSQLQuery(userQuestion: string, conversationHistory: any[] = []): Promise<{ sql: string, queryType: string, explanation: string }> {
     const conversationContext = conversationHistory.length > 0 
       ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-3).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
 
-    const prompt = `You are an expert SQL assistant for a project management platform. 
-Your job is to convert user requests into safe, correct SQL queries for a PostgreSQL database. 
-Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, or ALTER statements.
+    const prompt = `You are an expert SQL analyst with Claude's thoughtful personality. Convert the user's question into a PostgreSQL query with explanation.
 
 ## Database Schema
 
@@ -94,43 +158,22 @@ Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, or AL
 
 ## Instructions
 
-- Only use the tables and columns listed above
-- Use parameterized values: $1 for workspace_id
-- If user asks for "today", use CURRENT_DATE
-- If user asks for "this month", use date functions to filter current month
-- Never return more than 50 rows unless user requests all results
-- Always include ORDER BY clause for consistent results
-- Use COUNT(*) for counting queries
-- Use aggregate functions (SUM, AVG, MAX, MIN) for summaries
-- For JOIN queries, use proper table aliases
+- Generate ONLY SELECT queries
+- Use $1 for workspace_id filtering
+- Include proper JOINs and table aliases
+- Add ORDER BY for consistent results
+- Limit to 50 unless requested otherwise
 - Handle NULL values appropriately
-
-## Example Queries
-
-User: "Show me all projects in my workspace"
-Response: {
-  "sql": "SELECT id, name, status, priority, start_date, end_date, progress FROM projects WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 50",
-  "queryType": "projects_list"
-}
-
-User: "What tasks are due today?"
-Response: {
-  "sql": "SELECT pt.id, pt.name, pt.status, pt.end_date, r.name as assignee_name, p.name as project_name FROM project_tasks pt JOIN projects p ON pt.project_id = p.id LEFT JOIN resources r ON pt.assignee_id = r.id WHERE p.workspace_id = $1 AND DATE(pt.end_date) = CURRENT_DATE AND pt.status != 'Completed' ORDER BY pt.priority DESC, pt.end_date ASC LIMIT 50",
-  "queryType": "tasks_due_today"
-}
-
-User: "Team utilization this month"
-Response: {
-  "sql": "SELECT r.name as resource_name, r.role, r.department, pp.current_score, pp.monthly_score, pp.trend, pp.risk_level, COUNT(DISTINCT pt.id) as assigned_tasks, AVG(pt.progress) as avg_task_progress FROM resources r LEFT JOIN performance_profiles pp ON r.id = pp.resource_id AND pp.workspace_id = $1 LEFT JOIN project_tasks pt ON r.id = pt.assignee_id WHERE r.workspace_id = $1 GROUP BY r.id, r.name, r.role, r.department, pp.current_score, pp.monthly_score, pp.trend, pp.risk_level ORDER BY pp.current_score DESC LIMIT 50",
-  "queryType": "team_utilization_metrics"
-}
 
 User Question: "${userQuestion}"${conversationContext}
 
-Respond with only a JSON object in this exact format:
+Before generating SQL, explain what data you're looking for in a conversational way.
+
+Response format:
 {
-  "sql": "your SELECT query here with $1 as workspace_id parameter",
-  "queryType": "descriptive_name_for_query_type"
+  "explanation": "To answer your question about team performance, I need to look at...",
+  "sql": "SELECT ... FROM ... WHERE workspace_id = $1 ORDER BY ... LIMIT 50",
+  "queryType": "team_performance_analysis"
 }`;
 
     try {
@@ -145,11 +188,11 @@ Respond with only a JSON object in this exact format:
         body: JSON.stringify({
           model: 'anthropic/claude-3.5-sonnet',
           messages: [
-            { role: 'system', content: 'You are a helpful SQL query generator. Always respond with valid JSON.' },
+            { role: 'system', content: 'You are a helpful SQL query generator with Claude\'s thoughtful personality. Always respond with valid JSON.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.1,
-          max_tokens: 500
+          max_tokens: 800
         })
       });
 
@@ -164,19 +207,20 @@ Respond with only a JSON object in this exact format:
         const parsed = JSON.parse(content);
         return {
           sql: parsed.sql || '',
-          queryType: parsed.queryType || 'general'
+          queryType: parsed.queryType || 'general',
+          explanation: parsed.explanation || 'Let me analyze your data...'
         };
       } catch (parseError) {
         console.error('Failed to parse OpenRouter response:', content);
-        return { sql: '', queryType: 'error' };
+        return { sql: '', queryType: 'error', explanation: 'Let me look at your data...' };
       }
     } catch (error) {
       console.error('OpenRouter API error:', error);
-      return { sql: '', queryType: 'error' };
+      return { sql: '', queryType: 'error', explanation: 'Let me try to help you with your data...' };
     }
   }
 
-  async generateNaturalResponse(userQuestion: string, queryResults: any, conversationHistory: any[] = [], mode: string = 'agent'): Promise<string> {
+  async generateClaudeStyleResponse(userQuestion: string, queryResults: any, conversationHistory: any[] = [], mode: string = 'agent', preQueryExplanation: string = ''): Promise<string> {
     const conversationContext = conversationHistory.length > 0 
       ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-3).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
@@ -184,53 +228,26 @@ Respond with only a JSON object in this exact format:
     let prompt: string;
 
     if (mode === 'chat') {
-      // Chat mode: No database query, just conversation
-      prompt = `You are Tink, a friendly and intelligent AI assistant specializing in project management and productivity. 
-You're knowledgeable, helpful, and genuinely interested in helping users succeed with their projects.
+      prompt = `${this.getClaudeSystemPrompt('chat')}
 
-User Question: "${userQuestion}"${conversationContext}
+User: "${userQuestion}"${conversationContext}
 
-Instructions:
-- Be conversational, warm, and engaging like a helpful colleague
-- Provide expert advice on project management topics with specific, actionable insights
-- Share best practices, methodologies, and practical tips
-- Help with planning, analysis, problem-solving, and decision-making
-- Use examples and scenarios to illustrate your points
-- If the user asks for specific data, suggest they try Agent mode for database queries
-- Show genuine interest in their success and challenges
-- Keep responses informative but conversational, not overly technical
-- End with helpful follow-up questions or suggestions when appropriate
-
-Respond as Tink with enthusiasm and expertise:`;
+Respond as Claude would - thoughtful, helpful, and genuinely interested in helping with project management challenges. Ask follow-up questions when appropriate.`;
     } else {
-      // Agent mode: Use database results for intelligent analysis
       const dataContext = queryResults && queryResults.length > 0 
         ? `\n\nQuery Results (${queryResults.length} records):\n${JSON.stringify(queryResults, null, 2)}`
-        : '\n\nNo data was found for this query.';
+        : '\n\nNo data found for this query.';
 
-      prompt = `You are Tink, an intelligent AI assistant specializing in project management data analysis. 
-You excel at turning raw data into actionable insights and recommendations.
+      prompt = `${this.getClaudeSystemPrompt('agent')}
 
-User Question: "${userQuestion}"${dataContext}${conversationContext}
+User asked: "${userQuestion}"
+${preQueryExplanation ? `\nPre-query explanation: ${preQueryExplanation}` : ''}
 
-Instructions:
-- Analyze the data thoroughly and provide specific, actionable insights
-- Use exact numbers, percentages, and metrics from the data
-- Identify patterns, trends, and potential issues or opportunities
-- Provide clear recommendations based on the analysis
-- If no data is found, explain possible reasons and suggest alternatives
-- Use bullet points or formatting to make complex information digestible
-- Highlight key metrics and what they mean for project success
-- Include comparisons, benchmarks, or context when relevant
-- End with specific next steps or follow-up suggestions
-- Be conversational but data-driven and analytical
+${dataContext}${conversationContext}
 
-Examples of great responses:
-- "I analyzed your team's performance data and found some interesting patterns..."
-- "Based on the 23 active tasks I found, here's what stands out..."
-- "Your resource utilization shows 3 key trends that need attention..."
+Analyze this data like Claude would - be thoughtful, insightful, and genuinely helpful. Provide specific insights, identify patterns, and offer actionable recommendations.
 
-Respond as Tink with analytical expertise:`;
+Use the response format specified in the system prompt with emojis and clear sections.`;
     }
 
     try {
@@ -245,11 +262,11 @@ Respond as Tink with analytical expertise:`;
         body: JSON.stringify({
           model: 'anthropic/claude-3.5-sonnet',
           messages: [
-            { role: 'system', content: 'You are Tink, an intelligent and helpful AI assistant specializing in project management. Be conversational, insightful, and genuinely helpful.' },
+            { role: 'system', content: 'You are Tink, an intelligent AI assistant with Claude\'s thoughtful and analytical personality. Be conversational, insightful, and genuinely helpful.' },
             { role: 'user', content: prompt }
           ],
-          temperature: mode === 'chat' ? 0.8 : 0.7, // Higher temperature for chat mode
-          max_tokens: 1000
+          temperature: mode === 'chat' ? 0.8 : 0.7,
+          max_tokens: 1200
         })
       });
 
@@ -258,27 +275,55 @@ Respond as Tink with analytical expertise:`;
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || "I'm having trouble generating a response right now. Could you try rephrasing your question?";
+      return data.choices[0]?.message?.content || this.generateClaudeStyleFallback(userQuestion, queryResults, mode);
     } catch (error) {
       console.error('OpenRouter response generation error:', error);
-      return mode === 'chat' 
-        ? "I'm experiencing some technical difficulties right now. Let me try to help you in a different way - what specific project management challenge are you facing?"
-        : "I'm having trouble analyzing that data right now. Could you try asking about a specific aspect of your projects or team?";
+      return this.generateClaudeStyleFallback(userQuestion, queryResults, mode);
+    }
+  }
+
+  generateClaudeStyleFallback(userQuestion: string, queryResults: any, mode: string): string {
+    if (mode === 'chat') {
+      return `That's an interesting question about "${userQuestion}". While I'm having some technical difficulties right now, I'd still love to help you think through this project management challenge. 
+
+Based on what you're asking, here are some general approaches that might be helpful... Could you tell me more about the specific context or challenges you're facing?`;
+    } else {
+      if (queryResults && queryResults.length > 0) {
+        return `🔍 **Key Insight**: I can see you have ${queryResults.length} records in your data.
+
+📊 **Details**: While I'm having trouble providing a full analysis right now, this data contains valuable information about your project performance.
+
+💡 **What this means**: There's definitely actionable information here that could help you make better project decisions.
+
+🎯 **Suggestions**: Would you like me to focus on a specific aspect of these results? I can try a different approach to analyze this data.
+
+❓ **Follow-up**: What specific insights are you most interested in from this data?`;
+      } else {
+        return `🔍 **Key Insight**: I don't see any data matching your query.
+
+📊 **Details**: This could mean either the data doesn't exist for this timeframe, or we might need to adjust our search criteria.
+
+💡 **What this means**: Sometimes this happens when looking at specific date ranges or when projects haven't been fully set up yet.
+
+🎯 **Suggestions**: Would you like me to try looking at a different date range or aspect of your projects?
+
+❓ **Follow-up**: What time period or specific projects would you like me to focus on?`;
+      }
     }
   }
 }
 
-// Enhanced database query engine with intelligent processing
-class EnhancedTinkQueryEngine {
-  constructor(private supabase: any, private userId: string, private workspaceId: string, private openRouter: EnhancedOpenRouterAI) {}
+// Enhanced Query Engine with Claude-style intelligence
+class ClaudeStyleQueryEngine {
+  constructor(private supabase: any, private userId: string, private workspaceId: string, private openRouter: ClaudeStyleOpenRouterAI) {}
 
   async processIntelligentQuery(userQuestion: string, conversationHistory: any[] = [], mode: string = 'agent'): Promise<any> {
-    console.log(`[Enhanced Tink] Processing: "${userQuestion}" (mode: ${mode})`);
+    console.log(`[Claude-Style Tink] Processing: "${userQuestion}" (mode: ${mode})`);
     
     try {
       if (mode === 'chat') {
-        // Chat mode: Pure conversational AI
-        const conversationalResponse = await this.openRouter.generateNaturalResponse(
+        // Pure conversational mode
+        const conversationalResponse = await this.openRouter.generateClaudeStyleResponse(
           userQuestion, 
           null, 
           conversationHistory,
@@ -294,27 +339,28 @@ class EnhancedTinkQueryEngine {
           mode: 'chat'
         };
       } else {
-        // Agent mode: 3-step intelligent processing
+        // Agent mode: 3-step Claude-style processing
         
-        // Step 1: Generate SQL with enhanced context
-        const { sql, queryType } = await this.openRouter.generateSQLQuery(userQuestion, conversationHistory);
-        console.log(`[Enhanced Tink] Generated SQL (${queryType}): ${sql}`);
+        // Step 1: Generate SQL with explanation
+        const { sql, queryType, explanation } = await this.openRouter.generateSQLQuery(userQuestion, conversationHistory);
+        console.log(`[Claude-Style Tink] Generated SQL (${queryType}): ${sql}`);
         
-        // Step 2: Execute SQL query with fallback
+        // Step 2: Execute SQL query
         let queryResults;
         try {
           queryResults = await this.executeSQLQuery(sql, queryType);
         } catch (sqlError) {
-          console.error('[Enhanced Tink] SQL execution failed, using fallback:', sqlError);
+          console.error('[Claude-Style Tink] SQL execution failed:', sqlError);
           queryResults = await this.intelligentFallback(userQuestion, queryType);
         }
         
-        // Step 3: Generate natural, insightful response
-        const intelligentResponse = await this.openRouter.generateNaturalResponse(
+        // Step 3: Generate Claude-style response
+        const intelligentResponse = await this.openRouter.generateClaudeStyleResponse(
           userQuestion, 
           queryResults.data, 
           conversationHistory,
-          'agent'
+          'agent',
+          explanation
         );
         
         return {
@@ -327,9 +373,9 @@ class EnhancedTinkQueryEngine {
         };
       }
     } catch (error) {
-      console.error('[Enhanced Tink] Error processing query:', error);
+      console.error('[Claude-Style Tink] Error processing query:', error);
       return {
-        message: this.generateIntelligentErrorResponse(userQuestion, error.message, mode),
+        message: this.generateClaudeStyleError(userQuestion, error.message, mode),
         error: error.message,
         success: false,
         mode
@@ -343,15 +389,14 @@ class EnhancedTinkQueryEngine {
         throw new Error('Empty SQL query generated');
       }
 
-      // Replace $1 placeholder with actual workspace_id
       const processedSQL = sql.replace(/\$1/g, `'${this.workspaceId}'`);
       
       const { data, error } = await this.supabase.rpc('execute_sql', { 
-        sql_query: processedSQL 
+        query: processedSQL 
       });
 
       if (error) {
-        console.error('[Enhanced Tink] SQL execution error:', error);
+        console.error('[Claude-Style Tink] SQL execution error:', error);
         throw new Error(`Database error: ${error.message}`);
       }
 
@@ -361,31 +406,29 @@ class EnhancedTinkQueryEngine {
         count: Array.isArray(data) ? data.length : 0
       };
     } catch (error) {
-      console.error('[Enhanced Tink] SQL execution error:', error);
+      console.error('[Claude-Style Tink] SQL execution error:', error);
       throw error;
     }
   }
 
   async intelligentFallback(userQuestion: string, queryType: string): Promise<any> {
-    console.log(`[Enhanced Tink] Using intelligent fallback for: ${queryType}`);
+    console.log(`[Claude-Style Tink] Using intelligent fallback for: ${queryType}`);
     
-    // Try to understand user intent and provide relevant fallback data
+    // Fallback queries based on intent
     const fallbackQueries = {
-      'projects_list': () => this.getProjects(),
-      'tasks_list': () => this.getTasks([]),
-      'resources_list': () => this.getResources(),
-      'performance_metrics': () => this.getPerformanceMetrics([]),
-      'team_utilization': () => this.getTeamUtilization(),
-      'deadlines': () => this.getDeadlines(['upcoming']),
-      'analytics': () => this.getAnalytics([])
+      'team_performance': () => this.getTeamPerformance(),
+      'project_status': () => this.getProjectStatus(),
+      'resource_utilization': () => this.getResourceUtilization(),
+      'upcoming_deadlines': () => this.getUpcomingDeadlines(),
+      'general': () => this.getGeneralOverview()
     };
 
-    const fallbackFunction = fallbackQueries[queryType] || fallbackQueries['analytics'];
+    const fallbackFunction = fallbackQueries[queryType] || fallbackQueries['general'];
     
     try {
       return await fallbackFunction();
     } catch (error) {
-      console.error('[Enhanced Tink] Fallback query error:', error);
+      console.error('[Claude-Style Tink] Fallback query error:', error);
       return {
         type: 'error',
         data: [],
@@ -394,235 +437,135 @@ class EnhancedTinkQueryEngine {
     }
   }
 
-  generateIntelligentErrorResponse(userQuestion: string, errorMessage: string, mode: string): string {
+  generateClaudeStyleError(userQuestion: string, errorMessage: string, mode: string): string {
     if (mode === 'chat') {
-      return `I'm having a bit of trouble right now, but I'd love to help you with your project management questions. What specific challenge are you facing? I can provide advice on planning, team management, risk assessment, or any other project-related topic.`;
+      return `I'm having some technical difficulties right now, but I'd still love to help you think through your project management challenge. Based on your question about "${userQuestion}", let me share some approaches that might be helpful while I work on getting back to full functionality...`;
     } else {
-      const suggestions = [
-        "Try asking about your current projects: 'What projects are active?'",
-        "Check on your team: 'How is my team performing?'",
-        "Look at deadlines: 'What's due this week?'",
-        "Analyze workload: 'Show me resource utilization'"
-      ];
-      
-      const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
-      
-      return `I'm having trouble accessing that specific data right now. ${randomSuggestion}
+      return `🔍 **Technical Issue**: I'm having trouble accessing your data right now.
 
-Feel free to ask me about your projects, tasks, team performance, or any other data in your workspace. I'm here to help you make better project decisions!`;
+📊 **Details**: There's a temporary issue with my data connection, but I don't want to leave you without help.
+
+💡 **What this means**: While I work on resolving this, I can still provide general guidance and suggestions.
+
+🎯 **Suggestions**: Could you tell me more about what specific insights you're looking for? I might be able to suggest manual approaches or alternative ways to get the information you need.
+
+❓ **Follow-up**: What's the most important question you're trying to answer about your projects right now?`;
     }
   }
 
-  async getProjects(): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('projects')
-      .select(`
-        id, name, description, status, priority, start_date, end_date, 
-        progress, created_at, updated_at, workspace_id
-      `)
-      .eq('workspace_id', this.workspaceId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching projects:', error);
-      throw error;
-    }
-    
-    return {
-      type: 'projects_list',
-      data: data || [],
-      count: data?.length || 0
-    };
-  }
-
-  async getTasks(entities: string[]): Promise<any> {
-    let query = this.supabase
-      .from('project_tasks')
-      .select(`
-        id, name, description, status, priority, assignee_id, 
-        start_date, end_date, progress, created_at, project_id
-      `)
-      .in('project_id', 
-        this.supabase
-          .from('projects')
-          .select('id')
-          .eq('workspace_id', this.workspaceId)
-      );
-
-    if (entities.includes('today')) {
-      const today = new Date().toISOString().split('T')[0];
-      query = query.lte('start_date', today).gte('end_date', today);
-    }
-    
-    if (entities.includes('overdue')) {
-      const today = new Date().toISOString().split('T')[0];
-      query = query.lt('end_date', today).neq('status', 'Completed');
-    }
-
-    if (entities.includes('upcoming')) {
-      const today = new Date().toISOString().split('T')[0];
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 7);
-      query = query.gte('start_date', today).lte('start_date', futureDate.toISOString().split('T')[0]);
-    }
-
-    const { data, error } = await query
-      .order('start_date', { ascending: true })
-      .limit(50);
-    
-    if (error) {
-      console.error('Error fetching tasks:', error);
-      throw error;
-    }
-
-    return {
-      type: 'tasks_list',
-      data: data || [],
-      count: data?.length || 0
-    };
-  }
-
-  async getResources(): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('resources')
-      .select(`
-        id, name, email, role, department, created_at, updated_at
-      `)
-      .eq('workspace_id', this.workspaceId)
-      .order('name', { ascending: true })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching resources:', error);
-      throw error;
-    }
-
-    return {
-      type: 'resources_list',
-      data: data || [],
-      count: data?.length || 0
-    };
-  }
-
-  async getPerformanceMetrics(entities: string[]): Promise<any> {
-    const { data, error } = await this.supabase
-      .from('performance_profiles')
-      .select(`
-        id, resource_id, resource_name, current_score, monthly_score, 
-        trend, risk_level, workspace_id, created_at, updated_at
-      `)
-      .eq('workspace_id', this.workspaceId)
-      .order('current_score', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching performance metrics:', error);
-      throw error;
-    }
-
-    return {
-      type: 'performance_metrics',
-      data: data || [],
-      count: data?.length || 0
-    };
-  }
-
-  async getTeamUtilization(): Promise<any> {
-    const { data: resources, error: resourceError } = await this.supabase
-      .from('resources')
-      .select(`
-        id, name, role, department
-      `)
-      .eq('workspace_id', this.workspaceId)
-      .limit(50);
-
-    if (resourceError) {
-      console.error('Error fetching team utilization:', resourceError);
-      throw resourceError;
-    }
-
-    return {
-      type: 'team_utilization',
-      data: resources || [],
-      count: resources?.length || 0
-    };
-  }
-
-  async getDeadlines(entities: string[]): Promise<any> {
-    const days = entities.includes('today') ? 1 : 
-                 entities.includes('tomorrow') ? 2 : 
-                 entities.includes('week') ? 7 : 
-                 entities.includes('upcoming') ? 14 : 30;
-    
-    const today = new Date().toISOString().split('T')[0];
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + days);
-    const futureDateStr = futureDate.toISOString().split('T')[0];
-
-    const { data, error } = await this.supabase
-      .from('project_tasks')
-      .select(`
-        id, name, end_date, status, priority, project_id
-      `)
-      .in('project_id', 
-        this.supabase
-          .from('projects')
-          .select('id')
-          .eq('workspace_id', this.workspaceId)
-      )
-      .gte('end_date', today)
-      .lte('end_date', futureDateStr)
-      .order('end_date', { ascending: true })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching deadlines:', error);
-      throw error;
-    }
-
-    return {
-      type: 'deadlines',
-      data: data || [],
-      count: data?.length || 0
-    };
-  }
-
-  async getAnalytics(entities: string[]): Promise<any> {
+  async getTeamPerformance(): Promise<any> {
     try {
-      const [projectsData, tasksData, resourcesData] = await Promise.all([
-        this.getProjects(),
-        this.getTasks([]),
-        this.getResources()
-      ]);
+      const { data, error } = await this.supabase
+        .from('performance_profiles')
+        .select('*')
+        .eq('workspace_id', this.workspaceId)
+        .order('current_score', { ascending: false })
+        .limit(20);
 
-      const analytics = {
-        projects: {
-          total: projectsData.count,
-          data: projectsData.data?.slice(0, 5) || []
-        },
-        tasks: {
-          total: tasksData.count,
-          data: tasksData.data?.slice(0, 5) || []
-        },
-        resources: {
-          total: resourcesData.count,
-          data: resourcesData.data?.slice(0, 5) || []
-        }
-      };
-
+      if (error) throw error;
+      
       return {
-        type: 'analytics',
-        data: analytics,
-        count: Object.keys(analytics).length
+        type: 'team_performance',
+        data: data || [],
+        count: data?.length || 0
       };
     } catch (error) {
-      console.error('Error in getAnalytics:', error);
+      console.error('Error fetching team performance:', error);
+      return { type: 'team_performance', data: [], count: 0 };
+    }
+  }
+
+  async getProjectStatus(): Promise<any> {
+    try {
+      const { data, error } = await this.supabase
+        .from('projects')
+        .select('*')
+        .eq('workspace_id', this.workspaceId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      
       return {
-        type: 'analytics',
-        data: { projects: { total: 0, data: [] }, tasks: { total: 0, data: [] }, resources: { total: 0, data: [] } },
-        count: 0
+        type: 'project_status',
+        data: data || [],
+        count: data?.length || 0
       };
+    } catch (error) {
+      console.error('Error fetching project status:', error);
+      return { type: 'project_status', data: [], count: 0 };
+    }
+  }
+
+  async getResourceUtilization(): Promise<any> {
+    try {
+      const { data, error } = await this.supabase
+        .from('resources')
+        .select('*')
+        .eq('workspace_id', this.workspaceId)
+        .order('name', { ascending: true })
+        .limit(20);
+
+      if (error) throw error;
+      
+      return {
+        type: 'resource_utilization',
+        data: data || [],
+        count: data?.length || 0
+      };
+    } catch (error) {
+      console.error('Error fetching resource utilization:', error);
+      return { type: 'resource_utilization', data: [], count: 0 };
+    }
+  }
+
+  async getUpcomingDeadlines(): Promise<any> {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 30);
+      const futureDateStr = futureDate.toISOString().split('T')[0];
+
+      const { data, error } = await this.supabase
+        .from('project_tasks')
+        .select('*, projects(name)')
+        .gte('end_date', today)
+        .lte('end_date', futureDateStr)
+        .order('end_date', { ascending: true })
+        .limit(20);
+
+      if (error) throw error;
+      
+      return {
+        type: 'upcoming_deadlines',
+        data: data || [],
+        count: data?.length || 0
+      };
+    } catch (error) {
+      console.error('Error fetching upcoming deadlines:', error);
+      return { type: 'upcoming_deadlines', data: [], count: 0 };
+    }
+  }
+
+  async getGeneralOverview(): Promise<any> {
+    try {
+      const { data, error } = await this.supabase
+        .from('projects')
+        .select('id, name, status, progress')
+        .eq('workspace_id', this.workspaceId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      
+      return {
+        type: 'general_overview',
+        data: data || [],
+        count: data?.length || 0
+      };
+    } catch (error) {
+      console.error('Error fetching general overview:', error);
+      return { type: 'general_overview', data: [], count: 0 };
     }
   }
 }
@@ -664,11 +607,11 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[Enhanced Tink] Processing message: ${message} for user: ${userId} in workspace: ${workspaceId} (mode: ${mode})`);
+    console.log(`[Claude-Style Tink] Processing message: ${message} for user: ${userId} in workspace: ${workspaceId} (mode: ${mode})`);
 
-    // Initialize enhanced services
-    const openRouter = new EnhancedOpenRouterAI(openRouterApiKey);
-    const queryEngine = new EnhancedTinkQueryEngine(supabase, userId, workspaceId, openRouter);
+    // Initialize Claude-style services
+    const openRouter = new ClaudeStyleOpenRouterAI(openRouterApiKey);
+    const queryEngine = new ClaudeStyleQueryEngine(supabase, userId, workspaceId, openRouter);
 
     // Load conversation history for intelligent context
     const { data: conversationHistory } = await supabase
@@ -680,7 +623,7 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(6);
 
-    // Process with enhanced intelligence
+    // Process with Claude-style intelligence
     const queryResult = await queryEngine.processIntelligentQuery(
       message, 
       conversationHistory?.reverse() || [],
@@ -689,7 +632,7 @@ serve(async (req) => {
 
     const assistantMessage = queryResult.message || "I'm having trouble generating a response right now. Could you try rephrasing your question?";
 
-    // Save conversation history with enhanced context
+    // Save conversation history
     await supabase.from('ai_conversation_history').insert([
       {
         user_id: userId,
@@ -711,7 +654,7 @@ serve(async (req) => {
         message_content: assistantMessage,
         context_data: { 
           timestamp: new Date().toISOString(),
-          responseType: 'enhanced_openrouter',
+          responseType: 'claude_style_openrouter',
           queryResult: queryResult ? { 
             type: queryResult.queryType, 
             dataCount: queryResult.results?.length || 0,
@@ -726,7 +669,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: assistantMessage,
-        responseType: 'enhanced_openrouter',
+        responseType: 'claude_style_openrouter',
         queryResult: queryResult ? { 
           type: queryResult.queryType, 
           dataCount: queryResult.results?.length || 0,
@@ -740,7 +683,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('[Enhanced Tink] Error in tink-ai-chat function:', error);
+    console.error('[Claude-Style Tink] Error in tink-ai-chat function:', error);
     
     return new Response(
       JSON.stringify({ 

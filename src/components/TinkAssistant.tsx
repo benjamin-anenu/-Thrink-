@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Send, Bold, Italic, List, Code, Database, MessageCircle, Sparkles } from 'lucide-react';
+import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { TinkSQLService } from '@/services/TinkSQLService';
+import { EnhancedTinkService } from '@/services/EnhancedTinkService';
+import ModelSelector from './ModelSelector';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface TinkMessage {
   id: string;
@@ -18,6 +20,8 @@ interface TinkMessage {
     query?: string;
     dataCount?: number;
     processingTime?: number;
+    model?: string;
+    insights?: string[];
   };
 }
 
@@ -33,12 +37,9 @@ const TinkAssistant = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode>('agent');
-  const [sqlService, setSqlService] = useState<TinkSQLService | null>(null);
-  
-  // Text formatting states
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isCode, setIsCode] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [tinkService, setTinkService] = useState<EnhancedTinkService | null>(null);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -46,10 +47,22 @@ const TinkAssistant = () => {
       if (user && currentWorkspace) {
         setUserId(user.id);
         
+        // Initialize Enhanced Tink Service
+        const openRouterKey = await getOpenRouterKey();
+        if (openRouterKey) {
+          setTinkService(new EnhancedTinkService(openRouterKey, selectedModel));
+        }
+        
         const welcomeMessage: TinkMessage = {
           id: '1',
           type: 'tink',
-          content: `Hi! I'm Tink, your intelligent project management assistant. I can analyze your data, provide insights, and help you make better decisions. What would you like to explore today?`,
+          content: `Hey there! I'm Tink, your AI project management assistant. I'm here to help you analyze your data, plan your projects, and make better decisions.
+
+I can work in two modes:
+🔍 **Agent Mode**: I'll analyze your actual project data and provide insights
+💬 **Chat Mode**: I'll help you brainstorm and plan using my project management expertise
+
+What would you like to explore today?`,
           timestamp: new Date()
         };
         setMessages([welcomeMessage]);
@@ -57,24 +70,44 @@ const TinkAssistant = () => {
     };
 
     initializeChat();
-  }, [currentWorkspace]);
+  }, [currentWorkspace, selectedModel]);
 
-  const formatText = (text: string): string => {
-    let formatted = text;
-    if (isBold) formatted = `**${formatted}**`;
-    if (isItalic) formatted = `*${formatted}*`;
-    if (isCode) formatted = `\`${formatted}\``;
-    return formatted;
+  const getOpenRouterKey = async (): Promise<string | null> => {
+    try {
+      // In production, this would come from your secure environment
+      // For now, we'll use a placeholder - you'd need to implement secure key management
+      return process.env.REACT_APP_OPENROUTER_API_KEY || null;
+    } catch (error) {
+      console.error('Error getting OpenRouter key:', error);
+      return null;
+    }
+  };
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+    if (tinkService) {
+      tinkService.setModel(modelId);
+    }
+    setShowModelSelector(false);
+    
+    // Add a system message about the model change
+    const modelChangeMessage: TinkMessage = {
+      id: `model-change-${Date.now()}`,
+      type: 'tink',
+      content: `Great! I've switched to ${EnhancedTinkService.getAvailableModels().find(m => m.id === modelId)?.name}. This model is optimized for ${modelId.includes('claude') ? 'thoughtful analysis and reasoning' : modelId.includes('gpt') ? 'creative problem-solving' : 'efficient processing'}. How can I help you now?`,
+      timestamp: new Date(),
+      metadata: { model: modelId }
+    };
+    setMessages(prev => [...prev, modelChangeMessage]);
   };
 
   const sendMessage = async () => {
-    if (!inputValue.trim() || !userId || !currentWorkspace || isLoading) return;
+    if (!inputValue.trim() || !userId || !currentWorkspace || isLoading || !tinkService) return;
 
-    const formattedInput = formatText(inputValue);
     const userMessage: TinkMessage = {
       id: Date.now().toString(),
       type: 'user',
-      content: formattedInput,
+      content: inputValue,
       timestamp: new Date()
     };
 
@@ -83,30 +116,30 @@ const TinkAssistant = () => {
     setIsLoading(true);
     setIsTyping(true);
 
-    // Add enhanced typing indicator
     const typingMessage: TinkMessage = {
       id: 'typing',
       type: 'tink',
-      content: chatMode === 'agent' ? 'Analyzing your data and generating insights...' : 'Thinking through your question...',
+      content: chatMode === 'agent' 
+        ? '🔍 Analyzing your data and generating insights...' 
+        : '💭 Thinking through your question...',
       timestamp: new Date(),
       isLoading: true
     };
     setMessages(prev => [...prev, typingMessage]);
 
-    const startTime = Date.now();
-
     try {
-      let response;
-      
-      if (chatMode === 'agent') {
-        // Use enhanced SQL service for agent mode
-        response = await processAgentMode(inputValue);
-      } else {
-        // Use OpenRouter for chat mode
-        response = await processChatMode(inputValue);
-      }
+      // Get conversation history for context
+      const conversationHistory = messages.slice(-4).map(msg => ({
+        message_role: msg.type === 'user' ? 'user' : 'assistant',
+        message_content: msg.content
+      }));
 
-      const processingTime = Date.now() - startTime;
+      const result = await tinkService.processIntelligentQuery(
+        inputValue,
+        currentWorkspace.id,
+        conversationHistory,
+        chatMode
+      );
 
       // Remove typing indicator
       setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
@@ -114,26 +147,28 @@ const TinkAssistant = () => {
       const aiResponse: TinkMessage = {
         id: (Date.now() + 1).toString(),
         type: 'tink',
-        content: response.message || "I'm having trouble responding right now. Let me try to help you in a different way.",
+        content: result.response || "I'm having trouble responding right now. Could you try rephrasing your question?",
         timestamp: new Date(),
         metadata: {
-          query: response.query,
-          dataCount: response.dataCount,
-          processingTime
+          query: result.query,
+          dataCount: result.data?.length || 0,
+          processingTime: result.processingTime,
+          model: result.model,
+          insights: result.insights
         }
       };
 
       setMessages(prev => [...prev, aiResponse]);
+
     } catch (error) {
-      console.error('Error sending message to Tink:', error);
+      console.error('Error sending message to Enhanced Tink:', error);
       
-      // Remove typing indicator
       setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
       
       const errorResponse: TinkMessage = {
         id: (Date.now() + 1).toString(),
         type: 'tink',
-        content: "I'm experiencing some technical difficulties. Let me try a different approach to help you.",
+        content: "I'm experiencing some technical difficulties. Let me try a different approach to help you with your project management needs.",
         timestamp: new Date()
       };
 
@@ -147,86 +182,6 @@ const TinkAssistant = () => {
     } finally {
       setIsLoading(false);
       setIsTyping(false);
-    }
-  };
-
-  const processAgentMode = async (question: string) => {
-    // Get conversation history for context
-    const conversationHistory = messages.slice(-4).map(msg => ({
-      message_role: msg.type === 'user' ? 'user' : 'assistant',
-      message_content: msg.content
-    }));
-
-    try {
-      // Try enhanced SQL processing first
-      const openRouterKey = await getOpenRouterKey();
-      if (openRouterKey) {
-        const sqlService = new TinkSQLService(openRouterKey);
-        const result = await sqlService.processNaturalLanguageQuery(
-          question, 
-          currentWorkspace!.id, 
-          conversationHistory
-        );
-        
-        if (result.success) {
-          return {
-            message: result.response,
-            query: result.query,
-            dataCount: result.data?.length || 0
-          };
-        }
-      }
-
-      // Fallback to edge function
-      const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
-        body: {
-          message: question,
-          userId: userId,
-          workspaceId: currentWorkspace!.id,
-          mode: 'agent'
-        }
-      });
-
-      if (error) throw error;
-
-      return {
-        message: data.message,
-        query: null,
-        dataCount: data.queryResult?.dataCount || 0
-      };
-    } catch (error) {
-      console.error('Error in agent mode:', error);
-      throw error;
-    }
-  };
-
-  const processChatMode = async (question: string) => {
-    const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
-      body: {
-        message: question,
-        userId: userId,
-        workspaceId: currentWorkspace!.id,
-        mode: 'chat'
-      }
-    });
-
-    if (error) throw error;
-
-    return {
-      message: data.message,
-      query: null,
-      dataCount: 0
-    };
-  };
-
-  const getOpenRouterKey = async (): Promise<string | null> => {
-    try {
-      // This would typically come from your environment or settings
-      // For now, we'll rely on the edge function having the key
-      return null;
-    } catch (error) {
-      console.error('Error getting OpenRouter key:', error);
-      return null;
     }
   };
 
@@ -251,6 +206,8 @@ const TinkAssistant = () => {
       { label: "Best Practices", icon: MessageCircle, query: "What are some project management best practices?" }
     ]
   };
+
+  const currentModel = EnhancedTinkService.getAvailableModels().find(m => m.id === selectedModel);
 
   return (
     <>
@@ -283,7 +240,7 @@ const TinkAssistant = () => {
 
       {/* Enhanced Chat Interface */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[520px] h-[650px] z-50 animate-[scale-in_300ms_ease-out]">
+        <div className="fixed bottom-6 right-6 w-[560px] h-[700px] z-50 animate-[scale-in_300ms_ease-out]">
           <div className="relative w-full h-full bg-background border border-border rounded-2xl 
                         shadow-2xl backdrop-blur-sm flex flex-col">
             
@@ -293,7 +250,7 @@ const TinkAssistant = () => {
                 <div className="relative">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary via-purple-500 to-pink-500 
                                 flex items-center justify-center shadow-lg">
-                    <Sparkles className="w-6 h-6 text-white animate-pulse" />
+                    <Brain className="w-6 h-6 text-white" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full 
                                 border-2 border-background animate-pulse"></div>
@@ -303,19 +260,18 @@ const TinkAssistant = () => {
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     Tink AI 
                     <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                      {chatMode === 'agent' ? 'Data Expert' : 'AI Assistant'}
+                      {chatMode === 'agent' ? 'Data Expert' : 'AI Consultant'}
                     </span>
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {chatMode === 'agent' 
-                      ? 'Intelligent data analysis & insights' 
-                      : 'Conversational AI for project guidance'}
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    {currentModel?.name || 'Claude 3.5 Sonnet'}
+                    <span className="text-xs opacity-60">• {chatMode === 'agent' ? 'Data analysis' : 'Consultation'}</span>
                   </p>
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
-                {/* Enhanced Mode Toggle */}
+                {/* Mode Toggle */}
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                   <Button
                     variant={chatMode === 'agent' ? 'default' : 'ghost'}
@@ -336,6 +292,17 @@ const TinkAssistant = () => {
                     Chat
                   </Button>
                 </div>
+                
+                {/* Model Selector Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowModelSelector(!showModelSelector)}
+                  className="h-8 w-8 rounded-full hover:bg-primary/10 transition-colors duration-200"
+                >
+                  <Settings className="h-3 w-3" />
+                </Button>
+                
                 <Button
                   onClick={() => setIsOpen(false)}
                   variant="ghost"
@@ -347,8 +314,24 @@ const TinkAssistant = () => {
               </div>
             </div>
 
+            {/* Model Selector */}
+            {showModelSelector && (
+              <Card className="mx-4 mt-2 mb-2 border-0 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">AI Model Selection</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <ModelSelector 
+                    selectedModel={selectedModel}
+                    onModelChange={handleModelChange}
+                    compact={true}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Messages Container */}
-            <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[450px]">
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
               {messages.map((message, index) => (
                 <div
                   key={message.id}
@@ -384,10 +367,13 @@ const TinkAssistant = () => {
                         {message.metadata && message.type === 'tink' && (
                           <div className="text-xs opacity-60 mt-2 pt-2 border-t border-current/20">
                             {message.metadata.dataCount !== undefined && (
-                              <span>• {message.metadata.dataCount} records analyzed</span>
+                              <span>• {message.metadata.dataCount} records</span>
                             )}
                             {message.metadata.processingTime && (
                               <span> • {message.metadata.processingTime}ms</span>
+                            )}
+                            {message.metadata.model && (
+                              <span> • {EnhancedTinkService.getAvailableModels().find(m => m.id === message.metadata?.model)?.name}</span>
                             )}
                           </div>
                         )}
@@ -398,7 +384,7 @@ const TinkAssistant = () => {
               ))}
             </div>
 
-            {/* Enhanced Quick Actions */}
+            {/* Quick Actions */}
             <div className="px-4 py-3 border-t border-border/50 bg-muted/30">
               <div className="flex gap-2 flex-wrap">
                 {quickActions[chatMode].map((action, index) => (
@@ -418,49 +404,8 @@ const TinkAssistant = () => {
               </div>
             </div>
             
-            {/* Enhanced Input Area */}
+            {/* Input Area */}
             <div className="p-4 border-t border-border bg-muted/30 rounded-b-2xl">
-              {/* Formatting Toolbar */}
-              <div className="flex items-center gap-1 mb-3 pb-2 border-b border-border/30">
-                <Button
-                  variant={isBold ? "default" : "ghost"}
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setIsBold(!isBold)}
-                >
-                  <Bold className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant={isItalic ? "default" : "ghost"}
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setIsItalic(!isItalic)}
-                >
-                  <Italic className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant={isCode ? "default" : "ghost"}
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setIsCode(!isCode)}
-                >
-                  <Code className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setInputValue(inputValue + '\n• ')}
-                >
-                  <List className="h-3 w-3" />
-                </Button>
-                
-                <div className="flex-1" />
-                <div className="text-xs text-muted-foreground">
-                  {chatMode === 'agent' ? 'Data Analysis Mode' : 'Chat Mode'}
-                </div>
-              </div>
-
               <div className="flex gap-2">
                 <textarea
                   value={inputValue}
