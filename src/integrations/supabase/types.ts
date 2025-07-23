@@ -994,6 +994,8 @@ export type Database = {
           baseline_end_date: string | null
           baseline_start_date: string | null
           color: string | null
+          computed_end_date: string | null
+          computed_start_date: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -1012,6 +1014,8 @@ export type Database = {
           baseline_end_date?: string | null
           baseline_start_date?: string | null
           color?: string | null
+          computed_end_date?: string | null
+          computed_start_date?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1030,6 +1034,8 @@ export type Database = {
           baseline_end_date?: string | null
           baseline_start_date?: string | null
           color?: string | null
+          computed_end_date?: string | null
+          computed_start_date?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
