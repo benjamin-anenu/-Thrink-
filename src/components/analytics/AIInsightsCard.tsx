@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { LoadingOverlay } from '@/components/ui/loading-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, TrendingUp, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
+import { Brain, TrendingUp, AlertTriangle, CheckCircle, Info, Clock, Target, BookOpen, Users } from 'lucide-react';
+import { getStatusColors } from '@/utils/darkModeColors';
 
 const AIInsightsCard: React.FC = () => {
   const { insights, loading, error } = useAIInsights();
@@ -26,13 +27,17 @@ const AIInsightsCard: React.FC = () => {
   const getInsightColor = (type: string) => {
     switch (type) {
       case 'success':
-        return 'text-green-800 bg-green-50 border-green-200 dark:text-green-200 dark:bg-green-950/20 dark:border-green-800';
+        const successColors = getStatusColors('success');
+        return `${successColors.bg} ${successColors.text} ${successColors.border}`;
       case 'warning':
-        return 'text-yellow-800 bg-yellow-50 border-yellow-200 dark:text-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800';
+        const warningColors = getStatusColors('warning');
+        return `${warningColors.bg} ${warningColors.text} ${warningColors.border}`;
       case 'error':
-        return 'text-red-800 bg-red-50 border-red-200 dark:text-red-200 dark:bg-red-950/20 dark:border-red-800';
+        const errorColors = getStatusColors('error');
+        return `${errorColors.bg} ${errorColors.text} ${errorColors.border}`;
       default:
-        return 'text-blue-800 bg-blue-50 border-blue-200 dark:text-blue-200 dark:bg-blue-950/20 dark:border-blue-800';
+        const infoColors = getStatusColors('info');
+        return `${infoColors.bg} ${infoColors.text} ${infoColors.border}`;
     }
   };
 
@@ -52,20 +57,20 @@ const AIInsightsCard: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="h-5 w-5" />
-          AI Insights & Recommendations
+          AI-Powered Resource Analytics
         </CardTitle>
         <CardDescription>
-          Latest analytics and AI-powered recommendations for your workspace
+          Smart insights to optimize team performance, identify skill gaps, and improve project outcomes. Take action on recommendations below to drive growth.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <LoadingOverlay isLoading={loading} loadingText="Loading AI insights...">
           {insights.length === 0 ? (
             <div className="text-center py-8">
-              <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No AI insights available yet.</p>
+              <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground font-medium">Ready to Optimize Your Team</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Create projects and assign resources to generate AI recommendations.
+                Assign resources to projects and let AI identify optimization opportunities for better performance and growth.
               </p>
             </div>
           ) : (
@@ -88,26 +93,28 @@ const AIInsightsCard: React.FC = () => {
                         {insight.description}
                       </p>
                       
-                      {/* Show scores if available */}
+                      {/* Show actionable metrics */}
                       {(insight.overallFitScore !== undefined || insight.skillMatchScore !== undefined) && (
-                        <div className="flex gap-2 text-xs">
+                        <div className="flex gap-2 text-xs mb-2">
                           {insight.overallFitScore !== undefined && (
-                            <span className="bg-black/10 dark:bg-white/10 px-2 py-1 rounded">
-                              Fit: {insight.overallFitScore}%
-                            </span>
+                            <div className="flex items-center gap-1 bg-zinc-800/50 px-2 py-1 rounded">
+                              <Target className="h-3 w-3" />
+                              <span>Fit: {insight.overallFitScore}%</span>
+                            </div>
                           )}
                           {insight.skillMatchScore !== undefined && (
-                            <span className="bg-black/10 dark:bg-white/10 px-2 py-1 rounded">
-                              Skills: {insight.skillMatchScore}%
-                            </span>
+                            <div className="flex items-center gap-1 bg-zinc-800/50 px-2 py-1 rounded">
+                              <BookOpen className="h-3 w-3" />
+                              <span>Skills: {insight.skillMatchScore}%</span>
+                            </div>
                           )}
                         </div>
                       )}
                       
                       {insight.actionable && (
-                        <div className="flex items-center gap-1 mt-2 text-xs">
+                        <div className="flex items-center gap-1 mt-2 text-xs p-2 bg-amber-900/20 text-amber-300 rounded border border-amber-700/30">
                           <Clock className="h-3 w-3" />
-                          <span>Action Required</span>
+                          <span className="font-medium">Action Required: Training Recommended</span>
                         </div>
                       )}
                     </div>
@@ -118,9 +125,10 @@ const AIInsightsCard: React.FC = () => {
           )}
 
           {insights.length > 6 && (
-            <div className="text-center mt-4 pt-4 border-t">
+            <div className="text-center mt-4 pt-4 border-t border-zinc-700/50">
               <p className="text-sm text-muted-foreground">
-                {insights.length - 6} more insights available in detailed analytics
+                <Users className="h-4 w-4 inline mr-1" />
+                {insights.length - 6} more optimization opportunities available
               </p>
             </div>
           )}
