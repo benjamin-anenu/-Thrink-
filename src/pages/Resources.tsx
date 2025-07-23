@@ -342,8 +342,12 @@ const Resources = () => {
       <AssignmentModal
         isOpen={showAssignmentModal}
         onClose={() => setShowAssignmentModal(false)}
-        resourceId={selectedResource?.id}
-        resourceName={selectedResource?.name}
+        onAssign={(data) => {
+          console.log('Assignment created:', data);
+          toast.success('Resource assigned successfully');
+        }}
+        resourceData={mappedResources.map(r => ({ id: r.id, name: r.name }))}
+        projectData={[]}
       />
 
       <ResourceComparisonModal
