@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Send, TrendingUp, AlertTriangle } from 'lucide-react';
@@ -101,15 +102,16 @@ const TinkAssistant = () => {
 
   return (
     <>
-      {/* Mature Floating Chat Button - Large with Subtle Styling */}
+      {/* Glassmorphism Floating Chat Button - Reduced Size */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
           <Button
             onClick={() => setIsOpen(true)}
-            className="relative w-48 h-48 rounded-full bg-card/80 hover:bg-card 
+            className="relative w-36 h-36 rounded-full bg-transparent 
+                     hover:bg-white/10 hover:backdrop-blur-sm
                      shadow-lg hover:shadow-xl transition-all duration-300 ease-out
-                     hover:scale-105 active:scale-[0.98] border border-border/20
-                     will-change-transform backdrop-blur-sm"
+                     hover:scale-105 active:scale-[0.98] border border-white/20
+                     will-change-transform"
             size="icon"
             style={{
               transform: 'translate3d(0, 0, 0)',
@@ -124,8 +126,8 @@ const TinkAssistant = () => {
               loop
               autoplay
               style={{
-                width: '180px',
-                height: '180px',
+                width: '135px',
+                height: '135px',
                 cursor: 'pointer'
               }}
             />
