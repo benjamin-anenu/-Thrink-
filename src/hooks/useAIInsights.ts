@@ -86,15 +86,23 @@ export const useAIInsights = (projectId?: string) => {
             description = `${rec.resources?.name || 'Resource'} may face challenges with ${overallScore}% compatibility`;
           }
 
-          // Add skill-specific insights with detailed analysis
+          // Add skill-specific insights with enhanced analysis
           if (skillScore < 50) {
             try {
-              // Enhance description with specific skill gap analysis
               const skillGapAnalysis = await getDetailedSkillAnalysis(rec);
-              type = 'warning';
-              title = 'Specific Skill Gap Detected';
-              description = skillGapAnalysis || `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
+              if (skillGapAnalysis) {
+                type = 'warning';
+                title = 'Specific Skill Gap Detected';
+                description = skillGapAnalysis;
+              } else {
+                // Fallback when AI service is unavailable
+                type = 'warning';
+                title = 'Skill Gap Detected';
+                description = `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
+              }
             } catch (error) {
+              console.error('Error getting detailed skill analysis:', error);
+              // Fallback description
               type = 'warning';
               title = 'Skill Gap Detected';
               description = `${rec.resources?.name || 'Resource'} needs training in specific areas (${skillScore}% skill match)`;
@@ -125,6 +133,10 @@ export const useAIInsights = (projectId?: string) => {
       } catch (err) {
         console.error('Error fetching AI insights:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch AI insights');
+        
+        // Provide fallback insights when there's an error
+        const fallbackInsights = await generateFallbackInsights();
+        setInsights(fallbackInsights);
       } finally {
         setLoading(false);
       }
@@ -184,7 +196,22 @@ export const useAIInsights = (projectId?: string) => {
     }
   };
 
-  const getDetailedSkillAnalysis = async (recommendation: any): Promise<string> => {
+  const generateFallbackInsights = async (): Promise<AIInsight[]> => {
+    // Provide basic insights when AI service is unavailable
+    return [
+      {
+        id: `fallback-${Date.now()}`,
+        type: 'info',
+        title: 'AI Analysis Temporarily Unavailable',
+        description: 'AI-powered skill analysis is currently unavailable. Basic insights are shown instead.',
+        category: 'System',
+        actionable: false,
+        createdAt: new Date()
+      }
+    ];
+  };
+
+  const getDetailedSkillAnalysis = async (recommendation: any): Promise<string | null> => {
     try {
       // Get detailed resource and project data
       const { data: resourceData } = await supabase
@@ -209,33 +236,32 @@ export const useAIInsights = (projectId?: string) => {
 
       const taskTypes = projectData.tasks?.map(t => t.name) || [];
 
-      // Call enhanced analysis function
-      const response = await fetch('/functions/v1/enhanced-skill-analysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Call enhanced analysis function with better error handling
+      const response = await supabase.functions.invoke('enhanced-skill-analysis', {
+        body: {
           resourceName: resourceData.name,
           resourceSkills,
           projectRequirements: projectData.description,
           taskTypes,
           overallFitScore: recommendation.overall_fit_score,
           skillMatchScore: recommendation.skill_match_score
-        })
+        }
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.analysis) {
-          const analysis = result.analysis;
-          
-          // Format specific recommendations
-          const skillGaps = analysis.specificSkillGaps?.slice(0, 2).join(', ') || 'various skills';
-          const trainingNeeded = analysis.trainingRecommendations?.[0]?.training || 'additional training';
-          
-          return `${resourceData.name} needs training in ${skillGaps}. Recommended: ${trainingNeeded}. Priority: ${analysis.priority}.`;
-        }
+      if (response.error) {
+        console.error('Supabase function error:', response.error);
+        return null;
+      }
+
+      const result = response.data;
+      if (result?.success && result?.analysis) {
+        const analysis = result.analysis;
+        
+        // Format specific recommendations
+        const skillGaps = analysis.specificSkillGaps?.slice(0, 2).join(', ') || 'various skills';
+        const trainingNeeded = analysis.trainingRecommendations?.[0]?.training || 'additional training';
+        
+        return `${resourceData.name} needs training in ${skillGaps}. Recommended: ${trainingNeeded}. Priority: ${analysis.priority || 'Medium'}.`;
       }
       
       return null;

@@ -2,14 +2,14 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { LoadingOverlay } from '@/components/ui/loading-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, TrendingUp, AlertTriangle, CheckCircle, Info, Clock, Target, BookOpen, Users } from 'lucide-react';
-import { getStatusColors } from '@/utils/darkModeColors';
+import { Brain, TrendingUp, AlertTriangle, CheckCircle, Info, Clock, Target, BookOpen, Users, RefreshCw } from 'lucide-react';
 
 const AIInsightsCard: React.FC = () => {
-  const { insights, loading, error } = useAIInsights();
+  const { insights, loading, error, refreshInsights } = useAIInsights();
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -27,28 +27,43 @@ const AIInsightsCard: React.FC = () => {
   const getInsightColor = (type: string) => {
     switch (type) {
       case 'success':
-        const successColors = getStatusColors('success');
-        return `${successColors.muted} ${successColors.text} border border-green-800/20`;
+        return 'bg-green-900/20 text-green-300 border border-green-800/20';
       case 'warning':
-        const warningColors = getStatusColors('warning');
-        return `${warningColors.muted} ${warningColors.text} border border-amber-800/20`;
+        return 'bg-amber-900/20 text-amber-300 border border-amber-800/20';
       case 'error':
-        const errorColors = getStatusColors('error');
-        return `${errorColors.muted} ${errorColors.text} border border-red-800/20`;
+        return 'bg-red-900/20 text-red-300 border border-red-800/20';
       default:
-        const infoColors = getStatusColors('info');
-        return `${infoColors.muted} ${infoColors.text} border border-blue-800/20`;
+        return 'bg-blue-900/20 text-blue-300 border border-blue-800/20';
     }
   };
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          {error}
-        </AlertDescription>
-      </Alert>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            AI-Powered Resource Analytics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshInsights}
+                className="ml-2"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -78,7 +93,7 @@ const AIInsightsCard: React.FC = () => {
               {insights.slice(0, 6).map((insight) => (
                 <div
                   key={insight.id}
-                  className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
+                  className={`p-4 rounded-lg ${getInsightColor(insight.type)}`}
                 >
                   <div className="flex items-start gap-3 mb-2">
                     {getInsightIcon(insight.type)}
@@ -97,13 +112,13 @@ const AIInsightsCard: React.FC = () => {
                       {(insight.overallFitScore !== undefined || insight.skillMatchScore !== undefined) && (
                         <div className="flex gap-2 text-xs mb-2">
                           {insight.overallFitScore !== undefined && (
-                            <div className="flex items-center gap-1 bg-zinc-800/50 px-2 py-1 rounded">
+                            <div className="flex items-center gap-1 bg-zinc-800/30 px-2 py-1 rounded">
                               <Target className="h-3 w-3" />
                               <span>Fit: {insight.overallFitScore}%</span>
                             </div>
                           )}
                           {insight.skillMatchScore !== undefined && (
-                            <div className="flex items-center gap-1 bg-zinc-800/50 px-2 py-1 rounded">
+                            <div className="flex items-center gap-1 bg-zinc-800/30 px-2 py-1 rounded">
                               <BookOpen className="h-3 w-3" />
                               <span>Skills: {insight.skillMatchScore}%</span>
                             </div>
