@@ -23,24 +23,66 @@ export const useEscalationTriggers = () => {
   const { currentWorkspace } = useWorkspace();
 
   const loadTriggers = async () => {
-    if (!currentWorkspace?.id) return;
-    
     try {
       setLoading(true);
+      
+      // Load both global triggers (workspace_id IS NULL) and workspace-specific triggers
       const { data, error } = await supabase
         .from('escalation_triggers')
         .select('*')
-        .eq('workspace_id', currentWorkspace.id)
+        .or(`workspace_id.is.null,workspace_id.eq.${currentWorkspace?.id || 'null'}`)
         .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
-      setTriggers(data || []);
+      
+      // If we have a workspace, assign workspace_id to global triggers for local management
+      const processedTriggers = data?.map(trigger => ({
+        ...trigger,
+        workspace_id: trigger.workspace_id || currentWorkspace?.id || ''
+      })) || [];
+      
+      setTriggers(processedTriggers);
     } catch (error) {
       console.error('Error loading escalation triggers:', error);
       toast.error('Failed to load escalation triggers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createTrigger = async (
+    name: string,
+    description: string,
+    condition_type: string,
+    threshold_value: number,
+    threshold_unit: string
+  ) => {
+    if (!currentWorkspace?.id) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('escalation_triggers')
+        .insert([{
+          name,
+          description,
+          condition_type,
+          threshold_value,
+          threshold_unit,
+          workspace_id: currentWorkspace.id,
+          is_active: true
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      toast.success('Escalation trigger created');
+      loadTriggers();
+      return data;
+    } catch (error) {
+      console.error('Error creating escalation trigger:', error);
+      toast.error('Failed to create escalation trigger');
+      return null;
     }
   };
 
@@ -62,6 +104,25 @@ export const useEscalationTriggers = () => {
     }
   };
 
+  const deleteTrigger = async (id: string) => {
+    try {
+      // Instead of deleting, mark as inactive for data integrity
+      const { error } = await supabase
+        .from('escalation_triggers')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Escalation trigger deactivated');
+      loadTriggers();
+      return true;
+    } catch (error) {
+      console.error('Error deactivating escalation trigger:', error);
+      toast.error('Failed to deactivate escalation trigger');
+      return false;
+    }
+  };
+
   useEffect(() => {
     loadTriggers();
   }, [currentWorkspace?.id]);
@@ -69,7 +130,9 @@ export const useEscalationTriggers = () => {
   return {
     triggers,
     loading,
+    createTrigger,
     updateTrigger,
+    deleteTrigger,
     refreshTriggers: loadTriggers
   };
 };
