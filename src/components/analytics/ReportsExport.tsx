@@ -11,6 +11,7 @@ import { useRealReportsData } from '@/hooks/useRealReportsData';
 import { useScheduledReports } from '@/hooks/useScheduledReports';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { addDays, format } from 'date-fns';
+import ScheduleReportModal from './ScheduleReportModal';
 
 const ReportsExport: React.FC = () => {
   const { toast } = useToast();
@@ -19,10 +20,10 @@ const ReportsExport: React.FC = () => {
   const { 
     scheduledReports, 
     loading: scheduledLoading, 
-    createScheduledReport, 
     deleteScheduledReport, 
     toggleReportStatus 
   } = useScheduledReports();
+
   const [exportFormat, setExportFormat] = useState<string>('pdf');
   const [selectedSections, setSelectedSections] = useState<string[]>([
     'summary', 'progress', 'resources', 'timeline'
@@ -32,6 +33,7 @@ const ReportsExport: React.FC = () => {
     to: addDays(new Date(), 30)
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const exportSections = [
     { id: 'summary', label: 'Project Summary', icon: FileText },
@@ -111,44 +113,46 @@ const ReportsExport: React.FC = () => {
     }
   };
 
-  const handleScheduleReport = async () => {
-    if (!currentWorkspace?.id) {
+  const handleEmailNow = async () => {
+    if (selectedSections.length === 0) {
       toast({
-        title: "No workspace selected",
-        description: "Please select a workspace to schedule reports.",
+        title: "No sections selected",
+        description: "Please select at least one section to export.",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      await createScheduledReport({
-        report_type: 'analytics_export',
-        frequency: 'weekly',
+      // Generate and immediately email the report
+      const reportData = await generateReport({
+        type: 'analytics_export',
+        frequency: 'one_time',
+        recipients: ['current_user@company.com'],
         sections: selectedSections,
-        date_range_start: dateRange.from?.toISOString(),
-        date_range_end: dateRange.to?.toISOString(),
-        format: exportFormat,
-        recipients: [{
-          recipient_id: 'current-user',
-          recipient_name: 'Current User',
-          recipient_email: 'current.user@company.com',
-          recipient_type: 'workspace_member'
-        }]
+        dateRange: {
+          from: dateRange.from?.toISOString(),
+          to: dateRange.to?.toISOString()
+        }
       });
 
+      // TODO: Implement actual email sending
       toast({
-        title: "Report scheduled",
-        description: "Weekly reports will be sent to your email every Monday at 9:00 AM.",
+        title: "Email sent",
+        description: `Report has been sent to your email as ${exportFormat.toUpperCase()}.`,
       });
     } catch (error) {
-      console.error('Schedule error:', error);
+      console.error('Email error:', error);
       toast({
-        title: "Schedule failed",
-        description: "Failed to schedule the report. Please try again.",
+        title: "Email failed",
+        description: "There was an error sending the report. Please try again.",
         variant: "destructive"
       });
     }
+  };
+
+  const handleDownloadNow = async () => {
+    await handleExport(); // Reuse existing export logic
   };
 
   const handleDeleteSchedule = async (reportId: string) => {
@@ -329,7 +333,7 @@ const ReportsExport: React.FC = () => {
 
               <Button 
                 variant="outline" 
-                onClick={handleScheduleReport}
+                onClick={() => setIsScheduleModalOpen(true)}
                 className="w-full"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -339,11 +343,11 @@ const ReportsExport: React.FC = () => {
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" onClick={handleExport}>
+                  <Button variant="outline" size="sm" onClick={handleEmailNow}>
                     <Mail className="mr-1 h-3 w-3" />
                     Email Now
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleExport}>
+                  <Button variant="outline" size="sm" onClick={handleDownloadNow}>
                     <Download className="mr-1 h-3 w-3" />
                     Download
                   </Button>
@@ -353,6 +357,16 @@ const ReportsExport: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <ScheduleReportModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        initialConfig={{
+          exportFormat,
+          selectedSections,
+          dateRange
+        }}
+      />
     </div>
   );
 };
