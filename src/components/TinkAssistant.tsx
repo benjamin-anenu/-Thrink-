@@ -48,57 +48,67 @@ const TinkAssistant = () => {
   const [tinkService, setTinkService] = useState<EnhancedTinkService | null>(null);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
-  // Drag functionality state
-  const [position, setPosition] = useState<Position>({ x: 24, y: 24 });
+  // Drag functionality state - position in bottom right by default
+  const [position, setPosition] = useState<Position>({ x: window.innerWidth - 220, y: window.innerHeight - 220 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Load saved position from localStorage
+    // Load saved position from localStorage, with safe bounds checking
     const savedPosition = localStorage.getItem('chatIconPosition');
     if (savedPosition) {
       try {
         const parsed = JSON.parse(savedPosition);
-        setPosition(parsed);
+        // Ensure the position is within screen bounds
+        const safeX = Math.max(0, Math.min(window.innerWidth - 220, parsed.x));
+        const safeY = Math.max(0, Math.min(window.innerHeight - 220, parsed.y));
+        setPosition({ x: safeX, y: safeY });
       } catch (error) {
         console.error('Error parsing saved position:', error);
+        // Set default position if parsing fails
+        setPosition({ x: window.innerWidth - 220, y: window.innerHeight - 220 });
       }
     }
   }, []);
 
   useEffect(() => {
     const initializeChat = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && currentWorkspace) {
-        setUserId(user.id);
-        
-        // Check for OpenRouter API key
-        const openRouterKey = await getOpenRouterKey();
-        if (openRouterKey) {
-          setTinkService(new EnhancedTinkService(openRouterKey, selectedModel));
-          setApiKeyMissing(false);
-        } else {
-          setApiKeyMissing(true);
-        }
-        
-        const welcomeMessage: TinkMessage = {
-          id: '1',
-          type: 'tink',
-          content: `Hey there! I'm Tink, your AI project management assistant. I'm here to help you analyze your data, plan your projects, and make better decisions.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+          
+          // Check for OpenRouter API key
+          const openRouterKey = await getOpenRouterKey();
+          if (openRouterKey) {
+            setTinkService(new EnhancedTinkService(openRouterKey, selectedModel));
+            setApiKeyMissing(false);
+          } else {
+            setApiKeyMissing(true);
+          }
+          
+          const welcomeMessage: TinkMessage = {
+            id: '1',
+            type: 'tink',
+            content: `Hey there! I'm Tink, your AI project management assistant. I'm here to help you analyze your data, plan your projects, and make better decisions.
 
 I can work in two modes:
 🔍 **Agent Mode**: I'll analyze your actual project data and provide insights
 💬 **Chat Mode**: I'll help you brainstorm and plan using my project management expertise
 
 What would you like to explore today?`,
-          timestamp: new Date()
-        };
-        setMessages([welcomeMessage]);
+            timestamp: new Date()
+          };
+          setMessages([welcomeMessage]);
+        }
+      } catch (error) {
+        console.error('Error initializing chat:', error);
+        setApiKeyMissing(true);
       }
     };
 
     initializeChat();
-  }, [currentWorkspace, selectedModel]);
+  }, [selectedModel]); // Removed currentWorkspace dependency to make it always available
 
   // Drag event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -390,15 +400,21 @@ What would you like to explore today?`,
           }}
         >
           <div
-            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105"
+            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105 
+                       bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg hover:shadow-xl"
             style={{ 
               opacity: isDragging ? 0.8 : 1,
-              filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))' : 'none'
+              filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))' : 'drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3))'
             }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             onClick={handleIconClick}
           >
+            {/* Fallback icon if Lottie fails to load */}
+            <div className="absolute inset-0 flex items-center justify-center rounded-full">
+              <MessageCircle className="w-16 h-16 text-white" />
+            </div>
+            
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
               loop
@@ -407,11 +423,13 @@ What would you like to explore today?`,
                 width: '180px',
                 height: '180px',
                 pointerEvents: 'none',
-                background: 'transparent'
+                background: 'transparent',
+                position: 'relative',
+                zIndex: 1
               }}
             />
             {isTyping && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-white shadow-lg">
                 <Sparkles className="w-4 h-4 text-primary-foreground animate-pulse" />
               </div>
             )}
