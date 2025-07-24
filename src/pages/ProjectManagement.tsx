@@ -16,11 +16,14 @@ import {
   AlertCircle,
   Clock,
   Target,
-  TrendingUp
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
+import { ProjectData, ProjectTask } from '@/types/project';
 import Layout from '@/components/Layout';
+import ProjectOverview from '@/components/project-management/ProjectOverview';
 import ProjectTimeline from '@/components/project-management/ProjectTimeline';
 import ProjectResources from '@/components/project-management/ProjectResources';
 import ProjectReports from '@/components/project-management/ProjectReports';
@@ -30,12 +33,12 @@ import { ProjectIssueLog } from '@/components/project-management/issues/ProjectI
 import { PhaseView } from '@/components/project-management/phases/PhaseView';
 import KanbanBoard from '@/components/project-management/KanbanBoard';
 import TaskDetailModal from '@/components/TaskDetailModal';
-import { ProjectTask } from '@/types/project';
+import TinkAssistant from '@/components/TinkAssistant';
 
 const ProjectManagement = () => {
   const { id } = useParams<{ id: string }>();
   const { projects, loading: projectsLoading } = useProjects();
-  const { tasks, loading: tasksLoading } = useTaskManagement(id || '');
+  const { tasks, milestones, loading: tasksLoading } = useTaskManagement(id || '');
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [activeProjectPlanTab, setActiveProjectPlanTab] = useState('gantt');
@@ -68,7 +71,38 @@ const ProjectManagement = () => {
     );
   }
 
-  if (!project) {
+  // Calculate project statistics first
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+  const inProgressTasks = tasks.filter(task => task.status === 'In Progress').length;
+  const overdueTasks = tasks.filter(task => 
+    task.status !== 'Completed' && new Date(task.endDate) < new Date()
+  ).length;
+
+  // Create a ProjectData object from the project
+  const projectData: ProjectData | undefined = project ? {
+    id: project.id,
+    name: project.name,
+    description: 'Project management and tracking',
+    status: project.status as ProjectData['status'] || 'In Progress',
+    priority: 'Medium' as ProjectData['priority'],
+    progress: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+    health: { status: 'green', score: 85 },
+    startDate: new Date().toISOString(),
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    teamSize: 5,
+    budget: '$100,000',
+    tags: ['Development', 'Project Management'],
+    workspaceId: '',
+    resources: [],
+    stakeholders: [],
+    milestones: milestones || [],
+    tasks: tasks || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  } : undefined;
+
+  if (!project || !projectData) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
@@ -77,14 +111,6 @@ const ProjectManagement = () => {
       </Layout>
     );
   }
-
-  // Calculate project statistics
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
-  const inProgressTasks = tasks.filter(task => task.status === 'In Progress').length;
-  const overdueTasks = tasks.filter(task => 
-    task.status !== 'Completed' && new Date(task.endDate) < new Date()
-  ).length;
 
   const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -163,8 +189,12 @@ const ProjectManagement = () => {
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+              <Activity className="h-4 w-4" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="phases" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Phases
             </TabsTrigger>
             <TabsTrigger value="project-plan" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -173,10 +203,6 @@ const ProjectManagement = () => {
             <TabsTrigger value="timeline" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Timeline
-            </TabsTrigger>
-            <TabsTrigger value="phases" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Phases
             </TabsTrigger>
             <TabsTrigger value="resources" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -191,13 +217,17 @@ const ProjectManagement = () => {
               Documentation
             </TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4" />
               Reports
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="text-muted-foreground">Project overview coming soon...</div>
+            <ProjectOverview project={projectData} />
+          </TabsContent>
+
+          <TabsContent value="phases" className="space-y-4">
+            <PhaseView projectId={id!} />
           </TabsContent>
 
           <TabsContent value="project-plan" className="space-y-4">
@@ -238,9 +268,6 @@ const ProjectManagement = () => {
             <ProjectTimeline projectId={id!} />
           </TabsContent>
 
-          <TabsContent value="phases" className="space-y-4">
-            <PhaseView projectId={id!} />
-          </TabsContent>
 
           <TabsContent value="resources" className="space-y-4">
             <ProjectResources projectId={id!} />
@@ -251,7 +278,7 @@ const ProjectManagement = () => {
           </TabsContent>
 
           <TabsContent value="documentation" className="space-y-4">
-            <ProjectDocumentation projectId={id!} />
+            <ProjectDocumentation />
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4">
@@ -266,6 +293,9 @@ const ProjectManagement = () => {
           onClose={handleCloseTaskModal}
         />
       </div>
+
+      {/* TinkAssistant Chat */}
+      <TinkAssistant />
     </Layout>
   );
 };

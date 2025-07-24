@@ -21,10 +21,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
   const [draggedTask, setDraggedTask] = useState<ProjectTask | null>(null);
 
   const columns = [
-    { id: 'Not Started', title: 'To Do', color: 'bg-slate-100 border-slate-200' },
-    { id: 'In Progress', title: 'In Progress', color: 'bg-blue-50 border-blue-200' },
-    { id: 'On Hold', title: 'Blocked', color: 'bg-yellow-50 border-yellow-200' },
-    { id: 'Completed', title: 'Done', color: 'bg-green-50 border-green-200' }
+    { id: 'Not Started', title: 'To Do', color: 'bg-muted/30 border-border' },
+    { id: 'In Progress', title: 'In Progress', color: 'bg-blue-500/10 border-blue-500/20' },
+    { id: 'On Hold', title: 'Blocked', color: 'bg-yellow-500/10 border-yellow-500/20' },
+    { id: 'Completed', title: 'Done', color: 'bg-green-500/10 border-green-500/20' }
   ];
 
   const getTasksByStatus = (status: string) => {
@@ -33,11 +33,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'High': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Low': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Critical': return 'bg-red-200 text-red-900 border-red-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'High': return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'Medium': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+      case 'Low': return 'bg-green-500/10 text-green-600 border-green-500/20';
+      case 'Critical': return 'bg-destructive/20 text-destructive border-destructive/30';
+      default: return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
   };
 
@@ -76,16 +76,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`mb-3 cursor-pointer transition-all duration-200 hover:shadow-md ${
-            snapshot.isDragging ? 'shadow-lg transform rotate-1' : ''
-          } ${isOverdue(task.endDate) ? 'border-l-4 border-l-red-500 bg-red-50' : ''}`}
+          className={`mb-3 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] bg-card border-border ${
+            snapshot.isDragging ? 'shadow-xl transform rotate-1 scale-105 border-primary/50' : ''
+          } ${isOverdue(task.endDate) ? 'border-l-4 border-l-destructive bg-destructive/5' : ''}`}
           onClick={() => onTaskClick?.(task)}
         >
           <CardContent className="p-4">
             <div className="space-y-3">
               {/* Task Title */}
               <div className="flex items-start justify-between">
-                <h4 className="font-medium text-sm line-clamp-2 flex-1">{task.name}</h4>
+                <h4 className="font-medium text-sm line-clamp-2 flex-1 text-card-foreground">{task.name}</h4>
                 <Badge 
                   variant="outline" 
                   className={`ml-2 text-xs ${getPriorityColor(task.priority)}`}
@@ -198,9 +198,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
             
             return (
               <div key={column.id} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">{column.title}</h3>
-                  <Badge variant="outline" className="text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-border">
+                  <h3 className="font-semibold text-sm text-foreground">{column.title}</h3>
+                  <Badge variant="secondary" className="text-xs bg-muted/50">
                     {columnTasks.length}
                   </Badge>
                 </div>
@@ -210,10 +210,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`min-h-[500px] p-4 rounded-lg border-2 border-dashed transition-colors ${
+                      className={`min-h-[500px] p-4 rounded-lg border border-dashed transition-all duration-200 ${
                         snapshot.isDraggingOver 
-                          ? 'border-primary bg-primary/5' 
-                          : `${column.color} border-border`
+                          ? 'border-primary bg-primary/10 scale-[1.02]' 
+                          : `${column.color}`
                       }`}
                     >
                       {columnTasks.map((task, index) => (
@@ -222,8 +222,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
                       {provided.placeholder}
                       
                       {columnTasks.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground text-sm">
-                          No tasks in {column.title.toLowerCase()}
+                        <div className="text-center py-12 border border-dashed border-border/30 rounded-lg bg-muted/20">
+                          <p className="text-muted-foreground text-sm">No tasks in {column.title.toLowerCase()}</p>
                         </div>
                       )}
                     </div>
