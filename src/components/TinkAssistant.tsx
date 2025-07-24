@@ -410,10 +410,7 @@ What would you like to explore today?`,
             onTouchStart={handleTouchStart}
             onClick={handleIconClick}
           >
-            {/* Fallback icon if Lottie fails to load */}
-            <div className="absolute inset-0 flex items-center justify-center rounded-full" style={{background: 'transparent'}}>
-              <MessageCircle className="w-16 h-16 text-white" />
-            </div>
+            {/* Lottie animation */}
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
               loop
