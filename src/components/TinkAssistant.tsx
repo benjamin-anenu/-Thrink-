@@ -389,7 +389,7 @@ What would you like to explore today?`,
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Chat Button - Singleton, transparent background */}
       {!isOpen && (
         <div 
           className="fixed z-50 select-none"
@@ -400,10 +400,10 @@ What would you like to explore today?`,
           }}
         >
           <div
-            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105 
-                       bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg hover:shadow-xl"
+            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
             style={{ 
               opacity: isDragging ? 0.8 : 1,
+              background: 'transparent',
               filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))' : 'drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3))'
             }}
             onMouseDown={handleMouseDown}
@@ -411,10 +411,9 @@ What would you like to explore today?`,
             onClick={handleIconClick}
           >
             {/* Fallback icon if Lottie fails to load */}
-            <div className="absolute inset-0 flex items-center justify-center rounded-full">
+            <div className="absolute inset-0 flex items-center justify-center rounded-full" style={{background: 'transparent'}}>
               <MessageCircle className="w-16 h-16 text-white" />
             </div>
-            
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
               loop
