@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain } from 'lucide-react';
@@ -34,6 +33,8 @@ interface Position {
 }
 
 const TinkAssistant = () => {
+  // Add dragging flag to prevent chat opening during drag
+  const [isDragStarted, setIsDragStarted] = useState(false);
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -112,11 +113,12 @@ What would you like to explore today?`,
 
   // Drag event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
     setIsDragging(true);
+    setIsDragStarted(true);
+    const rect = e.currentTarget.getBoundingClientRect();
     setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
     });
   };
 
@@ -131,11 +133,11 @@ What would you like to explore today?`,
   };
 
   const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      // Save position to localStorage for persistence
-      localStorage.setItem('chatIconPosition', JSON.stringify(position));
-    }
+    setIsDragging(false);
+    // Reset drag started flag after a short delay
+    setTimeout(() => {
+      setIsDragStarted(false);
+    }, 100);
   };
 
   // Touch event handlers for mobile
@@ -186,7 +188,8 @@ What would you like to explore today?`,
   }, [isDragging, dragStart, position]);
 
   const handleIconClick = () => {
-    if (!isDragging) {
+    // Only open chat if not dragging
+    if (!isDragStarted) {
       setIsOpen(true);
     }
   };
@@ -389,7 +392,7 @@ What would you like to explore today?`,
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Chat Button - Singleton, transparent background */}
       {!isOpen && (
         <div 
           className="fixed z-50 select-none"
@@ -398,23 +401,20 @@ What would you like to explore today?`,
             top: `${position.y}px`,
             cursor: isDragging ? 'grabbing' : 'grab'
           }}
+          key="tink-assistant-icon" // Ensure stable key
         >
           <div
-            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105 
-                       bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg hover:shadow-xl"
+            className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
             style={{ 
               opacity: isDragging ? 0.8 : 1,
+              background: 'transparent',
               filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))' : 'drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3))'
             }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             onClick={handleIconClick}
           >
-            {/* Fallback icon if Lottie fails to load */}
-            <div className="absolute inset-0 flex items-center justify-center rounded-full">
-              <MessageCircle className="w-16 h-16 text-white" />
-            </div>
-            
+            {/* Lottie animation */}
             <DotLottieReact
               src="https://lottie.host/68f802c9-050b-4fac-bf49-eda68fc9746a/ToyFJzSmLq.json"
               loop
