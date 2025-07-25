@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain } from 'lucide-react';
@@ -33,8 +34,6 @@ interface Position {
 }
 
 const TinkAssistant = () => {
-  // Add dragging flag to prevent chat opening during drag
-  const [isDragStarted, setIsDragStarted] = useState(false);
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -113,12 +112,11 @@ What would you like to explore today?`,
 
   // Drag event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     setIsDragging(true);
-    setIsDragStarted(true);
-    const rect = e.currentTarget.getBoundingClientRect();
     setDragStart({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
     });
   };
 
@@ -133,11 +131,11 @@ What would you like to explore today?`,
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
-    // Reset drag started flag after a short delay
-    setTimeout(() => {
-      setIsDragStarted(false);
-    }, 100);
+    if (isDragging) {
+      setIsDragging(false);
+      // Save position to localStorage for persistence
+      localStorage.setItem('chatIconPosition', JSON.stringify(position));
+    }
   };
 
   // Touch event handlers for mobile
@@ -188,8 +186,7 @@ What would you like to explore today?`,
   }, [isDragging, dragStart, position]);
 
   const handleIconClick = () => {
-    // Only open chat if not dragging
-    if (!isDragStarted) {
+    if (!isDragging) {
       setIsOpen(true);
     }
   };
@@ -401,7 +398,6 @@ What would you like to explore today?`,
             top: `${position.y}px`,
             cursor: isDragging ? 'grabbing' : 'grab'
           }}
-          key="tink-assistant-icon" // Ensure stable key
         >
           <div
             className="relative w-44 h-44 rounded-full transition-transform duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
