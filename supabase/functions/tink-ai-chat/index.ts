@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { processLocalSearch, fetchUserContext, generateContextAwareChatResponse } from './search-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, userQuestion, workspaceId, conversationHistory = [], mode = 'agent' } = await req.json();
+    const { action, userQuestion, workspaceId, conversationHistory = [], mode = 'agent', selectedModel = 'anthropic/claude-3.5-sonnet' } = await req.json();
     
     // Handle API key check
     if (action === 'check_key') {
@@ -50,13 +51,41 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Get user ID for search/context operations
+    const authHeader = req.headers.get('authorization');
+    let userId = null;
+    if (authHeader) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        userId = user?.id;
+      } catch (error) {
+        console.error('Error getting user:', error);
+      }
+    }
+
+    // Handle search mode (offline keyword-based search)
+    if (mode === 'search') {
+      const searchResults = await processLocalSearch(userQuestion, workspaceId, supabase, userId);
+      return new Response(JSON.stringify({
+        success: true,
+        response: searchResults,
+        mode: 'search',
+        processingTime: Date.now()
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (mode === 'chat') {
-      // Chat mode: Direct consultation without data querying
-      const response = await generateChatResponse(userQuestion, conversationHistory);
+      // Chat mode: Context-aware consultation with data access
+      const userContext = await fetchUserContext(userId, workspaceId, supabase);
+      const response = await generateContextAwareChatResponse(userQuestion, conversationHistory, userContext, selectedModel);
+      
       return new Response(JSON.stringify({
         success: true,
         response,
         mode: 'chat',
+        context: userContext,
         processingTime: Date.now()
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

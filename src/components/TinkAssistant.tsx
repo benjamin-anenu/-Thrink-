@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain } from 'lucide-react';
+import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain, Search } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -43,7 +43,7 @@ const TinkAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [chatMode, setChatMode] = useState<ChatMode>('agent');
+  const [chatMode, setChatMode] = useState<'agent' | 'chat' | 'search'>('agent');
   const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [tinkService, setTinkService] = useState<EnhancedTinkService | null>(null);
@@ -53,6 +53,9 @@ const TinkAssistant = () => {
   const [position, setPosition] = useState<Position>({ x: window.innerWidth - 220, y: window.innerHeight - 220 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
+  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const chatIconRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load saved position from localStorage, with safe bounds checking
@@ -86,6 +89,7 @@ const TinkAssistant = () => {
             setApiKeyMissing(false);
           } else {
             setApiKeyMissing(true);
+            setChatMode('search'); // Auto-switch to search mode when no API key
           }
           
           const welcomeMessage: TinkMessage = {
@@ -138,6 +142,8 @@ What would you like to explore today?`,
     setTimeout(() => {
       setIsDragStarted(false);
     }, 100);
+    // Save position to localStorage for persistence
+    localStorage.setItem('chatIconPosition', JSON.stringify(position));
   };
 
   // Touch event handlers for mobile
@@ -187,6 +193,21 @@ What would you like to explore today?`,
     };
   }, [isDragging, dragStart, position]);
 
+  // Click outside to close chat
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (chatBoxRef.current && !chatBoxRef.current.contains(event.target as Node) && 
+          chatIconRef.current && !chatIconRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
   const handleIconClick = () => {
     // Only open chat if not dragging
     if (!isDragStarted) {
@@ -232,7 +253,23 @@ What would you like to explore today?`,
   };
 
   const sendMessage = async () => {
-    if (!inputValue.trim() || !userId || !currentWorkspace || isLoading) return;
+    if (!inputValue.trim() || !userId || isLoading) return;
+
+    // Handle search mode (no API key needed)
+    if (chatMode === 'search') {
+      await handleSearchMode();
+      return;
+    }
+
+    // For agent/chat modes, check workspace and API key
+    if (!currentWorkspace) {
+      toast({
+        title: "No Workspace",
+        description: "Please select a workspace to use AI features.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Check if API key is missing
     if (apiKeyMissing) {
@@ -335,6 +372,66 @@ What would you like to explore today?`,
     }
   };
 
+  const handleSearchMode = async () => {
+    const userMessage: TinkMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputValue,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    const typingMessage: TinkMessage = {
+      id: 'typing',
+      type: 'tink',
+      content: '🔍 Searching your workspace data...',
+      timestamp: new Date(),
+      isLoading: true
+    };
+    setMessages(prev => [...prev, typingMessage]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
+        body: {
+          userQuestion: inputValue,
+          mode: 'search',
+          workspaceId: currentWorkspace?.id || 'default'
+        }
+      });
+
+      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+
+      const aiResponse: TinkMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'tink',
+        content: data?.response || "No results found. Try keywords like 'my tasks', 'overdue projects', or 'team performance'.",
+        timestamp: new Date(),
+        metadata: {
+          processingTime: data?.processingTime
+        }
+      };
+
+      setMessages(prev => [...prev, aiResponse]);
+
+    } catch (error) {
+      console.error('Search error:', error);
+      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+      
+      const errorResponse: TinkMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'tink',
+        content: "Search temporarily unavailable. Try keywords like: 'my tasks', 'overdue projects', 'team members', 'my performance'.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorResponse]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -354,6 +451,12 @@ What would you like to explore today?`,
       { label: "Productivity Tips", icon: MessageCircle, query: "How can I improve my team's productivity?" },
       { label: "Planning Help", icon: MessageCircle, query: "Help me plan my next project milestone" },
       { label: "Best Practices", icon: MessageCircle, query: "What are some project management best practices?" }
+    ],
+    search: [
+      { label: "My Tasks", icon: Search, query: "my tasks today" },
+      { label: "Overdue Items", icon: Search, query: "overdue projects" },
+      { label: "Team Status", icon: Search, query: "team performance" },
+      { label: "Available Resources", icon: Search, query: "available resources" }
     ]
   };
 
@@ -395,6 +498,7 @@ What would you like to explore today?`,
       {/* Floating Chat Button - Singleton, transparent background */}
       {!isOpen && (
         <div 
+          ref={chatIconRef}
           className="fixed z-50 select-none"
           style={{ 
             left: `${position.x}px`, 
@@ -440,7 +544,7 @@ What would you like to explore today?`,
       {/* Enhanced Chat Interface */}
       {isOpen && (
         <div className="fixed w-[560px] h-[700px] z-50 animate-[scale-in_300ms_ease-out]" style={{ bottom: '24px', right: '24px' }}>
-          <div className="relative w-full h-full bg-background border border-border rounded-2xl 
+          <div ref={chatBoxRef} className="relative w-full h-full bg-background border border-border rounded-2xl 
                         shadow-2xl backdrop-blur-sm flex flex-col">
             
             {/* Enhanced Header */}
@@ -459,12 +563,12 @@ What would you like to explore today?`,
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     Tink AI 
                     <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                      {chatMode === 'agent' ? 'Data Expert' : 'AI Consultant'}
+                      {chatMode === 'agent' ? 'Data Expert' : chatMode === 'search' ? 'Search Mode' : 'AI Consultant'}
                     </span>
                   </h3>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    {currentModel?.name || 'Claude 3.5 Sonnet'}
-                    <span className="text-xs opacity-60">• {chatMode === 'agent' ? 'Data analysis' : 'Consultation'}</span>
+                    {chatMode === 'search' ? 'Offline Search' : currentModel?.name || 'Claude 3.5 Sonnet'}
+                    <span className="text-xs opacity-60">• {chatMode === 'agent' ? 'Data analysis' : chatMode === 'search' ? 'Keyword search' : 'Consultation'}</span>
                   </p>
                 </div>
               </div>
@@ -474,6 +578,7 @@ What would you like to explore today?`,
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                   <Button
                     variant={chatMode === 'agent' ? 'default' : 'ghost'}
+                    disabled={apiKeyMissing}
                     size="sm"
                     onClick={() => setChatMode('agent')}
                     className="h-8 px-3 text-xs transition-all duration-200"
@@ -483,12 +588,22 @@ What would you like to explore today?`,
                   </Button>
                   <Button
                     variant={chatMode === 'chat' ? 'default' : 'ghost'}
+                    disabled={apiKeyMissing}
                     size="sm"
                     onClick={() => setChatMode('chat')}
                     className="h-8 px-3 text-xs transition-all duration-200"
                   >
                     <MessageCircle className="w-3 h-3 mr-1" />
                     Chat
+                  </Button>
+                  <Button
+                    variant={chatMode === 'search' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setChatMode('search')}
+                    className="h-8 px-3 text-xs transition-all duration-200"
+                  >
+                    <Search className="w-3 h-3 mr-1" />
+                    Search
                   </Button>
                 </div>
                 
@@ -613,6 +728,8 @@ What would you like to explore today?`,
                   placeholder={
                     chatMode === 'agent' 
                       ? "Ask me about your data: 'How is my team performing?' or 'What are my risks?'" 
+                      : chatMode === 'search'
+                      ? "Try keywords: 'my tasks today', 'overdue projects', 'team performance'"
                       : "Chat with me about your projects: 'Help me plan my next milestone'"
                   }
                   className="flex-1 min-h-[60px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
@@ -628,7 +745,7 @@ What would you like to explore today?`,
                   className="h-12 w-12 rounded-xl bg-primary hover:bg-primary/90
                            shadow-sm hover:shadow-md transition-all duration-200 
                            disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!inputValue.trim() || isLoading || apiKeyMissing || !tinkService}
+                  disabled={!inputValue.trim() || isLoading || (chatMode !== 'search' && (apiKeyMissing || !tinkService))}
                 >
                   <Send className="h-4 w-4 text-primary-foreground" />
                 </Button>

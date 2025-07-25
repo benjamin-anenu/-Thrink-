@@ -7,6 +7,7 @@ import StakeholderCard from '@/components/StakeholderCard';
 import StakeholderListView from '@/components/StakeholderListView';
 import StakeholderEscalationMatrix from '@/components/StakeholderEscalationMatrix';
 import ViewToggle from '@/components/ViewToggle';
+import { TinkAssistant } from '@/components/TinkAssistant';
 import { useStakeholders } from '@/hooks/useStakeholders';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/button';
