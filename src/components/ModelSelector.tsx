@@ -18,7 +18,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   onModelChange, 
   compact = false 
 }) => {
-  const models = EnhancedTinkService.getAvailableModels();
+  // Filter out models with empty id to prevent Select.Item error
+  const models = EnhancedTinkService.getAvailableModels().filter(m => m.id && m.id !== '');
   
   const getCostColor = (tier: string) => {
     switch (tier) {
