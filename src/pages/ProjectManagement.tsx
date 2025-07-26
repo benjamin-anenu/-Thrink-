@@ -294,7 +294,6 @@ const ProjectManagement = () => {
         />
       </div>
 
-      <TinkAssistant />
     </Layout>
   );
 };
