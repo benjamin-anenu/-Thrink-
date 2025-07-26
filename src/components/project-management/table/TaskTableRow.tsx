@@ -249,27 +249,37 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   };
 
   const calculateVariance = () => {
-    if (!task.startDate || !task.baselineStartDate) return null;
-    const actual = new Date(task.startDate);
-    const baseline = new Date(task.baselineStartDate);
-    const diffTime = actual.getTime() - baseline.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    if (!task.baselineEndDate) return null;
+    
+    const baselineEnd = new Date(task.baselineEndDate);
+    const actualEnd = new Date(task.endDate);
+    const variance = Math.ceil((actualEnd.getTime() - baselineEnd.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return variance;
   };
 
   const variance = calculateVariance();
+
+  // Determine if task is delayed (overdue or has positive variance)
+  const isDelayed = () => {
+    const today = new Date();
+    const endDate = new Date(task.endDate);
+    const isOverdue = endDate < today && task.status !== 'Completed';
+    const hasPositiveVariance = variance !== null && variance > 0;
+    return isOverdue || hasPositiveVariance;
+  };
+
   const getVarianceColor = (variance: number | null) => {
-    if (variance === null) return 'text-muted-foreground';
-    if (variance === 0) return 'text-green-600';
+    if (variance === null) return '';
     if (variance > 0) return 'text-red-600';
-    return 'text-blue-600';
+    if (variance < 0) return 'text-green-600';
+    return 'text-gray-600';
   };
 
   const formatVariance = (variance: number | null) => {
-    if (variance === null) return '-';
+    if (variance === null) return 'No baseline';
     if (variance === 0) return 'On track';
-    if (variance > 0) return `+${variance}d`;
-    return `${variance}d`;
+    return `${variance > 0 ? '+' : ''}${variance} days`;
   };
 
   // Fix the options to ensure they're in the correct format
@@ -511,10 +521,12 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         <TableCell className={densityClass}>
           <TaskActionsCell
             task={task}
+            projectId={projectId}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
             onRebaseline={onRebaselineTask}
             disabled={isUpdating}
+            isDelayed={isDelayed()}
           />
         </TableCell>
       </TableRow>

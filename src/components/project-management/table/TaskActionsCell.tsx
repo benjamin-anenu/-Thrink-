@@ -8,6 +8,7 @@ import RebaselineDialog from './RebaselineDialog';
 
 interface TaskActionsCellProps {
   task: ProjectTask;
+  projectId?: string;
   onEdit?: (task: ProjectTask) => void;
   onDelete?: (taskId: string) => void;
   onRebaseline?: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
@@ -21,6 +22,7 @@ interface TaskActionsCellProps {
 
 const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   task,
+  projectId,
   isDelayed = false,
   onEditTask,
   onDeleteTask,
@@ -62,6 +64,19 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
           >
             <Edit className="h-4 w-4" />
           </Button>
+          
+          {/* Test button - always show rebaseline for testing */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => !disabled && handleRebaselineClick()}
+            className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600"
+            title="Test Rebaseline Dialog"
+            disabled={disabled}
+          >
+            <AlertTriangle className="h-4 w-4" />
+          </Button>
+          
           {isDelayed && (
             <Button
               variant="ghost"
@@ -91,6 +106,7 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
         open={showRebaselineDialog}
         onOpenChange={setShowRebaselineDialog}
         task={task}
+        projectId={projectId}
         onRebaseline={handleRebaseline}
       />
     </>

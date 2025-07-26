@@ -553,6 +553,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                           <TaskTableRow
                             key={task.id}
                             task={task}
+                            projectId={projectId}
                             milestones={milestones}
                             availableResources={availableResources}
                             availableStakeholders={availableStakeholders}
