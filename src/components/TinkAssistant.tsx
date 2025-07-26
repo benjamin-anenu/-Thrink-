@@ -32,7 +32,7 @@ interface Position {
   y: number;
 }
 
-const TinkAssistant = () => {
+export const TinkAssistant: React.FC = () => {
   // Add dragging flag to prevent chat opening during drag
   const [isDragStarted, setIsDragStarted] = useState(false);
   const { currentWorkspace } = useWorkspace();
