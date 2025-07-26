@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export interface Task {
   id: string;
   name: string;
-  status: 'To Do' | 'In Progress' | 'Blocked' | 'Done' | 'On Hold';
-  priority: 'High' | 'Medium' | 'Low';
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
   assignee?: string;
   dueDate?: Date;
   description?: string;
@@ -26,17 +27,38 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { currentWorkspace } = useWorkspace();
 
   // Initialize tasks
   useEffect(() => {
     const fetchTasks = async () => {
+      if (!currentWorkspace) {
+        setTasks([]);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase
-          .from('tasks')
-          .select('*');
+          .from('project_tasks')
+          .select('*')
+          .eq('workspace_id', currentWorkspace.id);
 
         if (error) throw error;
-        setTasks(data || []);
+        
+        const tasksWithAdditionalProps = data?.map(task => ({
+          id: task.id,
+          name: task.name,
+          status: (task.status as Task['status']) || 'Not Started',
+          priority: (task.priority as Task['priority']) || 'Medium',
+          assignee: task.assignee_id,
+          dueDate: task.end_date ? new Date(task.end_date) : undefined,
+          description: task.description || '',
+          projectId: task.project_id,
+          workspaceId: currentWorkspace.id
+        })) || [];
+        
+        setTasks(tasksWithAdditionalProps);
       } catch (err) {
         setError(err as Error);
       } finally {
@@ -45,7 +67,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     fetchTasks();
-  }, []);
+  }, [currentWorkspace]);
 
   // Set up real-time subscriptions
   useEffect(() => {

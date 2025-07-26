@@ -324,6 +324,47 @@ export class DataPersistenceService {
       errors
     };
   }
+
+  // Methods required by resource management module
+  public async loadResources() {
+    return this.getData('resources') || [];
+  }
+
+  public async loadResourceProfiles() {
+    return this.getData('performance-profiles') || [];
+  }
+
+  public async updateResource(resourceId: string, data: any) {
+    const resources: any[] = this.getData('resources') || [];
+    const updatedResources = resources.map((r: any) => 
+      r.id === resourceId ? { ...r, ...data } : r
+    );
+    this.persistData('resources', updatedResources, 'resource_update');
+    return data;
+  }
+
+  public async addResource(data: any) {
+    const resources: any[] = this.getData('resources') || [];
+    resources.push(data);
+    this.persistData('resources', resources, 'resource_add');
+    return data;
+  }
+
+  public async updateResourceProfile(resourceId: string, data: any) {
+    const profiles: any[] = this.getData('performance-profiles') || [];
+    const updatedProfiles = profiles.map((p: any) => 
+      p.resource_id === resourceId ? { ...p, ...data } : p
+    );
+    this.persistData('performance-profiles', updatedProfiles, 'profile_update');
+    return data;
+  }
+
+  public async addResourceProfile(data: any) {
+    const profiles: any[] = this.getData('performance-profiles') || [];
+    profiles.push(data);
+    this.persistData('performance-profiles', profiles, 'profile_add');
+    return data;
+  }
 }
 
 export const dataPersistence = DataPersistenceService.getInstance();

@@ -189,39 +189,39 @@ export const EnhancedResourceProvider: React.FC<{ children: React.ReactNode }> =
   const [utilizationEngine] = useState(() => new TaskBasedUtilizationEngine());
   const [assignmentAI] = useState(() => new TaskBasedAssignmentAI());
 
-  const { workspace } = useWorkspace();
+  const { currentWorkspace } = useWorkspace();
 
   // Initialize data on workspace change
   useEffect(() => {
-    if (workspace?.id) {
+    if (currentWorkspace?.id) {
       loadResourceData();
       initializeDataCollection();
     }
-  }, [workspace?.id]);
+  }, [currentWorkspace?.id]);
 
   // Load resource data (both legacy and enhanced)
   const loadResourceData = useCallback(async () => {
-    if (!workspace?.id) return;
+    if (!currentWorkspace?.id) return;
 
     setLoading(true);
     try {
       // Load legacy resources for backward compatibility
-      const legacyResources = await dataPersistence.loadResources(workspace.id);
-      setResources(legacyResources);
+      const legacyResources = await dataPersistence.loadResources();
+      setResources(Array.isArray(legacyResources) ? legacyResources : []);
 
       // Load enhanced resource profiles
-      const profiles = await dataPersistence.loadResourceProfiles(workspace.id);
-      setResourceProfiles(profiles);
+      const profiles = await dataPersistence.loadResourceProfiles();
+      setResourceProfiles(Array.isArray(profiles) ? profiles : []);
 
       // Sync any missing data between legacy and enhanced formats
-      await syncLegacyWithEnhanced(legacyResources, profiles);
+      await syncLegacyWithEnhanced(Array.isArray(legacyResources) ? legacyResources : [], Array.isArray(profiles) ? profiles : []);
       
     } catch (error) {
       console.error('Error loading resource data:', error);
     } finally {
       setLoading(false);
     }
-  }, [workspace?.id]);
+  }, [currentWorkspace?.id]);
 
   // Sync legacy resources with enhanced profiles
   const syncLegacyWithEnhanced = async (legacyResources: Resource[], profiles: ResourceProfile[]) => {

@@ -258,3 +258,15 @@ export interface AlternativeTaskDistribution {
   risk_level: 'Low' | 'Medium' | 'High';
   reasoning: string;
 }
+
+export interface TaskUtilizationMetrics {
+  resource_id: string;
+  task_count: number;
+  complexity_total: number;
+  capacity_used: number;
+  capacity_remaining: number;
+  overload_risk: 'Low' | 'Medium' | 'High';
+  utilization_percentage: number;
+  status: 'active' | 'inactive' | 'overloaded';
+  last_updated: Date;
+}
