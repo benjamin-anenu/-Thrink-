@@ -294,7 +294,6 @@ const ProjectManagement = () => {
         />
       </div>
 
-      {/* TinkAssistant Chat */}
       <TinkAssistant />
     </Layout>
   );

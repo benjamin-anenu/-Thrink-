@@ -9,36 +9,36 @@ const DashboardPreview = () => {
   const mockTasks = [
     {
       id: '1',
-      title: 'Design Landing Page',
+      name: 'Design Landing Page',
       description: 'Create wireframes and mockups for the new landing page',
-      tag: { color: 'blue', label: 'High' },
-      dueDate: 'Dec 15',
-      assignees: 3,
-      progress: { completed: 2, total: 5 },
-      project: 'Website Redesign',
-      status: 'todo'
+      status: 'Not Started' as const,
+      priority: 'High' as const,
+      assignee: 'John Doe',
+      dueDate: new Date('2024-12-15'),
+      projectId: 'project-1',
+      workspaceId: 'workspace-1'
     },
     {
       id: '2',
-      title: 'Implement Authentication',
+      name: 'Implement Authentication',
       description: 'Set up user login and registration system',
-      tag: { color: 'orange', label: 'Medium' },
-      dueDate: 'Dec 20',
-      assignees: 2,
-      progress: { completed: 1, total: 3 },
-      project: 'Backend API',
-      status: 'inProgress'
+      status: 'In Progress' as const,
+      priority: 'Medium' as const,
+      assignee: 'Jane Smith',
+      dueDate: new Date('2024-12-20'),
+      projectId: 'project-2',
+      workspaceId: 'workspace-1'
     },
     {
       id: '3',
-      title: 'Code Review',
+      name: 'Code Review',
       description: 'Review pull requests for the new features',
-      tag: { color: 'green', label: 'Low' },
-      dueDate: 'Dec 18',
-      assignees: 1,
-      progress: { completed: 3, total: 3 },
-      project: 'Quality Assurance',
-      status: 'review'
+      status: 'Completed' as const,
+      priority: 'Low' as const,
+      assignee: 'Mike Johnson',
+      dueDate: new Date('2024-12-18'),
+      projectId: 'project-3',
+      workspaceId: 'workspace-1'
     }
   ];
 

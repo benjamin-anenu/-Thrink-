@@ -1,6 +1,7 @@
 import { PerformanceTracker } from './PerformanceTracker';
 import { EmailReminderService } from './EmailReminderService';
 import { EventBus } from './EventBus';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ProjectNotification {
   id: string;
@@ -110,14 +111,37 @@ export class NotificationIntegrationService {
     });
   }
 
-  private loadNotifications() {
-    const saved = localStorage.getItem('project-notifications');
-    if (saved) {
-      this.notifications = JSON.parse(saved).map((n: any) => ({
-        ...n,
-        timestamp: new Date(n.timestamp)
+  private async loadNotifications() {
+    // Fetch notifications from Supabase notification_queue
+    const { data, error } = await supabase
+      .from('notification_queue')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) {
+      this.notifications = data.map((notif: any) => ({
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: notif.type,
+        category: notif.category,
+        timestamp: new Date(notif.created_at),
+        read: notif.read,
+        priority: notif.priority,
+        projectId: notif.metadata?.project_id,
+        projectName: notif.metadata?.project_name,
+        resourceId: notif.metadata?.resource_id,
+        resourceName: notif.metadata?.resource_name,
+        actionRequired: notif.metadata?.action_required,
       }));
+      this.notifyListeners();
     }
+    // Subscribe to real-time changes
+    supabase
+      .channel('notification-queue')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_queue' }, () => {
+        this.loadNotifications();
+      })
+      .subscribe();
   }
 
   private saveNotifications() {

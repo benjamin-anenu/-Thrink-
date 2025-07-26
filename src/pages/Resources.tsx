@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import TinkAssistant from '@/components/TinkAssistant';
 
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import SkillsMatrix from '@/components/SkillsMatrix';
@@ -357,6 +358,7 @@ const Resources = () => {
         workspaceId={currentWorkspace?.id || ''}
       />
 
+      <TinkAssistant />
 
     </div>
   );

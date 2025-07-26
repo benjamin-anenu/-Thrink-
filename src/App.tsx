@@ -24,6 +24,8 @@ import { WorkspaceProvider } from "./contexts/WorkspaceContext";
 import GlobalErrorHandler from "./components/GlobalErrorHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NetworkErrorHandler from "./components/NetworkErrorHandler";
+import CheckIn from './pages/CheckIn';
+import ApproveRebaseline from './pages/ApproveRebaseline';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +114,8 @@ function App() {
                                   <Workspaces />
                                 </ErrorBoundary>
                               } />
+                              <Route path="/checkin/:projectId" element={<CheckIn />} />
+                              <Route path="/approve-rebaseline/:approvalId" element={<ApproveRebaseline />} />
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </BrowserRouter>

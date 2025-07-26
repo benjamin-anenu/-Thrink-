@@ -78,13 +78,21 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         {
           event: '*',
           schema: 'public',
-          table: 'tasks'
+          table: 'project_tasks'
         },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             setTasks(prevTasks =>
               prevTasks.map(task =>
-                task.id === payload.new.id ? { ...task, ...payload.new } : task
+                task.id === payload.new.id ? {
+                  ...task,
+                  status: (payload.new.status as Task['status']) || task.status,
+                  priority: (payload.new.priority as Task['priority']) || task.priority,
+                  name: payload.new.name || task.name,
+                  description: payload.new.description || task.description,
+                  assignee: payload.new.assignee_id || task.assignee,
+                  dueDate: payload.new.end_date ? new Date(payload.new.end_date) : task.dueDate,
+                } : task
               )
             );
           }
@@ -100,7 +108,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   const updateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
     try {
       const { error } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .update({ status: newStatus })
         .match({ id: taskId });
 

@@ -9,19 +9,27 @@ import { useToast } from '@/hooks/use-toast';
 import TaskDetailModal from './TaskDetailModal';
 
 const TASK_COLUMNS: Array<{ id: Task['status']; title: string }> = [
-  { id: 'To Do', title: 'To Do' },
+  { id: 'Not Started', title: 'To Do' },
   { id: 'In Progress', title: 'In Progress' },
-  { id: 'Blocked', title: 'Blocked' },
-  { id: 'Done', title: 'Done' },
-  { id: 'On Hold', title: 'On Hold' },
+  { id: 'On Hold', title: 'Blocked' },
+  { id: 'Completed', title: 'Done' },
+  { id: 'Cancelled', title: 'Cancelled' },
 ];
 
-const TaskBoard = () => {
-  const { tasks, updateTaskStatus } = useTask();
+interface TaskBoardProps {
+  tasks?: Task[];
+  onTaskUpdate?: (taskId: string, newStatus: string) => void;
+}
+
+const TaskBoard: React.FC<TaskBoardProps> = ({ tasks: propTasks, onTaskUpdate }) => {
+  const { tasks: contextTasks, updateTaskStatus } = useTask();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Use prop tasks if provided, otherwise use context tasks
+  const tasks = propTasks || contextTasks;
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
@@ -30,7 +38,11 @@ const TaskBoard = () => {
     const newStatus = result.destination.droppableId as Task['status'];
 
     try {
-      await updateTaskStatus(taskId, newStatus);
+      if (onTaskUpdate) {
+        onTaskUpdate(taskId, newStatus);
+      } else {
+        await updateTaskStatus(taskId, newStatus);
+      }
       toast({
         title: 'Task Updated',
         description: `Task moved to ${TASK_COLUMNS.find(col => col.id === newStatus)?.title}`,
