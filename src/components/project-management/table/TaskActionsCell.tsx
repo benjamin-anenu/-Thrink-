@@ -53,47 +53,35 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   return (
     <>
       <TableCell className={`table-cell ${densityClass}`}>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 justify-start min-w-[120px] w-full">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => !disabled && handleEdit?.(task)}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-slate-700 transition-colors flex-shrink-0"
             title={disabled ? "Editing disabled" : "Edit task"}
             disabled={disabled}
           >
             <Edit className="h-4 w-4" />
           </Button>
           
-          {/* Test button - always show rebaseline for testing */}
+          {/* Single rebaseline button - always show for testing, but will be conditional in production */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => !disabled && handleRebaselineClick()}
-            className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600"
-            title="Test Rebaseline Dialog"
+            className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors flex-shrink-0"
+            title={disabled ? "Editing disabled" : "Rebaseline task - update baseline dates"}
             disabled={disabled}
           >
             <AlertTriangle className="h-4 w-4" />
           </Button>
           
-          {isDelayed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => !disabled && handleRebaselineClick()}
-              className="h-8 w-8 p-0 text-orange-500 hover:text-orange-600"
-              title={disabled ? "Editing disabled" : "Rebaseline task - update baseline dates to current dates"}
-              disabled={disabled}
-            >
-              <AlertTriangle className="h-4 w-4" />
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => !disabled && handleDelete?.(task.id)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors flex-shrink-0"
             title={disabled ? "Editing disabled" : "Delete task"}
             disabled={disabled}
           >

@@ -273,7 +273,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
     if (variance === null) return '';
     if (variance > 0) return 'text-red-600';
     if (variance < 0) return 'text-green-600';
-    return 'text-gray-600';
+    return 'text-green-600'; // "On track" should be green, not gray
   };
 
   const formatVariance = (variance: number | null) => {
