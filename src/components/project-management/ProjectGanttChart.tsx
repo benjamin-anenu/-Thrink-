@@ -473,7 +473,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
               maxHeight: '70vh'
             }}
           >
-            <Table className="min-w-full">
+            <Table className="min-w-full table-auto">
               <TableHeader>
                 <TableRow>
                   <TableHead className={cn(`w-80 min-w-[320px]`, getDensityClass())}>Task Name</TableHead>
@@ -488,7 +488,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                   <TableHead className={cn(`w-32`, getDensityClass())}>Milestone</TableHead>
                   <TableHead className={cn(`w-24`, getDensityClass())}>Variance</TableHead>
                   <TableHead className={cn(`w-24`, getDensityClass())}>Issues</TableHead>
-                  <TableHead className={cn(`w-32`, getDensityClass())}>Actions</TableHead>
+                  <TableHead className={cn(`w-40 text-left`, getDensityClass())}>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -553,6 +553,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                           <TaskTableRow
                             key={task.id}
                             task={task}
+                            projectId={projectId}
                             milestones={milestones}
                             availableResources={availableResources}
                             availableStakeholders={availableStakeholders}

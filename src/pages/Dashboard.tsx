@@ -16,8 +16,16 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'lucide-react';
 
 const Dashboard = () => {
-  const { projects } = useProject();
-  const { resources } = useResources();
+  const { projects, loading: projectsLoading } = useProject();
+  const { resources, loading: resourcesLoading } = useResources();
+
+  if (projectsLoading || resourcesLoading) {
+    return <div className="p-8 text-center">Loading dashboard...</div>;
+  }
+
+  if (!projects || projects.length === 0) {
+    return <div className="p-8 text-center">No projects found. Please create a project to get started.</div>;
+  }
 
   console.log('[Dashboard] Rendering with projects:', projects.length);
 

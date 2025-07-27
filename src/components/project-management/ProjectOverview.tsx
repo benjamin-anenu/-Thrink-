@@ -1,18 +1,43 @@
 
-import React from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectData } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import HealthIndicator from '@/components/HealthIndicator';
-import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { EventBus } from '@/services/EventBus';
 
 interface ProjectOverviewProps {
   project: ProjectData;
 }
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    const eventBus = EventBus.getInstance();
+    
+    const handleProjectUpdate = (data: any) => {
+      if (data.projectId === project.id) {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+
+    const unsubscribers = [
+      eventBus.subscribe('task_updated', handleProjectUpdate),
+      eventBus.subscribe('task_created', handleProjectUpdate),
+      eventBus.subscribe('task_deleted', handleProjectUpdate),
+      eventBus.subscribe('project_updated', handleProjectUpdate)
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [project.id]);
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'High': return 'bg-red-500';
@@ -38,15 +63,68 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
     return diffDays;
   };
 
+  // Calculate weighted project health score
+  const calculateProjectHealth = () => {
+    if (!project.tasks || project.tasks.length === 0) return 100;
+    
+    let totalScore = 0;
+    let totalWeight = 0;
+    
+    project.tasks.forEach(task => {
+      // Weight based on priority
+      const priorityWeight = task.priority === 'High' ? 3 : task.priority === 'Medium' ? 2 : 1;
+      
+      // Base score from progress
+      let taskScore = task.progress || 0;
+      
+      // Apply penalties for schedule variance
+      if (task.endDate && task.baselineEndDate) {
+        const actualEnd = new Date(task.endDate);
+        const baselineEnd = new Date(task.baselineEndDate);
+        const variance = Math.ceil((actualEnd.getTime() - baselineEnd.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (variance > 0) {
+          // Penalty for delayed tasks (up to -30 points)
+          const delayPenalty = Math.min(30, variance * 2);
+          taskScore = Math.max(0, taskScore - delayPenalty);
+        } else if (variance < 0) {
+          // Bonus for early completion (up to +10 points)
+          const earlyBonus = Math.min(10, Math.abs(variance));
+          taskScore = Math.min(100, taskScore + earlyBonus);
+        }
+      }
+      
+      // Apply status modifiers
+      if (task.status === 'Completed') {
+        taskScore = 100; // Completed tasks always score 100
+      } else if (task.status === 'On Hold') {
+        taskScore *= 0.5; // On-hold tasks get penalty
+      } else if (task.status === 'Cancelled') {
+        taskScore = 0; // Cancelled tasks score 0
+      }
+      
+      totalScore += taskScore * priorityWeight;
+      totalWeight += priorityWeight;
+    });
+    
+    return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 100;
+  };
+
   // Calculate actual project statistics from real data
   const projectStats = {
     totalTasks: project.tasks.length,
     completedTasks: project.tasks.filter(t => t.status === 'Completed').length,
     inProgressTasks: project.tasks.filter(t => t.status === 'In Progress').length,
-    delayedTasks: project.tasks.filter(t => new Date(t.endDate) > new Date(t.baselineEndDate)).length,
+    delayedTasks: project.tasks.filter(t => {
+      if (!t.endDate || !t.baselineEndDate) return false;
+      const actualEnd = new Date(t.endDate);
+      const baselineEnd = new Date(t.baselineEndDate);
+      return actualEnd > baselineEnd;
+    }).length,
     totalMilestones: project.milestones.length,
     completedMilestones: project.milestones.filter(m => m.status === 'completed').length,
-    averageProgress: Math.round(project.tasks.reduce((acc, task) => acc + task.progress, 0) / project.tasks.length)
+    averageProgress: Math.round(project.tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / project.tasks.length),
+    healthScore: calculateProjectHealth()
   };
 
   return (
@@ -231,9 +309,9 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm">Overall Health Score</span>
-              <span className="font-semibold">{project.health.score}/100</span>
+              <span className="font-semibold">{projectStats.healthScore}/100</span>
             </div>
-            <Progress value={project.health.score} className="h-2" />
+            <Progress value={projectStats.healthScore} className="h-2" />
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <div className="text-center p-3 border rounded-lg">

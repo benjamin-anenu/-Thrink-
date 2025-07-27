@@ -459,6 +459,7 @@ export const TaskMilestoneCell: React.FC<TaskMilestoneCellProps> = ({
             onUpdateTask(task.id, { milestoneId: value || undefined });
             setIsEditing(false);
           }}
+          allowEmpty={true}
         />
       </TableCell>
     );

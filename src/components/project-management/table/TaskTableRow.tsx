@@ -249,27 +249,37 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   };
 
   const calculateVariance = () => {
-    if (!task.startDate || !task.baselineStartDate) return null;
-    const actual = new Date(task.startDate);
-    const baseline = new Date(task.baselineStartDate);
-    const diffTime = actual.getTime() - baseline.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    if (!task.baselineEndDate) return null;
+    
+    const baselineEnd = new Date(task.baselineEndDate);
+    const actualEnd = new Date(task.endDate);
+    const variance = Math.ceil((actualEnd.getTime() - baselineEnd.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return variance;
   };
 
   const variance = calculateVariance();
+
+  // Determine if task is delayed (overdue or has positive variance)
+  const isDelayed = () => {
+    const today = new Date();
+    const endDate = new Date(task.endDate);
+    const isOverdue = endDate < today && task.status !== 'Completed';
+    const hasPositiveVariance = variance !== null && variance > 0;
+    return isOverdue || hasPositiveVariance;
+  };
+
   const getVarianceColor = (variance: number | null) => {
-    if (variance === null) return 'text-muted-foreground';
-    if (variance === 0) return 'text-green-600';
+    if (variance === null) return '';
     if (variance > 0) return 'text-red-600';
-    return 'text-blue-600';
+    if (variance < 0) return 'text-green-600';
+    return 'text-green-600'; // "On track" should be green, not gray
   };
 
   const formatVariance = (variance: number | null) => {
-    if (variance === null) return '-';
+    if (variance === null) return 'No baseline';
     if (variance === 0) return 'On track';
-    if (variance > 0) return `+${variance}d`;
-    return `${variance}d`;
+    return `${variance > 0 ? '+' : ''}${variance} days`;
   };
 
   // Fix the options to ensure they're in the correct format
@@ -303,21 +313,6 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
           </div>
         )}
 
-        {/* Manual Override Indicator */}
-        {task.manualOverrideDates && (
-          <div className="absolute top-1 left-1">
-            <Badge 
-              variant="outline" 
-              className="text-xs cursor-pointer hover:bg-muted"
-              onClick={() => handleFieldUpdate('manualOverrideDates', false)}
-              title="Click to remove manual override and recalculate dates"
-            >
-              <Lock className="h-3 w-3 mr-1" />
-              Manual
-            </Badge>
-          </div>
-        )}
-
         {/* Update Status Indicator */}
         {isUpdating && (
           <div className="absolute top-1 right-1">
@@ -341,7 +336,20 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         )}
 
         {/* Task Name */}
-        <TableCell className={cn("font-medium", densityClass)}>
+        <TableCell className={cn("font-medium relative", densityClass)}>
+          {task.manualOverrideDates && (
+            <div className="flex items-center gap-2 mb-1">
+              <Badge 
+                variant="outline" 
+                className="text-xs cursor-pointer hover:bg-muted flex items-center gap-1"
+                onClick={() => handleFieldUpdate('manualOverrideDates', false)}
+                title="Click to remove manual override and recalculate dates"
+              >
+                <Lock className="h-3 w-3" />
+                Manual
+              </Badge>
+            </div>
+          )}
           <InlineTextEdit
             value={task.name}
             onSave={(value) => handleFieldUpdate('name', value)}
@@ -467,6 +475,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
               ...milestones.map(m => ({ value: m.id, label: m.name }))
             ]}
             onSave={(value) => handleFieldUpdate('milestoneId', value || undefined)}
+            allowEmpty={true}
             renderValue={(value) => {
               if (!value) return <span className="text-muted-foreground">None</span>;
               const milestone = milestones.find(m => m.id === value);
@@ -511,10 +520,12 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         <TableCell className={densityClass}>
           <TaskActionsCell
             task={task}
+            projectId={projectId}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
             onRebaseline={onRebaselineTask}
             disabled={isUpdating}
+            isDelayed={isDelayed()}
           />
         </TableCell>
       </TableRow>

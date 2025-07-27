@@ -253,7 +253,7 @@ export const IssueCreationDialog = ({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="assignee">Assignee</Label>
-                <Select value={formData.assignee_id || ''} onValueChange={(value) => updateFormData('assignee_id', value)}>
+                <Select value={formData.assignee_id || undefined} onValueChange={(value) => updateFormData('assignee_id', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
@@ -268,7 +268,7 @@ export const IssueCreationDialog = ({
 
               <div>
                 <Label htmlFor="linkedTask">Linked Task</Label>
-                <Select value={formData.linked_task_id || ''} onValueChange={handleTaskChange}>
+                <Select value={formData.linked_task_id || undefined} onValueChange={handleTaskChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select task" />
                   </SelectTrigger>
@@ -283,7 +283,7 @@ export const IssueCreationDialog = ({
 
               <div>
                 <Label htmlFor="linkedMilestone">Linked Milestone</Label>
-                <Select value={formData.linked_milestone_id || ''} onValueChange={(value) => updateFormData('linked_milestone_id', value)}>
+                <Select value={formData.linked_milestone_id || undefined} onValueChange={(value) => updateFormData('linked_milestone_id', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select milestone" />
                   </SelectTrigger>
