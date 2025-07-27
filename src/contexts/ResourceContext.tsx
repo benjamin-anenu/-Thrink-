@@ -4,6 +4,7 @@ import { contextSynchronizer } from '@/services/ContextSynchronizer';
 import { eventBus } from '@/services/EventBus';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { AvailabilityCalculationService, ResourceAvailability } from '@/services/AvailabilityCalculationService';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Resource {
   id: string;
@@ -35,7 +36,6 @@ interface ResourceContextType {
   removeFromProject: (resourceId: string, projectId: string) => void;
   updateUtilization: (resourceId: string, utilization: number) => void;
   getAvailableResources: () => Resource[];
-  getResourcesByProject: (projectId: string) => Resource[];
   refreshResourceAvailability: (resourceId?: string) => Promise<void>;
   getResourceAvailability: (resourceId: string) => Promise<ResourceAvailability | null>;
 }
@@ -60,32 +60,72 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     currentWorkspace ? resource.workspaceId === currentWorkspace.id : true
   );
 
-  // Helper function to ensure resource has required array properties
-  const sanitizeResource = (resource: any): Resource => {
+  // Helper function to transform database resource to Resource interface
+  const transformResource = (dbResource: any): Resource => {
     return {
-      ...resource,
-      skills: Array.isArray(resource.skills) ? resource.skills : [],
-      currentProjects: Array.isArray(resource.currentProjects) ? resource.currentProjects : [],
-      workspaceId: resource.workspaceId || currentWorkspace?.id || 'ws-1',
-      createdAt: resource.createdAt || new Date().toISOString(),
-      updatedAt: resource.updatedAt || new Date().toISOString(),
-      lastActive: resource.lastActive || new Date().toISOString()
+      id: dbResource.id,
+      name: dbResource.name || '',
+      role: dbResource.role || '',
+      department: dbResource.department || '',
+      email: dbResource.email || '',
+      phone: dbResource.phone || '',
+      location: dbResource.location || '',
+      skills: Array.isArray(dbResource.skills) ? dbResource.skills : [],
+      availability: dbResource.availability || 100,
+      currentProjects: Array.isArray(dbResource.current_projects) ? dbResource.current_projects : [],
+      hourlyRate: dbResource.hourly_rate ? `$${dbResource.hourly_rate}/hr` : '$0/hr',
+      utilization: dbResource.utilization || 0,
+      status: dbResource.status || 'Available',
+      workspaceId: dbResource.workspace_id || currentWorkspace?.id || '',
+      createdAt: dbResource.created_at,
+      updatedAt: dbResource.updated_at,
+      lastActive: dbResource.last_active || new Date().toISOString()
     };
   };
 
-  // Load resources from persistent storage on mount
-  useEffect(() => {
-    console.log('[Resource] Loading resources from persistent storage');
-    const savedResources = dataPersistence.getData<Resource[]>('resources');
-    if (savedResources) {
-      console.log('[Resource] Found', savedResources.length, 'saved resources');
-      const sanitizedResources = savedResources.map(sanitizeResource);
-      setAllResources(sanitizedResources);
-    } else {
-      console.log('[Resource] No saved resources found, initializing sample data');
-      initializeSampleData();
+  // Load resources from Supabase database
+  const loadResourcesFromDatabase = async () => {
+    if (!currentWorkspace) {
+      console.log('[Resource] No current workspace, skipping resource fetch');
+      return;
     }
-  }, []);
+
+    console.log('[Resource] Loading resources from Supabase database for workspace:', currentWorkspace.id);
+    setLoading(true);
+
+    try {
+      const { data: resourcesData, error } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id);
+
+      if (error) {
+        console.error('[Resource] Database error:', error);
+        throw error;
+      }
+
+      console.log('[Resource] Fetched', resourcesData?.length || 0, 'resources from database');
+
+      if (resourcesData && resourcesData.length > 0) {
+        const transformedResources = resourcesData.map(transformResource);
+        setAllResources(transformedResources);
+      } else {
+        console.log('[Resource] No resources found in database, initializing sample data');
+        await initializeSampleData();
+      }
+    } catch (error) {
+      console.error('[Resource] Error loading resources:', error);
+      // Fallback to sample data on error
+      await initializeSampleData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load resources on mount and workspace change
+  useEffect(() => {
+    loadResourcesFromDatabase();
+  }, [currentWorkspace]);
 
   // Register with context synchronizer
   useEffect(() => {
@@ -103,11 +143,10 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [currentWorkspace]);
 
-  const initializeSampleData = () => {
+  const initializeSampleData = async () => {
     const workspaceId = currentWorkspace?.id || 'ws-1';
-    const sampleResources: Resource[] = [
+    const sampleResources = [
       {
-        id: 'sarah',
         name: 'Sarah Johnson',
         role: 'Senior Frontend Developer',
         department: 'Engineering',
@@ -116,14 +155,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         location: 'San Francisco, CA',
         skills: ['React', 'TypeScript', 'Node.js', 'UI/UX'],
         availability: 100,
-        currentProjects: ['Project Alpha'],
-        hourlyRate: '$85/hr',
+        current_projects: ['Project Alpha'],
+        hourly_rate: 85,
         utilization: 75,
         status: 'Busy',
-        workspaceId
+        workspace_id: workspaceId
       },
       {
-        id: 'mike',
         name: 'Mike Chen',
         role: 'Backend Developer',
         department: 'Engineering',
@@ -132,14 +170,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         location: 'Austin, TX',
         skills: ['Python', 'Django', 'PostgreSQL', 'AWS'],
         availability: 100,
-        currentProjects: ['Project Beta'],
-        hourlyRate: '$80/hr',
+        current_projects: ['Project Beta'],
+        hourly_rate: 80,
         utilization: 60,
         status: 'Available',
-        workspaceId
+        workspace_id: workspaceId
       },
       {
-        id: 'emma',
         name: 'Emma Rodriguez',
         role: 'Product Manager',
         department: 'Product',
@@ -148,14 +185,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         location: 'New York, NY',
         skills: ['Product Strategy', 'Agile', 'User Research', 'Analytics'],
         availability: 100,
-        currentProjects: ['Project Alpha', 'Project Beta'],
-        hourlyRate: '$90/hr',
+        current_projects: ['Project Alpha', 'Project Beta'],
+        hourly_rate: 90,
         utilization: 90,
         status: 'Busy',
-        workspaceId
+        workspace_id: workspaceId
       },
       {
-        id: 'david',
         name: 'David Kim',
         role: 'UX Designer',
         department: 'Design',
@@ -164,14 +200,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         location: 'Seattle, WA',
         skills: ['Figma', 'Sketch', 'Prototyping', 'User Testing'],
         availability: 100,
-        currentProjects: ['Project Gamma'],
-        hourlyRate: '$75/hr',
+        current_projects: ['Project Gamma'],
+        hourly_rate: 75,
         utilization: 45,
         status: 'Available',
-        workspaceId
+        workspace_id: workspaceId
       },
       {
-        id: 'lisa',
         name: 'Lisa Thompson',
         role: 'DevOps Engineer',
         department: 'Engineering',
@@ -180,16 +215,34 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         location: 'Denver, CO',
         skills: ['Docker', 'Kubernetes', 'CI/CD', 'AWS'],
         availability: 100,
-        currentProjects: ['Project Alpha'],
-        hourlyRate: '$85/hr',
+        current_projects: ['Project Alpha'],
+        hourly_rate: 85,
         utilization: 110,
         status: 'Overallocated',
-        workspaceId
+        workspace_id: workspaceId
       }
     ];
 
-    setAllResources(sampleResources);
-    dataPersistence.persistData('resources', sampleResources, 'sample_data_init');
+    try {
+      const { data, error } = await supabase
+        .from('resources')
+        .insert(sampleResources)
+        .select();
+
+      if (error) {
+        console.error('[Resource] Error inserting sample data:', error);
+        return;
+      }
+
+      console.log('[Resource] Inserted', data?.length || 0, 'sample resources to database');
+      
+      if (data) {
+        const transformedResources = data.map(transformResource);
+        setAllResources(transformedResources);
+      }
+    } catch (error) {
+      console.error('[Resource] Error initializing sample data:', error);
+    }
   };
 
   const getResource = (id: string): Resource | null => {
@@ -198,7 +251,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
     setAllResources(prev => {
-      const updated = prev.map(r => r.id === id ? sanitizeResource({ 
+      const updated = prev.map(r => r.id === id ? transformResource({ 
         ...r, 
         ...updates,
         updatedAt: new Date().toISOString()
@@ -218,7 +271,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const addResource = (resource: Omit<Resource, 'id'>) => {
-    const newResource: Resource = sanitizeResource({
+    const newResource: Resource = transformResource({
       ...resource,
       id: `resource-${Date.now()}`,
       workspaceId: currentWorkspace?.id || 'ws-1'
@@ -388,7 +441,6 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       removeFromProject,
       updateUtilization,
       getAvailableResources,
-      getResourcesByProject,
       refreshResourceAvailability,
       getResourceAvailability
     }}>

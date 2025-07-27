@@ -20,6 +20,7 @@ export interface ProjectData {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
+  completedAt?: string;
   // Enhanced AI metadata
   aiGenerated?: {
     projectPlan?: string;

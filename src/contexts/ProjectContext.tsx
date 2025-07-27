@@ -89,12 +89,152 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const emailService = EmailReminderService.getInstance();
   const notificationService = NotificationIntegrationService.getInstance();
 
-  // Load projects from Supabase when workspace changes
+  // Load projects from database on mount and workspace change
   useEffect(() => {
     if (currentWorkspace) {
       refreshProjects();
     }
   }, [currentWorkspace]);
+
+  // Initialize sample data if no projects are found
+  const initializeSampleProjects = () => {
+    const workspaceId = currentWorkspace?.id || 'ws-1';
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    const nextWeek = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
+    
+    const sampleProjects: ProjectData[] = [
+      {
+        id: 'Project Alpha',
+        name: 'Project Alpha',
+        description: 'Advanced Analytics Dashboard Implementation',
+        status: 'In Progress',
+        priority: 'High',
+        progress: 75,
+        health: { status: 'green', score: 85 },
+        startDate: '2024-07-01',
+        endDate: '2024-12-31',
+        teamSize: 5,
+        budget: '$250,000',
+        tags: ['Analytics', 'Dashboard', 'React'],
+        workspaceId,
+        resources: ['sarah', 'emma', 'lisa'],
+        stakeholders: ['john-doe'],
+        milestones: [],
+        tasks: [
+          {
+            id: 'task-1',
+            name: 'Database Integration',
+            description: 'Connect dashboard to real-time database',
+            startDate: now.toISOString().split('T')[0],
+            endDate: nextWeek.toISOString().split('T')[0], // Upcoming deadline
+            baselineStartDate: now.toISOString().split('T')[0],
+            baselineEndDate: nextWeek.toISOString().split('T')[0],
+            progress: 60,
+            assignedResources: ['sarah'],
+            assignedStakeholders: [],
+            dependencies: [],
+            status: 'In Progress',
+            priority: 'High',
+            duration: 5,
+            hierarchyLevel: 0,
+            sortOrder: 1
+          }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'Project Beta',
+        name: 'Project Beta',
+        description: 'Mobile App Development',
+        status: 'Planning',
+        priority: 'Medium',
+        progress: 25,
+        health: { status: 'yellow', score: 70 },
+        startDate: '2024-08-01',
+        endDate: '2025-03-31',
+        teamSize: 4,
+        budget: '$180,000',
+        tags: ['Mobile', 'React Native', 'iOS', 'Android'],
+        workspaceId,
+        resources: ['mike', 'emma'],
+        stakeholders: ['jane-smith'],
+        milestones: [],
+        tasks: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'Project Gamma',
+        name: 'Project Gamma',
+        description: 'Website Redesign',
+        status: 'In Progress',
+        priority: 'Low',
+        progress: 40,
+        health: { status: 'green', score: 90 },
+        startDate: '2024-06-01',
+        endDate: '2024-11-30',
+        teamSize: 3,
+        budget: '$120,000',
+        tags: ['Website', 'UI/UX', 'Figma'],
+        workspaceId,
+        resources: ['david'],
+        stakeholders: [],
+        milestones: [],
+        tasks: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'Project Delta',
+        name: 'Project Delta - Marketing Campaign',
+        description: 'Q4 Digital Marketing Campaign',
+        status: 'Completed',
+        priority: 'Medium',
+        progress: 100,
+        health: { status: 'green', score: 95 },
+        startDate: '2024-10-01',
+        endDate: '2024-11-15',
+        teamSize: 2,
+        budget: '$50,000',
+        tags: ['Marketing', 'Digital', 'Campaign'],
+        workspaceId,
+        resources: ['emma'],
+        stakeholders: ['john-doe'],
+        milestones: [],
+        tasks: [],
+        createdAt: '2024-10-01T00:00:00.000Z',
+        updatedAt: new Date().toISOString(),
+        completedAt: now.toISOString() // Completed this month
+      },
+      {
+        id: 'Project Echo',
+        name: 'Project Echo - API Upgrade',
+        description: 'Backend API performance optimization',
+        status: 'Completed',
+        priority: 'High',
+        progress: 100,
+        health: { status: 'green', score: 92 },
+        startDate: '2024-09-15',
+        endDate: '2024-10-30',
+        teamSize: 3,
+        budget: '$75,000',
+        tags: ['Backend', 'API', 'Performance'],
+        workspaceId,
+        resources: ['mike', 'lisa'],
+        stakeholders: [],
+        milestones: [],
+        tasks: [],
+        createdAt: '2024-09-15T00:00:00.000Z',
+        updatedAt: lastMonth.toISOString(),
+        completedAt: lastMonth.toISOString() // Completed last month
+      }
+    ];
+    
+    setAllProjects(sampleProjects);
+    console.log('[Project] Initialized', sampleProjects.length, 'sample projects');
+  };
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -253,10 +393,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
 
       setAllProjects(transformedProjects);
+      
     } catch (error) {
       console.error('Error fetching projects:', error);
-      // Fallback to demo data if there's an error
-      initializeRealisticProject();
     } finally {
       setLoading(false);
     }

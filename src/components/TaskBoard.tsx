@@ -41,7 +41,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks: propTasks, onTaskUpdate })
       if (onTaskUpdate) {
         onTaskUpdate(taskId, newStatus);
       } else {
-        await updateTaskStatus(taskId, newStatus);
+      await updateTaskStatus(taskId, newStatus);
       }
       toast({
         title: 'Task Updated',
