@@ -45,17 +45,106 @@ const AnalyticsMetrics: React.FC = () => {
         }, 0) / completedProjectsWithDates.length
       : 12.5;
 
-    // Calculate resource utilization
+    // Calculate resource utilization from real data
     const avgUtilization = workspaceResources.length > 0 
-      ? Math.round(workspaceResources.reduce((acc, r) => acc + r.utilization, 0) / workspaceResources.length)
-      : 78;
+      ? Math.round(workspaceResources.reduce((acc, resource) => {
+          // Calculate real utilization for each resource
+          const resourceProjects = workspaceProjects.filter(p => 
+            p.resources?.includes(resource.id) || p.resources?.includes(resource.name)
+          );
+          
+          const totalAssignedHours = resourceProjects.reduce((projectAcc, project) => {
+            const resourceTasks = project.tasks?.filter(task => 
+              task.assignedResources?.includes(resource.id) || 
+              task.assignee === resource.id ||
+              task.assignee_id === resource.id
+            ) || [];
+            
+            const projectHours = resourceTasks.reduce((taskAcc, task) => {
+              if (task.status === 'Completed') return taskAcc;
+              const duration = task.duration || 1;
+              const hoursPerDay = 8;
+              const utilizationFactor = task.status === 'On Hold' ? 0.5 : 1.0;
+              return taskAcc + (duration * hoursPerDay * utilizationFactor);
+            }, 0);
+            
+            return projectAcc + projectHours;
+          }, 0);
+          
+          const standardCapacity = 160; // 4 weeks * 40 hours
+          const utilization = Math.min(100, Math.round((totalAssignedHours / standardCapacity) * 100));
+          
+          return acc + Math.max(0, utilization);
+        }, 0) / workspaceResources.length)
+      : 0;
 
-    // Calculate budget variance
-    const projectsWithBudget = workspaceProjects.filter(p => p.health?.score);
-    const avgBudgetHealth = projectsWithBudget.length > 0
-      ? projectsWithBudget.reduce((acc, p) => acc + (p.health?.score || 100), 0) / projectsWithBudget.length
-      : 96.8;
-    const budgetVariance = avgBudgetHealth - 100;
+    // Calculate budget health from real project costs
+    const calculateBudgetHealth = () => {
+      const projectsWithBudget = workspaceProjects.filter(p => p.resources && p.tasks);
+      
+      if (projectsWithBudget.length === 0) return 95; // Default when no data
+      
+      let totalBudgetHealth = 0;
+      let validProjects = 0;
+      
+      projectsWithBudget.forEach(project => {
+        // Calculate planned budget based on resource assignments
+        const plannedBudget = project.tasks?.reduce((acc, task) => {
+          const duration = task.duration || 1;
+          const hoursPerDay = 8;
+          const totalHours = duration * hoursPerDay;
+          
+          // Get assigned resources for this task
+          const assignedResourceIds = task.assignedResources || [];
+          const resourceCost = assignedResourceIds.reduce((resourceAcc, resourceId) => {
+            const resource = workspaceResources.find(r => r.id === resourceId);
+            const hourlyRate = resource?.hourlyRate ? parseFloat(resource.hourlyRate.replace(/[$\/hr]/g, '')) : 50; // Default $50/hr
+            return resourceAcc + (totalHours * hourlyRate);
+          }, 0);
+          
+          return acc + resourceCost;
+        }, 0) || 0;
+        
+        // Calculate actual spent based on progress
+        const actualSpent = project.tasks?.reduce((acc, task) => {
+          const progress = task.progress || 0;
+          const duration = task.duration || 1;
+          const hoursPerDay = 8;
+          const completedHours = (duration * hoursPerDay * progress) / 100;
+          
+          const assignedResourceIds = task.assignedResources || [];
+          const spentCost = assignedResourceIds.reduce((resourceAcc, resourceId) => {
+            const resource = workspaceResources.find(r => r.id === resourceId);
+            const hourlyRate = resource?.hourlyRate ? parseFloat(resource.hourlyRate.replace(/[$\/hr]/g, '')) : 50;
+            return resourceAcc + (completedHours * hourlyRate);
+          }, 0);
+          
+          return acc + spentCost;
+        }, 0) || 0;
+        
+        // Calculate budget health for this project (0-100)
+        if (plannedBudget > 0) {
+          const spendRatio = actualSpent / plannedBudget;
+          const progressRatio = (project.tasks?.reduce((acc, task) => acc + (task.progress || 0), 0) || 0) / 
+                               (project.tasks?.length || 1) / 100;
+          
+          // Good health if spending is proportional to progress
+          let projectHealth = 100;
+          if (progressRatio > 0) {
+            const efficiency = progressRatio / Math.max(spendRatio, 0.01);
+            projectHealth = Math.min(100, Math.max(0, efficiency * 100));
+          }
+          
+          totalBudgetHealth += projectHealth;
+          validProjects++;
+        }
+      });
+      
+      return validProjects > 0 ? Math.round(totalBudgetHealth / validProjects) : 95;
+    };
+
+    const budgetHealth = calculateBudgetHealth();
+    const budgetVariance = budgetHealth - 100;
 
     return {
       successRate,

@@ -41,7 +41,7 @@ const InlineSelectEdit: React.FC<InlineSelectEditProps> = ({
   // Ensure all options have non-empty values for SelectItem
   const processedOptions = options.map(option => ({
     ...option,
-    internalValue: option.value === '' ? "__NONE__" : option.value
+    internalValue: (option.value === '' && allowEmpty) ? "__NONE__" : option.value
   }));
 
   if (isEditing) {

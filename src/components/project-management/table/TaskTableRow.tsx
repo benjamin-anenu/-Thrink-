@@ -313,21 +313,6 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
           </div>
         )}
 
-        {/* Manual Override Indicator */}
-        {task.manualOverrideDates && (
-          <div className="absolute top-1 left-1">
-            <Badge 
-              variant="outline" 
-              className="text-xs cursor-pointer hover:bg-muted"
-              onClick={() => handleFieldUpdate('manualOverrideDates', false)}
-              title="Click to remove manual override and recalculate dates"
-            >
-              <Lock className="h-3 w-3 mr-1" />
-              Manual
-            </Badge>
-          </div>
-        )}
-
         {/* Update Status Indicator */}
         {isUpdating && (
           <div className="absolute top-1 right-1">
@@ -351,7 +336,20 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
         )}
 
         {/* Task Name */}
-        <TableCell className={cn("font-medium", densityClass)}>
+        <TableCell className={cn("font-medium relative", densityClass)}>
+          {task.manualOverrideDates && (
+            <div className="flex items-center gap-2 mb-1">
+              <Badge 
+                variant="outline" 
+                className="text-xs cursor-pointer hover:bg-muted flex items-center gap-1"
+                onClick={() => handleFieldUpdate('manualOverrideDates', false)}
+                title="Click to remove manual override and recalculate dates"
+              >
+                <Lock className="h-3 w-3" />
+                Manual
+              </Badge>
+            </div>
+          )}
           <InlineTextEdit
             value={task.name}
             onSave={(value) => handleFieldUpdate('name', value)}
@@ -477,6 +475,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
               ...milestones.map(m => ({ value: m.id, label: m.name }))
             ]}
             onSave={(value) => handleFieldUpdate('milestoneId', value || undefined)}
+            allowEmpty={true}
             renderValue={(value) => {
               if (!value) return <span className="text-muted-foreground">None</span>;
               const milestone = milestones.find(m => m.id === value);

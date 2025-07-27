@@ -107,18 +107,79 @@ export const useAIDashboardData = () => {
   const realTimeData = useMemo(() => {
     const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress').length;
     
+    // Calculate real resource utilization
     const avgUtilization = workspaceResources.length > 0 
-      ? Math.round(workspaceResources.reduce((acc, r) => acc + r.utilization, 0) / workspaceResources.length)
+      ? Math.round(workspaceResources.reduce((acc, resource) => {
+          // Calculate real utilization for each resource
+          const resourceProjects = workspaceProjects.filter(p => 
+            p.resources?.includes(resource.id) || p.resources?.includes(resource.name)
+          );
+          
+          const totalAssignedHours = resourceProjects.reduce((projectAcc, project) => {
+            const resourceTasks = project.tasks?.filter(task => 
+              task.assignedResources?.includes(resource.id) || 
+              task.assignee === resource.id ||
+              task.assignee_id === resource.id
+            ) || [];
+            
+            const projectHours = resourceTasks.reduce((taskAcc, task) => {
+              if (task.status === 'Completed') return taskAcc;
+              const duration = task.duration || 1;
+              const hoursPerDay = 8;
+              const utilizationFactor = task.status === 'On Hold' ? 0.5 : 1.0;
+              return taskAcc + (duration * hoursPerDay * utilizationFactor);
+            }, 0);
+            
+            return projectAcc + projectHours;
+          }, 0);
+          
+          const standardCapacity = 160; // 4 weeks * 40 hours
+          const utilization = Math.min(100, Math.round((totalAssignedHours / standardCapacity) * 100));
+          
+          return acc + Math.max(0, utilization);
+        }, 0) / workspaceResources.length)
       : 0;
     
-    const budgetHealth = budgetData 
-      ? Math.max(0, Math.min(100, 100 - budgetData.utilizationRate))
-      : workspaceProjects.length > 0
-        ? Math.round(workspaceProjects.reduce((acc, project) => {
-            const healthScore = project.health.score || 75;
-            return acc + healthScore;
-          }, 0) / workspaceProjects.length)
-        : 92;
+    // Calculate real budget health based on project efficiency
+    const calculateBudgetHealth = () => {
+      if (budgetData) {
+        return Math.max(0, Math.min(100, 100 - budgetData.utilizationRate));
+      }
+      
+      // Calculate from project data when no budget service data
+      const projectsWithTasks = workspaceProjects.filter(p => p.tasks && p.tasks.length > 0);
+      
+      if (projectsWithTasks.length === 0) return 92;
+      
+      let totalEfficiency = 0;
+      let validProjects = 0;
+      
+      projectsWithTasks.forEach(project => {
+        const avgProgress = project.tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / project.tasks.length;
+        
+        // Calculate schedule efficiency
+        const now = new Date();
+        const startDate = new Date(project.startDate);
+        const endDate = new Date(project.endDate);
+        const totalDuration = endDate.getTime() - startDate.getTime();
+        const elapsed = Math.max(0, now.getTime() - startDate.getTime());
+        const expectedProgress = totalDuration > 0 ? Math.min(100, (elapsed / totalDuration) * 100) : 0;
+        
+        // Efficiency = actual progress vs expected progress
+        const efficiency = expectedProgress > 0 ? (avgProgress / expectedProgress) * 100 : 100;
+        const boundedEfficiency = Math.max(20, Math.min(150, efficiency)); // Bound between 20-150%
+        
+        totalEfficiency += boundedEfficiency;
+        validProjects++;
+      });
+      
+      const avgEfficiency = validProjects > 0 ? totalEfficiency / validProjects : 100;
+      
+      // Convert efficiency to health score (100% efficiency = 100% health)
+      return Math.round(Math.max(60, Math.min(100, avgEfficiency)));
+    };
+    
+    const budgetHealth = calculateBudgetHealth();
     
     // Calculate risk score from overdue tasks and project health
     const overdueTasksCount = workspaceProjects.reduce((acc, project) => {
