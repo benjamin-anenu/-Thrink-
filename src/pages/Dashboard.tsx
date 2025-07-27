@@ -5,7 +5,7 @@ import TinkAssistant from '@/components/TinkAssistant';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AIProjectDashboard from '@/components/AIProjectDashboard';
-import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
+import ProjectKanbanBoard from '@/components/ProjectKanbanBoard';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
@@ -240,7 +240,7 @@ const Dashboard = () => {
 
           <TabsContent value="projects">
             <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load projects</div>}>
-              <ProjectDisplay />
+              <ProjectKanbanBoard />
             </ErrorBoundary>
           </TabsContent>
         </Tabs>

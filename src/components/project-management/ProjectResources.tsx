@@ -87,8 +87,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
       if (task.assignedResources) {
         task.assignedResources.forEach(resourceId => resourcesFromTasks.add(resourceId));
       }
-      if (task.assignee) resourcesFromTasks.add(task.assignee);
-      if (task.assignee_id) resourcesFromTasks.add(task.assignee_id);
+      // Note: assignee_id field doesn't exist in current schema
     });
     
     const resourcesFromTaskAssignments = resources.filter(resource => 
@@ -116,9 +115,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
       taskResourceIds: Array.from(resourcesFromTasks),
       taskAssignments: tasks.map(task => ({
         taskName: task.name,
-        assignedResources: task.assignedResources,
-        assignee: task.assignee,
-        assignee_id: task.assignee_id
+        assignedResources: task.assignedResources
       })),
       tasksLoading,
       tasksCount: tasks.length,

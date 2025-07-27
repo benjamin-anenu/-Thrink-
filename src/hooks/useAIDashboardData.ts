@@ -138,11 +138,9 @@ export const useAIDashboardData = () => {
                 p.resources?.includes(resource.id) || p.resources?.includes(resource.name)
               );
               const totalAssignedHours = resourceProjects.reduce((projectAcc, project) => {
-                const resourceTasks = project.tasks?.filter(task => 
-                  task.assignedResources?.includes(resource.id) || 
-                  task.assignee === resource.id ||
-                  task.assignee_id === resource.id
-                ) || [];
+              const resourceTasks = project.tasks?.filter(task => 
+                task.assignedResources?.includes(resource.id)
+              ) || [];
                 const projectHours = resourceTasks.reduce((taskAcc, task) => {
                   if (task.status === 'Completed') return taskAcc;
                   const duration = task.duration || 1;

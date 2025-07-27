@@ -44,13 +44,12 @@ export class AvailabilityCalculationService {
           name,
           duration,
           status,
-          assignedResources,
-          assignee,
+          assigned_resources,
           assignee_id,
           project_id,
           projects!inner(workspace_id)
         `)
-        .or(`assignedResources.cs.{${resourceId}},assignee.eq.${resourceId},assignee_id.eq.${resourceId}`)
+        .or(`assigned_resources.cs.{${resourceId}},assignee_id.eq.${resourceId}`)
         .eq('projects.workspace_id', workspaceId || resource.workspace_id);
 
       if (tasksError) {
@@ -61,8 +60,8 @@ export class AvailabilityCalculationService {
       // Calculate utilization from assigned tasks
       const utilizationData = this.calculateUtilizationFromTasks(assignedTasks || [], resourceId);
       
-      // Calculate availability
-      const baseAvailability = resource.availability || 100;
+      // Calculate availability (resources table doesn't have availability column, default to 100)
+      const baseAvailability = 100;
       const calculatedAvailability = Math.max(0, baseAvailability - utilizationData.utilization);
       
       // Determine status
@@ -145,11 +144,9 @@ export class AvailabilityCalculationService {
       // Get unique resource IDs from task assignments
       const resourceIds = new Set<string>();
       projectTasks?.forEach(task => {
-        if (task.assignedResources) {
-          task.assignedResources.forEach((resourceId: string) => resourceIds.add(resourceId));
+        if (task.assigned_resources) {
+          task.assigned_resources.forEach((resourceId: string) => resourceIds.add(resourceId));
         }
-        if (task.assignee) resourceIds.add(task.assignee);
-        if (task.assignee_id) resourceIds.add(task.assignee_id);
       });
 
       // Calculate availability for each resource
@@ -174,9 +171,7 @@ export class AvailabilityCalculationService {
     tasks.forEach(task => {
       // Check if this resource is assigned to this task
       const isAssigned = 
-        task.assignedResources?.includes(resourceId) ||
-        task.assignee === resourceId ||
-        task.assignee_id === resourceId;
+        task.assigned_resources?.includes(resourceId);
 
       if (!isAssigned) return;
 
