@@ -40,7 +40,7 @@ import TinkAssistant from '@/components/TinkAssistant';
 const ProjectManagement = () => {
   const { id } = useParams<{ id: string }>();
   const { projects, loading: projectsLoading } = useProjects();
-  const { tasks, milestones, loading: tasksLoading } = useTaskManagement(id || '');
+  const { tasks, milestones, loading: tasksLoading } = useTaskManagement(id && id !== 'undefined' ? id : '');
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [activeProjectPlanTab, setActiveProjectPlanTab] = useState('gantt');

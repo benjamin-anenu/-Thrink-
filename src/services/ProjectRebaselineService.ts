@@ -1,12 +1,15 @@
 // Disabled version of ProjectRebaselineService due to missing database tables
 
 export interface RebaselineRequest {
-  id: string;
+  id?: string;
   taskId: string;
   projectId: string;
   reason: string;
   newStartDate: string;
   newEndDate: string;
+  affectedTasks?: string[];
+  rebaselineType?: string;
+  cascadeMethod?: string;
 }
 
 export class ProjectRebaselineService {

@@ -545,6 +545,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getProject = (id: string): ProjectData | null => {
+    if (!id || id === 'undefined') {
+      console.warn('ProjectContext: getProject called with invalid ID:', id);
+      return null;
+    }
     return projects.find(p => p.id === id) || null;
   };
 
