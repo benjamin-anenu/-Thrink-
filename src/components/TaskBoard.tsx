@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import TaskColumn from './TaskColumn';
-import { useTask, type Task } from '@/contexts/TaskContext';
+import { useTask, type Task as ContextTask } from '@/contexts/TaskContext';
+import { Task as TaskCardType } from './TaskCard';
+import { ProjectTask } from '@/types/project';
 import { Button } from '@/components/ui/button';
 import { Filter, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import TaskDetailModal from './TaskDetailModal';
 
-const TASK_COLUMNS: Array<{ id: Task['status']; title: string }> = [
+const TASK_COLUMNS: Array<{ id: ContextTask['status']; title: string }> = [
   { id: 'Not Started', title: 'To Do' },
   { id: 'In Progress', title: 'In Progress' },
   { id: 'On Hold', title: 'Blocked' },
@@ -16,8 +18,26 @@ const TASK_COLUMNS: Array<{ id: Task['status']; title: string }> = [
   { id: 'Cancelled', title: 'Cancelled' },
 ];
 
+// Helper function to convert ContextTask to TaskCardType
+const convertToTaskCardType = (task: ContextTask): TaskCardType => ({
+  id: task.id,
+  title: task.name,
+  description: task.description || '',
+  tag: {
+    color: task.priority === 'Critical' ? 'red' : task.priority === 'High' ? 'orange' : 'blue',
+    label: task.priority
+  },
+  dueDate: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date',
+  assignees: 1, // Default assignee count
+  progress: {
+    completed: task.status === 'Completed' ? 1 : 0,
+    total: 1
+  },
+  status: task.status
+});
+
 interface TaskBoardProps {
-  tasks?: Task[];
+  tasks?: ContextTask[] | ProjectTask[];
   onTaskUpdate?: (taskId: string, newStatus: string) => void;
 }
 
@@ -35,7 +55,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks: propTasks, onTaskUpdate })
     if (!result.destination) return;
 
     const taskId = result.draggableId;
-    const newStatus = result.destination.droppableId as Task['status'];
+    const newStatus = result.destination.droppableId as ContextTask['status'];
 
     try {
       if (onTaskUpdate) {
@@ -63,9 +83,10 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks: propTasks, onTaskUpdate })
   });
 
   const tasksByStatus = TASK_COLUMNS.reduce((acc, column) => {
-    acc[column.id] = filteredTasks.filter(task => task.status === column.id);
+    const columnTasks = filteredTasks.filter(task => task.status === column.id);
+    acc[column.id] = columnTasks.map(convertToTaskCardType);
     return acc;
-  }, {} as Record<Task['status'], Task[]>);
+  }, {} as Record<ContextTask['status'], TaskCardType[]>);
 
   const selectedTask = selectedTaskId ? tasks.find(t => t.id === selectedTaskId) : null;
 
@@ -98,16 +119,28 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks: propTasks, onTaskUpdate })
             <TaskColumn
               key={col.id}
               column={{ ...col, color: '', tasks: tasksByStatus[col.id] }}
+              onDrop={() => {}}
+              onDragOver={() => {}}
+              onDragLeave={() => {}}
+              onTaskDragStart={() => {}}
+              onTaskDragEnd={() => {}}
+              onStatusChange={(taskId, newStatus) => {
+                if (onTaskUpdate) {
+                  onTaskUpdate(taskId, newStatus);
+                } else {
+                  updateTaskStatus(taskId, newStatus as ContextTask['status']);
+                }
+              }}
             />
           ))}
         </div>
       </DragDropContext>
 
       {/* Task Detail Modal */}
-      {selectedTaskId && (
+      {selectedTaskId && selectedTask && (
         <TaskDetailModal
-          task={selectedTask}
-          open={!!selectedTaskId}
+          task={selectedTask as any}
+          isOpen={!!selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
         />
       )}

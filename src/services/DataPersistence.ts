@@ -365,6 +365,11 @@ export class DataPersistenceService {
     this.persistData('performance-profiles', profiles, 'profile_add');
     return data;
   }
+
+  // Added saveData method for backwards compatibility
+  public saveData(key: string, data: any): void {
+    this.persistData(key, data, 'saveData');
+  }
 }
 
 export const dataPersistence = DataPersistenceService.getInstance();

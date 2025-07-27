@@ -1,17 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, AlertTriangle, Target, ArrowRight, Users } from 'lucide-react';
-import { ProjectTask } from '@/types/project';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertCircle } from 'lucide-react';
 
-// ... (full implementation as provided in your code)
+interface EnhancedRebaselineDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit?: (data: any) => void;
+  taskId?: string;
+}
 
-export default EnhancedRebaselineDialog; 
+// Disabled version of EnhancedRebaselineDialog due to missing database table
+export const EnhancedRebaselineDialog: React.FC<EnhancedRebaselineDialogProps> = ({ open, onClose }) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Card className="w-96">
+        <CardContent className="p-6 text-center">
+          <AlertCircle className="h-12 w-12 text-warning mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Feature Temporarily Disabled</h3>
+          <p className="text-muted-foreground mb-4">
+            Enhanced rebaseline functionality is temporarily disabled due to missing database configuration.
+          </p>
+          <button 
+            onClick={onClose}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+          >
+            Close
+          </button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default EnhancedRebaselineDialog;
