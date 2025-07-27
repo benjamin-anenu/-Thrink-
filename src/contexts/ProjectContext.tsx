@@ -170,8 +170,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [projects]);
 
   const refreshProjects = async () => {
-    if (!currentWorkspace) return;
+    if (!currentWorkspace) {
+      console.log('[Project] No current workspace, skipping project fetch');
+      return;
+    }
     
+    console.log('[Project] Fetching projects for workspace:', currentWorkspace.id);
     setLoading(true);
     try {
       const { data: projectsData, error } = await supabase
@@ -203,7 +207,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Project] Database error:', error);
+        throw error;
+      }
+
+      console.log('[Project] Fetched', projectsData?.length || 0, 'projects from database');
 
       // Transform the data to match our ProjectData interface
       const transformedProjects: ProjectData[] = (projectsData || []).map(project => ({

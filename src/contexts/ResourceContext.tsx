@@ -75,11 +75,14 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Load resources from persistent storage on mount
   useEffect(() => {
+    console.log('[Resource] Loading resources from persistent storage');
     const savedResources = dataPersistence.getData<Resource[]>('resources');
     if (savedResources) {
+      console.log('[Resource] Found', savedResources.length, 'saved resources');
       const sanitizedResources = savedResources.map(sanitizeResource);
       setAllResources(sanitizedResources);
     } else {
+      console.log('[Resource] No saved resources found, initializing sample data');
       initializeSampleData();
     }
   }, []);
@@ -186,7 +189,7 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ];
 
     setAllResources(sampleResources);
-    dataPersistence.saveData('resources', sampleResources);
+    dataPersistence.persistData('resources', sampleResources, 'sample_data_init');
   };
 
   const getResource = (id: string): Resource | null => {
@@ -194,11 +197,17 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateResource = (id: string, updates: Partial<Resource>) => {
-    setAllResources(prev => prev.map(r => r.id === id ? sanitizeResource({ 
-      ...r, 
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }) : r));
+    setAllResources(prev => {
+      const updated = prev.map(r => r.id === id ? sanitizeResource({ 
+        ...r, 
+        ...updates,
+        updatedAt: new Date().toISOString()
+      }) : r);
+      
+      // Persist updated data
+      dataPersistence.persistData('resources', updated, 'resource_update');
+      return updated;
+    });
 
     // Emit update event
     eventBus.emit('resource_availability_changed', {
@@ -214,7 +223,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: `resource-${Date.now()}`,
       workspaceId: currentWorkspace?.id || 'ws-1'
     });
-    setAllResources(prev => [...prev, newResource]);
+    setAllResources(prev => {
+      const updated = [...prev, newResource];
+      
+      // Persist updated data
+      dataPersistence.persistData('resources', updated, 'resource_add');
+      return updated;
+    });
 
     // Emit creation event
     eventBus.emit('context_updated', {
@@ -224,16 +239,22 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const assignToProject = (resourceId: string, projectId: string) => {
-    setAllResources(prev => prev.map(r => 
-      r.id === resourceId 
-        ? { 
-          ...r, 
-          currentProjects: [...r.currentProjects, projectId],
-          lastActive: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-        : r
-    ));
+    setAllResources(prev => {
+      const updated = prev.map(r => 
+        r.id === resourceId 
+          ? { 
+            ...r, 
+            currentProjects: [...r.currentProjects, projectId],
+            lastActive: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+          : r
+      );
+      
+      // Persist updated data
+      dataPersistence.persistData('resources', updated, 'resource_assignment');
+      return updated;
+    });
 
     // Emit assignment event
     eventBus.emit('resource_assigned', {
@@ -244,15 +265,21 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const removeFromProject = (resourceId: string, projectId: string) => {
-    setAllResources(prev => prev.map(r => 
-      r.id === resourceId 
-        ? { 
-          ...r, 
-          currentProjects: r.currentProjects.filter(p => p !== projectId),
-          updatedAt: new Date().toISOString()
-        }
-        : r
-    ));
+    setAllResources(prev => {
+      const updated = prev.map(r => 
+        r.id === resourceId 
+          ? { 
+            ...r, 
+            currentProjects: r.currentProjects.filter(p => p !== projectId),
+            updatedAt: new Date().toISOString()
+          }
+          : r
+      );
+      
+      // Persist updated data
+      dataPersistence.persistData('resources', updated, 'resource_unassignment');
+      return updated;
+    });
 
     // Emit removal event
     eventBus.emit('context_updated', {
@@ -263,17 +290,23 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateUtilization = (resourceId: string, utilization: number) => {
-    setAllResources(prev => prev.map(r => 
-      r.id === resourceId 
-        ? { 
-            ...r, 
-            utilization,
-            status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available',
-            lastActive: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        : r
-    ));
+    setAllResources(prev => {
+      const updated = prev.map(r => 
+        r.id === resourceId 
+          ? { 
+              ...r, 
+              utilization,
+              status: utilization > 100 ? 'Overallocated' : utilization > 80 ? 'Busy' : 'Available',
+              lastActive: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          : r
+      );
+      
+      // Persist updated data
+      dataPersistence.persistData('resources', updated, 'utilization_update');
+      return updated;
+    });
 
     // Emit utilization update event
     eventBus.emit('resource_availability_changed', {

@@ -9,6 +9,7 @@ import ProjectKanbanBoard from '@/components/ProjectKanbanBoard';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useResources } from '@/contexts/ResourceContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,19 +19,33 @@ import { BarChart3, Brain, Target, TrendingUp, Zap, Calendar, Users } from 'luci
 const Dashboard = () => {
   const { projects, loading: projectsLoading } = useProject();
   const { resources, loading: resourcesLoading } = useResources();
+  const { currentWorkspace } = useWorkspace();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[Dashboard] Current workspace:', currentWorkspace?.name);
+    console.log('[Dashboard] Projects loaded:', projects?.length || 0);
+    console.log('[Dashboard] Resources loaded:', resources?.length || 0);
+    console.log('[Dashboard] Projects status breakdown:', projects?.reduce((acc, p) => {
+      acc[p.status] = (acc[p.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {});
+  }, [projects, resources, currentWorkspace]);
 
   if (projectsLoading || resourcesLoading) {
     return <div className="p-8 text-center">Loading dashboard...</div>;
   }
 
+  // Don't show "No projects found" if we have resources but no projects
+  // This allows the dashboard to show resource metrics even without projects
   if (!projects || projects.length === 0) {
-    return <div className="p-8 text-center">No projects found. Please create a project to get started.</div>;
+    console.log('[Dashboard] No projects found, showing resource-only dashboard');
   }
 
-  console.log('[Dashboard] Rendering with projects:', projects.length);
+  console.log('[Dashboard] Rendering with projects:', projects?.length || 0);
 
   // Generate upcoming deadlines from real project data
-  const upcomingDeadlines = projects.flatMap(project => 
+  const upcomingDeadlines = (projects || []).flatMap(project => 
     [...project.tasks, ...project.milestones.map(m => ({
       ...m,
       name: m.name,
@@ -55,7 +70,7 @@ const Dashboard = () => {
   );
 
   // Generate recent activity from real project data
-  const recentActivity = projects.flatMap(project => 
+  const recentActivity = (projects || []).flatMap(project => 
     project.tasks
       .filter(task => task.status === 'Completed' || task.progress > 80)
       .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
@@ -73,18 +88,26 @@ const Dashboard = () => {
   ).slice(0, 4);
 
   // Calculate real metrics from context data
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
-  const completedProjects = projects.filter(p => p.status === 'Completed').length;
-  const totalResources = resources.length;
-  const availableResources = resources.filter(r => r.status === 'Available').length;
-  const avgProjectProgress = projects.length > 0 
+  const totalProjects = projects?.length || 0;
+  const activeProjects = projects?.filter(p => p.status === 'In Progress').length || 0;
+  const completedProjects = projects?.filter(p => p.status === 'Completed').length || 0;
+  const totalResources = resources?.length || 0;
+  const availableResources = resources?.filter(r => r.status === 'Available').length || 0;
+  const busyResources = resources?.filter(r => r.status === 'Busy').length || 0;
+  const overallocatedResources = resources?.filter(r => r.status === 'Overallocated').length || 0;
+  
+  const avgProjectProgress = projects && projects.length > 0 
     ? Math.round(projects.reduce((acc, project) => {
         const projectProgress = project.tasks.length > 0 
           ? project.tasks.reduce((taskAcc, task) => taskAcc + task.progress, 0) / project.tasks.length
           : 0;
         return acc + projectProgress;
       }, 0) / projects.length)
+    : 0;
+
+  // Calculate resource utilization
+  const avgResourceUtilization = resources && resources.length > 0
+    ? Math.round(resources.reduce((acc, resource) => acc + (resource.utilization || 0), 0) / resources.length)
     : 0;
 
   return (
@@ -149,8 +172,12 @@ const Dashboard = () => {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-purple-500">{avgProjectProgress}%</div>
-                  <p className="text-xs text-muted-foreground">Avg Progress</p>
+                  <div className="text-2xl font-bold text-purple-500">
+                    {totalProjects > 0 ? `${avgProjectProgress}%` : `${avgResourceUtilization}%`}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {totalProjects > 0 ? 'Avg Progress' : 'Avg Utilization'}
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -208,11 +235,13 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {recentActivity.length > 0 ? recentActivity.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                      <div className="w-2 h-2 bg-primary rounded-full mt-2" />
-                      <div className="flex-1">
-                        <p className="text-sm">{activity.action}</p>
-                        <p className="text-xs text-muted-foreground">{activity.project} • {activity.time}</p>
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <p className="font-medium">{activity.action}</p>
+                        <p className="text-sm text-muted-foreground">{activity.project}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">{activity.time}</p>
                       </div>
                     </div>
                   )) : (
@@ -224,28 +253,58 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Additional Resource Metrics when no projects */}
+            {totalProjects === 0 && totalResources > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Resource Overview
+                  </CardTitle>
+                  <CardDescription>
+                    Current resource allocation and utilization
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{availableResources}</div>
+                      <div className="text-sm text-muted-foreground">Available</div>
+                    </div>
+                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                      <div className="text-2xl font-bold text-yellow-600">{busyResources}</div>
+                      <div className="text-sm text-muted-foreground">Busy</div>
+                    </div>
+                    <div className="text-center p-4 bg-red-50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">{overallocatedResources}</div>
+                      <div className="text-sm text-muted-foreground">Overallocated</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
-          <TabsContent value="analytics">
-            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load analytics</div>}>
-              <AIProjectDashboard />
+          <TabsContent value="analytics" className="space-y-6">
+            <ErrorBoundary>
+              <DashboardMetrics />
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="ai-insights">
-            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load AI insights</div>}>
+          <TabsContent value="ai-insights" className="space-y-6">
+            <ErrorBoundary>
               <AIInsights />
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="projects">
-            <ErrorBoundary fallback={<div className="p-8 text-center text-muted-foreground">Unable to load projects</div>}>
-              <ProjectKanbanBoard />
+          <TabsContent value="projects" className="space-y-6">
+            <ErrorBoundary>
+              <AIProjectDashboard />
             </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>
-
       <TinkAssistant />
     </div>
   );
