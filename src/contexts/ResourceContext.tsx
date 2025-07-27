@@ -3,6 +3,7 @@ import { dataPersistence } from '@/services/DataPersistence';
 import { contextSynchronizer } from '@/services/ContextSynchronizer';
 import { eventBus } from '@/services/EventBus';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { AvailabilityCalculationService, ResourceAvailability } from '@/services/AvailabilityCalculationService';
 
 export interface Resource {
   id: string;
@@ -35,6 +36,8 @@ interface ResourceContextType {
   updateUtilization: (resourceId: string, utilization: number) => void;
   getAvailableResources: () => Resource[];
   getResourcesByProject: (projectId: string) => Resource[];
+  refreshResourceAvailability: (resourceId?: string) => Promise<void>;
+  getResourceAvailability: (resourceId: string) => Promise<ResourceAvailability | null>;
 }
 
 const ResourceContext = createContext<ResourceContextType | undefined>(undefined);
@@ -90,6 +93,13 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return unregister;
   }, []);
 
+  // Refresh resource availability when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      refreshResourceAvailability();
+    }
+  }, [currentWorkspace]);
+
   const initializeSampleData = () => {
     const workspaceId = currentWorkspace?.id || 'ws-1';
     const sampleResources: Resource[] = [
@@ -100,86 +110,84 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         department: 'Engineering',
         email: 'sarah.johnson@company.com',
         phone: '+1 (555) 123-4567',
-        location: 'New York, NY',
-        skills: ['React', 'TypeScript', 'CSS', 'UI/UX'],
-        availability: 80,
-        currentProjects: ['proj-ecommerce-2024'],
+        location: 'San Francisco, CA',
+        skills: ['React', 'TypeScript', 'Node.js', 'UI/UX'],
+        availability: 100,
+        currentProjects: ['Project Alpha'],
         hourlyRate: '$85/hr',
         utilization: 75,
-        status: 'Available',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        status: 'Busy',
+        workspaceId
       },
       {
-        id: 'michael',
-        name: 'Michael Chen',
+        id: 'mike',
+        name: 'Mike Chen',
         role: 'Backend Developer',
         department: 'Engineering',
-        email: 'michael.chen@company.com',
+        email: 'mike.chen@company.com',
         phone: '+1 (555) 234-5678',
-        location: 'San Francisco, CA',
-        skills: ['Node.js', 'Python', 'PostgreSQL', 'AWS'],
-        availability: 60,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$90/hr',
-        utilization: 85,
-        status: 'Busy',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        location: 'Austin, TX',
+        skills: ['Python', 'Django', 'PostgreSQL', 'AWS'],
+        availability: 100,
+        currentProjects: ['Project Beta'],
+        hourlyRate: '$80/hr',
+        utilization: 60,
+        status: 'Available',
+        workspaceId
       },
       {
-        id: 'emily',
-        name: 'Emily Rodriguez',
-        role: 'UX Designer',
-        department: 'Design',
-        email: 'emily.rodriguez@company.com',
+        id: 'emma',
+        name: 'Emma Rodriguez',
+        role: 'Product Manager',
+        department: 'Product',
+        email: 'emma.rodriguez@company.com',
         phone: '+1 (555) 345-6789',
-        location: 'Austin, TX',
-        skills: ['Figma', 'User Research', 'Prototyping', 'Design Systems'],
-        availability: 90,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$75/hr',
-        utilization: 65,
-        status: 'Available',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        location: 'New York, NY',
+        skills: ['Product Strategy', 'Agile', 'User Research', 'Analytics'],
+        availability: 100,
+        currentProjects: ['Project Alpha', 'Project Beta'],
+        hourlyRate: '$90/hr',
+        utilization: 90,
+        status: 'Busy',
+        workspaceId
       },
       {
         id: 'david',
         name: 'David Kim',
-        role: 'Project Manager',
-        department: 'Operations',
+        role: 'UX Designer',
+        department: 'Design',
         email: 'david.kim@company.com',
         phone: '+1 (555) 456-7890',
         location: 'Seattle, WA',
-        skills: ['Agile', 'Scrum', 'Risk Management', 'Stakeholder Management'],
-        availability: 70,
-        currentProjects: ['proj-ecommerce-2024'],
-        hourlyRate: '$70/hr',
-        utilization: 70,
+        skills: ['Figma', 'Sketch', 'Prototyping', 'User Testing'],
+        availability: 100,
+        currentProjects: ['Project Gamma'],
+        hourlyRate: '$75/hr',
+        utilization: 45,
         status: 'Available',
-        workspaceId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        workspaceId
+      },
+      {
+        id: 'lisa',
+        name: 'Lisa Thompson',
+        role: 'DevOps Engineer',
+        department: 'Engineering',
+        email: 'lisa.thompson@company.com',
+        phone: '+1 (555) 567-8901',
+        location: 'Denver, CO',
+        skills: ['Docker', 'Kubernetes', 'CI/CD', 'AWS'],
+        availability: 100,
+        currentProjects: ['Project Alpha'],
+        hourlyRate: '$85/hr',
+        utilization: 110,
+        status: 'Overallocated',
+        workspaceId
       }
     ];
-    setAllResources(sampleResources);
-    dataPersistence.persistData('resources', sampleResources, 'resource_context');
-  };
 
-  // Save resources to persistent storage whenever resources change
-  useEffect(() => {
-    if (allResources.length > 0) {
-      dataPersistence.persistData('resources', allResources, 'resource_context');
-    }
-  }, [allResources]);
+    setAllResources(sampleResources);
+    dataPersistence.saveData('resources', sampleResources);
+  };
 
   const getResource = (id: string): Resource | null => {
     return resources.find(r => r.id === id) || null;
@@ -275,6 +283,59 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, 'resource_context');
   };
 
+  // New method to refresh resource availability using the calculation service
+  const refreshResourceAvailability = async (resourceId?: string) => {
+    if (!currentWorkspace) return;
+
+    try {
+      if (resourceId) {
+        // Refresh single resource
+        const availability = await AvailabilityCalculationService.calculateResourceAvailability(
+          resourceId, 
+          currentWorkspace.id
+        );
+        
+        if (availability) {
+          updateResource(resourceId, {
+            utilization: availability.currentUtilization,
+            availability: availability.calculatedAvailability,
+            status: availability.status
+          });
+        }
+      } else {
+        // Refresh all resources in workspace
+        const availabilities = await AvailabilityCalculationService.calculateWorkspaceAvailability(
+          currentWorkspace.id
+        );
+        
+        availabilities.forEach(availability => {
+          updateResource(availability.resourceId, {
+            utilization: availability.currentUtilization,
+            availability: availability.calculatedAvailability,
+            status: availability.status
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing resource availability:', error);
+    }
+  };
+
+  // New method to get resource availability
+  const getResourceAvailability = async (resourceId: string): Promise<ResourceAvailability | null> => {
+    if (!currentWorkspace) return null;
+    
+    try {
+      return await AvailabilityCalculationService.calculateResourceAvailability(
+        resourceId, 
+        currentWorkspace.id
+      );
+    } catch (error) {
+      console.error('Error getting resource availability:', error);
+      return null;
+    }
+  };
+
   const getAvailableResources = (): Resource[] => {
     return resources.filter(r => r.status === 'Available');
   };
@@ -294,7 +355,9 @@ export const ResourceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       removeFromProject,
       updateUtilization,
       getAvailableResources,
-      getResourcesByProject
+      getResourcesByProject,
+      refreshResourceAvailability,
+      getResourceAvailability
     }}>
       {children}
     </ResourceContext.Provider>

@@ -74,8 +74,20 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
     return name.substring(0, 2).toUpperCase();
   };
 
+  const getAvailabilityColor = (availability: number) => {
+    if (availability >= 80) return 'text-green-600';
+    if (availability >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getUtilizationColor = (utilization: number) => {
+    if (utilization >= 90) return 'text-red-600';
+    if (utilization >= 70) return 'text-yellow-600';
+    return 'text-green-600';
+  };
+
   return (
-    <Card>
+    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onViewDetails(resource)}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -108,66 +120,59 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
         
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{email}</p>
+            <span className="text-sm font-medium">Availability:</span>
+            <span className={`text-sm ${getAvailabilityColor(availability)}`}>
+              {availability}%
+            </span>
           </div>
           <div className="flex items-center space-x-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{phone}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{location}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Rate: {hourlyRate}</p>
-          </div>
-          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Utilization:</span>
+            <span className={`text-sm ${getUtilizationColor(utilization)}`}>
+              {utilization}%
+            </span>
             {getPerformanceIndicator()}
-            <p className="text-sm text-muted-foreground">Utilization: {utilization}%</p>
           </div>
-        </div>
-
-        <div>
-          <p className="text-sm font-medium mb-2">Availability</p>
           <div className="flex items-center space-x-2">
-            <Progress value={availability} />
-            <p className="text-sm text-muted-foreground">{availability}%</p>
+            <span className="text-sm font-medium">Rate:</span>
+            <span className="text-sm text-muted-foreground">{hourlyRate}</span>
           </div>
         </div>
 
-        <div>
-          <p className="text-sm font-medium mb-2">Skills</p>
-          <div className="flex flex-wrap gap-1">
-            {skills?.map((skill, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {skill}
-              </Badge>
-            ))}
+        {skills.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-2">Skills</p>
+            <div className="flex flex-wrap gap-1">
+              {skills.slice(0, 3).map((skill, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {skill}
+                </Badge>
+              ))}
+              {skills.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{skills.length - 3} more
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <p className="text-sm font-medium mb-2">Current Projects</p>
-          <div className="flex flex-wrap gap-1">
-            {currentProjects?.map((project, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {project}
-              </Badge>
-            ))}
+        {currentProjects.length > 0 && (
+          <div>
+            <p className="text-sm font-medium mb-2">Current Projects</p>
+            <div className="flex flex-wrap gap-1">
+              {currentProjects.slice(0, 2).map((project, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {project}
+                </Badge>
+              ))}
+              {currentProjects.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{currentProjects.length - 2} more
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-
-        <Button 
-          onClick={() => onViewDetails(resource)} 
-          className="w-full"
-          size="sm"
-          variant="outline"
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View More Details
-        </Button>
+        )}
       </CardContent>
     </Card>
   );
