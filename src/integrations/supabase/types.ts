@@ -238,6 +238,66 @@ export type Database = {
         }
         Relationships: []
       }
+      baseline_versions: {
+        Row: {
+          approval_status: string | null
+          baseline_type: string | null
+          created_at: string | null
+          created_by: string | null
+          effective_from: string | null
+          effective_to: string | null
+          end_date: string
+          id: string
+          project_id: string | null
+          start_date: string
+          task_id: string | null
+          version_number: number
+        }
+        Insert: {
+          approval_status?: string | null
+          baseline_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          end_date: string
+          id?: string
+          project_id?: string | null
+          start_date: string
+          task_id?: string | null
+          version_number: number
+        }
+        Update: {
+          approval_status?: string | null
+          baseline_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          end_date?: string
+          id?: string
+          project_id?: string | null
+          start_date?: string
+          task_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "baseline_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "baseline_versions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -313,6 +373,50 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_control_board: {
+        Row: {
+          attendees: string[]
+          conditions: string[] | null
+          created_at: string | null
+          decision: string | null
+          id: string
+          meeting_date: string
+          meeting_notes: string | null
+          request_id: string | null
+          risk_mitigation_plan: string | null
+        }
+        Insert: {
+          attendees: string[]
+          conditions?: string[] | null
+          created_at?: string | null
+          decision?: string | null
+          id?: string
+          meeting_date: string
+          meeting_notes?: string | null
+          request_id?: string | null
+          risk_mitigation_plan?: string | null
+        }
+        Update: {
+          attendees?: string[]
+          conditions?: string[] | null
+          created_at?: string | null
+          decision?: string | null
+          id?: string
+          meeting_date?: string
+          meeting_notes?: string | null
+          request_id?: string | null
+          risk_mitigation_plan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_control_board_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "rebaseline_requests_enhanced"
             referencedColumns: ["id"]
           },
         ]
@@ -1025,6 +1129,65 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_queue: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string
+          read: boolean | null
+          read_at: string | null
+          sent_at: string | null
+          sent_via: string[] | null
+          title: string
+          type: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority: string
+          read?: boolean | null
+          read_at?: string | null
+          sent_at?: string | null
+          sent_via?: string[] | null
+          title: string
+          type: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          read?: boolean | null
+          read_at?: string | null
+          sent_at?: string | null
+          sent_via?: string[] | null
+          title?: string
+          type?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_queue_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1372,6 +1535,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_daily_checkins: {
+        Row: {
+          blockers: string[] | null
+          checkin_date: string
+          created_at: string | null
+          id: string
+          key_accomplishments: string[] | null
+          next_steps: string[] | null
+          progress_update: number | null
+          project_id: string | null
+          project_manager_id: string | null
+          stakeholder_notes: string | null
+          status_update: string | null
+        }
+        Insert: {
+          blockers?: string[] | null
+          checkin_date: string
+          created_at?: string | null
+          id?: string
+          key_accomplishments?: string[] | null
+          next_steps?: string[] | null
+          progress_update?: number | null
+          project_id?: string | null
+          project_manager_id?: string | null
+          stakeholder_notes?: string | null
+          status_update?: string | null
+        }
+        Update: {
+          blockers?: string[] | null
+          checkin_date?: string
+          created_at?: string | null
+          id?: string
+          key_accomplishments?: string[] | null
+          next_steps?: string[] | null
+          progress_update?: number | null
+          project_id?: string | null
+          project_manager_id?: string | null
+          stakeholder_notes?: string | null
+          status_update?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_daily_checkins_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2041,6 +2254,169 @@ export type Database = {
           },
         ]
       }
+      rebaseline_approvals: {
+        Row: {
+          confirmation_id: string | null
+          created_at: string | null
+          decision_date: string | null
+          decision_notes: string | null
+          id: string
+          impact_analysis: string | null
+          original_date: string
+          project_manager_id: string | null
+          proposed_date: string
+          reason: string
+          status: string | null
+        }
+        Insert: {
+          confirmation_id?: string | null
+          created_at?: string | null
+          decision_date?: string | null
+          decision_notes?: string | null
+          id?: string
+          impact_analysis?: string | null
+          original_date: string
+          project_manager_id?: string | null
+          proposed_date: string
+          reason: string
+          status?: string | null
+        }
+        Update: {
+          confirmation_id?: string | null
+          created_at?: string | null
+          decision_date?: string | null
+          decision_notes?: string | null
+          id?: string
+          impact_analysis?: string | null
+          original_date?: string
+          project_manager_id?: string | null
+          proposed_date?: string
+          reason?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rebaseline_approvals_confirmation_id_fkey"
+            columns: ["confirmation_id"]
+            isOneToOne: false
+            referencedRelation: "resource_delivery_confirmations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rebaseline_approvals_workflow: {
+        Row: {
+          approval_level: number
+          approver_id: string | null
+          approver_role: string
+          comments: string | null
+          conditions: string[] | null
+          created_at: string | null
+          decision: string | null
+          decision_date: string | null
+          id: string
+          request_id: string | null
+        }
+        Insert: {
+          approval_level: number
+          approver_id?: string | null
+          approver_role: string
+          comments?: string | null
+          conditions?: string[] | null
+          created_at?: string | null
+          decision?: string | null
+          decision_date?: string | null
+          id?: string
+          request_id?: string | null
+        }
+        Update: {
+          approval_level?: number
+          approver_id?: string | null
+          approver_role?: string
+          comments?: string | null
+          conditions?: string[] | null
+          created_at?: string | null
+          decision?: string | null
+          decision_date?: string | null
+          id?: string
+          request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rebaseline_approvals_workflow_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "rebaseline_requests_enhanced"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rebaseline_history: {
+        Row: {
+          affected_task_ids: string[] | null
+          affected_tasks_count: number | null
+          cascade_method: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          new_end_date: string | null
+          new_start_date: string | null
+          old_end_date: string | null
+          old_start_date: string | null
+          project_id: string | null
+          reason: string
+          rebaseline_type: string | null
+          task_id: string | null
+        }
+        Insert: {
+          affected_task_ids?: string[] | null
+          affected_tasks_count?: number | null
+          cascade_method?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          old_end_date?: string | null
+          old_start_date?: string | null
+          project_id?: string | null
+          reason: string
+          rebaseline_type?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          affected_task_ids?: string[] | null
+          affected_tasks_count?: number | null
+          cascade_method?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          old_end_date?: string | null
+          old_start_date?: string | null
+          project_id?: string | null
+          reason?: string
+          rebaseline_type?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rebaseline_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rebaseline_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rebaseline_requests: {
         Row: {
           created_at: string
@@ -2094,6 +2470,111 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: []
+      }
+      rebaseline_requests_enhanced: {
+        Row: {
+          affected_milestones: string[] | null
+          affected_tasks: string[] | null
+          approval_chain: Json | null
+          approval_level_required: number | null
+          approved_at: string | null
+          cost_impact: number | null
+          created_at: string | null
+          current_approval_level: number | null
+          current_end_date: string
+          current_start_date: string
+          detailed_justification: string
+          id: string
+          impact_analysis: Json | null
+          implemented_at: string | null
+          priority: string | null
+          project_id: string | null
+          proposed_end_date: string
+          proposed_start_date: string
+          reason_category: string | null
+          request_number: string
+          request_type: string | null
+          requested_by: string | null
+          risk_assessment: string | null
+          status: string | null
+          submitted_at: string | null
+          task_id: string | null
+          variance_days: number | null
+        }
+        Insert: {
+          affected_milestones?: string[] | null
+          affected_tasks?: string[] | null
+          approval_chain?: Json | null
+          approval_level_required?: number | null
+          approved_at?: string | null
+          cost_impact?: number | null
+          created_at?: string | null
+          current_approval_level?: number | null
+          current_end_date: string
+          current_start_date: string
+          detailed_justification: string
+          id?: string
+          impact_analysis?: Json | null
+          implemented_at?: string | null
+          priority?: string | null
+          project_id?: string | null
+          proposed_end_date: string
+          proposed_start_date: string
+          reason_category?: string | null
+          request_number: string
+          request_type?: string | null
+          requested_by?: string | null
+          risk_assessment?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          task_id?: string | null
+          variance_days?: number | null
+        }
+        Update: {
+          affected_milestones?: string[] | null
+          affected_tasks?: string[] | null
+          approval_chain?: Json | null
+          approval_level_required?: number | null
+          approved_at?: string | null
+          cost_impact?: number | null
+          created_at?: string | null
+          current_approval_level?: number | null
+          current_end_date?: string
+          current_start_date?: string
+          detailed_justification?: string
+          id?: string
+          impact_analysis?: Json | null
+          implemented_at?: string | null
+          priority?: string | null
+          project_id?: string | null
+          proposed_end_date?: string
+          proposed_start_date?: string
+          reason_category?: string | null
+          request_number?: string
+          request_type?: string | null
+          requested_by?: string | null
+          risk_assessment?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          task_id?: string | null
+          variance_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rebaseline_requests_enhanced_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rebaseline_requests_enhanced_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_recipients: {
         Row: {
@@ -2259,6 +2740,60 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_delivery_confirmations: {
+        Row: {
+          confirmation_token: string | null
+          created_at: string | null
+          id: string
+          proposed_new_date: string | null
+          rebaseline_reason: string | null
+          resource_id: string | null
+          response_date: string | null
+          scheduled_date: string
+          status: string | null
+          task_id: string | null
+        }
+        Insert: {
+          confirmation_token?: string | null
+          created_at?: string | null
+          id?: string
+          proposed_new_date?: string | null
+          rebaseline_reason?: string | null
+          resource_id?: string | null
+          response_date?: string | null
+          scheduled_date: string
+          status?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          confirmation_token?: string | null
+          created_at?: string | null
+          id?: string
+          proposed_new_date?: string | null
+          rebaseline_reason?: string | null
+          resource_id?: string | null
+          response_date?: string | null
+          scheduled_date?: string
+          status?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_delivery_confirmations_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_delivery_confirmations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
             referencedColumns: ["id"]
           },
         ]
