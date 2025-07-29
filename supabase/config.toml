@@ -2,4 +2,13 @@
 project_id = "hkitnfvgxkozfqfpjrcz"
 
 [functions.enhanced-skill-analysis]
-verify_jwt = false
+verify_jwt = true
+
+[functions.tink-ai-chat]
+verify_jwt = true
+
+[functions.send-notification-email]
+verify_jwt = true
+
+[functions.send-report-email]
+verify_jwt = true
