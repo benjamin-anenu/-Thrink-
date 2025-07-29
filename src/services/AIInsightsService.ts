@@ -28,14 +28,18 @@ export class AIInsightsService {
   private setupEventListeners(): void {
     // Listen for project updates to trigger AI re-analysis
     this.eventBus.subscribe('project_updated', (event) => {
-      const { projectId } = event.payload;
-      this.scheduleAIAnalysis(projectId);
+      const projectId = event.payload.projectId || event.payload.project?.id;
+      if (projectId && projectId !== 'undefined') {
+        this.scheduleAIAnalysis(projectId);
+      }
     });
 
     // Listen for task completion to update insights
     this.eventBus.subscribe('task_completed', (event) => {
-      const { projectId } = event.payload;
-      this.updateProjectInsights(projectId);
+      const projectId = event.payload.projectId || event.payload.project?.id;
+      if (projectId && projectId !== 'undefined') {
+        this.updateProjectInsights(projectId);
+      }
     });
 
     // Listen for deadline approaching events

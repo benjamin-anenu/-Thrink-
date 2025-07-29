@@ -283,12 +283,15 @@ export class RealTimeEventService {
   }
 
   private handleProjectUpdate(payload: any): void {
-    if (!this.validatePayload(payload, ['projectId'])) {
-      console.error('[Real-time Events] Invalid project update payload:', payload);
+    // Extract projectId from different payload structures
+    const projectId = payload.projectId || payload.project?.id || payload.id;
+    
+    if (!projectId) {
+      console.error('[Real-time Events] Invalid project update payload - missing projectId:', payload);
       return;
     }
 
-    const { projectId, updates = {}, projectName } = payload;
+    const { updates = {}, projectName } = payload;
     
     // Send update notification
     this.notificationService.addNotification({
@@ -490,7 +493,9 @@ export class RealTimeEventService {
   }
 
   private checkEscalationConditions(payload: any): void {
-    const { projectId, workspaceId } = payload;
+    // Extract project ID from different payload structures
+    const projectId = payload.projectId || payload.project?.id || payload.id;
+    const workspaceId = payload.workspaceId || payload.project?.workspace_id;
     
     if (!projectId || !workspaceId) {
       console.warn('[Real-time Events] Missing project or workspace ID for escalation check');

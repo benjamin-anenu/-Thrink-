@@ -141,10 +141,17 @@ export class RealTimeDataSync {
       this.checkDeadlines(project);
     });
 
-    this.eventBus.emit('project_updated', {
-      projects,
-      timestamp: new Date()
-    }, 'storage_sync');
+    // Emit individual project updates instead of batch
+    projects.forEach(project => {
+      if (project && project.id) {
+        this.eventBus.emit('project_updated', {
+          projectId: project.id,
+          projectName: project.name,
+          project,
+          timestamp: new Date()
+        }, 'storage_sync');
+      }
+    });
   }
 
   private handleResourcesUpdate(resources: any[]) {
