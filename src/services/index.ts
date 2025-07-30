@@ -27,11 +27,6 @@ export const startEmailReminderService = () => {
   return EmailReminderService.getInstance();
 };
 
-export const initializeNotificationIntegration = () => {
-  const { NotificationIntegrationService } = require('./NotificationIntegrationService');
-  return NotificationIntegrationService.getInstance();
-};
-
 // System validation service export - handle case where service might not exist
 export const systemValidationService = (() => {
   try {
@@ -57,12 +52,14 @@ export const initializeRealTimeServices = async () => {
     const { initializeRealTimeDataSync } = await import('./RealTimeDataSync');
     const { initializeRealTimeEventService } = await import('./RealTimeEventService');
     const { initializeAIInsightsService } = await import('./AIInsightsService');
+    const { initializeNotificationIntegration } = await import('./NotificationIntegrationService');
     
     // Initialize all services concurrently
     await Promise.all([
       initializeRealTimeDataSync(),
       initializeRealTimeEventService(),
-      initializeAIInsightsService()
+      initializeAIInsightsService(),
+      initializeNotificationIntegration()
     ]);
     
     console.log('[Services] All real-time services initialized successfully');

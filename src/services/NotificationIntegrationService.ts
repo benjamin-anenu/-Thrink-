@@ -1,3 +1,4 @@
+
 // Disabled version of NotificationIntegrationService due to missing database table
 
 export interface NotificationSettings {
@@ -139,8 +140,10 @@ export class NotificationIntegrationService {
 }
 
 // Export additional functions required by index.ts
-export async function initializeNotificationIntegration(): Promise<void> {
+export const initializeNotificationIntegration = async (): Promise<void> => {
   console.warn('initializeNotificationIntegration: disabled due to missing database tables');
-}
+  // Return a resolved promise to maintain compatibility
+  return Promise.resolve();
+};
 
 export const notificationIntegrationService = NotificationIntegrationService.getInstance();
