@@ -1,143 +1,174 @@
 
-import { RealTimeEventService } from './RealTimeEventService';
+import { supabase } from '@/integrations/supabase/client';
 import { EventBus } from './EventBus';
+import { toast } from 'sonner';
+import { connectionManager } from '@/utils/connectionUtils';
+import { errorBoundaryService } from './ErrorBoundaryService';
 
 export class RealTimeDataSync {
   private static instance: RealTimeDataSync;
-  private realTimeService: RealTimeEventService;
   private eventBus: EventBus;
+  private isInitialized = false;
   private syncInterval: NodeJS.Timeout | null = null;
+  private isOnline = true;
+  private syncFrequency = 30000; // 30 seconds
 
-  public static getInstance(): RealTimeDataSync {
+  private constructor() {
+    this.eventBus = EventBus.getInstance();
+    this.setupConnectionListener();
+  }
+
+  static getInstance(): RealTimeDataSync {
     if (!RealTimeDataSync.instance) {
       RealTimeDataSync.instance = new RealTimeDataSync();
     }
     return RealTimeDataSync.instance;
   }
 
-  private constructor() {
-    this.realTimeService = RealTimeEventService.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.initialize();
-  }
-
-  private initialize() {
-    // Monitor localStorage changes for projects and resources
-    this.setupStorageListeners();
-    
-    // Start periodic sync
-    this.startPeriodicSync();
-    
-    // Listen for context updates
-    this.setupContextListeners();
-    
-    console.log('[Real-time Data Sync] Initialized');
-  }
-
-  private setupStorageListeners() {
-    // Listen for storage events (works across tabs)
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'projects' && event.newValue) {
-        this.handleProjectsUpdate(JSON.parse(event.newValue));
-      } else if (event.key === 'resources' && event.newValue) {
-        this.handleResourcesUpdate(JSON.parse(event.newValue));
+  private setupConnectionListener() {
+    connectionManager.addConnectionListener((isOnline) => {
+      this.isOnline = isOnline;
+      if (isOnline) {
+        console.log('[Real-time Sync] Connection restored, resuming sync');
+        this.startPeriodicSync();
+        toast.success('Connection restored');
+      } else {
+        console.log('[Real-time Sync] Connection lost, pausing sync');
+        this.stopPeriodicSync();
+        toast.warning('Connection lost. Working offline...');
       }
     });
   }
 
-  private setupContextListeners() {
-    // Listen for specific project events
-    this.eventBus.subscribe('task_completed', (event) => {
-      this.syncProjectData();
-    });
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
 
-    this.eventBus.subscribe('task_updated', (event) => {
-      this.syncProjectData();
-    });
-
-    this.eventBus.subscribe('resource_assigned', (event) => {
-      this.syncResourceData();
-    });
-
-    this.eventBus.subscribe('resource_availability_changed', (event) => {
-      this.syncResourceData();
-    });
-  }
-
-  private lastSyncTimestamp: number = 0;
-  private syncThrottle: number = 5000; // Minimum 5 seconds between syncs
-
-  private startPeriodicSync() {
-    // Intelligent sync - only sync when there are changes
-    this.syncInterval = setInterval(() => {
-      const now = Date.now();
-      if (now - this.lastSyncTimestamp > this.syncThrottle) {
-        this.performIntelligentSync();
-        this.lastSyncTimestamp = now;
-      }
-    }, 3000); // Check every 3 seconds but throttle actual syncing
-  }
-
-  private performIntelligentSync() {
-    // Check for actual changes before syncing
-    const hasProjectChanges = this.hasStorageChanges('projects');
-    const hasResourceChanges = this.hasStorageChanges('resources');
-    
-    if (hasProjectChanges || hasResourceChanges) {
-      console.log('[Real-time Data Sync] Changes detected, performing sync');
-      this.performFullSync();
-    }
-  }
-
-  private storageHashes: Map<string, string> = new Map();
-
-  private hasStorageChanges(key: string): boolean {
     try {
-      const data = localStorage.getItem(key);
-      if (!data) return false;
+      console.log('[Real-time Sync] Initializing...');
       
-      const hash = this.generateHash(data);
-      const lastHash = this.storageHashes.get(key);
-      
-      if (lastHash !== hash) {
-        this.storageHashes.set(key, hash);
-        return true;
+      // Wait for connection if offline
+      if (!this.isOnline) {
+        await connectionManager.waitForConnection();
       }
-      return false;
+
+      this.startPeriodicSync();
+      this.isInitialized = true;
+      
+      console.log('[Real-time Sync] Initialized successfully');
     } catch (error) {
-      console.error(`[Real-time Data Sync] Error checking changes for ${key}:`, error);
-      return false;
+      errorBoundaryService.handleError(error as Error, {
+        component: 'RealTimeDataSync',
+        action: 'initialize'
+      });
     }
   }
 
-  private generateHash(data: string): string {
-    // Simple hash function for change detection
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+  private startPeriodicSync(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
     }
-    return hash.toString();
+
+    this.syncInterval = setInterval(async () => {
+      if (!this.isOnline) return;
+      
+      try {
+        await this.performSync();
+      } catch (error) {
+        console.error('[Real-time Sync] Sync error:', error);
+        // Don't spam users with sync errors, just log them
+        errorBoundaryService.handleError(error as Error, {
+          component: 'RealTimeDataSync',
+          action: 'periodic_sync'
+        });
+      }
+    }, this.syncFrequency);
+  }
+
+  private stopPeriodicSync(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+  }
+
+  private async performSync(): Promise<void> {
+    try {
+      // Get current user to determine workspace
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get user's workspaces
+      const { data: workspaces, error: workspaceError } = await supabase
+        .from('workspaces')
+        .select(`
+          *,
+          workspace_members!inner(id, user_id, role, status, joined_at)
+        `)
+        .eq('workspace_members.user_id', user.id)
+        .eq('workspace_members.status', 'active');
+
+      if (workspaceError) {
+        throw workspaceError;
+      }
+
+      if (workspaces && workspaces.length > 0) {
+        // Sync data for each workspace
+        for (const workspace of workspaces) {
+          await this.syncWorkspaceData(workspace.id);
+        }
+      }
+
+    } catch (error) {
+      console.error('[Real-time Sync] Sync failed:', error);
+      throw error;
+    }
+  }
+
+  private async syncWorkspaceData(workspaceId: string): Promise<void> {
+    try {
+      // Sync projects for this workspace
+      const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          milestones(id, name, description, due_date, baseline_date, status, progress, task_ids),
+          stakeholders(id, name, email, role, organization, influence_level, contact_info, escalation_level)
+        `)
+        .eq('workspace_id', workspaceId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (projectsError) {
+        throw projectsError;
+      }
+
+      if (projects && projects.length > 0) {
+        this.handleProjectsUpdate(projects);
+      }
+
+      // Sync resources for this workspace
+      const { data: resources, error: resourcesError } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('workspace_id', workspaceId);
+
+      if (resourcesError) {
+        throw resourcesError;
+      }
+
+      if (resources && resources.length > 0) {
+        this.handleResourcesUpdate(resources);
+      }
+
+    } catch (error) {
+      console.error(`[Real-time Sync] Failed to sync workspace ${workspaceId}:`, error);
+      throw error;
+    }
   }
 
   private handleProjectsUpdate(projects: any[]) {
-    // Check for completed tasks
+    // Check for deadline alerts
     projects.forEach(project => {
-      project.tasks?.forEach((task: any) => {
-        if (task.status === 'Completed' && this.shouldNotifyTaskCompletion(task)) {
-          this.realTimeService.emitTaskCompleted(
-            task.id,
-            task.name,
-            project.id,
-            project.name,
-            task.assignedTo || 'unknown',
-            'Unknown Resource'
-          );
-        }
-      });
-
-      // Check for approaching deadlines
       this.checkDeadlines(project);
     });
 
@@ -155,120 +186,80 @@ export class RealTimeDataSync {
   }
 
   private handleResourcesUpdate(resources: any[]) {
-    // Check for resource status changes
-    resources.forEach(resource => {
-      if (this.shouldNotifyResourceChange(resource)) {
-        this.eventBus.emit('resource_availability_changed', {
-          resourceId: resource.id,
-          resourceName: resource.name,
-          status: resource.status,
-          utilization: resource.utilization
-        }, 'storage_sync');
-      }
-    });
+    this.eventBus.emit('resources_updated', {
+      resources,
+      timestamp: new Date()
+    }, 'storage_sync');
   }
 
-  private checkDeadlines(project: any) {
+  private checkDeadlines(project: any): void {
+    if (!project.end_date) return;
+
+    const endDate = new Date(project.end_date);
     const today = new Date();
-    
-    // Check task deadlines
-    project.tasks?.forEach((task: any) => {
-      if (task.status !== 'Completed' && task.endDate) {
-        const deadline = new Date(task.endDate);
-        const daysRemaining = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (daysRemaining <= 7 && daysRemaining >= 0) {
-          this.realTimeService.emitDeadlineApproaching(
-            task.id,
-            task.name,
-            project.id,
-            project.name,
-            daysRemaining
-          );
-        }
-      }
-    });
+    const daysUntilDeadline = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Check milestone deadlines
-    project.milestones?.forEach((milestone: any) => {
-      if (milestone.status !== 'completed' && milestone.date) {
-        const deadline = new Date(milestone.date);
-        const daysRemaining = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (daysRemaining <= 7 && daysRemaining >= 0) {
-          this.eventBus.emit('deadline_approaching', {
-            taskId: milestone.id,
-            taskName: milestone.name,
-            projectId: project.id,
-            projectName: project.name,
-            daysRemaining,
-            type: 'milestone'
-          }, 'deadline_monitor');
-        }
-      }
-    });
-  }
+    // Alert for projects nearing deadline (7 days or less)
+    if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
+      this.eventBus.emit('deadline_approaching', {
+        projectId: project.id,
+        projectName: project.name,
+        daysRemaining: daysUntilDeadline,
+        endDate: project.end_date
+      }, 'deadline_check');
+    }
 
-  private shouldNotifyTaskCompletion(task: any): boolean {
-    // Only notify if task was recently completed (within last 5 minutes)
-    if (!task.completedAt) return false;
-    
-    const completedTime = new Date(task.completedAt);
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    
-    return completedTime > fiveMinutesAgo;
-  }
-
-  private shouldNotifyResourceChange(resource: any): boolean {
-    // Only notify if resource status changed recently
-    if (!resource.lastStatusChange) return false;
-    
-    const changeTime = new Date(resource.lastStatusChange);
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    
-    return changeTime > fiveMinutesAgo;
-  }
-
-  private syncProjectData() {
-    const projects = localStorage.getItem('projects');
-    if (projects) {
-      try {
-        this.handleProjectsUpdate(JSON.parse(projects));
-      } catch (error) {
-        console.error('[Real-time Data Sync] Error syncing project data:', error);
-      }
+    // Alert for overdue projects
+    if (daysUntilDeadline < 0) {
+      this.eventBus.emit('deadline_overdue', {
+        projectId: project.id,
+        projectName: project.name,
+        daysOverdue: Math.abs(daysUntilDeadline),
+        endDate: project.end_date
+      }, 'deadline_check');
     }
   }
 
-  private syncResourceData() {
-    const resources = localStorage.getItem('resources');
-    if (resources) {
-      try {
-        this.handleResourcesUpdate(JSON.parse(resources));
-      } catch (error) {
-        console.error('[Real-time Data Sync] Error syncing resource data:', error);
-      }
+  public destroy(): void {
+    this.stopPeriodicSync();
+    this.isInitialized = false;
+    console.log('[Real-time Sync] Destroyed');
+  }
+
+  public async forceSync(): Promise<void> {
+    if (!this.isOnline) {
+      toast.error('Cannot sync while offline');
+      return;
+    }
+
+    try {
+      toast.loading('Syncing data...', { id: 'force-sync' });
+      await this.performSync();
+      toast.success('Data synced successfully', { id: 'force-sync' });
+    } catch (error) {
+      toast.error('Failed to sync data', { id: 'force-sync' });
+      errorBoundaryService.handleError(error as Error, {
+        component: 'RealTimeDataSync',
+        action: 'force_sync'
+      });
     }
   }
 
-  private performFullSync() {
-    this.syncProjectData();
-    this.syncResourceData();
-  }
-
-  public destroy() {
+  public setSyncFrequency(frequency: number): void {
+    this.syncFrequency = Math.max(5000, frequency); // Minimum 5 seconds
     if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-      this.syncInterval = null;
+      this.startPeriodicSync(); // Restart with new frequency
     }
-    
-    window.removeEventListener('storage', this.setupStorageListeners);
+  }
+
+  public getConnectionStatus(): boolean {
+    return this.isOnline;
   }
 }
 
-// Initialize the sync service
-export const initializeRealTimeDataSync = () => {
-  const service = RealTimeDataSync.getInstance();
-  console.log('[Real-time Data Sync] Service initialized');
-  return service;
+// Initialize the service
+export const initializeRealTimeDataSync = async (): Promise<RealTimeDataSync> => {
+  const syncService = RealTimeDataSync.getInstance();
+  await syncService.initialize();
+  return syncService;
 };
