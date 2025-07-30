@@ -4,13 +4,19 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Initialize services when the app starts
-import { initializeRealTimeServices } from './services/index';
+// Initialize services in the background without blocking app startup
+const initializeServices = async () => {
+  try {
+    const { initializeRealTimeServices } = await import('./services/index');
+    await initializeRealTimeServices();
+  } catch (error) {
+    console.warn('[App] Background service initialization warning:', error);
+    // Don't let service initialization failures break the app
+  }
+};
 
-// Initialize connection and error handling
-initializeRealTimeServices().catch((error) => {
-  console.error('[App] Failed to initialize services:', error);
-});
+// Start services after the app renders
+setTimeout(initializeServices, 1000);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -16,61 +16,26 @@ export * from './NotificationIntegrationService';
 export * from './SystemValidationService';
 export { connectionManager } from '@/utils/connectionUtils';
 
-// Add missing service initialization functions
-export const initializePerformanceTracking = () => {
-  const { PerformanceTracker } = require('./PerformanceTracker');
-  return PerformanceTracker.getInstance();
-};
-
-export const startEmailReminderService = () => {
-  const { EmailReminderService } = require('./EmailReminderService');
-  return EmailReminderService.getInstance();
-};
-
-// System validation service export - handle case where service might not exist
-export const systemValidationService = (() => {
-  try {
-    const { SystemValidationService } = require('./SystemValidationService');
-    return SystemValidationService.getInstance();
-  } catch (error) {
-    console.warn('SystemValidationService not available, using mock implementation');
-    return {
-      performSystemValidation: async () => ({
-        status: 'healthy',
-        checks: [],
-        timestamp: new Date()
-      })
-    };
-  }
-})();
-
-// Initialize all real-time services
+// Simple service initialization without complex dynamic imports
 export const initializeRealTimeServices = async () => {
+  console.log('[Services] Initializing real-time services...');
+  
   try {
-    console.log('[Services] Initializing real-time services...');
+    // Initialize services in a simple, stable way
+    const { RealTimeDataSync } = await import('./RealTimeDataSync');
+    const { RealTimeEventService } = await import('./RealTimeEventService');
+    const { AIInsightsService } = await import('./AIInsightsService');
     
-    const { initializeRealTimeDataSync } = await import('./RealTimeDataSync');
-    const { initializeRealTimeEventService } = await import('./RealTimeEventService');
-    const { initializeAIInsightsService } = await import('./AIInsightsService');
-    const { initializeNotificationIntegration } = await import('./NotificationIntegrationService');
+    // Just ensure services exist, don't force complex initialization
+    RealTimeDataSync.getInstance();
+    RealTimeEventService.getInstance();
+    AIInsightsService.getInstance();
     
-    // Initialize all services concurrently
-    await Promise.all([
-      initializeRealTimeDataSync(),
-      initializeRealTimeEventService(),
-      initializeAIInsightsService(),
-      initializeNotificationIntegration()
-    ]);
-    
-    console.log('[Services] All real-time services initialized successfully');
+    console.log('[Services] Real-time services ready');
+    return true;
   } catch (error) {
-    console.error('[Services] Failed to initialize real-time services:', error);
-    
-    // Import error boundary service to handle initialization errors
-    const { errorBoundaryService } = await import('./ErrorBoundaryService');
-    errorBoundaryService.handleError(error as Error, {
-      component: 'ServiceInitializer',
-      action: 'initialize_services'
-    });
+    console.warn('[Services] Non-critical service initialization issue:', error);
+    // Don't throw errors that would cause restarts
+    return false;
   }
 };
