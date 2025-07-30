@@ -583,3 +583,7 @@ export const initializeRealTimeEvents = () => {
   console.log('[Real-time Event Service] Initialized with full integration');
   return service;
 };
+
+export const initializeRealTimeEventService = () => {
+  return initializeRealTimeEvents();
+};

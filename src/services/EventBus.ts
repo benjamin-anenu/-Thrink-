@@ -1,3 +1,4 @@
+
 export type EventType = 
   | 'task_completed'
   | 'task_created'
@@ -9,9 +10,11 @@ export type EventType =
   | 'resource_updated'
   | 'resource_unassigned'
   | 'resource_availability_changed'
+  | 'resources_updated'
   | 'stakeholder_updated'
   | 'stakeholder_created'
   | 'deadline_approaching'
+  | 'deadline_overdue'
   | 'milestone_reached'
   | 'context_updated'
   | 'data_sync'

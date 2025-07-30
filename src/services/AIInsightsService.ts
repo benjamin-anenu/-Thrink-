@@ -1,4 +1,3 @@
-
 import { EventBus } from './EventBus';
 import { PerformanceTracker } from './PerformanceTracker';
 import { AIProjectInsight, RiskProfile, AIRecommendation, ProjectData, RiskFactor } from '@/types/project';
@@ -519,3 +518,11 @@ export class AIInsightsService {
 
 // Export singleton instance
 export const aiInsightsService = AIInsightsService.getInstance();
+
+// Add the missing initialization function for the services index
+export const initializeAIInsightsService = async () => {
+  console.log('[AI Insights Service] Initializing...');
+  // AI Insights Service is already a singleton and initializes on first access
+  const service = aiInsightsService;
+  return service;
+};

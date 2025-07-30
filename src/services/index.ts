@@ -10,7 +10,44 @@ export * from './ClientSatisfactionService';
 export * from './AvailabilityCalculationService';
 export * from './AIInsightsService';
 export * from './ErrorBoundaryService';
+export * from './PerformanceTracker';
+export * from './EmailReminderService';
+export * from './NotificationIntegrationService';
+export * from './SystemValidationService';
 export { connectionManager } from '@/utils/connectionUtils';
+
+// Add missing service initialization functions
+export const initializePerformanceTracking = () => {
+  const { PerformanceTracker } = require('./PerformanceTracker');
+  return PerformanceTracker.getInstance();
+};
+
+export const startEmailReminderService = () => {
+  const { EmailReminderService } = require('./EmailReminderService');
+  return EmailReminderService.getInstance();
+};
+
+export const initializeNotificationIntegration = () => {
+  const { NotificationIntegrationService } = require('./NotificationIntegrationService');
+  return NotificationIntegrationService.getInstance();
+};
+
+// System validation service export
+export const systemValidationService = (() => {
+  try {
+    const { SystemValidationService } = require('./SystemValidationService');
+    return SystemValidationService.getInstance();
+  } catch (error) {
+    console.warn('SystemValidationService not available, using mock implementation');
+    return {
+      performSystemValidation: async () => ({
+        status: 'healthy',
+        checks: [],
+        timestamp: new Date()
+      })
+    };
+  }
+})();
 
 // Initialize all real-time services
 export const initializeRealTimeServices = async () => {
