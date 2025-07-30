@@ -32,7 +32,7 @@ export const initializeNotificationIntegration = () => {
   return NotificationIntegrationService.getInstance();
 };
 
-// System validation service export
+// System validation service export - handle case where service might not exist
 export const systemValidationService = (() => {
   try {
     const { SystemValidationService } = require('./SystemValidationService');
