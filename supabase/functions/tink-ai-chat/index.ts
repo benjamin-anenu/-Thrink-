@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
@@ -11,19 +10,125 @@ const corsHeaders = {
 
 const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
 
+// Rate limiting storage
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+// Input validation and sanitization
+function validateAndSanitizeInput(input: any): { isValid: boolean; sanitized?: any; error?: string } {
+  if (!input) {
+    return { isValid: false, error: 'Input is required' };
+  }
+
+  // Basic input sanitization
+  const sanitized = {
+    ...input,
+    userQuestion: typeof input.userQuestion === 'string' ? 
+      input.userQuestion.trim().substring(0, 1000) : '',
+    workspaceId: typeof input.workspaceId === 'string' && 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.workspaceId) ? 
+      input.workspaceId : null,
+    mode: ['agent', 'chat', 'search'].includes(input.mode) ? input.mode : 'agent',
+    selectedModel: typeof input.selectedModel === 'string' ? 
+      input.selectedModel.substring(0, 100) : 'anthropic/claude-3.5-sonnet'
+  };
+
+  // Validate required fields
+  if (!sanitized.userQuestion || sanitized.userQuestion.length < 1) {
+    return { isValid: false, error: 'User question is required and must not be empty' };
+  }
+
+  if (!sanitized.workspaceId) {
+    return { isValid: false, error: 'Valid workspace ID is required' };
+  }
+
+  // Check for potential injection attempts
+  const dangerousPatterns = [
+    /\b(DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|UNION|SCRIPT|JAVASCRIPT|VBSCRIPT|ONLOAD|ONERROR)\b/i,
+    /<script[^>]*>.*?<\/script>/gi,
+    /javascript:/gi,
+    /vbscript:/gi,
+    /on\w+\s*=/gi
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(sanitized.userQuestion)) {
+      return { isValid: false, error: 'Input contains potentially dangerous content' };
+    }
+  }
+
+  return { isValid: true, sanitized };
+}
+
+// Rate limiting function
+function checkRateLimit(identifier: string, maxRequests: number = 30, windowMs: number = 60000): boolean {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  
+  const current = rateLimitStore.get(identifier);
+  
+  if (!current || current.resetTime < windowStart) {
+    rateLimitStore.set(identifier, { count: 1, resetTime: now });
+    return true;
+  }
+  
+  if (current.count >= maxRequests) {
+    return false;
+  }
+  
+  current.count++;
+  return true;
+}
+
+// Security headers
+const securityHeaders = {
+  ...corsHeaders,
+  'Content-Type': 'application/json',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  
   try {
-    const { action, userQuestion, workspaceId, conversationHistory = [], mode = 'agent', selectedModel = 'anthropic/claude-3.5-sonnet' } = await req.json();
+    // Rate limiting
+    if (!checkRateLimit(clientIP, 30, 60000)) {
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded',
+        response: 'Too many requests. Please wait before trying again.'
+      }), {
+        status: 429,
+        headers: securityHeaders,
+      });
+    }
+
+    const requestData = await req.json();
+    
+    // Input validation and sanitization
+    const validation = validateAndSanitizeInput(requestData);
+    if (!validation.isValid) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid input',
+        response: 'Please check your input and try again.'
+      }), {
+        status: 400,
+        headers: securityHeaders,
+      });
+    }
+
+    const { userQuestion, workspaceId, conversationHistory = [], mode = 'agent', selectedModel = 'anthropic/claude-3.5-sonnet' } = validation.sanitized;
     
     // Handle API key check
-    if (action === 'check_key') {
+    if (requestData.action === 'check_key') {
       return new Response(JSON.stringify({ hasKey: !!openRouterApiKey }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: securityHeaders,
       });
     }
 
@@ -33,18 +138,11 @@ serve(async (req) => {
         response: 'I need an OpenRouter API key to function properly. Please set up your API key in the project settings.'
       }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: securityHeaders,
       });
     }
 
-    if (!userQuestion || !workspaceId) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log(`[Tink AI] Processing question: "${userQuestion}" (mode: ${mode})`);
+    console.log(`[Tink AI] Processing question: "${userQuestion.substring(0, 100)}..." (mode: ${mode})`);
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -72,7 +170,7 @@ serve(async (req) => {
         mode: 'search',
         processingTime: Date.now()
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: securityHeaders,
       });
     }
 
@@ -88,23 +186,29 @@ serve(async (req) => {
         context: userContext,
         processingTime: Date.now()
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: securityHeaders,
       });
     } else {
       // Agent mode: 3-step process (SQL generation, execution, analysis)
-      const result = await processAgentQuery(userQuestion, workspaceId, conversationHistory, supabase);
+      const result = await processAgentQuery(userQuestion, workspaceId, conversationHistory, supabase, userId);
       return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: securityHeaders,
       });
     }
   } catch (error) {
     console.error('[Tink AI] Error:', error);
+    
+    // Log security incidents
+    if (error.message.includes('dangerous') || error.message.includes('injection')) {
+      console.warn(`[SECURITY] Potential attack from IP ${clientIP}: ${error.message}`);
+    }
+    
     return new Response(JSON.stringify({ 
-      error: error.message,
-      response: "I'm having some technical difficulties right now. Let me try to help you in a different way - what specific aspect of your project management are you most interested in discussing?"
+      error: 'Internal server error',
+      response: "I'm having some technical difficulties right now. Please try again in a moment."
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: securityHeaders,
     });
   }
 });
@@ -162,7 +266,7 @@ Respond as Tink would - thoughtful, helpful, and genuinely interested in helping
   return data.choices[0]?.message?.content || "That's an interesting project management question. Let me think through some approaches that might help...";
 }
 
-async function processAgentQuery(userQuestion: string, workspaceId: string, conversationHistory: any[], supabase: any) {
+async function processAgentQuery(userQuestion: string, workspaceId: string, conversationHistory: any[], supabase: any, userId: string | null) {
   const startTime = Date.now();
   
   try {
@@ -170,8 +274,8 @@ async function processAgentQuery(userQuestion: string, workspaceId: string, conv
     const { sql, explanation } = await generateSQLQuery(userQuestion, conversationHistory);
     console.log(`[Tink AI] Generated SQL: ${sql}`);
     
-    // Step 2: Execute SQL query
-    const sqlResults = await executeSQL(sql, workspaceId, supabase);
+    // Step 2: Execute SQL query with enhanced security
+    const sqlResults = await executeSecureSQL(sql, workspaceId, supabase, userId);
     console.log(`[Tink AI] Query returned ${sqlResults?.length || 0} rows`);
     
     // Step 3: Analyze results with Claude-style response
@@ -190,8 +294,8 @@ async function processAgentQuery(userQuestion: string, workspaceId: string, conv
     console.error('[Tink AI] Error in agent processing:', error);
     return {
       success: false,
-      error: error.message,
-      response: generateErrorResponse(userQuestion, error.message),
+      error: 'Processing failed',
+      response: generateErrorResponse(userQuestion),
       mode: 'agent',
       processingTime: Date.now() - startTime
     };
@@ -228,10 +332,11 @@ User Question: "${userQuestion}"${conversationContext}
 
 REQUIREMENTS:
 - Generate ONLY SELECT queries
-- Use parameterized query with $1 for workspace_id filtering
+- Use $1 placeholder for workspace_id filtering
 - Include proper JOINs and table aliases
 - Add ORDER BY for consistent results
 - Limit results to 50 unless requested otherwise
+- Only use allowed tables: projects, project_tasks, resources, performance_profiles, milestones, phases
 
 Before generating SQL, explain what data you're looking for in a conversational way.
 
@@ -276,17 +381,31 @@ Response format:
   }
 }
 
-async function executeSQL(sqlQuery: string, workspaceId: string, supabase: any): Promise<any> {
+async function executeSecureSQL(sqlQuery: string, workspaceId: string, supabase: any, userId: string | null): Promise<any> {
   try {
-    const processedSQL = sqlQuery.replace(/\$1/g, `'${workspaceId}'`);
+    // Log query execution attempt
+    const startTime = Date.now();
     
     const { data, error } = await supabase.rpc('execute_sql', { 
-      query: processedSQL 
+      query: sqlQuery.replace(/\$1/g, `'${workspaceId}'`)
     });
+
+    const executionTime = Date.now() - startTime;
+    
+    // Log the query execution
+    if (userId) {
+      await supabase.from('query_execution_logs').insert({
+        user_id: userId,
+        query_text: sqlQuery,
+        execution_time: `${executionTime}ms`,
+        success: !error,
+        error_message: error?.message || null
+      });
+    }
 
     if (error) {
       console.error('SQL execution error:', error);
-      throw new Error(`Database error: ${error.message}`);
+      throw new Error('Database query failed due to security constraints');
     }
 
     return data || [];
@@ -376,13 +495,13 @@ function extractInsights(data: any[]): string[] {
   return insights;
 }
 
-function generateErrorResponse(userQuestion: string, errorMessage: string): string {
+function generateErrorResponse(userQuestion: string): string {
   return `I'm having trouble accessing your data right now, but I don't want to leave you hanging. While I work on resolving this technical issue, could you tell me more about what specific insights you're looking for? 
 
 In the meantime, here are some things I can help you think through:
 - **Project planning strategies** for your current challenges
 - **Risk assessment approaches** for your upcoming deadlines  
-- **Team management best practices** based on your question about "${userQuestion}"
+- **Team management best practices** based on your question about "${userQuestion.substring(0, 50)}..."
 
 What would be most helpful for you right now?`;
 }

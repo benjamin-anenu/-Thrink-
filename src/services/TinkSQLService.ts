@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SQLProcessingResult {
@@ -9,12 +8,78 @@ export interface SQLProcessingResult {
   error?: string;
 }
 
+// Input validation and sanitization utilities
+class SecurityValidator {
+  private static readonly MAX_QUERY_LENGTH = 1000;
+  private static readonly DANGEROUS_PATTERNS = [
+    /\b(DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|UNION|SCRIPT|JAVASCRIPT|VBSCRIPT|ONLOAD|ONERROR)\b/i,
+    /<script[^>]*>.*?<\/script>/gi,
+    /javascript:/gi,
+    /vbscript:/gi,
+    /on\w+\s*=/gi,
+    /;\s*DROP/gi,
+    /\/\*.*?\*\//gi,
+    /--.*$/gm
+  ];
+
+  static validateInput(input: string): { isValid: boolean; sanitized: string; error?: string } {
+    if (!input || typeof input !== 'string') {
+      return { isValid: false, sanitized: '', error: 'Input must be a non-empty string' };
+    }
+
+    // Sanitize input
+    let sanitized = input.trim().substring(0, this.MAX_QUERY_LENGTH);
+    
+    // Remove potentially dangerous content
+    sanitized = sanitized.replace(/[<>]/g, '');
+    
+    // Check for dangerous patterns
+    for (const pattern of this.DANGEROUS_PATTERNS) {
+      if (pattern.test(sanitized)) {
+        return { 
+          isValid: false, 
+          sanitized: '', 
+          error: 'Input contains potentially dangerous content' 
+        };
+      }
+    }
+
+    return { isValid: true, sanitized };
+  }
+
+  static validateWorkspaceId(workspaceId: string): boolean {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return typeof workspaceId === 'string' && uuidPattern.test(workspaceId);
+  }
+}
+
 export class TinkSQLService {
   private openRouterApiKey: string;
   private baseURL = 'https://openrouter.ai/api/v1/chat/completions';
+  private rateLimitStore: Map<string, { count: number; resetTime: number }> = new Map();
 
   constructor(apiKey: string) {
     this.openRouterApiKey = apiKey;
+  }
+
+  // Rate limiting
+  private checkRateLimit(identifier: string, maxRequests: number = 10, windowMs: number = 60000): boolean {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    const current = this.rateLimitStore.get(identifier);
+    
+    if (!current || current.resetTime < windowStart) {
+      this.rateLimitStore.set(identifier, { count: 1, resetTime: now });
+      return true;
+    }
+    
+    if (current.count >= maxRequests) {
+      return false;
+    }
+    
+    current.count++;
+    return true;
   }
 
   // Enhanced database schema with actual relationships
@@ -22,7 +87,7 @@ export class TinkSQLService {
     return `
 Database Schema for Tink Project Management Platform:
 
-Core Tables:
+ALLOWED TABLES ONLY:
 1. projects (id UUID, name TEXT, description TEXT, status TEXT, priority TEXT, 
    workspace_id UUID, start_date DATE, end_date DATE, progress INTEGER, 
    created_at TIMESTAMP, updated_at TIMESTAMP, resources UUID[])
@@ -45,6 +110,14 @@ Core Tables:
    trend TEXT, risk_level TEXT, strengths TEXT[], improvement_areas TEXT[], 
    created_at TIMESTAMP, updated_at TIMESTAMP)
 
+SECURITY CONSTRAINTS:
+- ONLY SELECT queries allowed
+- Must use $1 for workspace_id filtering
+- Query length limited to 500 characters
+- No subqueries or complex operations
+- Execution timeout: 5 seconds
+- Results limited to 50 records
+
 Key Relationships:
 - projects.workspace_id → workspaces.id
 - project_tasks.project_id → projects.id
@@ -52,18 +125,23 @@ Key Relationships:
 - project_tasks.milestone_id → milestones.id
 - milestones.project_id → projects.id
 - performance_profiles.resource_id → resources.id
-
-Common Query Patterns:
-- Team utilization: JOIN resources with project_tasks and performance_profiles
-- Project progress: Aggregate task completion rates within projects
-- Performance metrics: Analyze performance_profiles with trend analysis
-- Resource allocation: Cross-reference resources with project assignments
-- Deadline analysis: Compare task end_dates with current date
-- Risk assessment: Analyze overdue tasks and performance trends
 `;
   }
 
   async convertTextToSQL(userQuestion: string, conversationHistory: any[] = []): Promise<string> {
+    // Input validation
+    const validation = SecurityValidator.validateInput(userQuestion);
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Invalid input');
+    }
+
+    const sanitizedQuestion = validation.sanitized;
+    
+    // Rate limiting
+    if (!this.checkRateLimit('sql_generation', 5, 60000)) {
+      throw new Error('Rate limit exceeded. Please wait before making more requests.');
+    }
+
     const conversationContext = conversationHistory.length > 0 
       ? `\n\nRecent conversation context:\n${conversationHistory.slice(-2).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
@@ -73,9 +151,9 @@ Convert the user's natural language question into a safe, optimized PostgreSQL q
 
 ${this.getDatabaseSchema()}
 
-User Question: "${userQuestion}"${conversationContext}
+User Question: "${sanitizedQuestion}"${conversationContext}
 
-CRITICAL REQUIREMENTS:
+CRITICAL SECURITY REQUIREMENTS:
 - Generate ONLY SELECT queries (no INSERT, UPDATE, DELETE, DROP)
 - Use parameterized query with $1 for workspace_id filtering
 - Include proper JOINs and table aliases for readability
@@ -84,6 +162,7 @@ CRITICAL REQUIREMENTS:
 - Limit results to 50 unless specifically requested otherwise
 - Handle NULL values appropriately with COALESCE or IS NULL checks
 - Use date functions like CURRENT_DATE, CURRENT_TIMESTAMP when needed
+- ONLY access allowed tables: projects, project_tasks, resources, performance_profiles, milestones
 
 QUERY EXAMPLES:
 For "team utilization": 
@@ -94,14 +173,6 @@ LEFT JOIN project_tasks pt ON r.id = pt.assignee_id
 WHERE r.workspace_id = $1 
 GROUP BY r.id, r.name, r.role, pp.current_score 
 ORDER BY pp.current_score DESC LIMIT 50;
-
-For "overdue tasks":
-SELECT pt.name, pt.end_date, r.name as assignee, p.name as project 
-FROM project_tasks pt 
-JOIN projects p ON pt.project_id = p.id 
-LEFT JOIN resources r ON pt.assignee_id = r.id 
-WHERE p.workspace_id = $1 AND pt.end_date < CURRENT_DATE AND pt.status != 'Completed' 
-ORDER BY pt.end_date ASC LIMIT 50;
 
 Return ONLY the SQL query, nothing else:`;
 
@@ -116,7 +187,7 @@ Return ONLY the SQL query, nothing else:`;
           model: 'anthropic/claude-3.5-sonnet',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 600,
-          temperature: 0.1 // Low temperature for consistent SQL
+          temperature: 0.1
         })
       });
 
@@ -130,25 +201,63 @@ Return ONLY the SQL query, nothing else:`;
       // Clean up the response
       sqlQuery = sqlQuery.replace(/```sql\n?/g, '').replace(/```/g, '').trim();
       
+      // Additional validation of generated SQL
+      if (!this.validateGeneratedSQL(sqlQuery)) {
+        throw new Error('Generated SQL failed security validation');
+      }
+      
       return sqlQuery;
     } catch (error) {
       console.error('Error generating SQL:', error);
-      throw new Error('Failed to generate SQL query');
+      throw new Error('Failed to generate secure SQL query');
     }
+  }
+
+  private validateGeneratedSQL(sql: string): boolean {
+    if (!sql || typeof sql !== 'string') return false;
+    
+    // Must start with SELECT
+    if (!sql.trim().toUpperCase().startsWith('SELECT')) return false;
+    
+    // Must contain workspace filtering
+    if (!sql.includes('$1')) return false;
+    
+    // Check for forbidden operations
+    const forbidden = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'CREATE', 'ALTER', 'TRUNCATE', 'EXECUTE'];
+    const upperSQL = sql.toUpperCase();
+    for (const word of forbidden) {
+      if (upperSQL.includes(word)) return false;
+    }
+    
+    return true;
   }
 
   async executeSQL(sqlQuery: string, workspaceId: string): Promise<any> {
     try {
-      // Replace $1 placeholder with actual workspace_id
-      const processedSQL = sqlQuery.replace(/\$1/g, `'${workspaceId}'`);
+      // Validate workspace ID
+      if (!SecurityValidator.validateWorkspaceId(workspaceId)) {
+        throw new Error('Invalid workspace ID format');
+      }
+
+      // Validate SQL query
+      if (!this.validateGeneratedSQL(sqlQuery)) {
+        throw new Error('SQL query failed security validation');
+      }
+
+      // Rate limiting for execution
+      if (!this.checkRateLimit(`execution_${workspaceId}`, 8, 60000)) {
+        throw new Error('Execution rate limit exceeded');
+      }
+
+      console.log('[TinkSQL] Executing secure SQL query');
       
       const { data, error } = await supabase.rpc('execute_sql', { 
-        query: processedSQL 
+        query: sqlQuery.replace(/\$1/g, `'${workspaceId}'`)
       });
 
       if (error) {
         console.error('SQL execution error:', error);
-        throw new Error(`Database error: ${error.message}`);
+        throw new Error('Database query failed due to security constraints');
       }
 
       return data || [];
@@ -159,6 +268,11 @@ Return ONLY the SQL query, nothing else:`;
   }
 
   async formatResultsNaturally(userQuestion: string, sqlResults: any, conversationHistory: any[] = []): Promise<string> {
+    const validation = SecurityValidator.validateInput(userQuestion);
+    if (!validation.isValid) {
+      return "I'm having trouble processing your question. Please rephrase it and try again.";
+    }
+
     const conversationContext = conversationHistory.length > 0 
       ? `\n\nConversation context:\n${conversationHistory.slice(-2).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
@@ -168,7 +282,7 @@ Return ONLY the SQL query, nothing else:`;
       : '\n\nNo data was found matching your query.';
 
     const prompt = `You are Tink, a friendly AI assistant specializing in project management analytics.
-The user asked: "${userQuestion}"
+The user asked: "${validation.sanitized}"
 
 ${resultsContext}${conversationContext}
 
@@ -201,7 +315,7 @@ Respond as Tink:`;
           model: 'anthropic/claude-3.5-sonnet',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 800,
-          temperature: 0.7 // Higher temperature for natural conversation
+          temperature: 0.7
         })
       });
 
@@ -213,29 +327,52 @@ Respond as Tink:`;
       return data.choices[0]?.message?.content || "I had trouble formatting that response, but I'm here to help with your project management needs!";
     } catch (error) {
       console.error('Error formatting results:', error);
-      // Fallback to basic formatting
-      if (sqlResults && sqlResults.length > 0) {
-        return `I found ${sqlResults.length} results for your query. Here's a summary of the data I retrieved, though I'm having trouble formatting it in a more natural way right now.`;
-      } else {
-        return "I couldn't find any data matching your query. Try asking about your projects, tasks, team performance, or upcoming deadlines.";
-      }
+      return this.generateFallbackResponse(sqlResults);
+    }
+  }
+
+  private generateFallbackResponse(sqlResults: any): string {
+    if (sqlResults && sqlResults.length > 0) {
+      return `I found ${sqlResults.length} results for your query. Here's a summary of the data I retrieved, though I'm having trouble formatting it in a more natural way right now.`;
+    } else {
+      return "I couldn't find any data matching your query. Try asking about your projects, tasks, team performance, or upcoming deadlines.";
     }
   }
 
   async processNaturalLanguageQuery(userQuestion: string, workspaceId: string, conversationHistory: any[] = []): Promise<SQLProcessingResult> {
+    const startTime = Date.now();
+    
     try {
-      console.log(`[TinkSQL] Processing: "${userQuestion}" for workspace: ${workspaceId}`);
+      // Input validation
+      const validation = SecurityValidator.validateInput(userQuestion);
+      if (!validation.isValid) {
+        return {
+          success: false,
+          error: validation.error,
+          response: "Please check your input and try again."
+        };
+      }
+
+      if (!SecurityValidator.validateWorkspaceId(workspaceId)) {
+        return {
+          success: false,
+          error: 'Invalid workspace ID',
+          response: "There seems to be an issue with your workspace. Please try refreshing the page."
+        };
+      }
+
+      console.log(`[TinkSQL] Processing: "${validation.sanitized.substring(0, 50)}..." for workspace: ${workspaceId}`);
       
-      // Step 1: Convert text to SQL
-      const sqlQuery = await this.convertTextToSQL(userQuestion, conversationHistory);
-      console.log(`[TinkSQL] Generated SQL: ${sqlQuery}`);
+      // Step 1: Convert text to SQL with enhanced security
+      const sqlQuery = await this.convertTextToSQL(validation.sanitized, conversationHistory);
+      console.log(`[TinkSQL] Generated secure SQL: ${sqlQuery}`);
       
-      // Step 2: Execute SQL query
+      // Step 2: Execute SQL query with security checks
       const sqlResults = await this.executeSQL(sqlQuery, workspaceId);
       console.log(`[TinkSQL] Query returned ${sqlResults?.length || 0} rows`);
       
       // Step 3: Format results naturally
-      const naturalResponse = await this.formatResultsNaturally(userQuestion, sqlResults, conversationHistory);
+      const naturalResponse = await this.formatResultsNaturally(validation.sanitized, sqlResults, conversationHistory);
       
       return {
         success: true,
@@ -245,18 +382,24 @@ Respond as Tink:`;
       };
     } catch (error) {
       console.error('[TinkSQL] Error processing query:', error);
+      
+      // Log potential security incidents
+      if (error.message.includes('dangerous') || error.message.includes('security')) {
+        console.warn('[SECURITY] Potential security issue detected:', error.message);
+      }
+      
       return {
         success: false,
-        error: error.message,
-        response: this.generateErrorResponse(userQuestion, error.message)
+        error: 'Processing failed',
+        response: this.generateSecureErrorResponse(userQuestion)
       };
     }
   }
 
-  private generateErrorResponse(userQuestion: string, errorMessage: string): string {
+  private generateSecureErrorResponse(userQuestion: string): string {
     const suggestions = [
       "Try asking about your current projects or tasks",
-      "Ask about team performance or utilization",
+      "Ask about team performance or utilization", 
       "Check on upcoming deadlines or milestones",
       "Inquire about resource allocation across projects"
     ];
