@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { securityMonitor } from './SecurityMonitoringService';
 
 export interface SQLProcessingResult {
   success: boolean;
@@ -8,9 +9,9 @@ export interface SQLProcessingResult {
   error?: string;
 }
 
-// Input validation and sanitization utilities
+// Enhanced input validation and sanitization utilities
 class SecurityValidator {
-  private static readonly MAX_QUERY_LENGTH = 1000;
+  private static readonly MAX_QUERY_LENGTH = 500;
   private static readonly DANGEROUS_PATTERNS = [
     /\b(DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|UNION|SCRIPT|JAVASCRIPT|VBSCRIPT|ONLOAD|ONERROR)\b/i,
     /<script[^>]*>.*?<\/script>/gi,
@@ -19,7 +20,9 @@ class SecurityValidator {
     /on\w+\s*=/gi,
     /;\s*DROP/gi,
     /\/\*.*?\*\//gi,
-    /--.*$/gm
+    /--.*$/gm,
+    /\bEXEC\b/gi,
+    /\bSP_/gi
   ];
 
   static validateInput(input: string): { isValid: boolean; sanitized: string; error?: string } {
@@ -27,15 +30,32 @@ class SecurityValidator {
       return { isValid: false, sanitized: '', error: 'Input must be a non-empty string' };
     }
 
-    // Sanitize input
+    // Sanitize input more aggressively
     let sanitized = input.trim().substring(0, this.MAX_QUERY_LENGTH);
     
     // Remove potentially dangerous content
-    sanitized = sanitized.replace(/[<>]/g, '');
+    sanitized = sanitized
+      .replace(/[<>]/g, '')
+      .replace(/javascript:/gi, '')
+      .replace(/vbscript:/gi, '')
+      .replace(/on\w+\s*=/gi, '')
+      .replace(/\/\*.*?\*\//gi, '')
+      .replace(/--.*$/gm, '');
     
     // Check for dangerous patterns
     for (const pattern of this.DANGEROUS_PATTERNS) {
       if (pattern.test(sanitized)) {
+        // Log the security incident
+        securityMonitor.logSecurityEvent({
+          event_type: 'sql_injection_attempt',
+          severity: 'critical',
+          description: 'Dangerous SQL pattern detected in user input',
+          metadata: {
+            input_preview: input.substring(0, 100),
+            detected_pattern: pattern.toString()
+          }
+        });
+        
         return { 
           isValid: false, 
           sanitized: '', 
@@ -62,35 +82,22 @@ export class TinkSQLService {
     this.openRouterApiKey = apiKey;
   }
 
-  // Rate limiting
-  private checkRateLimit(identifier: string, maxRequests: number = 10, windowMs: number = 60000): boolean {
-    const now = Date.now();
-    const windowStart = now - windowMs;
-    
-    const current = this.rateLimitStore.get(identifier);
-    
-    if (!current || current.resetTime < windowStart) {
-      this.rateLimitStore.set(identifier, { count: 1, resetTime: now });
-      return true;
-    }
-    
-    if (current.count >= maxRequests) {
-      return false;
-    }
-    
-    current.count++;
-    return true;
+  // Enhanced rate limiting with security logging
+  private async checkRateLimit(identifier: string, maxRequests: number = 5, windowMs: number = 60000): Promise<boolean> {
+    return securityMonitor.checkRateLimit(identifier, maxRequests, windowMs, 'sql_generation');
   }
 
-  // Enhanced database schema with actual relationships
+  // Enhanced database schema with security notes
   getDatabaseSchema(): string {
     return `
 Database Schema for Tink Project Management Platform:
 
+SECURITY NOTICE: This system uses parameterized queries and strict validation.
+
 ALLOWED TABLES ONLY:
 1. projects (id UUID, name TEXT, description TEXT, status TEXT, priority TEXT, 
    workspace_id UUID, start_date DATE, end_date DATE, progress INTEGER, 
-   created_at TIMESTAMP, updated_at TIMESTAMP, resources UUID[])
+   created_at TIMESTAMP, updated_at TIMESTAMP)
 
 2. project_tasks (id UUID, name TEXT, description TEXT, start_date DATE, 
    end_date DATE, status TEXT, priority TEXT, progress INTEGER, 
@@ -110,26 +117,37 @@ ALLOWED TABLES ONLY:
    trend TEXT, risk_level TEXT, strengths TEXT[], improvement_areas TEXT[], 
    created_at TIMESTAMP, updated_at TIMESTAMP)
 
+6. phases (id UUID, name TEXT, project_id UUID, start_date DATE, end_date DATE,
+   status TEXT, progress INTEGER, created_at TIMESTAMP, updated_at TIMESTAMP)
+
+7. client_satisfaction (id UUID, project_id UUID, client_name TEXT, 
+   satisfaction_score INTEGER, survey_date DATE, feedback_text TEXT,
+   workspace_id UUID, created_at TIMESTAMP, updated_at TIMESTAMP)
+
+8. monthly_performance_reports (id UUID, resource_id UUID, workspace_id UUID,
+   year INTEGER, month TEXT, overall_score NUMERIC, productivity_score NUMERIC,
+   quality_score NUMERIC, created_at TIMESTAMP)
+
 SECURITY CONSTRAINTS:
-- ONLY SELECT queries allowed
-- Must use $1 for workspace_id filtering
+- ONLY SELECT and COUNT queries allowed via execute_secure_query()
+- Automatic workspace_id filtering enforced
 - Query length limited to 500 characters
-- No subqueries or complex operations
+- Results limited to 50-100 records maximum
+- All inputs are sanitized and validated
 - Execution timeout: 5 seconds
-- Results limited to 50 records
+- Comprehensive logging of all queries
 
 Key Relationships:
+- All tables filtered by workspace_id for security
 - projects.workspace_id → workspaces.id
 - project_tasks.project_id → projects.id
-- project_tasks.assignee_id → resources.id
-- project_tasks.milestone_id → milestones.id
-- milestones.project_id → projects.id
-- performance_profiles.resource_id → resources.id
+- resources.workspace_id → workspaces.id
+- performance_profiles.workspace_id → workspaces.id
 `;
   }
 
   async convertTextToSQL(userQuestion: string, conversationHistory: any[] = []): Promise<string> {
-    // Input validation
+    // Enhanced input validation
     const validation = SecurityValidator.validateInput(userQuestion);
     if (!validation.isValid) {
       throw new Error(validation.error || 'Invalid input');
@@ -137,8 +155,8 @@ Key Relationships:
 
     const sanitizedQuestion = validation.sanitized;
     
-    // Rate limiting
-    if (!this.checkRateLimit('sql_generation', 5, 60000)) {
+    // Rate limiting with security context
+    if (!await this.checkRateLimit('sql_generation', 3, 60000)) {
       throw new Error('Rate limit exceeded. Please wait before making more requests.');
     }
 
@@ -146,35 +164,32 @@ Key Relationships:
       ? `\n\nRecent conversation context:\n${conversationHistory.slice(-2).map(msg => `${msg.message_role}: ${msg.message_content}`).join('\n')}`
       : '';
 
-    const prompt = `You are an expert SQL assistant for a project management platform. 
-Convert the user's natural language question into a safe, optimized PostgreSQL query.
+    const prompt = `You are a secure SQL assistant for a project management platform. 
+Convert the user's natural language question into safe database function calls.
 
 ${this.getDatabaseSchema()}
 
 User Question: "${sanitizedQuestion}"${conversationContext}
 
 CRITICAL SECURITY REQUIREMENTS:
-- Generate ONLY SELECT queries (no INSERT, UPDATE, DELETE, DROP)
-- Use parameterized query with $1 for workspace_id filtering
-- Include proper JOINs and table aliases for readability
-- Use appropriate aggregate functions (COUNT, SUM, AVG, MAX, MIN)
-- Add ORDER BY for consistent results
-- Limit results to 50 unless specifically requested otherwise
-- Handle NULL values appropriately with COALESCE or IS NULL checks
-- Use date functions like CURRENT_DATE, CURRENT_TIMESTAMP when needed
-- ONLY access allowed tables: projects, project_tasks, resources, performance_profiles, milestones
+- You MUST use the execute_secure_query() function instead of raw SQL
+- Format: SELECT execute_secure_query('select', 'table_name', workspace_id::uuid, additional_filters::jsonb, limit_count::int)
+- Only 'select' and 'count' query_types are allowed
+- All queries are automatically workspace-filtered for security
+- Use specific table names from the allowed list only
+- Include proper LIMIT clauses (max 100)
 
-QUERY EXAMPLES:
-For "team utilization": 
-SELECT r.name, r.role, pp.current_score, COUNT(pt.id) as task_count 
-FROM resources r 
-LEFT JOIN performance_profiles pp ON r.id = pp.resource_id 
-LEFT JOIN project_tasks pt ON r.id = pt.assignee_id 
-WHERE r.workspace_id = $1 
-GROUP BY r.id, r.name, r.role, pp.current_score 
-ORDER BY pp.current_score DESC LIMIT 50;
+FUNCTION EXAMPLES:
+For "show me projects": 
+SELECT execute_secure_query('select', 'projects', $1, '{}'::jsonb, 50);
 
-Return ONLY the SQL query, nothing else:`;
+For "count active tasks":
+SELECT execute_secure_query('count', 'project_tasks', $1, '{"status": "In Progress"}'::jsonb, 1);
+
+For "team performance data":
+SELECT execute_secure_query('select', 'performance_profiles', $1, '{}'::jsonb, 25);
+
+Return ONLY the secure function call, nothing else:`;
 
     try {
       const response = await fetch(this.baseURL, {
@@ -182,11 +197,12 @@ Return ONLY the SQL query, nothing else:`;
         headers: {
           'Authorization': `Bearer ${this.openRouterApiKey}`,
           'Content-Type': 'application/json',
+          'X-Request-Source': 'TinkSQL-Service'
         },
         body: JSON.stringify({
           model: 'anthropic/claude-3.5-sonnet',
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 600,
+          max_tokens: 400,
           temperature: 0.1
         })
       });
@@ -201,32 +217,46 @@ Return ONLY the SQL query, nothing else:`;
       // Clean up the response
       sqlQuery = sqlQuery.replace(/```sql\n?/g, '').replace(/```/g, '').trim();
       
-      // Additional validation of generated SQL
-      if (!this.validateGeneratedSQL(sqlQuery)) {
-        throw new Error('Generated SQL failed security validation');
+      // Validate the generated query uses secure function
+      if (!this.validateSecureQuery(sqlQuery)) {
+        throw new Error('Generated query failed security validation');
       }
       
       return sqlQuery;
     } catch (error) {
       console.error('Error generating SQL:', error);
+      
+      // Log security event
+      await securityMonitor.logSecurityEvent({
+        event_type: 'sql_generation_failed',
+        severity: 'medium',
+        description: 'SQL generation failed',
+        metadata: {
+          error: error.message,
+          question_preview: sanitizedQuestion.substring(0, 50)
+        }
+      });
+      
       throw new Error('Failed to generate secure SQL query');
     }
   }
 
-  private validateGeneratedSQL(sql: string): boolean {
+  private validateSecureQuery(sql: string): boolean {
     if (!sql || typeof sql !== 'string') return false;
     
-    // Must start with SELECT
-    if (!sql.trim().toUpperCase().startsWith('SELECT')) return false;
+    // Must use execute_secure_query function
+    if (!sql.includes('execute_secure_query')) return false;
     
-    // Must contain workspace filtering
+    // Must contain workspace filtering parameter
     if (!sql.includes('$1')) return false;
     
-    // Check for forbidden operations
+    // Check for forbidden raw SQL operations
     const forbidden = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'CREATE', 'ALTER', 'TRUNCATE', 'EXECUTE'];
     const upperSQL = sql.toUpperCase();
     for (const word of forbidden) {
-      if (upperSQL.includes(word)) return false;
+      if (upperSQL.includes(word) && !upperSQL.includes('execute_secure_query')) {
+        return false;
+      }
     }
     
     return true;
@@ -239,26 +269,52 @@ Return ONLY the SQL query, nothing else:`;
         throw new Error('Invalid workspace ID format');
       }
 
-      // Validate SQL query
-      if (!this.validateGeneratedSQL(sqlQuery)) {
+      // Validate SQL query uses secure function
+      if (!this.validateSecureQuery(sqlQuery)) {
         throw new Error('SQL query failed security validation');
       }
 
       // Rate limiting for execution
-      if (!this.checkRateLimit(`execution_${workspaceId}`, 8, 60000)) {
+      if (!await this.checkRateLimit(`execution_${workspaceId}`, 10, 60000)) {
         throw new Error('Execution rate limit exceeded');
       }
 
-      console.log('[TinkSQL] Executing secure SQL query');
+      console.log('[TinkSQL] Executing secure query via database function');
+      
+      // Replace $1 parameter with actual workspace ID for the secure function
+      const parameterizedQuery = sqlQuery.replace(/\$1/g, `'${workspaceId}'::uuid`);
       
       const { data, error } = await supabase.rpc('execute_sql', { 
-        query: sqlQuery.replace(/\$1/g, `'${workspaceId}'`)
+        query: parameterizedQuery
       });
 
       if (error) {
-        console.error('SQL execution error:', error);
+        console.error('Secure SQL execution error:', error);
+        
+        // Log the security event
+        await securityMonitor.logSecurityEvent({
+          event_type: 'secure_query_failed',
+          severity: 'medium',
+          description: 'Secure database query execution failed',
+          metadata: {
+            error_message: error.message,
+            workspace_id: workspaceId
+          }
+        });
+        
         throw new Error('Database query failed due to security constraints');
       }
+
+      // Log successful query execution
+      await securityMonitor.logSecurityEvent({
+        event_type: 'secure_query_executed',
+        severity: 'low',
+        description: 'Secure database query executed successfully',
+        metadata: {
+          workspace_id: workspaceId,
+          result_count: Array.isArray(data) ? data.length : 0
+        }
+      });
 
       return data || [];
     } catch (error) {
@@ -296,6 +352,7 @@ INSTRUCTIONS:
 - End with a helpful follow-up question or suggestion
 - Keep responses informative but not overly technical
 - Show genuine interest in helping with project management
+- Never include raw SQL or technical database details
 
 Examples of good responses:
 - "I found 12 tasks that are overdue! Here's the breakdown..."
@@ -310,6 +367,7 @@ Respond as Tink:`;
         headers: {
           'Authorization': `Bearer ${this.openRouterApiKey}`,
           'Content-Type': 'application/json',
+          'X-Request-Source': 'TinkSQL-Formatting'
         },
         body: JSON.stringify({
           model: 'anthropic/claude-3.5-sonnet',
@@ -343,7 +401,7 @@ Respond as Tink:`;
     const startTime = Date.now();
     
     try {
-      // Input validation
+      // Enhanced input validation
       const validation = SecurityValidator.validateInput(userQuestion);
       if (!validation.isValid) {
         return {
@@ -365,7 +423,7 @@ Respond as Tink:`;
       
       // Step 1: Convert text to SQL with enhanced security
       const sqlQuery = await this.convertTextToSQL(validation.sanitized, conversationHistory);
-      console.log(`[TinkSQL] Generated secure SQL: ${sqlQuery}`);
+      console.log(`[TinkSQL] Generated secure function call: ${sqlQuery}`);
       
       // Step 2: Execute SQL query with security checks
       const sqlResults = await this.executeSQL(sqlQuery, workspaceId);
@@ -385,7 +443,12 @@ Respond as Tink:`;
       
       // Log potential security incidents
       if (error.message.includes('dangerous') || error.message.includes('security')) {
-        console.warn('[SECURITY] Potential security issue detected:', error.message);
+        await securityMonitor.logSecurityEvent({
+          event_type: 'security_violation',
+          severity: 'high',
+          description: 'Potential security violation in SQL processing',
+          metadata: { error_message: error.message }
+        });
       }
       
       return {
