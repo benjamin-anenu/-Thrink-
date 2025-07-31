@@ -98,14 +98,15 @@ export class EnhancedSecurityService {
   private async handleSessionTimeout(): Promise<void> {
     console.warn('[Security] Session timed out due to inactivity');
     
-    // Log the timeout
+    // Log the timeout using valid event type
     await securityMonitor.logSecurityEvent({
-      event_type: 'session_timeout',
+      event_type: 'suspicious_activity',
       severity: 'medium',
       description: 'User session timed out due to inactivity',
       metadata: {
         last_activity: this.lastActivityTime.toISOString(),
-        timeout_duration: '30_minutes'
+        timeout_duration: '30_minutes',
+        reason: 'session_timeout'
       }
     });
 
@@ -125,12 +126,13 @@ export class EnhancedSecurityService {
 
       const deviceFingerprint = options.deviceFingerprint || this.generateDeviceFingerprint();
       
-      // Call the secure session creation function
-      const { error } = await supabase.rpc('create_secure_session', {
-        session_id: session.access_token.substring(0, 32), // Safe portion of token
-        workspace_id: workspaceId,
-        device_fingerprint: deviceFingerprint,
-        ip_address: options.ipAddress
+      // Use existing RPC function for session tracking
+      const { error } = await supabase.rpc('track_user_session', {
+        session_data: {
+          device_fingerprint: deviceFingerprint,
+          ip_address: options.ipAddress,
+          workspace_id: workspaceId
+        }
       });
 
       if (error) {
@@ -194,10 +196,13 @@ export class EnhancedSecurityService {
 
       if (!error) {
         await securityMonitor.logSecurityEvent({
-          event_type: 'session_terminated',
+          event_type: 'suspicious_activity',
           severity: 'low',
           description: 'User terminated an active session',
-          metadata: { session_id: sessionId }
+          metadata: { 
+            session_id: sessionId,
+            action: 'session_terminated'
+          }
         });
       }
 
@@ -224,10 +229,12 @@ export class EnhancedSecurityService {
 
       if (!error) {
         await securityMonitor.logSecurityEvent({
-          event_type: 'bulk_session_termination',
+          event_type: 'suspicious_activity',
           severity: 'medium',
           description: 'User terminated all other active sessions',
-          metadata: { action: 'terminate_all_others' }
+          metadata: { 
+            action: 'bulk_session_termination'
+          }
         });
       }
 
@@ -275,13 +282,15 @@ export class EnhancedSecurityService {
     // Monitor for suspicious URL patterns
     const originalPushState = history.pushState;
     history.pushState = function(data, title, url) {
-      if (url && (url.includes('../') || url.includes('..\\') || url.includes('%2e%2e'))) {
-        securityMonitor.logSecurityEvent({
-          event_type: 'suspicious_activity',
-          severity: 'high',
-          description: 'Path traversal attempt detected in URL',
-          metadata: { attempted_url: url }
-        });
+      if (url && typeof url === 'string') {
+        if (url.includes('../') || url.includes('..\\') || url.includes('%2e%2e')) {
+          securityMonitor.logSecurityEvent({
+            event_type: 'suspicious_activity',
+            severity: 'high',
+            description: 'Path traversal attempt detected in URL',
+            metadata: { attempted_url: url }
+          });
+        }
       }
       
       return originalPushState.call(this, data, title, url);

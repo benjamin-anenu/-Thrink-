@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
@@ -10,19 +11,13 @@ import { ResourceProvider } from '@/contexts/ResourceContext';
 import { TaskProvider } from '@/contexts/TaskContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
 
-import { Dashboard } from '@/pages/Dashboard';
-import { Projects } from '@/pages/Projects';
-import { Resources } from '@/pages/Resources';
-import { Tasks } from '@/pages/Tasks';
-import { Stakeholders } from '@/pages/Stakeholders';
-import { Settings } from '@/pages/Settings';
-import { Auth } from '@/pages/Auth';
-import { Unauthorized } from '@/pages/Unauthorized';
-import { NotFound } from '@/pages/NotFound';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { SecurityDashboard } from '@/pages/SecurityDashboard';
-import { ComplianceLogs } from '@/pages/ComplianceLogs';
-import { Departments } from '@/pages/Departments';
+import Dashboard from '@/pages/Dashboard';
+import Projects from '@/pages/Projects';
+import Resources from '@/pages/Resources';
+import Stakeholders from '@/pages/Stakeholders';
+import Auth from '@/pages/Auth';
+import NotFound from '@/pages/NotFound';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 import { CSPProvider } from '@/components/security/CSPProvider';
 import { enhancedSecurity } from '@/services/EnhancedSecurityService';
@@ -65,14 +60,8 @@ function App() {
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/projects" element={<Projects />} />
                             <Route path="/resources" element={<Resources />} />
-                            <Route path="/tasks" element={<Tasks />} />
                             <Route path="/stakeholders" element={<Stakeholders />} />
-                            <Route path="/settings" element={<Settings />} />
                             <Route path="/auth" element={<Auth />} />
-                            <Route path="/unauthorized" element={<Unauthorized />} />
-                            <Route path="/security" element={<SecurityDashboard />} />
-                            <Route path="/compliance" element={<ComplianceLogs />} />
-                            <Route path="/departments" element={<Departments />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </BrowserRouter>

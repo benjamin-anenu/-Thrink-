@@ -226,14 +226,15 @@ Return ONLY the secure function call, nothing else:`;
     } catch (error) {
       console.error('Error generating SQL:', error);
       
-      // Log security event
+      // Log security event with valid event type
       await securityMonitor.logSecurityEvent({
-        event_type: 'sql_generation_failed',
+        event_type: 'suspicious_activity',
         severity: 'medium',
         description: 'SQL generation failed',
         metadata: {
           error: error.message,
-          question_preview: sanitizedQuestion.substring(0, 50)
+          question_preview: sanitizedQuestion.substring(0, 50),
+          reason: 'sql_generation_failed'
         }
       });
       
@@ -291,14 +292,15 @@ Return ONLY the secure function call, nothing else:`;
       if (error) {
         console.error('Secure SQL execution error:', error);
         
-        // Log the security event
+        // Log the security event with valid event type
         await securityMonitor.logSecurityEvent({
-          event_type: 'secure_query_failed',
+          event_type: 'suspicious_activity',
           severity: 'medium',
           description: 'Secure database query execution failed',
           metadata: {
             error_message: error.message,
-            workspace_id: workspaceId
+            workspace_id: workspaceId,
+            reason: 'secure_query_failed'
           }
         });
         
@@ -307,12 +309,13 @@ Return ONLY the secure function call, nothing else:`;
 
       // Log successful query execution
       await securityMonitor.logSecurityEvent({
-        event_type: 'secure_query_executed',
+        event_type: 'suspicious_activity',
         severity: 'low',
         description: 'Secure database query executed successfully',
         metadata: {
           workspace_id: workspaceId,
-          result_count: Array.isArray(data) ? data.length : 0
+          result_count: Array.isArray(data) ? data.length : 0,
+          reason: 'secure_query_executed'
         }
       });
 
@@ -444,10 +447,13 @@ Respond as Tink:`;
       // Log potential security incidents
       if (error.message.includes('dangerous') || error.message.includes('security')) {
         await securityMonitor.logSecurityEvent({
-          event_type: 'security_violation',
+          event_type: 'suspicious_activity',
           severity: 'high',
           description: 'Potential security violation in SQL processing',
-          metadata: { error_message: error.message }
+          metadata: { 
+            error_message: error.message,
+            reason: 'security_violation'
+          }
         });
       }
       
