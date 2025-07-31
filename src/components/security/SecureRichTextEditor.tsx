@@ -6,7 +6,7 @@ import DOMPurify from 'dompurify';
 
 interface SecureRichTextEditorProps {
   value: string;
-  onChange: (value: string) -> void;
+  onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
   maxLength?: number;
