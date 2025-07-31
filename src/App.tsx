@@ -11,10 +11,12 @@ import { ResourceProvider } from '@/contexts/ResourceContext';
 import { TaskProvider } from '@/contexts/TaskContext';
 import { StakeholderProvider } from '@/contexts/StakeholderContext';
 
+import Index from '@/pages/Index';
 import Dashboard from '@/pages/Dashboard';
 import Projects from '@/pages/Projects';
 import Resources from '@/pages/Resources';
 import Stakeholders from '@/pages/Stakeholders';
+import Analytics from '@/pages/Analytics';
 import Auth from '@/pages/Auth';
 import NotFound from '@/pages/NotFound';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -57,10 +59,12 @@ function App() {
                       <ErrorBoundary>
                         <BrowserRouter>
                           <Routes>
-                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/" element={<Index />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/projects" element={<Projects />} />
                             <Route path="/resources" element={<Resources />} />
                             <Route path="/stakeholders" element={<Stakeholders />} />
+                            <Route path="/analytics" element={<Analytics />} />
                             <Route path="/auth" element={<Auth />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
