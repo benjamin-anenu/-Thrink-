@@ -126,11 +126,14 @@ export class EnhancedSecurityService {
 
       const deviceFingerprint = options.deviceFingerprint || this.generateDeviceFingerprint();
       
-      // Use existing RPC function for session tracking
+      // Use existing RPC function with correct parameter structure
       const { error } = await supabase.rpc('track_user_session', {
-        session_data: {
+        session_id_param: session.access_token.substring(0, 32),
+        workspace_id_param: workspaceId,
+        ip_address_param: options.ipAddress,
+        user_agent_param: options.userAgent,
+        device_info_param: {
           device_fingerprint: deviceFingerprint,
-          ip_address: options.ipAddress,
           workspace_id: workspaceId
         }
       });
