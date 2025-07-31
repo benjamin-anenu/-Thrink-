@@ -70,7 +70,16 @@ const SecurityDashboard: React.FC = () => {
         .limit(20);
 
       if (!error && events) {
-        setRecentEvents(events);
+        // Transform the data to match our interface
+        const transformedEvents: SecurityEvent[] = events.map(event => ({
+          id: event.id,
+          event_type: event.event_type,
+          description: event.description,
+          created_at: event.created_at,
+          metadata: event.metadata,
+          ip_address: event.ip_address ? String(event.ip_address) : undefined
+        }));
+        setRecentEvents(transformedEvents);
       }
 
     } catch (error) {
@@ -112,13 +121,19 @@ const SecurityDashboard: React.FC = () => {
       if (allEvents) {
         const csv = [
           'Date,Event Type,Description,IP Address,Severity',
-          ...allEvents.map(event => [
-            format(new Date(event.created_at), 'yyyy-MM-dd HH:mm:ss'),
-            event.event_type,
-            event.description.replace(/,/g, ';'),
-            event.ip_address || 'N/A',
-            event.metadata?.severity || 'unknown'
-          ].join(','))
+          ...allEvents.map(event => {
+            const severity = (event.metadata && typeof event.metadata === 'object' && 'severity' in event.metadata) 
+              ? String(event.metadata.severity) 
+              : 'unknown';
+            
+            return [
+              format(new Date(event.created_at), 'yyyy-MM-dd HH:mm:ss'),
+              event.event_type,
+              event.description.replace(/,/g, ';'),
+              event.ip_address ? String(event.ip_address) : 'N/A',
+              severity
+            ].join(',');
+          })
         ].join('\n');
 
         const blob = new Blob([csv], { type: 'text/csv' });
