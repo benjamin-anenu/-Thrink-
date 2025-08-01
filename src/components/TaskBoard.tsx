@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import TaskColumn from './TaskColumn';
-import { useTask } from '@/contexts/TaskContext';
+import { useTask, type TaskStatus } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
 import { Filter, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ const TaskBoard = () => {
     if (!result.destination) return;
 
     const taskId = result.draggableId;
-    const newStatus = result.destination.droppableId as any;
+    const newStatus = result.destination.droppableId as TaskStatus;
 
     try {
       await updateTaskStatus(taskId, newStatus);
@@ -79,6 +79,35 @@ const TaskBoard = () => {
 
   const selectedTask = selectedTaskId ? tasks.find(t => t.id === selectedTaskId) : null;
 
+  // Convert TaskContext.Task to ProjectTask format for TaskDetailModal
+  const convertTaskToProjectTask = (task: typeof selectedTask) => {
+    if (!task) return null;
+    
+    return {
+      id: task.id,
+      name: task.name,
+      description: task.description || '',
+      startDate: new Date().toISOString(), // Default values since TaskContext.Task doesn't have these
+      endDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
+      baselineStartDate: new Date().toISOString(),
+      baselineEndDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
+      progress: task.status === 'Completed' ? 100 : task.status === 'In Progress' ? 50 : 0,
+      assignedResources: task.assignee ? [task.assignee] : [],
+      assignedStakeholders: [],
+      dependencies: [],
+      priority: task.priority,
+      status: task.status,
+      milestoneId: undefined,
+      duration: 1,
+      parentTaskId: undefined,
+      hierarchyLevel: 0,
+      sortOrder: 0,
+      hasChildren: false,
+      children: [],
+      manualOverrideDates: false
+    };
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -126,7 +155,7 @@ const TaskBoard = () => {
       {/* Task Detail Modal */}
       {selectedTaskId && (
         <TaskDetailModal
-          task={selectedTask}
+          task={convertTaskToProjectTask(selectedTask)}
           open={!!selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
         />

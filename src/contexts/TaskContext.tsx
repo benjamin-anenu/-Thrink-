@@ -50,7 +50,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (error) throw error;
         
-        const tasksWithAdditionalProps: Task[] = data?.map(task => ({
+        const mappedTasks: Task[] = (data || []).map(task => ({
           id: task.id,
           name: task.name,
           status: (task.status as TaskStatus) || 'Not Started',
@@ -60,9 +60,9 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
           description: task.description || '',
           projectId: task.project_id,
           workspaceId: currentWorkspace.id
-        })) || [];
+        }));
         
-        setTasks(tasksWithAdditionalProps);
+        setTasks(mappedTasks);
       } catch (err) {
         setError(err as Error);
       } finally {
