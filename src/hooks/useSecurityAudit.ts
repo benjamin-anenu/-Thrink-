@@ -53,8 +53,8 @@ export const useSecurityAudit = () => {
         resourceId: log.resource_id,
         metadata: log.metadata,
         createdAt: new Date(log.created_at),
-        ipAddress: log.ip_address || undefined, // Fix type mismatch
-        userAgent: log.user_agent || undefined
+        ipAddress: typeof log.ip_address === 'string' ? log.ip_address : undefined,
+        userAgent: typeof log.user_agent === 'string' ? log.user_agent : undefined
       }));
 
       // Calculate metrics
