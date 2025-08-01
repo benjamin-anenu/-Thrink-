@@ -1,15 +1,14 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
 import { toast } from 'sonner';
 
-// Define types locally to avoid circular references
-type TaskStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
-type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
+// Export types for use in other components
+export type TaskStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
-interface Task {
+export interface Task {
   id: string;
   name: string;
   description: string;
@@ -25,9 +24,11 @@ interface Task {
 interface TaskContextType {
   tasks: Task[];
   loading: boolean;
+  isLoading: boolean; // Add alias for compatibility
   error: string | null;
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>; // Add this method
   deleteTask: (id: string) => Promise<void>;
   refreshTasks: () => Promise<void>;
 }
@@ -207,6 +208,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Add the missing updateTaskStatus method
+  const updateTaskStatus = async (id: string, status: TaskStatus) => {
+    await updateTask(id, { status });
+  };
+
   const deleteTask = async (id: string) => {
     if (!user) {
       toast.error('Authentication required');
@@ -233,9 +239,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <TaskContext.Provider value={{
       tasks,
       loading,
+      isLoading: loading, // Add alias for compatibility
       error,
       createTask,
       updateTask,
+      updateTaskStatus, // Add this method
       deleteTask,
       refreshTasks: fetchTasks
     }}>

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SecurityValidationResult {
@@ -41,8 +40,13 @@ export class SecurityService {
    */
   static async validateWorkspaceAccess(workspaceId: string): Promise<SecurityValidationResult> {
     try {
+      // Use direct query instead of RPC function since the function doesn't exist
       const { data, error } = await supabase
-        .rpc('validate_workspace_access', { workspace_id_param: workspaceId });
+        .from('workspace_members')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'active')
+        .maybeSingle();
 
       if (error) {
         return {

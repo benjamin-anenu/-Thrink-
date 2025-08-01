@@ -37,7 +37,7 @@ const ProjectTable = () => {
     return <div className="w-full text-center py-8">Loading tasks...</div>;
   }
   if (error) {
-    return <div className="w-full text-center py-8 text-destructive">Error loading tasks: {error.message}</div>;
+    return <div className="w-full text-center py-8 text-destructive">Error loading tasks: {error}</div>;
   }
 
   // Status values from context
