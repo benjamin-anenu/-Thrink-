@@ -35,10 +35,11 @@ const Projects = () => {
             
             <ProjectTable />
             
-            <ProjectCreationWizard
-              open={isCreationWizardOpen}
-              onOpenChange={setIsCreationWizardOpen}
-            />
+            {isCreationWizardOpen && (
+              <ProjectCreationWizard
+                onClose={() => setIsCreationWizardOpen(false)}
+              />
+            )}
           </div>
         </Layout>
       </WorkspaceGuard>

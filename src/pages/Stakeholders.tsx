@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import WorkspaceGuard from '@/components/WorkspaceGuard';
@@ -5,6 +6,7 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Users, 
   Mail, 
@@ -12,9 +14,7 @@ import {
   Crown, 
   Shield, 
   Eye, 
-  UserPlus,
-  Avatar,
-  AvatarFallback
+  UserPlus
 } from 'lucide-react';
 import {
   DropdownMenu,

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import WorkspaceGuard from '@/components/WorkspaceGuard';
@@ -8,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search } from 'lucide-react';
 import ResourceCreationModal from '@/components/ResourceCreationModal';
-import { useResource } from '@/contexts/ResourceContext';
+import { useResources } from '@/contexts/ResourceContext';
 
 const Resources = () => {
-  const { resources, loading, error, refreshResources } = useResource();
+  const { resources, loading, error, refreshResourceAvailability } = useResources();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredResources, setFilteredResources] = useState(resources);
   const [isCreationModalOpen, setIsCreationModalOpen] = useState(false);
@@ -23,6 +24,10 @@ const Resources = () => {
       )
     );
   }, [resources, searchTerm]);
+
+  const refreshResources = () => {
+    refreshResourceAvailability();
+  };
 
   return (
     <AuthGuard>
@@ -48,12 +53,13 @@ const Resources = () => {
                 <CardDescription>Search and manage your resources</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4">
+                <div className="mb-4 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search resources..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    icon={<Search />}
+                    className="pl-10"
                   />
                 </div>
 
@@ -65,8 +71,8 @@ const Resources = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Availability</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -81,10 +87,9 @@ const Resources = () => {
                       {filteredResources.map(resource => (
                         <TableRow key={resource.id}>
                           <TableCell>{resource.name}</TableCell>
-                          <TableCell>{resource.type}</TableCell>
-                          <TableCell>{resource.availability}</TableCell>
+                          <TableCell>{resource.role}</TableCell>
+                          <TableCell>{resource.status}</TableCell>
                           <TableCell>
-                            {/* Actions like edit/delete can be added here */}
                             <Button size="sm" variant="ghost" disabled>
                               Edit
                             </Button>

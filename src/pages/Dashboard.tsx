@@ -15,7 +15,7 @@ const Dashboard = () => {
       <WorkspaceGuard>
         <Layout>
           <div className="space-y-6">
-            <DashboardHeader />
+            <DashboardHeader aiConfidence={95} />
             <DashboardMetrics />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ProjectDisplay />
