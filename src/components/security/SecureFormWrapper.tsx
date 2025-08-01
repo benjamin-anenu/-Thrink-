@@ -69,8 +69,11 @@ const SecureFormWrapper: React.FC<SecureFormWrapperProps> = ({
     // Validate form inputs
     const formData = new FormData(event.currentTarget);
     const invalidInputs: string[] = [];
+    
+    // Count form data entries manually
+    const formDataEntries = Array.from(formData.entries());
 
-    for (const [key, value] of formData.entries()) {
+    for (const [key, value] of formDataEntries) {
       if (typeof value === 'string') {
         const validation = validateAndSanitizeInput(value, 2000);
         if (!validation.isValid) {
@@ -91,7 +94,7 @@ const SecureFormWrapper: React.FC<SecureFormWrapperProps> = ({
         {
           formId,
           invalidInputs,
-          formData: Object.fromEntries(formData.entries())
+          formData: Object.fromEntries(formDataEntries)
         }
       );
 
@@ -107,7 +110,7 @@ const SecureFormWrapper: React.FC<SecureFormWrapperProps> = ({
     // Log successful form submission
     logSecurityEvent('form_submitted', 'data_access', formId, {
       formId,
-      fieldsCount: formData.size,
+      fieldsCount: formDataEntries.length,
       timestamp: new Date().toISOString()
     });
   };

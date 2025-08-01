@@ -5,7 +5,7 @@ export interface SecurityValidationResult {
   isValid: boolean;
   error?: string;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  sanitizedValue?: string;
+  sanitizedValue?: any; // Changed from string to any to handle different types
 }
 
 export interface SecurityAlert {
@@ -203,6 +203,65 @@ export class EnhancedSecurityService {
       isValid: true,
       riskLevel: 'low',
       sanitizedValue: sanitizedInput
+    };
+  }
+
+  /**
+   * File upload validation
+   */
+  static validateFileUpload(file: File): SecurityValidationResult {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf',
+      'text/plain',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    // Check file size
+    if (file.size > maxSize) {
+      return {
+        isValid: false,
+        error: 'File size exceeds maximum allowed size of 10MB',
+        riskLevel: 'medium'
+      };
+    }
+
+    // Check file type
+    if (!allowedTypes.includes(file.type)) {
+      return {
+        isValid: false,
+        error: 'File type not allowed',
+        riskLevel: 'high'
+      };
+    }
+
+    // Check filename for suspicious patterns
+    const suspiciousPatterns = [
+      /\.(exe|bat|cmd|scr|vbs|js|jar|com|pif)$/i,
+      /[<>:"|?*]/,
+      /^\./,
+      /\.\./
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(file.name)) {
+        return {
+          isValid: false,
+          error: 'File name contains suspicious patterns',
+          riskLevel: 'high'
+        };
+      }
+    }
+
+    return {
+      isValid: true,
+      riskLevel: 'low',
+      sanitizedValue: file
     };
   }
 
