@@ -87,7 +87,7 @@ const Resources = () => {
                         <TableRow key={resource.id}>
                           <TableCell>{resource.name}</TableCell>
                           <TableCell>{resource.role}</TableCell>
-                          <TableCell>{resource.status}</TableCell>
+                          <TableCell>{resource.status || 'active'}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="ghost" disabled>
                               Edit

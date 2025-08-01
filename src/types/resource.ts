@@ -7,6 +7,7 @@ export interface Resource {
   role?: string;
   department?: string;
   hourly_rate?: number;
+  status?: 'active' | 'inactive' | 'pending';
   created_at: string;
   updated_at: string;
 }
