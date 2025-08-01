@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -71,6 +72,8 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Set up real-time subscriptions
   useEffect(() => {
+    if (!currentWorkspace) return;
+
     const subscription = supabase
       .channel('tasks-channel')
       .on(
@@ -78,13 +81,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         {
           event: '*',
           schema: 'public',
-          table: 'tasks'
+          table: 'project_tasks'
         },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             setTasks(prevTasks =>
               prevTasks.map(task =>
-                task.id === payload.new.id ? { ...task, ...payload.new } : task
+                task.id === payload.new.id ? { ...task, status: payload.new.status } : task
               )
             );
           }
@@ -95,12 +98,12 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, []);
+  }, [currentWorkspace]);
 
   const updateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
     try {
       const { error } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .update({ status: newStatus })
         .match({ id: taskId });
 

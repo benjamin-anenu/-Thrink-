@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -44,7 +45,7 @@ export const TaskBoardCard: React.FC<TaskBoardCardProps> = ({ task, index }) => 
               <Badge variant={getPriorityColor(task.priority)}>
                 {task.priority}
               </Badge>
-              {task.status === 'Blocked' && (
+              {task.status === 'On Hold' && (
                 <AlertCircle className="h-4 w-4 text-destructive" />
               )}
             </div>

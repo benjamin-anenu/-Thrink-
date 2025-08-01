@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import TaskColumn from './TaskColumn';
@@ -9,11 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import TaskDetailModal from './TaskDetailModal';
 
 const TASK_COLUMNS: Array<{ id: Task['status']; title: string }> = [
-  { id: 'To Do', title: 'To Do' },
+  { id: 'Not Started', title: 'To Do' },
   { id: 'In Progress', title: 'In Progress' },
-  { id: 'Blocked', title: 'Blocked' },
-  { id: 'Done', title: 'Done' },
-  { id: 'On Hold', title: 'On Hold' },
+  { id: 'On Hold', title: 'Blocked' },
+  { id: 'Completed', title: 'Done' },
+  { id: 'Cancelled', title: 'Cancelled' },
 ];
 
 const TaskBoard = () => {
@@ -55,6 +56,27 @@ const TaskBoard = () => {
     return acc;
   }, {} as Record<Task['status'], Task[]>);
 
+  // Convert Task to the format expected by TaskColumn
+  const convertTasksForColumn = (tasks: Task[]) => {
+    return tasks.map(task => ({
+      id: task.id,
+      title: task.name,
+      description: task.description || '',
+      tag: {
+        color: task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'yellow' : 'green',
+        label: task.priority
+      },
+      dueDate: task.dueDate ? task.dueDate.toLocaleDateString() : '',
+      assignees: task.assignee ? 1 : 0,
+      progress: {
+        completed: task.status === 'Completed' ? 1 : 0,
+        total: 1
+      },
+      project: '',
+      status: task.status
+    }));
+  };
+
   const selectedTask = selectedTaskId ? tasks.find(t => t.id === selectedTaskId) : null;
 
   return (
@@ -85,7 +107,17 @@ const TaskBoard = () => {
           {TASK_COLUMNS.map(col => (
             <TaskColumn
               key={col.id}
-              column={{ ...col, color: '', tasks: tasksByStatus[col.id] }}
+              column={{ 
+                ...col, 
+                color: '', 
+                tasks: convertTasksForColumn(tasksByStatus[col.id]) 
+              }}
+              onDrop={() => {}}
+              onDragOver={() => {}}
+              onDragLeave={() => {}}
+              onTaskDragStart={() => {}}
+              onTaskDragEnd={() => {}}
+              onStatusChange={() => {}}
             />
           ))}
         </div>
