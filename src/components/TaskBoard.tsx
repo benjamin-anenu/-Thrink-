@@ -87,7 +87,7 @@ const TaskBoard = () => {
       id: task.id,
       name: task.name,
       description: task.description || '',
-      startDate: new Date().toISOString(), // Default values since TaskContext.Task doesn't have these
+      startDate: new Date().toISOString(),
       endDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
       baselineStartDate: new Date().toISOString(),
       baselineEndDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
@@ -156,7 +156,7 @@ const TaskBoard = () => {
       {selectedTaskId && (
         <TaskDetailModal
           task={convertTaskToProjectTask(selectedTask)}
-          open={!!selectedTaskId}
+          isOpen={!!selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
         />
       )}
