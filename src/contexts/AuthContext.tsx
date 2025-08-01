@@ -395,19 +395,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Log permission checks for security audit
     if (!hasPermission) {
-      supabase.from('compliance_logs').insert({
-        user_id: user.id,
-        event_type: 'suspicious_activity',
-        event_category: 'authorization',
-        description: 'Permission check failed',
-        metadata: { 
-          current_role: role,
-          required_role: requiredRole,
-          permission_granted: hasPermission
+      (async () => {
+        try {
+          await supabase.from('compliance_logs').insert({
+            user_id: user.id,
+            event_type: 'suspicious_activity',
+            event_category: 'authorization',
+            description: 'Permission check failed',
+            metadata: { 
+              current_role: role,
+              required_role: requiredRole,
+              permission_granted: hasPermission
+            }
+          });
+        } catch (error) {
+          console.error('[Auth] Failed to log permission check:', error);
         }
-      }).then(() => {}).catch(error => {
-        console.error('[Auth] Failed to log permission check:', error)
-      });
+      })();
     }
     
     return hasPermission
@@ -432,19 +436,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Log permission checks for security audit  
     if (!hasPermission) {
-      supabase.from('compliance_logs').insert({
-        user_id: user.id,
-        event_type: 'suspicious_activity',
-        event_category: 'authorization',
-        description: 'Resource permission check failed',
-        metadata: { 
-          current_role: role,
-          requested_permission: permission,
-          available_permissions: permissions
+      (async () => {
+        try {
+          await supabase.from('compliance_logs').insert({
+            user_id: user.id,
+            event_type: 'suspicious_activity',
+            event_category: 'authorization',
+            description: 'Resource permission check failed',
+            metadata: { 
+              current_role: role,
+              requested_permission: permission,
+              available_permissions: permissions
+            }
+          });
+        } catch (error) {
+          console.error('[Auth] Failed to log permission check:', error);
         }
-      }).then(() => {}).catch(error => {
-        console.error('[Auth] Failed to log permission check:', error)
-      });
+      })();
     }
     
     return hasPermission
