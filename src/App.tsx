@@ -87,7 +87,7 @@ function App() {
                   </ResourceProvider>
                 </ProjectProvider>
               </WorkspaceProvider>
-            </Security Provider>
+            </SecurityProvider>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>
