@@ -2,20 +2,20 @@
 import React, { useState } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import TaskColumn from './TaskColumn';
-import { useTask, type Task } from '@/contexts/TaskContext';
+import { useTask } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
 import { Filter, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import TaskDetailModal from './TaskDetailModal';
 
-const TASK_COLUMNS: Array<{ id: Task['status']; title: string }> = [
+const TASK_COLUMNS = [
   { id: 'Not Started', title: 'To Do' },
   { id: 'In Progress', title: 'In Progress' },
   { id: 'On Hold', title: 'Blocked' },
   { id: 'Completed', title: 'Done' },
   { id: 'Cancelled', title: 'Cancelled' },
-];
+] as const;
 
 const TaskBoard = () => {
   const { tasks, updateTaskStatus } = useTask();
@@ -28,7 +28,7 @@ const TaskBoard = () => {
     if (!result.destination) return;
 
     const taskId = result.draggableId;
-    const newStatus = result.destination.droppableId as Task['status'];
+    const newStatus = result.destination.droppableId as any;
 
     try {
       await updateTaskStatus(taskId, newStatus);
@@ -54,11 +54,11 @@ const TaskBoard = () => {
   const tasksByStatus = TASK_COLUMNS.reduce((acc, column) => {
     acc[column.id] = filteredTasks.filter(task => task.status === column.id);
     return acc;
-  }, {} as Record<Task['status'], Task[]>);
+  }, {} as Record<string, typeof tasks>);
 
   // Convert Task to the format expected by TaskColumn
-  const convertTasksForColumn = (tasks: Task[]) => {
-    return tasks.map(task => ({
+  const convertTasksForColumn = (columnTasks: typeof tasks) => {
+    return columnTasks.map(task => ({
       id: task.id,
       title: task.name,
       description: task.description || '',

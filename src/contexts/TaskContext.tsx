@@ -3,11 +3,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
+export type TaskStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled';
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
+
 export interface Task {
   id: string;
   name: string;
-  status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled';
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  status: TaskStatus;
+  priority: TaskPriority;
   assignee?: string;
   dueDate?: Date;
   description?: string;
@@ -17,7 +20,7 @@ export interface Task {
 
 interface TaskContextType {
   tasks: Task[];
-  updateTaskStatus: (taskId: string, newStatus: Task['status']) => Promise<void>;
+  updateTaskStatus: (taskId: string, newStatus: TaskStatus) => Promise<void>;
   isLoading: boolean;
   error: Error | null;
 }
@@ -47,11 +50,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (error) throw error;
         
-        const tasksWithAdditionalProps = data?.map(task => ({
+        const tasksWithAdditionalProps: Task[] = data?.map(task => ({
           id: task.id,
           name: task.name,
-          status: (task.status as Task['status']) || 'Not Started',
-          priority: (task.priority as Task['priority']) || 'Medium',
+          status: (task.status as TaskStatus) || 'Not Started',
+          priority: (task.priority as TaskPriority) || 'Medium',
           assignee: task.assignee_id,
           dueDate: task.end_date ? new Date(task.end_date) : undefined,
           description: task.description || '',
@@ -100,7 +103,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [currentWorkspace]);
 
-  const updateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
+  const updateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
     try {
       const { error } = await supabase
         .from('project_tasks')
