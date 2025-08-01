@@ -100,40 +100,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(roleData.role)
         
         // Log successful role loading for security audit
-        await supabase.from('compliance_logs').insert({
-          user_id: userId,
-          event_type: 'security_role_loaded',
-          event_category: 'authentication',
-          description: 'User role successfully loaded',
-          metadata: { role: roleData.role }
-        });
+        try {
+          await supabase.from('compliance_logs').insert({
+            user_id: userId,
+            event_type: 'login_attempt',
+            event_category: 'authentication',
+            description: 'User role successfully loaded',
+            metadata: { role: roleData.role }
+          });
+        } catch (logError) {
+          console.error('[Auth] Failed to log role loading:', logError);
+        }
       } else {
         // Default role if none found - but log this security event
         console.warn('[Auth] No role found for user, assigning default member role')
         setRole('member')
         
-        await supabase.from('compliance_logs').insert({
-          user_id: userId,
-          event_type: 'security_default_role_assigned',
-          event_category: 'authentication',
-          description: 'Default member role assigned - no existing role found',
-          metadata: { assigned_role: 'member' }
-        });
+        try {
+          await supabase.from('compliance_logs').insert({
+            user_id: userId,
+            event_type: 'login_attempt',
+            event_category: 'authentication',
+            description: 'Default member role assigned - no existing role found',
+            metadata: { assigned_role: 'member' }
+          });
+        } catch (logError) {
+          console.error('[Auth] Failed to log default role assignment:', logError);
+        }
       }
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Auth] Exception loading profile:', err)
       
       // Log security exception
-      await supabase.from('compliance_logs').insert({
-        user_id: userId,
-        event_type: 'security_profile_load_error',
-        event_category: 'authentication',
-        description: 'Failed to load user profile',
-        metadata: { error: err.message }
-      }).catch(logError => {
-        console.error('[Auth] Failed to log profile load error:', logError)
-      });
+      try {
+        await supabase.from('compliance_logs').insert({
+          user_id: userId,
+          event_type: 'failed_login',
+          event_category: 'authentication',
+          description: 'Failed to load user profile',
+          metadata: { error: err.message }
+        });
+      } catch (logError) {
+        console.error('[Auth] Failed to log profile load error:', logError);
+      }
     } finally {
       setLoading(false)
     }
@@ -153,18 +163,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[Auth] Sign in error:', error)
         
         // Log failed authentication attempt
-        await supabase.from('compliance_logs').insert({
-          event_type: 'security_authentication_failed',
-          event_category: 'authentication',
-          description: 'Failed login attempt',
-          metadata: { 
-            email: email.toLowerCase(),
-            error: error.message,
-            timestamp: new Date().toISOString()
-          }
-        }).catch(logError => {
-          console.error('[Auth] Failed to log authentication failure:', logError)
-        });
+        try {
+          await supabase.from('compliance_logs').insert({
+            event_type: 'failed_login',
+            event_category: 'authentication',
+            description: 'Failed login attempt',
+            metadata: { 
+              email: email.toLowerCase(),
+              error: error.message,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.error('[Auth] Failed to log authentication failure:', logError);
+        }
         
         toast({
           title: "Sign In Failed",
@@ -175,17 +187,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Sign in successful')
         
         // Log successful authentication
-        await supabase.from('compliance_logs').insert({
-          event_type: 'security_authentication_success',
-          event_category: 'authentication',
-          description: 'Successful login',
-          metadata: { 
-            email: email.toLowerCase(),
-            timestamp: new Date().toISOString()
-          }
-        }).catch(logError => {
-          console.error('[Auth] Failed to log authentication success:', logError)
-        });
+        try {
+          await supabase.from('compliance_logs').insert({
+            event_type: 'login_attempt',
+            event_category: 'authentication',
+            description: 'Successful login',
+            metadata: { 
+              email: email.toLowerCase(),
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.error('[Auth] Failed to log authentication success:', logError);
+        }
       }
 
       return { error }
@@ -255,15 +269,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Log sign out attempt
       if (user) {
-        await supabase.from('compliance_logs').insert({
-          user_id: user.id,
-          event_type: 'security_logout',
-          event_category: 'authentication',
-          description: 'User logged out',
-          metadata: { timestamp: new Date().toISOString() }
-        }).catch(logError => {
-          console.error('[Auth] Failed to log logout:', logError)
-        });
+        try {
+          await supabase.from('compliance_logs').insert({
+            user_id: user.id,
+            event_type: 'login_attempt',
+            event_category: 'authentication',
+            description: 'User logged out',
+            metadata: { timestamp: new Date().toISOString() }
+          });
+        } catch (logError) {
+          console.error('[Auth] Failed to log logout:', logError);
+        }
       }
       
       const { error } = await supabase.auth.signOut()
@@ -380,7 +396,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!hasPermission) {
       supabase.from('compliance_logs').insert({
         user_id: user.id,
-        event_type: 'security_permission_denied',
+        event_type: 'suspicious_activity',
         event_category: 'authorization',
         description: 'Permission check failed',
         metadata: { 
@@ -388,7 +404,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           required_role: requiredRole,
           permission_granted: hasPermission
         }
-      }).catch(error => {
+      }).then(() => {}).catch(error => {
         console.error('[Auth] Failed to log permission check:', error)
       });
     }
@@ -417,7 +433,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!hasPermission) {
       supabase.from('compliance_logs').insert({
         user_id: user.id,
-        event_type: 'security_permission_denied',
+        event_type: 'suspicious_activity',
         event_category: 'authorization',
         description: 'Resource permission check failed',
         metadata: { 
@@ -425,7 +441,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           requested_permission: permission,
           available_permissions: permissions
         }
-      }).catch(error => {
+      }).then(() => {}).catch(error => {
         console.error('[Auth] Failed to log permission check:', error)
       });
     }

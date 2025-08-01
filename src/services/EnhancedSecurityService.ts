@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { securityMonitor } from './SecurityMonitoringService';
 import { securityEnforcement } from './SecurityEnforcementService';
@@ -147,10 +148,10 @@ export class EnhancedSecurityService {
         throw error;
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Security] Session creation error:', error);
       await securityMonitor.logSecurityEvent({
-        event_type: 'security_session_creation_failed',
+        event_type: 'suspicious_activity',
         severity: 'medium',
         description: 'Failed to create secure session',
         metadata: { error: error.message, workspace_id: workspaceId }

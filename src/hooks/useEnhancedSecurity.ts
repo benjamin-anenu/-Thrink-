@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { securityEnforcement } from '@/services/SecurityEnforcementService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
