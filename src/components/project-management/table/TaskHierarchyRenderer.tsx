@@ -5,7 +5,6 @@ import TaskTableRow from './TaskTableRow';
 
 interface TaskHierarchyRendererProps {
   tasks: ProjectTask[];
-  projectId?: string;
   milestones: ProjectMilestone[];
   availableResources: Array<{ id: string; name: string; role: string; email?: string }>;
   availableStakeholders: Array<{ id: string; name: string; role: string; email?: string }>;
@@ -24,7 +23,6 @@ interface TaskHierarchyRendererProps {
 
 const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
   tasks,
-  projectId,
   milestones,
   availableResources,
   availableStakeholders,
@@ -63,7 +61,6 @@ const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
           onRebaselineTask={onRebaselineTask}
           densityClass={densityClass}
           onIssueWarningClick={onIssueWarningClick}
-          projectId={projectId}
         />
         {hasSubtasks && isExpanded && (
           <>

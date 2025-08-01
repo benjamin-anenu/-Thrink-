@@ -245,7 +245,7 @@ const TaskCreationDialog: React.FC<TaskCreationDialogProps> = ({
             <div>
               <Label htmlFor="milestone">Milestone</Label>
               <Select 
-                value={formData.milestoneId || undefined} 
+                value={formData.milestoneId || ''} 
                 onValueChange={(value) => setFormData(prev => ({ ...prev, milestoneId: value || undefined }))}
               >
                 <SelectTrigger>

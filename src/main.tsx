@@ -1,25 +1,10 @@
 
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+import { initializeRealTimeServices } from './services/index.ts'
 
-// Initialize services in the background without blocking app startup
-const initializeServices = async () => {
-  try {
-    const { initializeRealTimeServices } = await import('./services/index');
-    await initializeRealTimeServices();
-  } catch (error) {
-    console.warn('[App] Background service initialization warning:', error);
-    // Don't let service initialization failures break the app
-  }
-};
+// Initialize the complete real-time system
+initializeRealTimeServices();
 
-// Start services after the app renders
-setTimeout(initializeServices, 1000);
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+createRoot(document.getElementById("root")!).render(<App />);

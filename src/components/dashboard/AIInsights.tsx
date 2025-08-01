@@ -7,7 +7,7 @@ import { TrendingUp, Users, AlertTriangle, Sparkles, Target } from 'lucide-react
 import { useAIDashboardData } from '@/hooks/useAIDashboardData';
 
 const AIInsights = () => {
-  const { realTimeData, clientSatisfactionTrend } = useAIDashboardData();
+  const { aiInsights, clientSatisfactionTrend, realTimeData } = useAIDashboardData();
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -27,69 +27,6 @@ const AIInsights = () => {
       default: return 'default';
     }
   };
-
-  // Generate AI insights based on real-time data
-  const generateAIInsights = () => {
-    const insights = [];
-    
-    // Resource utilization insight
-    if (realTimeData.resourceUtilization > 85) {
-      insights.push({
-        type: 'risk',
-        title: 'High Resource Utilization',
-        message: `Resource utilization at ${realTimeData.resourceUtilization}%. Consider redistributing workload to prevent burnout.`,
-        confidence: 92,
-        impact: 'high',
-        icon: 'Users'
-      });
-    } else if (realTimeData.resourceUtilization < 50) {
-      insights.push({
-        type: 'optimization',
-        title: 'Low Resource Utilization',
-        message: `Resource utilization at ${realTimeData.resourceUtilization}%. Consider assigning additional tasks to improve efficiency.`,
-        confidence: 88,
-        impact: 'medium',
-        icon: 'TrendingUp'
-      });
-    }
-
-    // Budget health insight
-    if (realTimeData.budgetHealth < 70) {
-      insights.push({
-        type: 'risk',
-        title: 'Budget Health Concern',
-        message: `Budget health at ${realTimeData.budgetHealth}%. Review spending patterns and project scope.`,
-        confidence: 85,
-        impact: 'high',
-        icon: 'AlertTriangle'
-      });
-    } else if (realTimeData.budgetHealth > 90) {
-      insights.push({
-        type: 'opportunity',
-        title: 'Excellent Budget Management',
-        message: `Budget health at ${realTimeData.budgetHealth}%. Consider taking on additional scope.`,
-        confidence: 90,
-        impact: 'medium',
-        icon: 'Sparkles'
-      });
-    }
-
-    // Risk score insight
-    if (realTimeData.riskScore > 60) {
-      insights.push({
-        type: 'risk',
-        title: 'High Risk Score',
-        message: `Risk score at ${realTimeData.riskScore}. Review overdue tasks and project timelines.`,
-        confidence: 87,
-        impact: 'high',
-        icon: 'AlertTriangle'
-      });
-    }
-
-    return insights;
-  };
-
-  const aiInsights = generateAIInsights();
 
   return (
     <div className="space-y-6">
@@ -162,10 +99,10 @@ const AIInsights = () => {
                   domain={[0, 5]}
                   tickFormatter={(value) => `${value}/5`}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="hsl(var(--success))" 
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="hsl(var(--success))"
                   strokeWidth={3}
                   dot={{ fill: 'hsl(var(--success))', strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6, stroke: 'hsl(var(--success))', strokeWidth: 2 }}

@@ -17,8 +17,7 @@ import {
   Clock,
   Target,
   TrendingUp,
-  Activity,
-  History
+  Activity
 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
@@ -33,14 +32,13 @@ import ProjectGanttChart from '@/components/project-management/ProjectGanttChart
 import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
 import { PhaseView } from '@/components/project-management/phases/PhaseView';
 import KanbanBoard from '@/components/project-management/KanbanBoard';
-import RebaselineHistory from '@/components/project-management/RebaselineHistory';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import TinkAssistant from '@/components/TinkAssistant';
 
 const ProjectManagement = () => {
   const { id } = useParams<{ id: string }>();
   const { projects, loading: projectsLoading } = useProjects();
-  const { tasks, milestones, loading: tasksLoading } = useTaskManagement(id && id !== 'undefined' ? id : '');
+  const { tasks, milestones, loading: tasksLoading } = useTaskManagement(id || '');
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [activeProjectPlanTab, setActiveProjectPlanTab] = useState('gantt');
@@ -189,7 +187,7 @@ const ProjectManagement = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
               Overview
@@ -221,10 +219,6 @@ const ProjectManagement = () => {
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Reports
-            </TabsTrigger>
-            <TabsTrigger value="rebaseline-history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Rebaseline History
             </TabsTrigger>
           </TabsList>
 
@@ -290,10 +284,6 @@ const ProjectManagement = () => {
           <TabsContent value="reports" className="space-y-4">
             <ProjectReports projectId={id!} />
           </TabsContent>
-
-          <TabsContent value="rebaseline-history" className="space-y-4">
-            <RebaselineHistory projectId={id!} />
-          </TabsContent>
         </Tabs>
 
         {/* Task Detail Modal */}
@@ -304,6 +294,8 @@ const ProjectManagement = () => {
         />
       </div>
 
+      {/* TinkAssistant Chat */}
+      <TinkAssistant />
     </Layout>
   );
 };

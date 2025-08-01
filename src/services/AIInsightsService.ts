@@ -1,3 +1,4 @@
+
 import { EventBus } from './EventBus';
 import { PerformanceTracker } from './PerformanceTracker';
 import { AIProjectInsight, RiskProfile, AIRecommendation, ProjectData, RiskFactor } from '@/types/project';
@@ -27,18 +28,14 @@ export class AIInsightsService {
   private setupEventListeners(): void {
     // Listen for project updates to trigger AI re-analysis
     this.eventBus.subscribe('project_updated', (event) => {
-      const projectId = event.payload.projectId || event.payload.project?.id;
-      if (projectId && projectId !== 'undefined') {
-        this.scheduleAIAnalysis(projectId);
-      }
+      const { projectId } = event.payload;
+      this.scheduleAIAnalysis(projectId);
     });
 
     // Listen for task completion to update insights
     this.eventBus.subscribe('task_completed', (event) => {
-      const projectId = event.payload.projectId || event.payload.project?.id;
-      if (projectId && projectId !== 'undefined') {
-        this.updateProjectInsights(projectId);
-      }
+      const { projectId } = event.payload;
+      this.updateProjectInsights(projectId);
     });
 
     // Listen for deadline approaching events
@@ -518,11 +515,3 @@ export class AIInsightsService {
 
 // Export singleton instance
 export const aiInsightsService = AIInsightsService.getInstance();
-
-// Add the missing initialization function for the services index
-export const initializeAIInsightsService = async () => {
-  console.log('[AI Insights Service] Initializing...');
-  // AI Insights Service is already a singleton and initializes on first access
-  const service = aiInsightsService;
-  return service;
-};

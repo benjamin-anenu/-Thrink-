@@ -44,7 +44,7 @@ export const TaskBoardCard: React.FC<TaskBoardCardProps> = ({ task, index }) => 
               <Badge variant={getPriorityColor(task.priority)}>
                 {task.priority}
               </Badge>
-              {task.status === 'On Hold' && (
+              {task.status === 'Blocked' && (
                 <AlertCircle className="h-4 w-4 text-destructive" />
               )}
             </div>

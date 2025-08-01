@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import DOMPurify from 'dompurify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -257,13 +256,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             contentEditable
                             className="min-h-[120px] p-3 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                             onInput={(e) => setRichTextContent(e.currentTarget.textContent || '')}
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(richTextContent) }}
+                            dangerouslySetInnerHTML={{ __html: richTextContent }}
                           />
                         </div>
                       ) : (
                         <div 
                           className="text-sm mt-1 min-h-[60px] p-3 border rounded-md bg-muted/20"
-                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(richTextContent || 'No description provided') }}
+                          dangerouslySetInnerHTML={{ __html: richTextContent || 'No description provided' }}
                         />
                       )}
                     </div>

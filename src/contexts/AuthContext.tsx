@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
-import { AuthContextType, Profile, AppRole } from '@/types/auth'
+import { AuthContextType, Profile, AppRole, ROLE_HIERARCHY, ROLE_PERMISSIONS } from '@/types/auth'
 import { useToast } from '@/hooks/use-toast'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, []) // No dependencies to prevent loops
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(profileData)
       }
 
-      // Fetch role with enhanced security check
+      // Fetch role
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -99,52 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (roleData) {
         console.log('[Auth] Role loaded:', roleData.role)
         setRole(roleData.role)
-        
-        // Log successful role loading for security audit
-        try {
-          await supabase.from('compliance_logs').insert({
-            user_id: userId,
-            event_type: 'login_attempt',
-            event_category: 'authentication',
-            description: 'User role successfully loaded',
-            metadata: { role: roleData.role }
-          });
-        } catch (logError) {
-          console.error('[Auth] Failed to log role loading:', logError);
-        }
       } else {
-        // Default role if none found - but log this security event
-        console.warn('[Auth] No role found for user, assigning default member role')
+        // Default role if none found
         setRole('member')
-        
-        try {
-          await supabase.from('compliance_logs').insert({
-            user_id: userId,
-            event_type: 'login_attempt',
-            event_category: 'authentication',
-            description: 'Default member role assigned - no existing role found',
-            metadata: { assigned_role: 'member' }
-          });
-        } catch (logError) {
-          console.error('[Auth] Failed to log default role assignment:', logError);
-        }
       }
       
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Auth] Exception loading profile:', err)
-      
-      // Log security exception
-      try {
-        await supabase.from('compliance_logs').insert({
-          user_id: userId,
-          event_type: 'failed_login',
-          event_category: 'authentication',
-          description: 'Failed to load user profile',
-          metadata: { error: err.message }
-        });
-      } catch (logError) {
-        console.error('[Auth] Failed to log profile load error:', logError);
-      }
     } finally {
       setLoading(false)
     }
@@ -154,7 +115,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('[Auth] Attempting sign in...')
       setLoading(true)
-      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -162,23 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('[Auth] Sign in error:', error)
-        
-        // Log failed authentication attempt
-        try {
-          await supabase.from('compliance_logs').insert({
-            event_type: 'failed_login',
-            event_category: 'authentication',
-            description: 'Failed login attempt',
-            metadata: { 
-              email: email.toLowerCase(),
-              error: error.message,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('[Auth] Failed to log authentication failure:', logError);
-        }
-        
         toast({
           title: "Sign In Failed",
           description: error.message,
@@ -186,21 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
       } else {
         console.log('[Auth] Sign in successful')
-        
-        // Log successful authentication
-        try {
-          await supabase.from('compliance_logs').insert({
-            event_type: 'login_attempt',
-            event_category: 'authentication',
-            description: 'Successful login',
-            metadata: { 
-              email: email.toLowerCase(),
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('[Auth] Failed to log authentication success:', logError);
-        }
       }
 
       return { error }
@@ -267,22 +195,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('[Auth] Attempting sign out...')
       setLoading(true)
-      
-      // Log sign out attempt
-      if (user) {
-        try {
-          await supabase.from('compliance_logs').insert({
-            user_id: user.id,
-            event_type: 'login_attempt',
-            event_category: 'authentication',
-            description: 'User logged out',
-            metadata: { timestamp: new Date().toISOString() }
-          });
-        } catch (logError) {
-          console.error('[Auth] Failed to log logout:', logError);
-        }
-      }
-      
       const { error } = await supabase.auth.signOut()
       
       if (error) {
@@ -362,6 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: "Profile Updated",
           description: "Your profile has been successfully updated.",
         })
+        // Update local profile state
         setProfile(prev => prev ? { ...prev, ...updates } : null)
       }
 
@@ -376,90 +289,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Enhanced role checking with security validation
   const hasRole = (requiredRole: AppRole): boolean => {
-    if (!role || !user) return false
-    
-    const roleHierarchy = {
-      'owner': 5,
-      'admin': 4,
-      'manager': 3,
-      'member': 2,
-      'viewer': 1
-    }
-    
-    const currentRoleLevel = roleHierarchy[role] || 0
-    const requiredRoleLevel = roleHierarchy[requiredRole] || 0
-    
-    const hasPermission = currentRoleLevel >= requiredRoleLevel
-    
-    // Log permission checks for security audit
-    if (!hasPermission) {
-      (async () => {
-        try {
-          await supabase.from('compliance_logs').insert({
-            user_id: user.id,
-            event_type: 'suspicious_activity',
-            event_category: 'authorization',
-            description: 'Permission check failed',
-            metadata: { 
-              current_role: role,
-              required_role: requiredRole,
-              permission_granted: hasPermission
-            }
-          });
-        } catch (error) {
-          console.error('[Auth] Failed to log permission check:', error);
-        }
-      })();
-    }
-    
-    return hasPermission
+    if (!role) return false
+    return ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[requiredRole]
   }
 
   const hasPermission = (action: string, resource?: string): boolean => {
-    if (!role || !user) return false
+    if (!role) return false
     
-    const rolePermissions = {
-      'owner': ['*'],
-      'admin': ['*'],
-      'manager': ['read', 'write', 'projects:manage', 'resources:manage', 'tasks:manage'],
-      'member': ['read', 'write', 'tasks:write'],
-      'viewer': ['read']
-    }
-    
-    const permissions = rolePermissions[role] || []
+    const permissions = ROLE_PERMISSIONS[role]
     if (permissions.includes('*')) return true
     
     const permission = resource ? `${resource}:${action}` : action
-    const hasPermission = permissions.includes(permission)
-    
-    // Log permission checks for security audit  
-    if (!hasPermission) {
-      (async () => {
-        try {
-          await supabase.from('compliance_logs').insert({
-            user_id: user.id,
-            event_type: 'suspicious_activity',
-            event_category: 'authorization',
-            description: 'Resource permission check failed',
-            metadata: { 
-              current_role: role,
-              requested_permission: permission,
-              available_permissions: permissions
-            }
-          });
-        } catch (error) {
-          console.error('[Auth] Failed to log permission check:', error);
-        }
-      })();
-    }
-    
-    return hasPermission
+    return permissions.includes(permission)
   }
 
   const refreshProfile = async () => {
     if (!user) return
+    
     await loadUserProfile(user.id)
   }
 

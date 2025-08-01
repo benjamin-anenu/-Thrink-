@@ -1,98 +1,132 @@
 
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
-import { ThemeProvider } from 'next-themes';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { SecurityProvider } from '@/components/security/SecurityProvider';
-import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
-import { ProjectProvider } from '@/contexts/ProjectContext';
-import { ResourceProvider } from '@/contexts/ResourceContext';
-import { TaskProvider } from '@/contexts/TaskContext';
-import { StakeholderProvider } from '@/contexts/StakeholderContext';
-
-import Index from '@/pages/Index';
-import Dashboard from '@/pages/Dashboard';
-import Projects from '@/pages/Projects';
-import Resources from '@/pages/Resources';
-import Stakeholders from '@/pages/Stakeholders';
-import Analytics from '@/pages/Analytics';
-import Auth from '@/pages/Auth';
-import Workspaces from '@/pages/Workspaces';
-import AIHub from '@/pages/AIHub';
-import NotFound from '@/pages/NotFound';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
+import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/Projects";
+import Resources from "./pages/Resources";
+import Stakeholders from "./pages/Stakeholders";
+import Analytics from "./pages/Analytics";
+import AIHub from "./pages/AIHub";
+import ProjectManagement from "./pages/ProjectManagement";
+import Auth from "./pages/Auth";
+import Login from "./pages/Login";
+import Workspaces from "./pages/Workspaces";
+import NotFound from "./pages/NotFound";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProjectProvider } from "./contexts/ProjectContext";
+import { ResourceProvider } from "./contexts/ResourceContext";
+import { StakeholderProvider } from "./contexts/StakeholderContext";
+import { WorkspaceProvider } from "./contexts/WorkspaceContext";
+import GlobalErrorHandler from "./components/GlobalErrorHandler";
+import ErrorBoundary from "./components/ErrorBoundary";
+import NetworkErrorHandler from "./components/NetworkErrorHandler";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
-      retry: (failureCount, error: any) => {
-        // Don't retry on authentication errors
-        if (error?.status === 401 || error?.status === 403) {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on 404 errors or network failures that might cause loops
+        if (error instanceof Error && (
+          error.message.includes('404') || 
+          error.message.includes('net::ERR_FAILED') ||
+          error.message.includes('fetch')
+        )) {
+          console.log('[QueryClient] Not retrying due to network error:', error.message);
           return false;
         }
-        return failureCount < 3;
+        return failureCount < 2; // Limit retries to prevent loops
       },
-    },
-    mutations: {
-      retry: (failureCount, error: any) => {
-        // Don't retry on authentication or validation errors
-        if (error?.status === 401 || error?.status === 403 || error?.status === 400) {
-          return false;
-        }
-        return failureCount < 2;
-      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
   },
 });
 
 function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          forcedTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            <SecurityProvider>
-              <WorkspaceProvider>
-                <ProjectProvider>
-                  <ResourceProvider>
-                    <TaskProvider>
-                      <StakeholderProvider>
-                        <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <TooltipProvider>
+          <ErrorBoundary>
+            <NetworkErrorHandler>
+              <GlobalErrorHandler>
+                <AuthProvider>
+                  <WorkspaceProvider>
+                    <ProjectProvider>
+                      <ResourceProvider>
+                        <StakeholderProvider>
                           <BrowserRouter>
                             <Routes>
                               <Route path="/" element={<Index />} />
-                              <Route path="/dashboard" element={<Dashboard />} />
-                              <Route path="/projects" element={<Projects />} />
-                              <Route path="/resources" element={<Resources />} />
-                              <Route path="/stakeholders" element={<Stakeholders />} />
-                              <Route path="/analytics" element={<Analytics />} />
-                              <Route path="/workspaces" element={<Workspaces />} />
-                              <Route path="/ai-hub" element={<AIHub />} />
                               <Route path="/auth" element={<Auth />} />
+                              <Route path="/login" element={<Login />} />
+                              <Route path="/dashboard" element={
+                                <ErrorBoundary fallback={
+                                  <div className="p-8 text-center">
+                                    <p>Unable to load dashboard. Please try refreshing the page.</p>
+                                  </div>
+                                }>
+                                  <Dashboard />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/projects" element={
+                                <ErrorBoundary fallback={
+                                  <div className="p-8 text-center">
+                                    <p>Unable to load projects. Please try refreshing the page.</p>
+                                  </div>
+                                }>
+                                  <Projects />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/resources" element={
+                                <ErrorBoundary>
+                                  <Resources />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/stakeholders" element={
+                                <ErrorBoundary>
+                                  <Stakeholders />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/analytics" element={
+                                <ErrorBoundary>
+                                  <Analytics />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/ai-hub" element={
+                                <ErrorBoundary>
+                                  <AIHub />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/project/:id" element={
+                                <ErrorBoundary>
+                                  <ProjectManagement />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="/workspaces" element={
+                                <ErrorBoundary>
+                                  <Workspaces />
+                                </ErrorBoundary>
+                              } />
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </BrowserRouter>
-                        </ErrorBoundary>
-                      </StakeholderProvider>
-                    </TaskProvider>
-                  </ResourceProvider>
-                </ProjectProvider>
-              </WorkspaceProvider>
-            </SecurityProvider>
-          </AuthProvider>
-          <Toaster />
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+                          <Toaster />
+                        </StakeholderProvider>
+                      </ResourceProvider>
+                    </ProjectProvider>
+                  </WorkspaceProvider>
+                </AuthProvider>
+              </GlobalErrorHandler>
+            </NetworkErrorHandler>
+          </ErrorBoundary>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
