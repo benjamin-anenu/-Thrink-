@@ -19,6 +19,8 @@ import Resources from '@/pages/Resources';
 import Stakeholders from '@/pages/Stakeholders';
 import Analytics from '@/pages/Analytics';
 import Auth from '@/pages/Auth';
+import Workspaces from '@/pages/Workspaces';
+import AIHub from '@/pages/AIHub';
 import NotFound from '@/pages/NotFound';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -52,8 +54,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          forcedTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <AuthProvider>
@@ -72,6 +75,8 @@ function App() {
                               <Route path="/resources" element={<Resources />} />
                               <Route path="/stakeholders" element={<Stakeholders />} />
                               <Route path="/analytics" element={<Analytics />} />
+                              <Route path="/workspaces" element={<Workspaces />} />
+                              <Route path="/ai-hub" element={<AIHub />} />
                               <Route path="/auth" element={<Auth />} />
                               <Route path="*" element={<NotFound />} />
                             </Routes>
@@ -82,7 +87,7 @@ function App() {
                   </ResourceProvider>
                 </ProjectProvider>
               </WorkspaceProvider>
-            </SecurityProvider>
+            </Security Provider>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>

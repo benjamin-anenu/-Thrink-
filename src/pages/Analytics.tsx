@@ -1,5 +1,6 @@
-
-import React, { useState } from 'react';
+import React from 'react';
+import { AuthGuard } from '@/components/auth/AuthGuard';
+import WorkspaceGuard from '@/components/WorkspaceGuard';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -78,68 +79,72 @@ const Analytics = () => {
   };
 
   return (
-    <Layout>
-      <div className="flex-1 container mx-auto px-4 pb-8">
-        <AnalyticsHeader systemHealth={systemHealth} />
+    <AuthGuard>
+      <WorkspaceGuard>
+        <Layout>
+          <div className="flex-1 container mx-auto px-4 pb-8">
+            <AnalyticsHeader systemHealth={systemHealth} />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8 h-12">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="export">Export</TabsTrigger>
-            <TabsTrigger value="rebaseline">Rebaseline</TabsTrigger>
-            <TabsTrigger value="health">System</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-8 h-12">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
+                <TabsTrigger value="export">Export</TabsTrigger>
+                <TabsTrigger value="rebaseline">Rebaseline</TabsTrigger>
+                <TabsTrigger value="health">System</TabsTrigger>
+                <TabsTrigger value="calendar">Calendar</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <AnalyticsMetrics />
-            <AIInsightsCard />
-          </TabsContent>
+              <TabsContent value="overview" className="space-y-6">
+                <AnalyticsMetrics />
+                <AIInsightsCard />
+              </TabsContent>
 
-          <TabsContent value="performance" className="space-y-6">
-            <PerformanceDashboard />
-          </TabsContent>
+              <TabsContent value="performance" className="space-y-6">
+                <PerformanceDashboard />
+              </TabsContent>
 
-          <TabsContent value="reports" className="space-y-6">
-            <ReportsTab
-              selectedProject={selectedProject}
-              onProjectChange={setSelectedProject}
-              selectedRecipients={selectedRecipients}
-              onRecipientsChange={setSelectedRecipients}
-              onScheduleReport={handleScheduleReport}
-              onDownloadReport={handleDownloadReport}
-              onSendReport={handleSendReport}
-            />
-          </TabsContent>
+              <TabsContent value="reports" className="space-y-6">
+                <ReportsTab
+                  selectedProject={selectedProject}
+                  onProjectChange={setSelectedProject}
+                  selectedRecipients={selectedRecipients}
+                  onRecipientsChange={setSelectedRecipients}
+                  onScheduleReport={handleScheduleReport}
+                  onDownloadReport={handleDownloadReport}
+                  onSendReport={handleSendReport}
+                />
+              </TabsContent>
 
-          <TabsContent value="export" className="space-y-6">
-            <ReportsExport />
-          </TabsContent>
+              <TabsContent value="export" className="space-y-6">
+                <ReportsExport />
+              </TabsContent>
 
-          <TabsContent value="rebaseline" className="space-y-6">
-            <RebaselineManagement />
-          </TabsContent>
+              <TabsContent value="rebaseline" className="space-y-6">
+                <RebaselineManagement />
+              </TabsContent>
 
-          <TabsContent value="health" className="space-y-6">
-            <SystemHealthDashboard />
-          </TabsContent>
+              <TabsContent value="health" className="space-y-6">
+                <SystemHealthDashboard />
+              </TabsContent>
 
-          <TabsContent value="calendar" className="space-y-6">
-            <CalendarTab
-              onCreateEvent={handleCreateEvent}
-              onEventClick={handleEventClick}
-            />
-          </TabsContent>
+              <TabsContent value="calendar" className="space-y-6">
+                <CalendarTab
+                  onCreateEvent={handleCreateEvent}
+                  onEventClick={handleEventClick}
+                />
+              </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
-            <SettingsTab />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </Layout>
+              <TabsContent value="settings" className="space-y-6">
+                <SettingsTab />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </Layout>
+      </WorkspaceGuard>
+    </AuthGuard>
   );
 };
 
