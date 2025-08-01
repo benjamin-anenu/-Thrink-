@@ -53,8 +53,8 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         const mappedTasks: Task[] = (data || []).map(task => ({
           id: task.id,
           name: task.name,
-          status: (task.status as TaskStatus) || 'Not Started',
-          priority: (task.priority as TaskPriority) || 'Medium',
+          status: (task.status || 'Not Started') as TaskStatus,
+          priority: (task.priority || 'Medium') as TaskPriority,
           assignee: task.assignee_id,
           dueDate: task.end_date ? new Date(task.end_date) : undefined,
           description: task.description || '',
@@ -90,7 +90,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
           if (payload.eventType === 'UPDATE') {
             setTasks(prevTasks =>
               prevTasks.map(task =>
-                task.id === payload.new.id ? { ...task, status: payload.new.status } : task
+                task.id === payload.new.id ? { ...task, status: payload.new.status as TaskStatus } : task
               )
             );
           }
