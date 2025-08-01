@@ -12,6 +12,11 @@ import { useState } from 'react';
 const Projects = () => {
   const [isCreationWizardOpen, setIsCreationWizardOpen] = useState(false);
 
+  const handleProjectCreated = (project: any) => {
+    console.log('Project created:', project);
+    // Refresh project list or handle the new project
+  };
+
   return (
     <AuthGuard>
       <WorkspaceGuard>
@@ -35,11 +40,11 @@ const Projects = () => {
             
             <ProjectTable />
             
-            {isCreationWizardOpen && (
-              <ProjectCreationWizard
-                onClose={() => setIsCreationWizardOpen(false)}
-              />
-            )}
+            <ProjectCreationWizard
+              isOpen={isCreationWizardOpen}
+              onClose={() => setIsCreationWizardOpen(false)}
+              onProjectCreated={handleProjectCreated}
+            />
           </div>
         </Layout>
       </WorkspaceGuard>

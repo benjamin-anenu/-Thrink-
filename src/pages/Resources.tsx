@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search } from 'lucide-react';
 import ResourceCreationModal from '@/components/ResourceCreationModal';
-import { useResources } from '@/contexts/ResourceContext';
+import { useResources } from '@/hooks/useResources';
 
 const Resources = () => {
-  const { resources, loading, error, refreshResourceAvailability } = useResources();
+  const { resources, loading, refreshResources } = useResources();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredResources, setFilteredResources] = useState(resources);
   const [isCreationModalOpen, setIsCreationModalOpen] = useState(false);
@@ -25,8 +25,8 @@ const Resources = () => {
     );
   }, [resources, searchTerm]);
 
-  const refreshResources = () => {
-    refreshResourceAvailability();
+  const handleRefreshResources = () => {
+    refreshResources();
   };
 
   return (
@@ -64,9 +64,8 @@ const Resources = () => {
                 </div>
 
                 {loading && <p className="text-muted-foreground">Loading resources...</p>}
-                {error && <p className="text-destructive">Error loading resources: {error}</p>}
 
-                {!loading && !error && (
+                {!loading && (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -105,7 +104,7 @@ const Resources = () => {
             <ResourceCreationModal
               open={isCreationModalOpen}
               onOpenChange={setIsCreationModalOpen}
-              onCreated={refreshResources}
+              onCreated={handleRefreshResources}
             />
           </div>
         </Layout>
