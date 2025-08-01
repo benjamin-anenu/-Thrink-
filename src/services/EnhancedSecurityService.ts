@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { securityMonitor } from './SecurityMonitoringService';
+import { securityEnforcement } from './SecurityEnforcementService';
 
 interface SecureSessionOptions {
   deviceFingerprint?: string;
@@ -31,8 +32,11 @@ export class EnhancedSecurityService {
     return EnhancedSecurityService.instance;
   }
 
-  // Initialize comprehensive security monitoring
+  // Initialize comprehensive security monitoring with enhanced validation
   private initializeSecurityMonitoring(): void {
+    // Initialize security enforcement first
+    securityEnforcement.initialize();
+    
     // Track user activity for session timeout
     this.setupActivityTracking();
     
@@ -62,31 +66,25 @@ export class EnhancedSecurityService {
   private startSessionValidation(): void {
     this.sessionCheckInterval = setInterval(async () => {
       await this.validateActiveSession();
-    }, 60000); // Check every minute
+    }, 60000);
   }
 
   private async validateActiveSession(): Promise<void> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const result = await securityEnforcement.validateSession();
       
-      if (!session) return;
-
-      const now = new Date();
-      const timeSinceActivity = now.getTime() - this.lastActivityTime.getTime();
-      const thirtyMinutes = 30 * 60 * 1000;
-
-      // Check for session timeout
-      if (timeSinceActivity > thirtyMinutes) {
+      if (!result.isValid) {
         await this.handleSessionTimeout();
         return;
       }
 
-      // Refresh session if it's close to expiry
-      const sessionExpiry = new Date(session.expires_at! * 1000);
-      const fiveMinutes = 5 * 60 * 1000;
-      
-      if (sessionExpiry.getTime() - now.getTime() < fiveMinutes) {
-        await supabase.auth.refreshSession();
+      if (result.shouldRefresh) {
+        try {
+          await supabase.auth.refreshSession();
+        } catch (error) {
+          console.error('[Security] Session refresh failed:', error);
+          await this.handleSessionTimeout();
+        }
       }
 
     } catch (error) {
@@ -97,7 +95,6 @@ export class EnhancedSecurityService {
   private async handleSessionTimeout(): Promise<void> {
     console.warn('[Security] Session timed out due to inactivity');
     
-    // Log the timeout using valid event type
     await securityMonitor.logSecurityEvent({
       event_type: 'suspicious_activity',
       severity: 'medium',
@@ -109,40 +106,55 @@ export class EnhancedSecurityService {
       }
     });
 
-    // Sign out the user
     await supabase.auth.signOut();
-    
-    // Redirect to login
     window.location.href = '/auth';
   }
 
-  // Create secure session with device tracking
+  // Enhanced session creation with additional security
   async createSecureSession(workspaceId: string, options: SecureSessionOptions = {}): Promise<void> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) return;
 
+      // Validate workspace ID format
+      const workspaceValidation = securityEnforcement.validateAndSanitizeInput(workspaceId, 'text', 36);
+      if (!workspaceValidation.isValid) {
+        throw new Error('Invalid workspace ID format');
+      }
+
       const deviceFingerprint = options.deviceFingerprint || this.generateDeviceFingerprint();
       
-      // Use existing RPC function with correct parameter structure
+      // Enhanced session tracking with security validation
       const { error } = await supabase.rpc('track_user_session', {
         session_id_param: session.access_token.substring(0, 32),
-        workspace_id_param: workspaceId,
+        workspace_id_param: workspaceValidation.sanitized,
         ip_address_param: options.ipAddress,
         user_agent_param: options.userAgent,
         device_info_param: {
           device_fingerprint: deviceFingerprint,
-          workspace_id: workspaceId
+          workspace_id: workspaceValidation.sanitized,
+          security_context: {
+            secure_context: window.isSecureContext,
+            protocol: window.location.protocol,
+            timestamp: new Date().toISOString()
+          }
         }
       });
 
       if (error) {
         console.error('[Security] Failed to create secure session:', error);
+        throw error;
       }
 
     } catch (error) {
       console.error('[Security] Session creation error:', error);
+      await securityMonitor.logSecurityEvent({
+        event_type: 'security_session_creation_failed',
+        severity: 'medium',
+        description: 'Failed to create secure session',
+        metadata: { error: error.message, workspace_id: workspaceId }
+      });
     }
   }
 
@@ -191,10 +203,16 @@ export class EnhancedSecurityService {
   // Terminate specific session
   async terminateSession(sessionId: string): Promise<boolean> {
     try {
+      // Validate session ID
+      const sessionValidation = securityEnforcement.validateAndSanitizeInput(sessionId, 'text', 36);
+      if (!sessionValidation.isValid) {
+        throw new Error('Invalid session ID format');
+      }
+
       const { error } = await supabase
         .from('user_sessions')
         .delete()
-        .eq('id', sessionId);
+        .eq('id', sessionValidation.sanitized);
 
       if (!error) {
         await securityMonitor.logSecurityEvent({
@@ -202,7 +220,7 @@ export class EnhancedSecurityService {
           severity: 'low',
           description: 'User terminated an active session',
           metadata: { 
-            session_id: sessionId,
+            session_id: sessionValidation.sanitized,
             action: 'session_terminated'
           }
         });
@@ -247,9 +265,9 @@ export class EnhancedSecurityService {
     }
   }
 
-  // Setup threat detection patterns
+  // Enhanced threat detection with security enforcement integration
   private setupThreatDetection(): void {
-    // Monitor for rapid form submissions (potential bot activity)
+    // Monitor for rapid form submissions with enhanced detection
     let formSubmissionCount = 0;
     let formSubmissionWindow = Date.now();
 
@@ -257,7 +275,6 @@ export class EnhancedSecurityService {
     HTMLFormElement.prototype.submit = function() {
       const now = Date.now();
       
-      // Reset counter every minute
       if (now - formSubmissionWindow > 60000) {
         formSubmissionCount = 0;
         formSubmissionWindow = now;
@@ -265,7 +282,6 @@ export class EnhancedSecurityService {
       
       formSubmissionCount++;
       
-      // Flag suspicious activity
       if (formSubmissionCount > 10) {
         securityMonitor.logSecurityEvent({
           event_type: 'suspicious_activity',
@@ -273,7 +289,9 @@ export class EnhancedSecurityService {
           description: 'Rapid form submission detected - possible bot activity',
           metadata: {
             submission_count: formSubmissionCount,
-            time_window: '1_minute'
+            time_window: '1_minute',
+            form_action: this.action,
+            form_method: this.method
           }
         });
       }
@@ -281,16 +299,25 @@ export class EnhancedSecurityService {
       return originalSubmit.call(this);
     };
 
-    // Monitor for suspicious URL patterns
+    // Enhanced URL monitoring with input validation
     const originalPushState = history.pushState;
     history.pushState = function(data, title, url) {
       if (url && typeof url === 'string') {
-        if (url.includes('../') || url.includes('..\\') || url.includes('%2e%2e')) {
+        const urlValidation = securityEnforcement.validateAndSanitizeInput(url, 'text', 2000);
+        
+        if (!urlValidation.isValid || 
+            url.includes('../') || 
+            url.includes('..\\') || 
+            url.includes('%2e%2e')) {
+          
           securityMonitor.logSecurityEvent({
             event_type: 'suspicious_activity',
             severity: 'high',
             description: 'Path traversal attempt detected in URL',
-            metadata: { attempted_url: url }
+            metadata: { 
+              attempted_url: url,
+              validation_errors: urlValidation.errors
+            }
           });
         }
       }
@@ -299,82 +326,15 @@ export class EnhancedSecurityService {
     };
   }
 
-  // Enhanced input sanitization
+  // Enhanced input sanitization using security enforcement
   sanitizeInput(input: string, context: 'html' | 'text' | 'email' | 'url' = 'text'): string {
-    if (!input || typeof input !== 'string') return '';
-
-    let sanitized = input.trim();
-
-    switch (context) {
-      case 'html':
-        // Remove script tags and event handlers
-        sanitized = sanitized
-          .replace(/<script[^>]*>.*?<\/script>/gi, '')
-          .replace(/javascript:/gi, '')
-          .replace(/on\w+\s*=/gi, '')
-          .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '');
-        break;
-
-      case 'email':
-        // Basic email validation and sanitization
-        sanitized = sanitized.replace(/[<>]/g, '');
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized)) {
-          return '';
-        }
-        break;
-
-      case 'url':
-        // URL sanitization
-        try {
-          const url = new URL(sanitized);
-          if (!['http:', 'https:'].includes(url.protocol)) {
-            return '';
-          }
-          sanitized = url.toString();
-        } catch {
-          return '';
-        }
-        break;
-
-      default:
-        // Text sanitization
-        sanitized = sanitized
-          .replace(/[<>]/g, '')
-          .replace(/javascript:/gi, '')
-          .substring(0, 1000); // Limit length
-    }
-
-    return sanitized;
+    const validation = securityEnforcement.validateAndSanitizeInput(input, context === 'html' ? 'html' : 'text');
+    return validation.sanitized;
   }
 
   // Validate Content Security Policy compliance
   validateCSPCompliance(): boolean {
-    const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-    
-    if (!meta) {
-      console.warn('[Security] Content Security Policy not found');
-      return false;
-    }
-
-    const csp = meta.getAttribute('content');
-    const requiredDirectives = [
-      'default-src',
-      'script-src',
-      'style-src',
-      'img-src',
-      'connect-src',
-      'frame-ancestors'
-    ];
-
-    const hasRequired = requiredDirectives.every(directive => 
-      csp?.includes(directive)
-    );
-
-    if (!hasRequired) {
-      console.warn('[Security] CSP missing required directives');
-    }
-
-    return hasRequired;
+    return securityEnforcement.validateSecurityContext();
   }
 
   // Cleanup on service destruction
@@ -382,8 +342,8 @@ export class EnhancedSecurityService {
     if (this.sessionCheckInterval) {
       clearInterval(this.sessionCheckInterval);
     }
+    securityEnforcement.destroy();
   }
 }
 
-// Export singleton instance
 export const enhancedSecurity = EnhancedSecurityService.getInstance();

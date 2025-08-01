@@ -3686,6 +3686,7 @@ export type Database = {
           resource_id: string | null
           start_time: string
           task_id: string | null
+          user_id: string | null
         }
         Insert: {
           duration_minutes?: number | null
@@ -3695,6 +3696,7 @@ export type Database = {
           resource_id?: string | null
           start_time: string
           task_id?: string | null
+          user_id?: string | null
         }
         Update: {
           duration_minutes?: number | null
@@ -3704,6 +3706,7 @@ export type Database = {
           resource_id?: string | null
           start_time?: string
           task_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
