@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import ResourceListView from '@/components/ResourceListView';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
-import ResourceStats from '@/components/ResourceStats';
+import ResourceQuickInsights from '@/components/resources/ResourceQuickInsights';
 import ResourceDashboard from '@/components/ResourceDashboard';
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
@@ -17,7 +16,7 @@ import ResourceEditModal from '@/components/ResourceEditModal';
 
 const Resources: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'grid' | 'list'>('grid');
+  const [currentView, setCurrentView] = useState<'grid' | 'list'>('list');
   const [selectedResource, setSelectedResource] = useState<ContextResource | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -122,7 +121,7 @@ const Resources: React.FC = () => {
               </div>
             </div>
 
-            <ResourceStats />
+            <ResourceQuickInsights />
             
             {currentView === 'grid' ? (
               <EnhancedResourceGrid 
