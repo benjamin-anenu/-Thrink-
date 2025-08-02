@@ -3052,56 +3052,35 @@ export type Database = {
       }
       resources: {
         Row: {
-          availability: number | null
           created_at: string
           department: string | null
           department_id: string | null
           email: string | null
-          employment_type: string | null
           id: string
-          location: string | null
-          mentorship_capacity: boolean | null
           name: string
-          notes: string | null
-          phone: string | null
           role: string | null
-          seniority_level: string | null
           updated_at: string
           workspace_id: string | null
         }
         Insert: {
-          availability?: number | null
           created_at?: string
           department?: string | null
           department_id?: string | null
           email?: string | null
-          employment_type?: string | null
           id?: string
-          location?: string | null
-          mentorship_capacity?: boolean | null
           name: string
-          notes?: string | null
-          phone?: string | null
           role?: string | null
-          seniority_level?: string | null
           updated_at?: string
           workspace_id?: string | null
         }
         Update: {
-          availability?: number | null
           created_at?: string
           department?: string | null
           department_id?: string | null
           email?: string | null
-          employment_type?: string | null
           id?: string
-          location?: string | null
-          mentorship_capacity?: boolean | null
           name?: string
-          notes?: string | null
-          phone?: string | null
           role?: string | null
-          seniority_level?: string | null
           updated_at?: string
           workspace_id?: string | null
         }
@@ -3980,10 +3959,6 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
-      calculate_milestone_progress: {
-        Args: { milestone_id_param: string }
-        Returns: number
-      }
       calculate_task_dates_from_dependencies: {
         Args: {
           task_id_param: string
@@ -4060,20 +4035,6 @@ export type Database = {
       get_critical_path: {
         Args: { project_uuid: string }
         Returns: string[]
-      }
-      get_milestone_date_range: {
-        Args: { milestone_id_param: string }
-        Returns: {
-          start_date: string
-          end_date: string
-        }[]
-      }
-      get_project_phase_date_range: {
-        Args: { project_id_param: string }
-        Returns: {
-          start_date: string
-          end_date: string
-        }[]
       }
       get_task_hierarchy: {
         Args: { p_project_id: string }
