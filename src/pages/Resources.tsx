@@ -9,18 +9,20 @@ import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import ViewToggle from '@/components/ViewToggle';
 import { Button } from '@/components/ui/button';
-import { Plus, BarChart3 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, BarChart3, Users } from 'lucide-react';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import type { Resource as ContextResource } from '@/contexts/ResourceContext';
 import ResourceEditModal from '@/components/ResourceEditModal';
 
 const Resources: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'grid' | 'list'>('dashboard');
+  const [currentView, setCurrentView] = useState<'grid' | 'list'>('grid');
   const [selectedResource, setSelectedResource] = useState<ContextResource | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [resourceToEdit, setResourceToEdit] = useState<ContextResource | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const { resources, utilizationMetrics } = useEnhancedResources();
 
   const handleResourceCreated = () => {
@@ -73,78 +75,73 @@ const Resources: React.FC = () => {
     updatedAt: resource.updated_at
   }));
 
-  const getViewButtonText = (view: string) => {
-    switch (view) {
-      case 'dashboard': return 'Dashboard';
-      case 'grid': return 'Grid';
-      case 'list': return 'List';
-      default: return 'Dashboard';
-    }
-  };
-
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Resource Management</h1>
-          <div className="flex items-center gap-4">
-            {/* Enhanced View Toggle */}
-            <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-              <Button
-                variant={currentView === 'dashboard' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCurrentView('dashboard')}
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Dashboard
-              </Button>
-              <Button
-                variant={currentView === 'grid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCurrentView('grid')}
-              >
-                Grid
-              </Button>
-              <Button
-                variant={currentView === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCurrentView('list')}
-              >
-                List
-              </Button>
-            </div>
-            <Button onClick={() => setIsWizardOpen(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Resource
-            </Button>
-          </div>
+          <Button onClick={() => setIsWizardOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Resource
+          </Button>
         </div>
 
-        <div className="space-y-6">
-          {/* Conditional Resource Stats - only show for non-dashboard views */}
-          {currentView !== 'dashboard' && <ResourceStats />}
-          
-          {/* Render based on current view */}
-          {currentView === 'dashboard' ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              View Resources
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
             <ResourceDashboard />
-          ) : currentView === 'grid' ? (
-            <EnhancedResourceGrid 
-              resources={transformedResources}
-              utilizationMetrics={utilizationMetrics}
-              onViewDetails={handleViewDetails}
-              onEditResource={handleEditResource}
-              onShowResourceForm={handleShowResourceForm}
-            />
-          ) : (
-            <ResourceListView 
-              resources={transformedResources}
-              onViewDetails={handleViewDetails}
-              onEditResource={handleEditResource}
-              onShowResourceForm={handleShowResourceForm}
-            />
-          )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="resources" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                <Button
+                  variant={currentView === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('grid')}
+                >
+                  Grid
+                </Button>
+                <Button
+                  variant={currentView === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('list')}
+                >
+                  List
+                </Button>
+              </div>
+            </div>
+
+            <ResourceStats />
+            
+            {currentView === 'grid' ? (
+              <EnhancedResourceGrid 
+                resources={transformedResources}
+                utilizationMetrics={utilizationMetrics}
+                onViewDetails={handleViewDetails}
+                onEditResource={handleEditResource}
+                onShowResourceForm={handleShowResourceForm}
+              />
+            ) : (
+              <ResourceListView 
+                resources={transformedResources}
+                onViewDetails={handleViewDetails}
+                onEditResource={handleEditResource}
+                onShowResourceForm={handleShowResourceForm}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
 
         {isWizardOpen && (
           <ResourceCreationWizard
