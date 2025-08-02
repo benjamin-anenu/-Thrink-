@@ -47,89 +47,94 @@ const queryClient = new QueryClient({
   },
 });
 
+// Create a separate component for the main app content
+const AppContent: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={
+          <ErrorBoundary fallback={
+            <div className="p-8 text-center">
+              <p>Unable to load dashboard. Please try refreshing the page.</p>
+            </div>
+          }>
+            <Dashboard />
+          </ErrorBoundary>
+        } />
+        <Route path="/projects" element={
+          <ErrorBoundary fallback={
+            <div className="p-8 text-center">
+              <p>Unable to load projects. Please try refreshing the page.</p>
+            </div>
+          }>
+            <Projects />
+          </ErrorBoundary>
+        } />
+        <Route path="/resources" element={
+          <ErrorBoundary>
+            <Resources />
+          </ErrorBoundary>
+        } />
+        <Route path="/stakeholders" element={
+          <ErrorBoundary>
+            <Stakeholders />
+          </ErrorBoundary>
+        } />
+        <Route path="/analytics" element={
+          <ErrorBoundary>
+            <Analytics />
+          </ErrorBoundary>
+        } />
+        <Route path="/ai-hub" element={
+          <ErrorBoundary>
+            <AIHub />
+          </ErrorBoundary>
+        } />
+        <Route path="/project/:id" element={
+          <ErrorBoundary>
+            <ProjectManagement />
+          </ErrorBoundary>
+        } />
+        <Route path="/workspaces" element={
+          <ErrorBoundary>
+            <Workspaces />
+          </ErrorBoundary>
+        } />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster />
+    </BrowserRouter>
+  );
+};
+
 function App() {
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <TooltipProvider>
-            <ErrorBoundary>
-              <NetworkErrorHandler>
-                <GlobalErrorHandler>
-                  <AuthProvider>
-                    <WorkspaceProvider>
-                      <ProjectProvider>
-                        <ResourceProvider>
-                          <StakeholderProvider>
-                            <BrowserRouter>
-                              <Routes>
-                                <Route path="/" element={<Index />} />
-                                <Route path="/auth" element={<Auth />} />
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/dashboard" element={
-                                  <ErrorBoundary fallback={
-                                    <div className="p-8 text-center">
-                                      <p>Unable to load dashboard. Please try refreshing the page.</p>
-                                    </div>
-                                  }>
-                                    <Dashboard />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/projects" element={
-                                  <ErrorBoundary fallback={
-                                    <div className="p-8 text-center">
-                                      <p>Unable to load projects. Please try refreshing the page.</p>
-                                    </div>
-                                  }>
-                                    <Projects />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/resources" element={
-                                  <ErrorBoundary>
-                                    <Resources />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/stakeholders" element={
-                                  <ErrorBoundary>
-                                    <Stakeholders />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/analytics" element={
-                                  <ErrorBoundary>
-                                    <Analytics />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/ai-hub" element={
-                                  <ErrorBoundary>
-                                    <AIHub />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/project/:id" element={
-                                  <ErrorBoundary>
-                                    <ProjectManagement />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="/workspaces" element={
-                                  <ErrorBoundary>
-                                    <Workspaces />
-                                  </ErrorBoundary>
-                                } />
-                                <Route path="*" element={<NotFound />} />
-                              </Routes>
-                            </BrowserRouter>
-                            <Toaster />
-                          </StakeholderProvider>
-                        </ResourceProvider>
-                      </ProjectProvider>
-                    </WorkspaceProvider>
-                  </AuthProvider>
-                </GlobalErrorHandler>
-              </NetworkErrorHandler>
-            </ErrorBoundary>
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <TooltipProvider>
+          <ErrorBoundary>
+            <NetworkErrorHandler>
+              <GlobalErrorHandler>
+                <AuthProvider>
+                  <WorkspaceProvider>
+                    <ProjectProvider>
+                      <ResourceProvider>
+                        <StakeholderProvider>
+                          <AppContent />
+                        </StakeholderProvider>
+                      </ResourceProvider>
+                    </ProjectProvider>
+                  </WorkspaceProvider>
+                </AuthProvider>
+              </GlobalErrorHandler>
+            </NetworkErrorHandler>
+          </ErrorBoundary>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
