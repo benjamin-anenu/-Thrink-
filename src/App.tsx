@@ -22,6 +22,7 @@ import { ProjectProvider } from "./contexts/ProjectContext";
 import { ResourceProvider } from "./contexts/ResourceContext";
 import { StakeholderProvider } from "./contexts/StakeholderContext";
 import { WorkspaceProvider } from "./contexts/WorkspaceContext";
+import { TaskProvider } from "./contexts/TaskContext";
 import GlobalErrorHandler from "./components/GlobalErrorHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NetworkErrorHandler from "./components/NetworkErrorHandler";
@@ -121,11 +122,13 @@ function App() {
                 <AuthProvider>
                   <WorkspaceProvider>
                     <ProjectProvider>
-                      <ResourceProvider>
-                        <StakeholderProvider>
-                          <AppContent />
-                        </StakeholderProvider>
-                      </ResourceProvider>
+                      <TaskProvider>
+                        <ResourceProvider>
+                          <StakeholderProvider>
+                            <AppContent />
+                          </StakeholderProvider>
+                        </ResourceProvider>
+                      </TaskProvider>
                     </ProjectProvider>
                   </WorkspaceProvider>
                 </AuthProvider>
