@@ -61,13 +61,13 @@ const Resources: React.FC = () => {
     role: resource.role || '',
     department: resource.department || '',
     email: resource.email || '',
-    phone: '+1 (555) 123-4567', // Default phone number for display
-    location: 'Remote',
-    skills: ['React', 'TypeScript', 'Node.js'],
-    availability: 100,
-    currentProjects: ['Project Alpha', 'Project Beta'],
+    phone: resource.phone || '+1 (555) 123-4567', // Use actual phone or fallback
+    location: resource.location || 'Remote',
+    skills: ['React', 'TypeScript', 'Node.js'], // TODO: Implement skills relationship
+    availability: resource.availability || 100,
+    currentProjects: ['Project Alpha', 'Project Beta'], // TODO: Implement project relationship
     hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
-    utilization: 75,
+    utilization: 75, // TODO: Calculate from actual utilization metrics
     status: 'Available' as 'Available' | 'Busy' | 'Overallocated',
     workspaceId: resource.workspace_id,
     createdAt: resource.created_at,

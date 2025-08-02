@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -358,11 +357,11 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{resource.phone}</span>
+                  <span>{resource.phone || 'No phone number provided'}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{resource.location}</span>
+                  <span>{resource.location || 'Remote'}</span>
                 </div>
               </CardContent>
             </Card>
