@@ -1,32 +1,24 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AuthUser } from '@/types/auth';
-import { supabase } from '@/integrations/supabase/client';
 
-interface AuthContextType {
-  user: AuthUser | null;
-  loading: boolean;
-  error: string | null;
-  signIn: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
-  isFirstUser: boolean;
-  isSystemOwner: boolean;
-  refreshAuth: () => Promise<void>;
-}
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
+import { Profile, AppRole, AuthContextType } from '@/types/auth';
+import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFirstUser, setIsFirstUser] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
   const [isSystemOwner, setIsSystemOwner] = useState(false);
+  const [isFirstUser, setIsFirstUser] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const checkFirstUser = async (): Promise<boolean> => {
     try {
-      const { data, error } = await supabase
-        .from('users')
+      const { count, error } = await supabase
+        .from('profiles')
         .select('*', { count: 'exact' });
 
       if (error) {
@@ -34,11 +26,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      const userCount = data?.length || 0;
-      return userCount === 0;
+      return (count || 0) === 0;
     } catch (error) {
       console.error('Error checking first user:', error);
       return false;
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        return;
+      }
+
+      // Fetch role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role, is_system_owner')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (roleError) {
+        console.error('Error fetching role:', roleError);
+        return;
+      }
+
+      setProfile(profileData);
+      setRole(roleData?.role || null);
+      setIsSystemOwner(roleData?.is_system_owner || false);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
     }
   };
 
@@ -46,29 +75,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadSession = async () => {
       setLoading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
           setUser(session.user);
+          setSession(session);
+          await refreshProfile();
         }
 
         const firstUser = await checkFirstUser();
         setIsFirstUser(firstUser);
-
-        // Check if the user is a system owner
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_system_owner')
-          .eq('id', session?.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        } else {
-          setIsSystemOwner(profile?.is_system_owner || false);
-        }
       } catch (e: any) {
-        setError(e.message);
+        console.error('Auth error:', e.message);
       } finally {
         setLoading(false);
       }
@@ -78,44 +96,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'INITIAL_SESSION') {
-        return
+        return;
       }
 
       setUser(session?.user || null);
+      setSession(session);
 
       if (session?.user) {
-        // Check if the user is a system owner
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_system_owner')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        } else {
-          setIsSystemOwner(profile?.is_system_owner || false);
-        }
+        await refreshProfile();
+      } else {
+        setProfile(null);
+        setRole(null);
+        setIsSystemOwner(false);
       }
     });
   }, []);
 
-  // Add refresh auth function
   const refreshAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const firstUser = await checkFirstUser();
       setIsFirstUser(firstUser);
+      await refreshProfile();
     }
   };
 
-  const signIn = async (email: string) => {
+  const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) throw error;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
     } catch (e: any) {
-      setError(e.message);
+      return { error: { message: e.message } };
     } finally {
       setLoading(false);
     }
@@ -125,16 +140,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setUser(null);
+      if (!error) {
+        setUser(null);
+        setProfile(null);
+        setRole(null);
+        setIsSystemOwner(false);
+      }
+      return { error };
     } catch (e: any) {
-      setError(e.message);
+      return { error: { message: e.message } };
     } finally {
       setLoading(false);
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName?: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -142,44 +162,95 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
         options: {
           data: {
-            full_name: email.split('@')[0],
+            full_name: fullName || email.split('@')[0],
           },
         },
       });
 
       if (error) {
-        throw error;
+        return { error };
       }
 
       if (data.user) {
-        // Create a user profile in the 'profiles' table
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            { id: data.user.id, full_name: email.split('@')[0], email: data.user.email },
-          ]);
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-        }
+        // Profile will be created by the database trigger
+        await refreshProfile();
       }
+      
+      return { error: null };
     } catch (e: any) {
-      setError(e.message);
+      return { error: { message: e.message } };
     } finally {
       setLoading(false);
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      return { error };
+    } catch (e: any) {
+      return { error: { message: e.message } };
+    }
+  };
+
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!user) return { error: { message: 'No user logged in' } };
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('user_id', user.id);
+
+      if (!error) {
+        await refreshProfile();
+      }
+
+      return { error };
+    } catch (e: any) {
+      return { error: { message: e.message } };
+    }
+  };
+
+  const hasRole = (requiredRole: AppRole): boolean => {
+    if (!role) return false;
+    const roleHierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 };
+    return roleHierarchy[role] >= roleHierarchy[requiredRole];
+  };
+
+  const hasPermission = (action: string, resource?: string): boolean => {
+    if (!role) return false;
+    if (role === 'owner') return true;
+    
+    const rolePermissions = {
+      admin: ['users:read', 'users:write', 'users:delete', 'projects:read', 'projects:write', 'projects:delete', 'settings:read', 'settings:write', 'audit:read'],
+      manager: ['users:read', 'projects:read', 'projects:write', 'settings:read'],
+      member: ['projects:read', 'projects:write'],
+      viewer: ['projects:read'],
+    };
+
+    const permissions = rolePermissions[role] || [];
+    const fullAction = resource ? `${resource}:${action}` : action;
+    return permissions.includes(fullAction);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
-      loading,
-      error,
-      signIn,
-      signOut,
-      signUp,
-      isFirstUser,
+      session,
+      profile,
+      role,
       isSystemOwner,
+      isFirstUser,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+      updateProfile,
+      hasRole,
+      hasPermission,
+      refreshProfile,
       refreshAuth
     }}>
       {children}

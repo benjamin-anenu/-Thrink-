@@ -1,3 +1,4 @@
+
 import { User, Session } from '@supabase/supabase-js'
 
 export type AppRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer'
@@ -56,6 +57,7 @@ export interface AuthContextType {
   hasRole: (requiredRole: AppRole) => boolean
   hasPermission: (action: string, resource?: string) => boolean
   refreshProfile: () => Promise<void>
+  refreshAuth: () => Promise<void>
 }
 
 export interface AuthError {
