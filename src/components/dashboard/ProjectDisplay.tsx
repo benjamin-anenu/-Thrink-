@@ -174,7 +174,7 @@ const ProjectDisplay = () => {
 
   const handleManageProject = (project: any) => {
     console.log('Navigating to project management:', project.id);
-    navigate(`/project-management/${project.id}`);
+    navigate(`/project/${project.id}`);
   };
 
   const handleDeleteProject = async (project: any) => {
