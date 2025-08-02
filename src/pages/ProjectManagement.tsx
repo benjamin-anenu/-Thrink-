@@ -69,7 +69,7 @@ const ProjectManagement: React.FC = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-            <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
+            <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>
               {project.status}
             </Badge>
           </div>
