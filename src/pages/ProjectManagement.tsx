@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -78,8 +79,8 @@ const ProjectManagement: React.FC = () => {
   // Get assigned resources for this project
   const assignedResourceIds = new Set();
   projectTasks.forEach(task => {
-    if (task.assignedResources) {
-      task.assignedResources.forEach(resourceId => assignedResourceIds.add(resourceId));
+    if (task.assigned_resources) {
+      task.assigned_resources.forEach(resourceId => assignedResourceIds.add(resourceId));
     }
   });
   const teamSize = assignedResourceIds.size;
@@ -291,3 +292,4 @@ const ProjectManagement: React.FC = () => {
 };
 
 export default ProjectManagement;
+
