@@ -7,16 +7,13 @@ import { useTasks } from '@/hooks/useTasks';
 
 const TaskStatistics: React.FC = () => {
   const { id: projectId } = useParams<{ id: string }>();
-  const { tasks, loading } = useTasks();
+  const { tasks, loading } = useTasks(projectId);
   
-  // Filter tasks for current project
-  const projectTasks = tasks.filter(task => task.projectId === projectId);
-  
-  const totalTasks = projectTasks.length;
-  const completedTasks = projectTasks.filter(task => task.status === 'Completed').length;
-  const inProgressTasks = projectTasks.filter(task => task.status === 'In Progress').length;
-  const overdueTasks = projectTasks.filter(task => {
-    const endDate = new Date(task.endDate);
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+  const inProgressTasks = tasks.filter(task => task.status === 'In Progress').length;
+  const overdueTasks = tasks.filter(task => {
+    const endDate = new Date(task.end_date);
     const today = new Date();
     return task.status !== 'Completed' && endDate < today;
   }).length;

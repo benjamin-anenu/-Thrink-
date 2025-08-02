@@ -63,7 +63,7 @@ const ProjectManagement = () => {
           </Badge>
         </div>
 
-        {/* Task Statistics */}
+        {/* Task Statistics - removed projectId prop */}
         <TaskStatistics />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
