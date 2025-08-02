@@ -1,7 +1,7 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Plus, Clock, Users } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
@@ -16,7 +16,7 @@ interface ProjectCalendarModalProps {
 const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({ isOpen, onClose, projectId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
-  const { events, loading, allWorkspaceEvents } = useCalendarEvents(projectId, true);
+  const { events, loading } = useCalendarEvents(projectId);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1));
@@ -28,7 +28,7 @@ const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({ isOpen, onC
 
   const getEventsForDate = (date: Date) => {
     return events.filter(event => 
-      isSameDay(new Date(event.start_date), date)
+      isSameDay(new Date(event.date), date)
     );
   };
 
@@ -145,18 +145,19 @@ const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({ isOpen, onC
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-medium">{event.title}</h4>
                         <Badge variant="secondary" className="text-xs">
-                          {event.event_type}
+                          {event.type}
                         </Badge>
                       </div>
                       
                       <div className="space-y-1 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {format(new Date(event.start_date), 'h:mm a')} - 
-                            {format(new Date(event.end_date), 'h:mm a')}
-                          </span>
-                        </div>
+                        {event.startTime && event.endTime && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {event.startTime} - {event.endTime}
+                            </span>
+                          </div>
+                        )}
                         
                         {event.location && (
                           <div className="flex items-center gap-2">
