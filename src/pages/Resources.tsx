@@ -28,6 +28,11 @@ const Resources: React.FC = () => {
     setIsDetailsModalOpen(true);
   };
 
+  const handleEditResource = (resource: ContextResource) => {
+    console.log('Edit resource:', resource.id);
+    // TODO: Implement edit functionality
+  };
+
   const handleShowResourceForm = () => {
     setIsWizardOpen(true);
   };
@@ -80,12 +85,14 @@ const Resources: React.FC = () => {
               resources={transformedResources}
               utilizationMetrics={utilizationMetrics}
               onViewDetails={handleViewDetails}
+              onEditResource={handleEditResource}
               onShowResourceForm={handleShowResourceForm}
             />
           ) : (
             <ResourceListView 
               resources={transformedResources}
               onViewDetails={handleViewDetails}
+              onEditResource={handleEditResource}
               onShowResourceForm={handleShowResourceForm}
             />
           )}
@@ -101,7 +108,7 @@ const Resources: React.FC = () => {
         {selectedResource && (
           <ResourceDetailsModal
             resource={selectedResource}
-            open={isDetailsModalOpen}
+            isOpen={isDetailsModalOpen}
             onClose={handleCloseDetailsModal}
           />
         )}

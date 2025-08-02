@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -122,7 +121,7 @@ const ProjectManagement = () => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{project.teamMembers?.length || 0} team members</span>
+                        <span className="text-sm">{project.teamSize || 0} team members</span>
                       </div>
                     </div>
                     <div className="mt-4">
