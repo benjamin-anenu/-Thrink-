@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import ResourceListView from '@/components/ResourceListView';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
+import ResourceStats from '@/components/ResourceStats';
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import ViewToggle from '@/components/ViewToggle';
@@ -88,6 +90,8 @@ const Resources: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          <ResourceStats />
+          
           {currentView === 'grid' ? (
             <EnhancedResourceGrid 
               resources={transformedResources}

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Eye, Trash2, Edit, Mail } from 'lucide-react';
+import { Eye, Trash2, Edit, Mail, Phone, MapPin } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Resource } from '@/contexts/ResourceContext';
 import { TaskUtilizationMetrics } from '@/types/enhanced-resource';
@@ -72,13 +72,37 @@ const CompactResourceCard: React.FC<CompactResourceCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Mail className="h-3 w-3 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground truncate">{resource.email}</p>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <Mail className="h-3 w-3 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground truncate">{resource.email}</p>
+          </div>
+          
+          {resource.phone && (
+            <div className="flex items-center space-x-2">
+              <Phone className="h-3 w-3 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground truncate">{resource.phone}</p>
+            </div>
+          )}
+          
+          {resource.location && (
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-3 w-3 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground truncate">{resource.location}</p>
+            </div>
+          )}
         </div>
         
-        <div>
-          <div className="flex justify-between items-center mb-1">
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium">Availability</span>
+            <span className="text-xs text-muted-foreground">{resource.availability}%</span>
+          </div>
+          <Progress value={resource.availability} className="h-2" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
             <span className="text-xs font-medium">Utilization</span>
             <span className="text-xs text-muted-foreground">{currentUtilization}%</span>
           </div>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useResources } from '@/contexts/ResourceContext';
+import { useResources } from '@/hooks/useResources';
 
 const ResourceStats = () => {
   const { resources } = useResources();
