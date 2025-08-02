@@ -9,11 +9,14 @@ const ResourceStats = () => {
   // Calculate real metrics from database data
   const totalResources = resources.length;
   
-  // Since we don't have status in the database, we'll calculate based on other metrics
-  // For now, we'll use placeholder calculations that make sense
-  const activeResources = resources.filter(r => r.name && r.email).length; // Resources with complete info
-  const engineeringResources = resources.filter(r => r.department === 'Engineering' || r.role?.toLowerCase().includes('developer') || r.role?.toLowerCase().includes('engineer')).length;
-  const designResources = resources.filter(r => r.department === 'Design' || r.role?.toLowerCase().includes('design')).length;
+  // Resources with complete basic information (name and email)
+  const activeResources = resources.filter(r => r.name && r.email).length;
+  
+  // Resources with roles assigned
+  const resourcesWithRoles = resources.filter(r => r.role && r.role.trim() !== '').length;
+  
+  // Resources with hourly rates defined (indicates they're billable/configured)
+  const billableResources = resources.filter(r => r.hourly_rate && r.hourly_rate > 0).length;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -31,14 +34,14 @@ const ResourceStats = () => {
       </Card>
       <Card>
         <CardContent className="pt-6">
-          <div className="text-2xl font-bold text-blue-500">{engineeringResources}</div>
-          <p className="text-xs text-muted-foreground">Engineering</p>
+          <div className="text-2xl font-bold text-blue-500">{resourcesWithRoles}</div>
+          <p className="text-xs text-muted-foreground">With Assigned Roles</p>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="pt-6">
-          <div className="text-2xl font-bold text-purple-500">{designResources}</div>
-          <p className="text-xs text-muted-foreground">Design</p>
+          <div className="text-2xl font-bold text-purple-500">{billableResources}</div>
+          <p className="text-xs text-muted-foreground">Billable Resources</p>
         </CardContent>
       </Card>
     </div>

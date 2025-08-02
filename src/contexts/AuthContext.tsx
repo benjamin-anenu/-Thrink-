@@ -16,17 +16,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const checkFirstUser = async (): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact' });
+      // Check if the current user has any workspaces (as owner or member)
+      const { data: workspaces, error } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1);
 
       if (error) {
-        console.error('Error checking first user:', error);
+        console.error('Error checking user workspaces:', error);
         return false;
       }
 
-      return (count || 0) === 0;
+      // If user has no workspaces, they need onboarding
+      return (workspaces || []).length === 0;
     } catch (error) {
       console.error('Error checking first user:', error);
       return false;
@@ -104,10 +110,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (session?.user) {
         await refreshProfile();
+        const firstUser = await checkFirstUser();
+        setIsFirstUser(firstUser);
       } else {
         setProfile(null);
         setRole(null);
         setIsSystemOwner(false);
+        setIsFirstUser(false);
       }
     });
   }, []);
