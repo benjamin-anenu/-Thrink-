@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import ResourceListView from '@/components/ResourceListView';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
-import { ResourceDetailsModal } from '@/components/ResourceDetailsModal';
+import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import ViewToggle from '@/components/ViewToggle';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';

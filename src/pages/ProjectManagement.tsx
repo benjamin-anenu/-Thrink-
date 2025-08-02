@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Users, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
-import { useProjects } from '@/contexts/ProjectContext';
+import { useProject } from '@/contexts/ProjectContext';
 
 const ProjectManagement = () => {
-  const { projects } = useProjects();
+  const { projects } = useProject();
   const [activeTab, setActiveTab] = useState('overview');
 
   // Calculate statistics
