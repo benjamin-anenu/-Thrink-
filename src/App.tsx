@@ -20,9 +20,8 @@ import Analytics from "./pages/Analytics";
 import Auth from "./pages/Auth";
 import AIHub from "./pages/AIHub";
 import NotFound from "./pages/NotFound";
-import AuthGuard from "./components/auth/AuthGuard";
+import { AuthGuard } from "./components/auth/AuthGuard";
 import Layout from "./components/Layout";
-import TinkAssistant from "./components/TinkAssistant";
 
 const queryClient = new QueryClient();
 
@@ -96,11 +95,6 @@ const App = () => (
                         {/* Fallback route */}
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                      
-                      {/* TinkAssistant for all authenticated pages */}
-                      <AuthGuard>
-                        <TinkAssistant />
-                      </AuthGuard>
                     </div>
                     <Toaster />
                     <Sonner />
