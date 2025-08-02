@@ -12,7 +12,8 @@ import ProjectReports from '@/components/project-management/ProjectReports';
 import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
 
 const ProjectManagement: React.FC = () => {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { id } = useParams<{ id: string }>();
+  const projectId = id; // Create alias for backward compatibility with child components
   const { projects } = useProject();
   
   const project = projects.find(p => p.id === projectId);
