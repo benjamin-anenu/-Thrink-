@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,9 +10,15 @@ interface ProjectCalendarModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
+  projectName: string;
 }
 
-const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({ isOpen, onClose, projectId }) => {
+const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  projectId,
+  projectName 
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const { events, loading } = useCalendarEvents(projectId);
@@ -40,7 +45,9 @@ const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({ isOpen, onC
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Project Calendar</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            {projectName} - Project Calendar
+          </DialogTitle>
         </DialogHeader>
         
         <div className="flex gap-6 h-[600px]">
