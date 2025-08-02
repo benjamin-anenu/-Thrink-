@@ -37,26 +37,13 @@ const ProjectManagement = () => {
   const { getProject } = useProject();
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Ensure projectId is valid before using it
-  const validProjectId = projectId || '';
-  const project = getProject(validProjectId);
-  const { tasks: projectTasks, loading: tasksLoading } = useTasks(validProjectId);
-  const { phases, loading: phasesLoading, projectDateRange } = useProjectPhases(validProjectId);
-  const { milestones, loading: milestonesLoading } = useEnhancedMilestones(validProjectId);
-  const { resources, loading: resourcesLoading } = useProjectResources(validProjectId);
-
-  // Show loading while data is being fetched
-  if (tasksLoading || phasesLoading || milestonesLoading || resourcesLoading) {
-    return <LoadingState>Loading project data...</LoadingState>;
-  }
-
-  // Show not found after loading is complete and project is still null
-  if (!project && validProjectId) {
+  // Early return if no projectId in URL
+  if (!projectId) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Project Not Found</h2>
-          <p className="text-gray-600 mb-4">The requested project could not be found.</p>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Invalid Project</h2>
+          <p className="text-gray-600 mb-4">No project ID provided in the URL.</p>
           <Button onClick={() => window.history.back()}>
             <ChevronLeft className="h-4 w-4 mr-2" />
             Go Back
@@ -66,13 +53,25 @@ const ProjectManagement = () => {
     );
   }
 
-  // Show error if no projectId in URL
-  if (!validProjectId) {
+  // Now we can safely use projectId since we know it exists
+  const project = getProject(projectId);
+  const { tasks: projectTasks, loading: tasksLoading } = useTasks(projectId);
+  const { phases, loading: phasesLoading, projectDateRange } = useProjectPhases(projectId);
+  const { milestones, loading: milestonesLoading } = useEnhancedMilestones(projectId);
+  const { resources, loading: resourcesLoading } = useProjectResources(projectId);
+
+  // Show loading while data is being fetched
+  if (tasksLoading || phasesLoading || milestonesLoading || resourcesLoading) {
+    return <LoadingState>Loading project data...</LoadingState>;
+  }
+
+  // Show not found after loading is complete and project is still null
+  if (!project) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Invalid Project</h2>
-          <p className="text-gray-600 mb-4">No project ID provided in the URL.</p>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Project Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested project could not be found.</p>
           <Button onClick={() => window.history.back()}>
             <ChevronLeft className="h-4 w-4 mr-2" />
             Go Back
@@ -215,7 +214,7 @@ const ProjectManagement = () => {
         </TabsContent>
 
         <TabsContent value="tasks">
-          <TaskManagement projectId={validProjectId} />
+          <TaskManagement projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="phases">
@@ -227,15 +226,15 @@ const ProjectManagement = () => {
         </TabsContent>
 
         <TabsContent value="resources">
-          <ProjectResources projectId={validProjectId} />
+          <ProjectResources projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="documents">
-          <ProjectDocumentation projectId={validProjectId} />
+          <ProjectDocumentation projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="reports">
-          <ProjectReports projectId={validProjectId} />
+          <ProjectReports projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>
