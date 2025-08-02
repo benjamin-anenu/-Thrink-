@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
-import ResourceGrid from '@/components/ResourceGrid';
+import ResourceListView from '@/components/ResourceListView';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import ViewToggle from '@/components/ViewToggle';
@@ -12,7 +12,7 @@ import type { Resource as ContextResource } from '@/contexts/ResourceContext';
 
 const Resources: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'standard' | 'enhanced'>('enhanced');
+  const [currentView, setCurrentView] = useState<'grid' | 'list'>('grid');
   const { resources, utilizationMetrics } = useEnhancedResources();
 
   const handleResourceCreated = () => {
@@ -54,8 +54,8 @@ const Resources: React.FC = () => {
           <h1 className="text-3xl font-bold text-foreground">Resource Management</h1>
           <div className="flex items-center gap-4">
             <ViewToggle
-              view={currentView === 'enhanced' ? 'grid' : 'list'}
-              onViewChange={(view) => setCurrentView(view === 'grid' ? 'enhanced' : 'standard')}
+              view={currentView}
+              onViewChange={setCurrentView}
             />
             <Button onClick={() => setIsWizardOpen(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -65,7 +65,7 @@ const Resources: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          {currentView === 'enhanced' ? (
+          {currentView === 'grid' ? (
             <EnhancedResourceGrid 
               resources={transformedResources}
               utilizationMetrics={utilizationMetrics}
@@ -73,7 +73,7 @@ const Resources: React.FC = () => {
               onShowResourceForm={handleShowResourceForm}
             />
           ) : (
-            <ResourceGrid 
+            <ResourceListView 
               resources={transformedResources}
               onViewDetails={handleViewDetails}
               onShowResourceForm={handleShowResourceForm}

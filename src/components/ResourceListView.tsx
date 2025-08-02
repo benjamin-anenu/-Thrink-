@@ -1,132 +1,163 @@
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
-import { Mail, DollarSign, Eye, UserPlus } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Eye, Trash2, Mail, Phone } from 'lucide-react';
 import { Resource } from '@/contexts/ResourceContext';
+import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 interface ResourceListViewProps {
   resources: Resource[];
   onViewDetails: (resource: Resource) => void;
-  onAssignTask?: (resourceId: string, resourceName: string) => void;
+  onShowResourceForm: () => void;
 }
 
-const ResourceListView: React.FC<ResourceListViewProps> = ({
-  resources,
-  onViewDetails,
-  onAssignTask
+const ResourceListView: React.FC<ResourceListViewProps> = ({ 
+  resources, 
+  onViewDetails, 
+  onShowResourceForm 
 }) => {
+  const { deleteResource } = useEnhancedResources();
+
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'available': return 'bg-green-100 text-green-800 border-green-200';
-      case 'busy': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'overallocated': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    switch (status?.toLowerCase()) {
+      case 'available': return 'bg-green-100 text-green-800';
+      case 'busy': return 'bg-yellow-100 text-yellow-800';
+      case 'overallocated': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    if (!name) return 'N/A';
+    return name.substring(0, 2).toUpperCase();
   };
 
+  const handleDelete = async (resourceId: string) => {
+    await deleteResource(resourceId);
+  };
+
+  if (resources.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground mb-4">No resources found matching your search.</p>
+        <Button onClick={onShowResourceForm}>Add New Resource</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3">
-      {resources.map((resource) => (
-        <Card key={resource.id} className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4 flex-1">
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback>{getInitials(resource.name)}</AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-lg">{resource.name}</h3>
-                    <Badge 
-                      variant="outline" 
-                      className={getStatusColor(resource.status)}
-                    >
-                      {resource.status}
-                    </Badge>
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Resource</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Department</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Utilization</TableHead>
+            <TableHead>Rate</TableHead>
+            <TableHead>Contact</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {resources.map((resource) => (
+            <TableRow key={resource.id} className="hover:bg-muted/50">
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {getInitials(resource.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{resource.name || 'Unknown'}</p>
+                    <p className="text-sm text-muted-foreground">{resource.email}</p>
                   </div>
-                  
-                  <p className="text-sm text-muted-foreground mb-2">{resource.role}</p>
-                  
-                  <div className="flex items-center space-x-6 mb-3">
-                    <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                      <Mail size={14} />
-                      <span>{resource.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                      <DollarSign size={14} />
-                      <span>{resource.hourlyRate}</span>
-                    </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <p className="font-medium">{resource.role}</p>
+              </TableCell>
+              <TableCell>
+                <p className="text-sm">{resource.department}</p>
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary" className={getStatusColor(resource.status)}>
+                  {resource.status || 'Available'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <div className="w-16 bg-muted rounded-full h-2">
+                    <div 
+                      className="h-2 rounded-full bg-blue-500" 
+                      style={{ width: `${Math.min(resource.utilization || 0, 100)}%` }}
+                    />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-muted-foreground">Availability</span>
-                        <span className="text-xs font-medium">{resource.availability}%</span>
-                      </div>
-                      <Progress value={resource.availability} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-muted-foreground">Utilization</span>
-                        <span className="text-xs font-medium">{resource.utilization}%</span>
-                      </div>
-                      <Progress value={resource.utilization} className="h-2" />
-                    </div>
-                  </div>
-                  
-                  {resource.skills && resource.skills.length > 0 && (
-                    <div className="mt-3">
-                      <div className="flex flex-wrap gap-1">
-                        {resource.skills.slice(0, 3).map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {resource.skills.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{resource.skills.length - 3} more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+                  <span className="text-sm font-medium">{resource.utilization || 0}%</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <p className="font-medium">{resource.hourlyRate || 'N/A'}</p>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  {resource.email && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Mail className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {resource.phone && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Phone className="h-3 w-3" />
+                    </Button>
                   )}
                 </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onViewDetails(resource)}
-                  title="View details"
-                >
-                  <Eye size={16} />
-                </Button>
-                {onAssignTask && (
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex items-center justify-end gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onAssignTask(resource.id, resource.name)}
-                    title="Assign task"
+                    onClick={() => onViewDetails(resource)}
                   >
-                    <UserPlus size={16} />
+                    <Eye className="h-4 w-4" />
                   </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete {resource.name}? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDelete(resource.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Delete Resource
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };
