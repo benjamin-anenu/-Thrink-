@@ -19,20 +19,19 @@ const WorkspaceBanner = () => {
   }
   
   return (
-    <div className="fixed top-20 left-0 right-0 z-30 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className={cn(
-          "bg-card/90 backdrop-blur-sm border border-border/40 rounded-lg px-4 py-2",
-          "flex items-center justify-center gap-2 shadow-sm"
-        )}>
-          <span className="text-xs text-muted-foreground">Workspace:</span>
-          <span className="font-medium text-foreground text-sm">{currentWorkspace.name}</span>
-          {currentWorkspace.description && (
-            <>
-              <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-xs text-muted-foreground">{currentWorkspace.description}</span>
-            </>
-          )}
+    <div className="fixed top-16 left-0 right-0 z-40 bg-muted/30 backdrop-blur-sm border-b border-border/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center py-2">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground font-medium">Workspace:</span>
+            <span className="font-semibold text-foreground">{currentWorkspace.name}</span>
+            {currentWorkspace.description && (
+              <>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground">{currentWorkspace.description}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

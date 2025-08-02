@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,17 +18,7 @@ const Header = () => {
   const { currentWorkspace } = useWorkspace();
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   useEffect(() => {
     // Set active page based on current route
     const path = location.pathname;
@@ -67,21 +56,15 @@ const Header = () => {
   const isAuthPage = location.pathname === '/auth';
 
   return (
-    <div className="fixed top-0 w-full z-50 pt-4 px-4">
-      <header className={cn(
-        "w-full max-w-7xl mx-auto transition-all duration-300 rounded-2xl border",
-        scrolled 
-          ? "bg-card/95 backdrop-blur-xl border-border/50 shadow-lg py-3 px-6" 
-          : "bg-card/90 backdrop-blur-md border-border/30 py-4 px-8"
-      )}>
-        <div className="flex items-center justify-between">
+    <div className="fixed top-0 w-full z-50 bg-background border-b border-border">
+      <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
+        <div className="flex items-center justify-between h-full">
           {/* Logo - Left */}
           <div className="flex-shrink-0">
             <Link to="/">
               <Logo />
             </Link>
           </div>
-          
           
           {/* Mobile menu button */}
           <button 
@@ -92,34 +75,34 @@ const Header = () => {
           </button>
           
           {/* Desktop navigation - Center */}
-          <nav className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2">
-            <div className="bg-muted/30 backdrop-blur-md rounded-full px-1 py-1 border border-border/50">
+          <nav className="hidden md:flex items-center">
+            <div className="bg-muted/50 backdrop-blur-md rounded-full px-1 py-1 border border-border/50">
               <ToggleGroup type="single" value={activePage} onValueChange={(value) => value && setActivePage(value)}>
                 {isLandingPage ? (
                   <>
                     <ToggleGroupItem 
                       value="features"
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'features' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       )}
                       onClick={handleNavClick('features')}
                     >
-                      <CircleDot size={12} className="mr-1" /> Features
+                      <CircleDot size={14} className="mr-1.5" /> Features
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="pricing" 
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'pricing' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       )}
                       onClick={handleNavClick('pricing')}
                     >
-                      <DollarSign size={12} className="mr-1" /> Pricing
+                      <DollarSign size={14} className="mr-1.5" /> Pricing
                     </ToggleGroupItem>
                   </>
                 ) : user && (
@@ -127,7 +110,7 @@ const Header = () => {
                     <ToggleGroupItem 
                       value="dashboard"
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'dashboard' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -135,13 +118,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/dashboard">
-                        <LayoutDashboard size={12} className="mr-1" /> Dashboard
+                        <LayoutDashboard size={14} className="mr-1.5" /> Dashboard
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="projects" 
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'projects' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -149,13 +132,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/projects">
-                        <FolderOpen size={12} className="mr-1" /> Projects
+                        <FolderOpen size={14} className="mr-1.5" /> Projects
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="resources" 
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'resources' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -163,13 +146,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/resources">
-                        <Users size={12} className="mr-1" /> Resources
+                        <Users size={14} className="mr-1.5" /> Resources
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="stakeholders" 
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'stakeholders' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -177,13 +160,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/stakeholders">
-                        <UserCheck size={12} className="mr-1" /> Stakeholders
+                        <UserCheck size={14} className="mr-1.5" /> Stakeholders
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="analytics" 
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'analytics' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -191,13 +174,13 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/analytics">
-                        <BarChart3 size={12} className="mr-1" /> Analytics
+                        <BarChart3 size={14} className="mr-1.5" /> Analytics
                       </Link>
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="ai-hub" 
                       className={cn(
-                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
                         activePage === 'ai-hub' 
                           ? 'text-primary-foreground bg-primary shadow-sm' 
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -205,7 +188,7 @@ const Header = () => {
                       asChild
                     >
                       <Link to="/ai-hub">
-                        <Brain size={12} className="mr-1" /> AI Hub
+                        <Brain size={14} className="mr-1.5" /> AI Hub
                       </Link>
                     </ToggleGroupItem>
                   </>
@@ -245,120 +228,122 @@ const Header = () => {
         
         {/* Mobile navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pt-4 border-t border-border/50">
-            <div className="flex flex-col gap-2">
-              {!isLandingPage && !isAuthPage && user && (
-                <div className="pb-2 border-b border-border/50 mb-2">
-                  <WorkspaceSelector />
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border shadow-lg">
+            <div className="p-4">
+              <div className="flex flex-col gap-2">
+                {!isLandingPage && !isAuthPage && user && (
+                  <div className="pb-2 border-b border-border/50 mb-2">
+                    <WorkspaceSelector />
+                  </div>
+                )}
+                
+                {isLandingPage ? (
+                  <>
+                    <a 
+                      href="#features" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'features' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={handleNavClick('features')}
+                    >
+                      <CircleDot size={16} className="mr-2" /> Features
+                    </a>
+                    <a 
+                      href="#pricing" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'pricing' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={handleNavClick('pricing')}
+                    >
+                      <DollarSign size={16} className="mr-2" /> Pricing
+                    </a>
+                  </>
+                ) : user && (
+                  <>
+                    <Link 
+                      to="/dashboard" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'dashboard' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <LayoutDashboard size={16} className="mr-2" /> Dashboard
+                    </Link>
+                    <Link 
+                      to="/projects" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'projects' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <FolderOpen size={16} className="mr-2" /> Projects
+                    </Link>
+                    <Link 
+                      to="/resources" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'resources' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Users size={16} className="mr-2" /> Resources
+                    </Link>
+                    <Link 
+                      to="/stakeholders" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'stakeholders' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <UserCheck size={16} className="mr-2" /> Stakeholders
+                    </Link>
+                    <Link 
+                      to="/analytics" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'analytics' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <BarChart3 size={16} className="mr-2" /> Analytics
+                    </Link>
+                    <Link 
+                      to="/ai-hub" 
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                        activePage === 'ai-hub' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Brain size={16} className="mr-2" /> AI Hub
+                    </Link>
+                  </>
+                )}
+                
+                {isLandingPage && !user && (
+                  <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
+                    <Link to="/auth?tab=signin">
+                      <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link to="/auth?tab=signup">
+                      <Button className="w-full bg-gradient-to-r from-primary to-blue-600" onClick={() => setMobileMenuOpen(false)}>
+                        Get Started
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between px-3 py-2 pt-2 border-t border-border/50">
+                  <span className="text-sm text-muted-foreground">Theme</span>
+                  <ThemeToggle />
                 </div>
-              )}
-              
-              {isLandingPage ? (
-                <>
-                  <a 
-                    href="#features" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'features' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={handleNavClick('features')}
-                  >
-                    <CircleDot size={16} className="mr-2" /> Features
-                  </a>
-                  <a 
-                    href="#pricing" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'pricing' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={handleNavClick('pricing')}
-                  >
-                    <DollarSign size={16} className="mr-2" /> Pricing
-                  </a>
-                </>
-              ) : user && (
-                <>
-                  <Link 
-                    to="/dashboard" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'dashboard' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <LayoutDashboard size={16} className="mr-2" /> Dashboard
-                  </Link>
-                  <Link 
-                    to="/projects" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'projects' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <FolderOpen size={16} className="mr-2" /> Projects
-                  </Link>
-                  <Link 
-                    to="/resources" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'resources' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Users size={16} className="mr-2" /> Resources
-                  </Link>
-                  <Link 
-                    to="/stakeholders" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'stakeholders' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <UserCheck size={16} className="mr-2" /> Stakeholders
-                  </Link>
-                  <Link 
-                    to="/analytics" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'analytics' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <BarChart3 size={16} className="mr-2" /> Analytics
-                  </Link>
-                  <Link 
-                    to="/ai-hub" 
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                      activePage === 'ai-hub' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Brain size={16} className="mr-2" /> AI Hub
-                  </Link>
-                </>
-              )}
-              
-              {isLandingPage && !user && (
-                <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-                  <Link to="/auth?tab=signin">
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link to="/auth?tab=signup">
-                    <Button className="w-full bg-gradient-to-r from-primary to-blue-600" onClick={() => setMobileMenuOpen(false)}>
-                      Get Started
-                    </Button>
-                  </Link>
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between px-3 py-2 pt-2 border-t border-border/50">
-                <span className="text-sm text-muted-foreground">Theme</span>
-                <ThemeToggle />
               </div>
             </div>
           </div>

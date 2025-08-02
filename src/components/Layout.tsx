@@ -13,7 +13,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <>
       <Header />
       <WorkspaceBanner />
-      <main className="pt-32">
+      <main className="pt-20">
         {children}
       </main>
       <TinkAssistant />
