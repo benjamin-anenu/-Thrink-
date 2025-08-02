@@ -16,7 +16,7 @@ import KanbanBoard from '@/components/project-management/KanbanBoard';
 import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
 import { PhaseView } from '@/components/project-management/phases/PhaseView';
 import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
-import { ProjectCalendar } from '@/components/calendar/ProjectCalendar';
+import ProjectCalendar from '@/components/calendar/ProjectCalendar';
 import { useProject } from '@/contexts/ProjectContext';
 
 const ProjectManagement: React.FC = () => {
