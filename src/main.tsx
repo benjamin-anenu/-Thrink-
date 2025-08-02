@@ -1,6 +1,6 @@
 
 import React from 'react'
-import { createRoot } from 'react-dom/client'
+import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { initializeRealTimeServices } from './services/index.ts'
@@ -13,5 +13,9 @@ if (!container) {
   throw new Error("Root container not found");
 }
 
-const root = createRoot(container);
-root.render(<App />);
+const root = ReactDOM.createRoot(container);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
