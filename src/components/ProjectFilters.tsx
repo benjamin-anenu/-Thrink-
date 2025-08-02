@@ -1,13 +1,11 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X, Filter } from 'lucide-react';
 
-export interface ProjectFilters {
+export interface ProjectFiltersState {
   search: string;
   status: string[];
   priority: string[];
@@ -21,8 +19,8 @@ export interface ProjectFilters {
 }
 
 interface ProjectFiltersProps {
-  filters: ProjectFilters;
-  onFiltersChange: (filters: ProjectFilters) => void;
+  filters: ProjectFiltersState;
+  onFiltersChange: (filters: ProjectFiltersState) => void;
   onClearFilters: () => void;
 }
 
@@ -35,7 +33,7 @@ const ProjectFilters: React.FC<ProjectFiltersProps> = ({
   const priorityOptions = ['Low', 'Medium', 'High'];
   const healthStatusOptions = ['green', 'yellow', 'red'];
 
-  const updateFilter = (key: keyof ProjectFilters, value: any) => {
+  const updateFilter = (key: keyof ProjectFiltersState, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 

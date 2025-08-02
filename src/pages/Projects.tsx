@@ -5,7 +5,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Layout from '@/components/Layout';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
 import ProjectListView from '@/components/ProjectListView';
-import ProjectFilters, { ProjectFilters } from '@/components/ProjectFilters';
+import ProjectFilters, { ProjectFiltersState } from '@/components/ProjectFilters';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import ViewToggle from '@/components/ViewToggle';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ const Projects: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<ProjectDetailsModalData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [filters, setFilters] = useState<ProjectFilters>({
+  const [filters, setFilters] = useState<ProjectFiltersState>({
     search: '',
     status: [],
     priority: [],
