@@ -22,6 +22,12 @@ const Projects = () => {
     setShowCreationWizard(true);
   };
 
+  const handleProjectCreated = (project: any) => {
+    // Handle project creation - could refresh projects list, show toast, etc.
+    console.log('Project created:', project);
+    setShowCreationWizard(false);
+  };
+
   return (
     <div className="container mx-auto px-6 py-8">
       <PageHeader 
@@ -39,16 +45,14 @@ const Projects = () => {
           <div className="text-muted-foreground">Loading projects...</div>
         </div>
       ) : (
-        <ProjectTable 
-          projects={projects} 
-          onOpenProject={handleOpenProject}
-        />
+        <ProjectTable />
       )}
 
       {showCreationWizard && (
         <ProjectCreationWizard 
           isOpen={showCreationWizard}
           onClose={() => setShowCreationWizard(false)}
+          onProjectCreated={handleProjectCreated}
         />
       )}
     </div>
