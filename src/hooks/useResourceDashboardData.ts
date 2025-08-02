@@ -46,33 +46,63 @@ export const useResourceDashboardData = () => {
 
     try {
       setLoading(true);
+      console.log('Calculating resource dashboard metrics...');
 
-      // Get project assignments
-      const { data: assignments } = await supabase
-        .from('project_assignments')
-        .select('resource_id, project_id')
-        .in('resource_id', resources.map(r => r.id));
-
-      // Get projects with their tasks
-      const { data: projects } = await supabase
-        .from('projects')
+      // Get all project tasks with their assigned resources
+      const { data: projectTasks } = await supabase
+        .from('project_tasks')
         .select(`
           id,
           name,
-          project_tasks (
+          assigned_resources,
+          status,
+          project_id,
+          projects (
             id,
-            assigned_resources
+            name,
+            workspace_id
           )
         `)
+        .eq('projects.workspace_id', currentWorkspace.id);
+
+      console.log('Project tasks:', projectTasks);
+
+      // Get projects in this workspace
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id, name')
         .eq('workspace_id', currentWorkspace.id);
+
+      console.log('Projects:', projects);
+      console.log('Resources:', resources);
 
       // Calculate metrics
       const totalResources = resources.length;
       
-      // Available: utilization < 100% OR no assignments
-      const assignedResourceIds = new Set(assignments?.map(a => a.resource_id) || []);
+      // Track which resources are assigned to tasks
+      const assignedResourceIds = new Set<string>();
+      
+      // Process each project task to find assigned resources
+      if (projectTasks) {
+        projectTasks.forEach(task => {
+          if (task.assigned_resources && Array.isArray(task.assigned_resources)) {
+            task.assigned_resources.forEach((resourceId: string) => {
+              if (resourceId && typeof resourceId === 'string') {
+                assignedResourceIds.add(resourceId);
+              }
+            });
+          }
+        });
+      }
+
+      console.log('Assigned resource IDs:', Array.from(assignedResourceIds));
+
+      // Count allocated vs unassigned resources
+      const allocatedCount = assignedResourceIds.size;
+      const unassignedCount = totalResources - allocatedCount;
+
+      // Calculate available resources (those with low utilization)
       let availableCount = 0;
-      let allocatedCount = 0;
       let overloadedCount = 0;
       let resourcesAtRiskCount = 0;
 
@@ -80,15 +110,13 @@ export const useResourceDashboardData = () => {
         const utilization = utilizationMetrics[resource.id]?.utilization_percentage || 0;
         const isAssigned = assignedResourceIds.has(resource.id);
         
-        if (utilization < 100 && utilization > 0) {
-          allocatedCount++;
-        } else if (utilization === 0 || !isAssigned) {
-          availableCount++;
-        }
-        
         if (utilization > 100) {
           overloadedCount++;
-          resourcesAtRiskCount++; // Overloaded resources are at risk
+          resourcesAtRiskCount++;
+        } else if (utilization < 70 && isAssigned) {
+          availableCount++;
+        } else if (!isAssigned) {
+          availableCount++;
         }
 
         // Additional risk factors
@@ -98,30 +126,45 @@ export const useResourceDashboardData = () => {
         }
       });
 
-      // Unassigned resources (not in any project assignment)
-      const unassignedCount = resources.length - assignedResourceIds.size;
-
-      // Projects with gaps (tasks without sufficient resources)
+      // Calculate projects with resource gaps
       let projectsWithGapsCount = 0;
-      if (projects) {
+      if (projects && projectTasks) {
+        // Group tasks by project
+        const tasksByProject = new Map<string, any[]>();
+        projectTasks.forEach(task => {
+          const projectId = task.project_id;
+          if (!tasksByProject.has(projectId)) {
+            tasksByProject.set(projectId, []);
+          }
+          tasksByProject.get(projectId)!.push(task);
+        });
+
+        // Check each project for unassigned tasks
         projects.forEach(project => {
-          const tasks = project.project_tasks || [];
-          let tasksWithoutResources = 0;
-          let tasksWithResources = 0;
-
-          tasks.forEach(task => {
-            if (!task.assigned_resources || task.assigned_resources.length === 0) {
-              tasksWithoutResources++;
-            } else {
-              tasksWithResources++;
-            }
-          });
-
-          if (tasksWithoutResources > tasksWithResources && tasks.length > 0) {
+          const projectTasks = tasksByProject.get(project.id) || [];
+          const unassignedTasks = projectTasks.filter(task => 
+            !task.assigned_resources || 
+            task.assigned_resources.length === 0 || 
+            task.status !== 'Completed'
+          );
+          
+          console.log(`Project ${project.name}: ${projectTasks.length} tasks, ${unassignedTasks.length} unassigned`);
+          
+          if (unassignedTasks.length > 0) {
             projectsWithGapsCount++;
           }
         });
       }
+
+      console.log('Calculated metrics:', {
+        totalResources,
+        availableCount,
+        allocatedCount,
+        overloadedCount,
+        unassignedCount,
+        projectsWithGapsCount,
+        resourcesAtRiskCount
+      });
 
       setMetrics({
         totalResources,
