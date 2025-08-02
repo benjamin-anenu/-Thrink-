@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Clock, Users, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, TrendingUp, AlertCircle, BarChart3, Kanban } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import TaskStatistics from '@/components/project-management/TaskStatistics';
+import ProjectOverview from '@/components/project-management/ProjectOverview';
 import { PhaseView } from '@/components/project-management/phases/PhaseView';
 import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
+import KanbanBoard from '@/components/project-management/KanbanBoard';
 import ProjectTimeline from '@/components/project-management/ProjectTimeline';
 import ProjectResources from '@/components/project-management/ProjectResources';
 import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
@@ -22,6 +24,7 @@ const ProjectManagement = () => {
   const { id: projectId } = useParams<{ id: string }>();
   const { projects } = useProject();
   const [activeTab, setActiveTab] = useState('overview');
+  const [planView, setPlanView] = useState<'gantt' | 'kanban'>('gantt');
 
   // Find the current project
   const currentProject = projects.find(p => p.id === projectId);
@@ -63,7 +66,7 @@ const ProjectManagement = () => {
           </Badge>
         </div>
 
-        {/* Task Statistics - removed projectId prop */}
+        {/* Task Statistics */}
         <TaskStatistics />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -79,45 +82,47 @@ const ProjectManagement = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">{currentProject.name}</CardTitle>
-                <CardDescription>{currentProject.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      {new Date(currentProject.startDate).toLocaleDateString()} - {new Date(currentProject.endDate).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">${currentProject.budget?.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{currentProject.teamSize || 0} team members</span>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Progress</span>
-                    <span className="text-sm text-muted-foreground">{currentProject.progress}%</span>
-                  </div>
-                  <Progress value={currentProject.progress} className="w-full" />
-                </div>
-              </CardContent>
-            </Card>
+            <ProjectOverview project={currentProject} />
           </TabsContent>
 
           <TabsContent value="phases">
             {projectId && <PhaseView projectId={projectId} />}
           </TabsContent>
 
-          <TabsContent value="plan">
-            {projectId && <ProjectGanttChart projectId={projectId} />}
+          <TabsContent value="plan" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Project Plan</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={planView === 'gantt' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPlanView('gantt')}
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Gantt Chart
+                    </Button>
+                    <Button
+                      variant={planView === 'kanban' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPlanView('kanban')}
+                    >
+                      <Kanban className="h-4 w-4 mr-2" />
+                      Kanban Board
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {planView === 'gantt' && projectId && (
+                  <ProjectGanttChart projectId={projectId} />
+                )}
+                {planView === 'kanban' && projectId && (
+                  <KanbanBoard projectId={projectId} />
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="timeline">
