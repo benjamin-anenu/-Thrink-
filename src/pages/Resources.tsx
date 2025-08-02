@@ -8,6 +8,7 @@ import ViewToggle from '@/components/ViewToggle';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
+import type { Resource as ContextResource } from '@/contexts/ResourceContext';
 
 const Resources: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -18,13 +19,33 @@ const Resources: React.FC = () => {
     setIsWizardOpen(false);
   };
 
-  const handleViewDetails = (resourceId: string) => {
-    console.log('View details for resource:', resourceId);
+  const handleViewDetails = (resource: ContextResource) => {
+    console.log('View details for resource:', resource.id);
   };
 
   const handleShowResourceForm = () => {
     setIsWizardOpen(true);
   };
+
+  // Transform database resources to match context interface
+  const transformedResources: ContextResource[] = resources.map(resource => ({
+    id: resource.id,
+    name: resource.name || '',
+    role: resource.role || '',
+    department: resource.department || '',
+    email: resource.email || '',
+    phone: '',
+    location: '',
+    skills: [],
+    availability: 100,
+    currentProjects: [],
+    hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
+    utilization: 75,
+    status: 'Available' as 'Available' | 'Busy' | 'Overallocated',
+    workspaceId: resource.workspace_id,
+    createdAt: resource.created_at,
+    updatedAt: resource.updated_at
+  }));
 
   return (
     <Layout>
@@ -33,12 +54,8 @@ const Resources: React.FC = () => {
           <h1 className="text-3xl font-bold text-foreground">Resource Management</h1>
           <div className="flex items-center gap-4">
             <ViewToggle
-              currentView={currentView}
-              onViewChange={setCurrentView}
-              views={[
-                { key: 'standard', label: 'Standard', icon: 'Grid' },
-                { key: 'enhanced', label: 'Enhanced', icon: 'Sparkles' }
-              ]}
+              view={currentView === 'enhanced' ? 'grid' : 'list'}
+              onViewChange={(view) => setCurrentView(view === 'grid' ? 'enhanced' : 'standard')}
             />
             <Button onClick={() => setIsWizardOpen(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -50,14 +67,14 @@ const Resources: React.FC = () => {
         <div className="space-y-6">
           {currentView === 'enhanced' ? (
             <EnhancedResourceGrid 
-              resources={resources}
+              resources={transformedResources}
               utilizationMetrics={utilizationMetrics}
               onViewDetails={handleViewDetails}
               onShowResourceForm={handleShowResourceForm}
             />
           ) : (
             <ResourceGrid 
-              resources={resources}
+              resources={transformedResources}
               onViewDetails={handleViewDetails}
               onShowResourceForm={handleShowResourceForm}
             />

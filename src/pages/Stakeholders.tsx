@@ -8,6 +8,7 @@ import StakeholderEscalationMatrix from '@/components/StakeholderEscalationMatri
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
+import type { Stakeholder as TypeStakeholder } from '@/types/stakeholder';
 
 const Stakeholders: React.FC = () => {
   const { stakeholders, updateStakeholder } = useStakeholders();
@@ -17,17 +18,36 @@ const Stakeholders: React.FC = () => {
     setIsFormOpen(false);
   };
 
-  const handleEdit = (stakeholderId: string) => {
-    console.log('Edit stakeholder:', stakeholderId);
+  const handleEdit = (stakeholder: TypeStakeholder) => {
+    console.log('Edit stakeholder:', stakeholder.id);
   };
 
-  const handleDelete = (stakeholderId: string) => {
-    console.log('Delete stakeholder:', stakeholderId);
+  const handleDelete = (stakeholder: TypeStakeholder) => {
+    console.log('Delete stakeholder:', stakeholder.id);
   };
 
-  const handleContact = (stakeholderId: string) => {
-    updateStakeholder(stakeholderId, { lastContact: new Date().toISOString().split('T')[0] });
+  const handleContact = (stakeholder: TypeStakeholder) => {
+    updateStakeholder(stakeholder.id, { lastContact: new Date().toISOString().split('T')[0] });
   };
+
+  // Transform context stakeholders to match type interface
+  const transformedStakeholders: TypeStakeholder[] = stakeholders.map(stakeholder => ({
+    id: stakeholder.id,
+    workspace_id: stakeholder.workspaceId,
+    name: stakeholder.name,
+    email: stakeholder.email,
+    role: stakeholder.role,
+    department: stakeholder.department || '',
+    phone: stakeholder.phone || '',
+    communicationPreference: stakeholder.communicationPreference,
+    projects: stakeholder.projects || [],
+    influence: stakeholder.influence as 'low' | 'medium' | 'high' | 'critical',
+    interest: stakeholder.interest as 'low' | 'medium' | 'high' | 'critical',
+    status: stakeholder.status as 'active' | 'inactive' | 'pending',
+    notes: '',
+    created_at: stakeholder.createdAt || new Date().toISOString(),
+    updated_at: stakeholder.updatedAt || new Date().toISOString()
+  }));
 
   return (
     <Layout>
@@ -48,7 +68,7 @@ const Stakeholders: React.FC = () => {
 
           <TabsContent value="stakeholders" className="space-y-6">
             <StakeholderListView 
-              stakeholders={stakeholders} 
+              stakeholders={transformedStakeholders} 
               onEdit={handleEdit}
               onDelete={handleDelete}
               onContact={handleContact}
@@ -64,7 +84,6 @@ const Stakeholders: React.FC = () => {
           <StakeholderForm
             open={isFormOpen}
             onClose={() => setIsFormOpen(false)}
-            onStakeholderAdded={handleStakeholderAdded}
           />
         )}
       </div>

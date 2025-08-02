@@ -80,11 +80,11 @@ const ProjectManagement: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="reports">
-            <ProjectReports projectId={projectId} />
+            <ProjectReports />
           </TabsContent>
 
           <TabsContent value="documentation">
-            <ProjectDocumentation projectId={projectId} />
+            <ProjectDocumentation />
           </TabsContent>
         </Tabs>
       </div>
