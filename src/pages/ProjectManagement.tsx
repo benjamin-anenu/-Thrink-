@@ -64,7 +64,7 @@ const ProjectManagement: React.FC = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <ProjectOverview projectId={projectId} />
+            <ProjectOverview project={project} />
           </TabsContent>
 
           <TabsContent value="timeline">

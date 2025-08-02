@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useStakeholder } from '@/contexts/StakeholderContext';
+import { useStakeholders } from '@/contexts/StakeholderContext';
 import Layout from '@/components/Layout';
 import StakeholderForm from '@/components/StakeholderForm';
 import StakeholderListView from '@/components/StakeholderListView';
@@ -10,11 +10,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
 
 const Stakeholders: React.FC = () => {
-  const { stakeholders } = useStakeholder();
+  const { stakeholders, updateStakeholder } = useStakeholders();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const handleStakeholderAdded = () => {
     setIsFormOpen(false);
+  };
+
+  const handleEdit = (stakeholderId: string) => {
+    console.log('Edit stakeholder:', stakeholderId);
+  };
+
+  const handleDelete = (stakeholderId: string) => {
+    console.log('Delete stakeholder:', stakeholderId);
+  };
+
+  const handleContact = (stakeholderId: string) => {
+    updateStakeholder(stakeholderId, { lastContact: new Date().toISOString().split('T')[0] });
   };
 
   return (
@@ -35,7 +47,12 @@ const Stakeholders: React.FC = () => {
           </TabsList>
 
           <TabsContent value="stakeholders" className="space-y-6">
-            <StakeholderListView stakeholders={stakeholders} />
+            <StakeholderListView 
+              stakeholders={stakeholders} 
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onContact={handleContact}
+            />
           </TabsContent>
 
           <TabsContent value="escalation" className="space-y-6">
@@ -45,7 +62,7 @@ const Stakeholders: React.FC = () => {
 
         {isFormOpen && (
           <StakeholderForm
-            isOpen={isFormOpen}
+            open={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onStakeholderAdded={handleStakeholderAdded}
           />
