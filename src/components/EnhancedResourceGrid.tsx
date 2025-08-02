@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import EnhancedResourceCard from '@/components/EnhancedResourceCard';
+import CompactResourceCard from '@/components/CompactResourceCard';
 import { Resource } from '@/contexts/ResourceContext';
 import { TaskUtilizationMetrics } from '@/types/enhanced-resource';
 
@@ -36,17 +36,14 @@ const EnhancedResourceGrid = ({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {resources.map((resource) => (
-        <EnhancedResourceCard
+        <CompactResourceCard
           key={resource.id}
           resource={resource}
           utilizationMetrics={utilizationMetrics[resource.id]}
           onViewDetails={onViewDetails}
           onEditResource={onEditResource}
-          showCompareCheckbox={showCompareMode}
-          isSelectedForComparison={selectedForComparison.has(resource.id)}
-          onCompareToggle={onCompareToggle}
         />
       ))}
     </div>

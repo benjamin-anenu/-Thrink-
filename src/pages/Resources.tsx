@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import ResourceListView from '@/components/ResourceListView';
@@ -10,12 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import type { Resource as ContextResource } from '@/contexts/ResourceContext';
+import ResourceEditModal from '@/components/ResourceEditModal';
 
 const Resources: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'grid' | 'list'>('grid');
+  const [currentView, setCurrentView] = useState<'grid' | 'list'>('list');
   const [selectedResource, setSelectedResource] = useState<ContextResource | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [resourceToEdit, setResourceToEdit] = useState<ContextResource | null>(null);
   const { resources, utilizationMetrics } = useEnhancedResources();
 
   const handleResourceCreated = () => {
@@ -30,7 +32,8 @@ const Resources: React.FC = () => {
 
   const handleEditResource = (resource: ContextResource) => {
     console.log('Edit resource:', resource.id);
-    // TODO: Implement edit functionality
+    setResourceToEdit(resource);
+    setIsEditModalOpen(true);
   };
 
   const handleShowResourceForm = () => {
@@ -40,6 +43,11 @@ const Resources: React.FC = () => {
   const handleCloseDetailsModal = () => {
     setIsDetailsModalOpen(false);
     setSelectedResource(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setResourceToEdit(null);
   };
 
   // Transform database resources to match context interface
@@ -110,6 +118,14 @@ const Resources: React.FC = () => {
             resource={selectedResource}
             isOpen={isDetailsModalOpen}
             onClose={handleCloseDetailsModal}
+          />
+        )}
+
+        {resourceToEdit && (
+          <ResourceEditModal
+            resource={resourceToEdit}
+            isOpen={isEditModalOpen}
+            onClose={handleCloseEditModal}
           />
         )}
       </div>
