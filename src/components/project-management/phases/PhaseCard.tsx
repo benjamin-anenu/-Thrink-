@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ProjectPhase } from '@/types/project';
 import { EnhancedMilestone } from '@/hooks/useEnhancedMilestones';
@@ -19,7 +18,7 @@ interface PhaseCardProps {
   phase: EnhancedPhase;
   isExpanded: boolean;
   onToggleExpand: (phaseId: string) => void;
-  onEdit: (phase: ProjectPhase) => void;
+  onEdit: (phase: EnhancedPhase) => void;
   onDelete: (phaseId: string) => void;
   onAddMilestone: (phaseId: string) => void;
 }

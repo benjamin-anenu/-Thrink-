@@ -33,7 +33,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
 
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
+  const [editingPhase, setEditingPhase] = useState<EnhancedPhase | null>(null);
 
   const handleToggleExpand = (phaseId: string) => {
     setExpandedPhases(prev => {
@@ -51,7 +51,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
     await createPhase(phaseData);
   };
 
-  const handleEditPhase = (phase: ProjectPhase) => {
+  const handleEditPhase = (phase: EnhancedPhase) => {
     setEditingPhase(phase);
     // TODO: Open edit modal
   };

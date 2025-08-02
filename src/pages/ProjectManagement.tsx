@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -191,13 +190,12 @@ const ProjectManagement = () => {
         <TabsContent value="overview">
           <ProjectOverview 
             project={project}
-            milestones={milestones}
             phases={phases}
           />
         </TabsContent>
 
         <TabsContent value="tasks">
-          <TaskManagement />
+          <TaskManagement projectId={projectId || ''} />
         </TabsContent>
 
         <TabsContent value="phases">
