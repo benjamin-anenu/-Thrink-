@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +13,7 @@ import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { transformProjectForModal, ProjectDetailsModalData } from '@/types/project-modal';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface Task {
   id: string;
@@ -29,6 +29,7 @@ interface Task {
 const ProjectDisplay = () => {
   const { projects, refreshProjects } = useProject();
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState<ProjectDetailsModalData | null>(null);
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -171,6 +172,11 @@ const ProjectDisplay = () => {
     }
   };
 
+  const handleManageProject = (project: any) => {
+    console.log('Navigating to project management:', project.id);
+    navigate(`/project-management/${project.id}`);
+  };
+
   const handleDeleteProject = async (project: any) => {
     if (!window.confirm(`Are you sure you want to delete "${project.name}"? This action can be undone from the recycle bin.`)) {
       return;
@@ -301,7 +307,7 @@ const ProjectDisplay = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.location.href = `/project-management/${project.id}`}
+                    onClick={() => handleManageProject(project)}
                     className="flex-1"
                   >
                     <Edit className="h-4 w-4 mr-2" />
