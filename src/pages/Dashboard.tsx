@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 const Dashboard = () => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, role, loading } = useAuth();
   const { workspaces, currentWorkspace } = useWorkspace();
 
   // Show loading state
@@ -29,14 +29,14 @@ const Dashboard = () => {
   }
 
   // Check if user is system owner (first user with no workspaces or admin role)
-  const isSystemOwner = profile?.role === 'admin' || (workspaces.length === 0 && user);
+  const isSystemOwner = role === 'admin' || role === 'owner' || (workspaces.length === 0 && user);
 
   // Show first user onboarding for system owners with no workspaces
   if (isSystemOwner && workspaces.length === 0) {
     return <FirstUserOnboarding />;
   }
 
-  // Show system owner dashboard for admins
+  // Show system owner dashboard for admins/owners
   if (isSystemOwner) {
     return (
       <Layout>
