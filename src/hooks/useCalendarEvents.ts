@@ -16,7 +16,7 @@ export interface CalendarEvent {
   projectName: string;
 }
 
-export const useCalendarEvents = () => {
+export const useCalendarEvents = (projectId?: string) => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +30,8 @@ export const useCalendarEvents = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch calendar events
-        const { data: calendarData, error: calendarError } = await supabase
+        // Fetch calendar events - if projectId is provided, filter by it, otherwise get all workspace events
+        let calendarQuery = supabase
           .from('calendar_events')
           .select(`
             *,
@@ -40,13 +40,19 @@ export const useCalendarEvents = () => {
               name
             )
           `)
-          .eq('workspace_id', currentWorkspace.id)
+          .eq('workspace_id', currentWorkspace.id);
+
+        if (projectId) {
+          calendarQuery = calendarQuery.eq('project_id', projectId);
+        }
+
+        const { data: calendarData, error: calendarError } = await calendarQuery
           .order('start_date', { ascending: true });
 
         if (calendarError) throw calendarError;
 
         // Fetch project milestones as calendar events
-        const { data: milestonesData, error: milestonesError } = await supabase
+        let milestonesQuery = supabase
           .from('milestones')
           .select(`
             *,
@@ -55,10 +61,22 @@ export const useCalendarEvents = () => {
               name,
               workspace_id
             )
-          `)
-          .eq('projects.workspace_id', currentWorkspace.id);
+          `);
+
+        // Filter milestones by workspace through the projects relation
+        const { data: milestonesData, error: milestonesError } = await milestonesQuery;
 
         if (milestonesError) throw milestonesError;
+
+        // Filter milestones to only those belonging to projects in the current workspace
+        const workspaceMilestones = (milestonesData || []).filter(
+          milestone => milestone.projects?.workspace_id === currentWorkspace.id
+        );
+
+        // If projectId is provided, further filter milestones
+        const filteredMilestones = projectId 
+          ? workspaceMilestones.filter(milestone => milestone.project_id === projectId)
+          : workspaceMilestones;
 
         // Transform calendar events
         const calendarEvents: CalendarEvent[] = (calendarData || []).map(event => ({
@@ -83,7 +101,7 @@ export const useCalendarEvents = () => {
         }));
 
         // Transform milestones to calendar events
-        const milestoneEvents: CalendarEvent[] = (milestonesData || []).map(milestone => ({
+        const milestoneEvents: CalendarEvent[] = filteredMilestones.map(milestone => ({
           id: `milestone-${milestone.id}`,
           title: milestone.name,
           description: milestone.description || `Milestone: ${milestone.name}`,
@@ -107,7 +125,7 @@ export const useCalendarEvents = () => {
     };
 
     fetchCalendarEvents();
-  }, [currentWorkspace]);
+  }, [currentWorkspace, projectId]);
 
   const createEvent = async (eventData: Omit<CalendarEvent, 'id'>) => {
     if (!currentWorkspace) return null;
