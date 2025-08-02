@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +19,7 @@ import Analytics from "./pages/Analytics";
 import Auth from "./pages/Auth";
 import AIHub from "./pages/AIHub";
 import NotFound from "./pages/NotFound";
+import Workspaces from "./pages/Workspaces";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import Layout from "./components/Layout";
 
@@ -46,6 +46,13 @@ const App = () => (
                           <AuthGuard>
                             <Layout>
                               <Dashboard />
+                            </Layout>
+                          </AuthGuard>
+                        } />
+                        <Route path="/workspaces" element={
+                          <AuthGuard>
+                            <Layout>
+                              <Workspaces />
                             </Layout>
                           </AuthGuard>
                         } />
