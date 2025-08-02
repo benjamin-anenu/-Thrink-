@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { usePhaseManagement } from '@/hooks/usePhaseManagement';
+import { useEnhancedMilestones } from '@/hooks/useEnhancedMilestones';
 import { ProjectPhase } from '@/types/project';
 import { PhaseCard } from './PhaseCard';
 import { PhaseCreateModal } from './PhaseCreateModal';
@@ -14,13 +16,15 @@ interface PhaseViewProps {
 export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
   const {
     phases,
-    loading,
+    loading: phasesLoading,
     error,
     createPhase,
     updatePhase,
     deletePhase,
     refreshPhases
   } = usePhaseManagement(projectId);
+
+  const { milestones, loading: milestonesLoading } = useEnhancedMilestones(projectId);
 
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -58,7 +62,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
     console.log('Add milestone to phase:', phaseId);
   };
 
-  if (loading) {
+  if (phasesLoading || milestonesLoading) {
     return <LoadingState>Loading project phases...</LoadingState>;
   }
 
@@ -89,6 +93,22 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
     );
   }
 
+  // Enhance phases with milestone data
+  const enhancedPhases = phases.map(phase => ({
+    ...phase,
+    milestones: milestones.filter(m => m.phase_id === phase.id).map(m => ({
+      id: m.id,
+      name: m.name,
+      description: m.description,
+      date: m.computed_end_date || m.due_date,
+      baselineDate: m.due_date,
+      status: m.status as any,
+      tasks: [],
+      progress: m.progress,
+      sortOrderInPhase: 0
+    }))
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -105,7 +125,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
       </div>
 
       <div className="space-y-4">
-        {phases.map((phase) => (
+        {enhancedPhases.map((phase) => (
           <PhaseCard
             key={phase.id}
             phase={phase}
