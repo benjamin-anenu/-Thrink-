@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
-import Header from '@/components/Header';
-import TinkAssistant from '@/components/TinkAssistant';
+import Layout from '@/components/Layout';
+import PageHeader from '@/components/PageHeader';
 import HealthIndicator from '@/components/HealthIndicator';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import BulkImportModal from '@/components/BulkImportModal';
@@ -84,7 +83,7 @@ const Projects = () => {
   };
 
   const handleOpenProject = (projectId: string) => {
-    navigate(`/project/${projectId}`);
+    navigate(`/projects/${projectId}`);
   };
 
   const handleDeleteProject = async (project: any) => {
@@ -115,34 +114,29 @@ const Projects = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Projects</h1>
-            <p className="text-muted-foreground">
-              {currentWorkspace ? `${currentWorkspace.name} - ` : ''}
-              Manage and track all your projects in one place
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setShowBulkImport(true)}
-              className="flex items-center gap-2"
-            >
-              <Upload size={16} />
-              Bulk Import
-            </Button>
-            <Button 
-              className="flex items-center gap-2"
-              onClick={() => setShowCreationWizard(true)}
-            >
-              <Plus size={16} />
-              New Project
-            </Button>
-          </div>
+    <Layout>
+      <div className="container mx-auto px-4 pb-8">
+        <PageHeader 
+          title="Projects" 
+          description={`${currentWorkspace ? `${currentWorkspace.name} - ` : ''}Manage and track all your projects in one place`}
+        />
+
+        <div className="flex items-center gap-2 mb-8">
+          <Button 
+            variant="outline"
+            onClick={() => setShowBulkImport(true)}
+            className="flex items-center gap-2"
+          >
+            <Upload size={16} />
+            Bulk Import
+          </Button>
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setShowCreationWizard(true)}
+          >
+            <Plus size={16} />
+            New Project
+          </Button>
         </div>
 
         {/* Search and Filter */}
@@ -385,34 +379,32 @@ const Projects = () => {
             )}
           </TabsContent>
         </Tabs>
-      </main>
 
-      <TinkAssistant />
+        {showCreationWizard && (
+          <ProjectCreationWizard
+            isOpen={showCreationWizard}
+            onClose={() => setShowCreationWizard(false)}
+            onProjectCreated={handleProjectCreated}
+          />
+        )}
 
-      {showCreationWizard && (
-        <ProjectCreationWizard
-          isOpen={showCreationWizard}
-          onClose={() => setShowCreationWizard(false)}
-          onProjectCreated={handleProjectCreated}
-        />
-      )}
+        {showBulkImport && (
+          <BulkImportModal
+            isOpen={showBulkImport}
+            onClose={() => setShowBulkImport(false)}
+            onImport={handleBulkImport}
+          />
+        )}
 
-      {showBulkImport && (
-        <BulkImportModal
-          isOpen={showBulkImport}
-          onClose={() => setShowBulkImport(false)}
-          onImport={handleBulkImport}
-        />
-      )}
-
-      {showProjectDetails && selectedProject && (
-        <ProjectDetailsModal
-          isOpen={showProjectDetails}
-          onClose={() => setShowProjectDetails(false)}
-          project={selectedProject}
-        />
-      )}
-    </div>
+        {showProjectDetails && selectedProject && (
+          <ProjectDetailsModal
+            isOpen={showProjectDetails}
+            onClose={() => setShowProjectDetails(false)}
+            project={selectedProject}
+          />
+        )}
+      </div>
+    </Layout>
   );
 };
 

@@ -7,26 +7,69 @@ import SimpleDashboard from '@/components/dashboard/SimpleDashboard';
 import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
 import FirstUserOnboarding from '@/components/FirstUserOnboarding';
 import PageHeader from '@/components/PageHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
-const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, loading: authLoading } = useAuth();
-  const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
+const Dashboard = () => {
+  const { user, profile, loading } = useAuth();
+  const { workspaces, currentWorkspace } = useWorkspace();
 
-  // Show loading state while authentication is loading
-  if (authLoading) {
+  // Show loading state
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-2">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <Layout>
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-muted-foreground">Loading dashboard...</div>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
-  // Show first user onboarding if this is the first user without any workspaces
-  if (user && isFirstUser && !currentWorkspace) {
+  // Check if user is system owner (first user with no workspaces or admin role)
+  const isSystemOwner = profile?.role === 'admin' || (workspaces.length === 0 && user);
+
+  // Show first user onboarding for system owners with no workspaces
+  if (isSystemOwner && workspaces.length === 0) {
     return <FirstUserOnboarding />;
+  }
+
+  // Show system owner dashboard for admins
+  if (isSystemOwner) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 max-w-7xl">
+          <PageHeader 
+            title="System Owner Dashboard" 
+            description="Manage your organization and monitor all workspaces"
+          />
+          <SystemOwnerDashboard />
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show workspace selection if no current workspace
+  if (!currentWorkspace && workspaces.length > 0) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 max-w-7xl">
+          <PageHeader 
+            title="Dashboard" 
+            description="Select a workspace to view your dashboard"
+          />
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                Please select a workspace from the header to view your dashboard.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
   }
 
   // Regular dashboard for users with workspaces
@@ -39,35 +82,20 @@ const Dashboard: React.FC = () => {
         />
         
         <div className="space-y-8">
-          {/* Show loading state for workspace data */}
-          {workspaceLoading && (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-              <p className="text-sm text-muted-foreground">Loading workspace data...</p>
-            </div>
-          )}
-          
-          {/* Show workspace selection prompt if no current workspace and not system owner */}
-          {!workspaceLoading && !currentWorkspace && !isSystemOwner && (
-            <div className="text-center py-12">
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">No Workspace Selected</h2>
-                <p className="text-muted-foreground">
-                  Please select or create a workspace to view your dashboard.
+          {currentWorkspace ? (
+            <SimpleDashboard />
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  No workspace selected. Please create or select a workspace to get started.
                 </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Show appropriate dashboard based on user role */}
-          {!workspaceLoading && (isSystemOwner || currentWorkspace) && (
-            <>
-              {isSystemOwner ? (
-                <SystemOwnerDashboard />
-              ) : (
-                <SimpleDashboard />
-              )}
-            </>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Workspace
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
