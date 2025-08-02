@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import ResourceListView from '@/components/ResourceListView';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
+import ResourceQuickInsights from '@/components/resources/ResourceQuickInsights';
 import ResourceDashboard from '@/components/ResourceDashboard';
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import ResourceDetailsModal from '@/components/ResourceDetailsModal';
@@ -120,6 +120,8 @@ const Resources: React.FC = () => {
                 </Button>
               </div>
             </div>
+
+            <ResourceQuickInsights />
             
             {currentView === 'grid' ? (
               <EnhancedResourceGrid 
