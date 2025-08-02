@@ -120,7 +120,7 @@ const ProjectManagement: React.FC = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <ProjectOverview />
+          <ProjectOverview project={project} />
         </TabsContent>
 
         <TabsContent value="plan" className="space-y-4">
@@ -165,20 +165,20 @@ const ProjectManagement: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            <KanbanBoard />
+            <KanbanBoard projectId={project.id} />
           )}
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4">
-          <ProjectTimeline />
+          <ProjectTimeline projectId={project.id} />
         </TabsContent>
 
         <TabsContent value="resources" className="space-y-4">
-          <ProjectResources />
+          <ProjectResources projectId={project.id} />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
-          <ProjectReports />
+          <ProjectReports projectId={project.id} />
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4">
