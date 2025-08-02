@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Users, Settings, Plus, Mail, MoreHorizontal, Crown, Shield, Eye, UserPlus } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import CreateWorkspaceModal from '@/components/CreateWorkspaceModal';
 import InviteMemberModal from '@/components/InviteMemberModal';
@@ -20,6 +21,7 @@ import {
 
 const Workspaces: React.FC = () => {
   const { workspaces, currentWorkspace, setCurrentWorkspace, removeMember, updateMemberRole } = useWorkspace();
+  const { isSystemOwner } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -52,9 +54,19 @@ const Workspaces: React.FC = () => {
       <div className="container mx-auto px-4 pt-28 pb-8 max-w-7xl">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Workspaces</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Workspaces {isSystemOwner && (
+                <Badge variant="secondary" className="ml-2 gap-1">
+                  <Crown size={12} />
+                  System Owner
+                </Badge>
+              )}
+            </h1>
             <p className="text-muted-foreground">
-              Manage your workspaces and collaborate with your team
+              {isSystemOwner 
+                ? "Manage all workspaces across the system and collaborate with your teams"
+                : "Manage your workspaces and collaborate with your team"
+              }
             </p>
           </div>
           <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
@@ -71,6 +83,20 @@ const Workspaces: React.FC = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {isSystemOwner && workspaces.length > 0 && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-primary">
+                    <Crown size={20} />
+                    System Owner Dashboard
+                  </CardTitle>
+                  <CardDescription>
+                    You have access to all {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''} in the system
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+            
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {workspaces.map((workspace) => (
                 <Card 
@@ -86,9 +112,16 @@ const Workspaces: React.FC = () => {
                         <Building2 size={20} className="text-primary" />
                         <CardTitle className="text-lg">{workspace.name}</CardTitle>
                       </div>
-                      {currentWorkspace?.id === workspace.id && (
-                        <Badge variant="default" className="text-xs">Current</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {currentWorkspace?.id === workspace.id && (
+                          <Badge variant="default" className="text-xs">Current</Badge>
+                        )}
+                        {isSystemOwner && (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Crown size={10} />
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     {workspace.description && (
                       <CardDescription>{workspace.description}</CardDescription>
@@ -127,6 +160,12 @@ const Workspaces: React.FC = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">
                 {currentWorkspace?.name} Members
+                {isSystemOwner && (
+                  <Badge variant="secondary" className="ml-2 gap-1 text-xs">
+                    <Crown size={10} />
+                    Full Access
+                  </Badge>
+                )}
               </h2>
               <Button onClick={() => setInviteModalOpen(true)} className="gap-2">
                 <UserPlus size={16} />
@@ -165,7 +204,7 @@ const Workspaces: React.FC = () => {
                           {member.role}
                         </Badge>
                         
-                        {member.role !== 'owner' && (
+                        {(member.role !== 'owner' && (isSystemOwner || currentWorkspace?.ownerId)) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
@@ -214,9 +253,16 @@ const Workspaces: React.FC = () => {
                 <CardTitle className="flex items-center gap-2">
                   <Settings size={20} />
                   Workspace Settings
+                  {isSystemOwner && (
+                    <Badge variant="secondary" className="ml-2 gap-1 text-xs">
+                      <Crown size={10} />
+                      System Owner
+                    </Badge>
+                  )}
                 </CardTitle>
                 <CardDescription>
                   Configure workspace permissions and preferences
+                  {isSystemOwner && " (You have full system access)"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

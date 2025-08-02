@@ -3730,6 +3730,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_system_owner: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
           workspace_id: string | null
@@ -3738,6 +3739,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_system_owner?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
           workspace_id?: string | null
@@ -3746,6 +3748,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_system_owner?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
           workspace_id?: string | null
@@ -4053,6 +4056,10 @@ export type Database = {
         Args:
           | { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }
           | { check_role: string }
+        Returns: boolean
+      }
+      is_system_owner: {
+        Args: { user_id_param?: string }
         Returns: boolean
       }
       is_workspace_admin: {

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
@@ -12,6 +11,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [role, setRole] = useState<AppRole | null>(null)
+  const [isSystemOwner, setIsSystemOwner] = useState(false)
+  const [isFirstUser, setIsFirstUser] = useState(false)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -39,6 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Clear profile data on sign out
           setProfile(null)
           setRole(null)
+          setIsSystemOwner(false)
+          setIsFirstUser(false)
         }
         
         setLoading(false)
@@ -85,10 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(profileData)
       }
 
-      // Fetch role
+      // Fetch role and system owner status
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role, is_system_owner')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -97,8 +100,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (roleError && roleError.code !== 'PGRST116') {
         console.error('[Auth] Error fetching role:', roleError)
       } else if (roleData) {
-        console.log('[Auth] Role loaded:', roleData.role)
+        console.log('[Auth] Role loaded:', roleData.role, 'System owner:', roleData.is_system_owner)
         setRole(roleData.role)
+        setIsSystemOwner(Boolean(roleData.is_system_owner))
+        
+        // Check if this is a first user (system owner with no workspaces)
+        if (roleData.is_system_owner) {
+          const { data: workspaceData } = await supabase
+            .from('workspaces')
+            .select('id')
+            .limit(1)
+            .maybeSingle()
+          
+          setIsFirstUser(!workspaceData)
+        }
       } else {
         // Default role if none found
         setRole('member')
@@ -315,6 +330,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     profile,
     role,
+    isSystemOwner,
+    isFirstUser,
     loading,
     signIn,
     signUp,

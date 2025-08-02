@@ -23,6 +23,7 @@ export interface UserRole {
   user_id: string
   role: AppRole
   workspace_id?: string
+  is_system_owner?: boolean
   created_at: string
   created_by?: string
 }
@@ -44,6 +45,8 @@ export interface AuthContextType {
   session: Session | null
   profile: Profile | null
   role: AppRole | null
+  isSystemOwner: boolean
+  isFirstUser: boolean
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>

@@ -21,7 +21,7 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, isSystemOwner } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
-  // Fetch workspaces from Supabase - optimized
+  // Fetch workspaces from Supabase - enhanced for system owner
   const fetchWorkspaces = async () => {
     if (!user) {
       console.log('[Workspace] No user, clearing workspaces')
@@ -67,26 +67,46 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return
     }
 
-    console.log('[Workspace] Fetching workspaces for user:', user.id)
+    console.log('[Workspace] Fetching workspaces for user:', user.id, 'System owner:', isSystemOwner)
     setLoading(true)
     setError(null)
 
     try {
-      // Fetch workspaces where user is a member
-      const { data: workspaceData, error: workspaceError } = await supabase
-        .from('workspaces')
-        .select(`
-          *,
-          workspace_members!inner(
-            id,
-            user_id,
-            role,
-            status,
-            joined_at
-          )
-        `)
-        .eq('workspace_members.user_id', user.id)
-        .eq('workspace_members.status', 'active');
+      let workspaceQuery;
+
+      if (isSystemOwner) {
+        // System owners can see all workspaces
+        workspaceQuery = supabase
+          .from('workspaces')
+          .select(`
+            *,
+            workspace_members!inner(
+              id,
+              user_id,
+              role,
+              status,
+              joined_at
+            )
+          `);
+      } else {
+        // Regular users only see workspaces where they are members
+        workspaceQuery = supabase
+          .from('workspaces')
+          .select(`
+            *,
+            workspace_members!inner(
+              id,
+              user_id,
+              role,
+              status,
+              joined_at
+            )
+          `)
+          .eq('workspace_members.user_id', user.id)
+          .eq('workspace_members.status', 'active');
+      }
+
+      const { data: workspaceData, error: workspaceError } = await workspaceQuery;
 
       if (workspaceError) {
         console.error('[Workspace] Error fetching workspaces:', workspaceError);
@@ -137,7 +157,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     fetchWorkspaces();
-  }, [user, authLoading]) // Only depend on user and auth loading state
+  }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     try {
