@@ -1,16 +1,19 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useResources } from '@/hooks/useResources';
+import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 const ResourceStats = () => {
-  const { resources } = useResources();
+  const { resources } = useEnhancedResources();
 
-  // Calculate real metrics from context data
+  // Calculate real metrics from database data
   const totalResources = resources.length;
-  const availableResources = resources.filter(r => r.status === 'Available').length;
-  const busyResources = resources.filter(r => r.status === 'Busy').length;
-  const overallocatedResources = resources.filter(r => r.status === 'Overallocated').length;
+  
+  // Since we don't have status in the database, we'll calculate based on other metrics
+  // For now, we'll use placeholder calculations that make sense
+  const activeResources = resources.filter(r => r.name && r.email).length; // Resources with complete info
+  const engineeringResources = resources.filter(r => r.department === 'Engineering' || r.role?.toLowerCase().includes('developer') || r.role?.toLowerCase().includes('engineer')).length;
+  const designResources = resources.filter(r => r.department === 'Design' || r.role?.toLowerCase().includes('design')).length;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -22,20 +25,20 @@ const ResourceStats = () => {
       </Card>
       <Card>
         <CardContent className="pt-6">
-          <div className="text-2xl font-bold text-green-500">{availableResources}</div>
-          <p className="text-xs text-muted-foreground">Available</p>
+          <div className="text-2xl font-bold text-green-500">{activeResources}</div>
+          <p className="text-xs text-muted-foreground">Active Resources</p>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="pt-6">
-          <div className="text-2xl font-bold text-yellow-500">{busyResources}</div>
-          <p className="text-xs text-muted-foreground">Busy</p>
+          <div className="text-2xl font-bold text-blue-500">{engineeringResources}</div>
+          <p className="text-xs text-muted-foreground">Engineering</p>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="pt-6">
-          <div className="text-2xl font-bold text-red-500">{overallocatedResources}</div>
-          <p className="text-xs text-muted-foreground">Overallocated</p>
+          <div className="text-2xl font-bold text-purple-500">{designResources}</div>
+          <p className="text-xs text-muted-foreground">Design</p>
         </CardContent>
       </Card>
     </div>
