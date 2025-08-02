@@ -5,11 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
-import { useResourceSkills } from '@/hooks/useResourceSkills';
-import { supabase } from '@/integrations/supabase/client';
+import { useResources } from '@/hooks/useResources';
 
 interface Resource {
   id?: string;
@@ -22,13 +18,11 @@ interface Resource {
 }
 
 interface ResourceFormProps {
-  isOpen: boolean;
   onClose: () => void;
-  onSave: (resource: Resource) => void;
   resource?: Resource;
 }
 
-const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) => {
+const ResourceForm = ({ onClose, resource }: ResourceFormProps) => {
   const [formData, setFormData] = useState<Resource>({
     name: resource?.name || '',
     role: resource?.role || '',
@@ -38,16 +32,23 @@ const ResourceForm = ({ isOpen, onClose, onSave, resource }: ResourceFormProps) 
     workspace_id: resource?.workspace_id || '',
   });
 
+  const { createResource, updateResource } = useResources();
   const departments = ['Engineering', 'Design', 'Marketing', 'Operations', 'Sales', 'HR'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    if (resource?.id) {
+      await updateResource(resource.id, formData);
+    } else {
+      await createResource(formData);
+    }
+    
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{resource ? 'Edit Resource' : 'Add New Resource'}</DialogTitle>

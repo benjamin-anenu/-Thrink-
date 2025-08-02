@@ -4,26 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Grid3X3, List } from 'lucide-react';
 
 interface ViewToggleProps {
-  view: 'grid' | 'list';
-  onViewChange: (view: 'grid' | 'list') => void;
+  viewMode: 'grid' | 'list';
+  onViewModeChange: (view: 'grid' | 'list') => void;
 }
 
-const ViewToggle: React.FC<ViewToggleProps> = ({ view, onViewChange }) => {
+const ViewToggle: React.FC<ViewToggleProps> = ({ viewMode, onViewModeChange }) => {
   return (
     <div className="flex items-center space-x-2">
       <Button
-        variant={view === 'grid' ? 'default' : 'outline'}
+        variant={viewMode === 'grid' ? 'default' : 'outline'}
         size="sm"
-        onClick={() => onViewChange('grid')}
+        onClick={() => onViewModeChange('grid')}
         className="flex items-center gap-2"
       >
         <Grid3X3 size={16} />
         Grid
       </Button>
       <Button
-        variant={view === 'list' ? 'default' : 'outline'}
+        variant={viewMode === 'list' ? 'default' : 'outline'}
         size="sm"
-        onClick={() => onViewChange('list')}
+        onClick={() => onViewModeChange('list')}
         className="flex items-center gap-2"
       >
         <List size={16} />

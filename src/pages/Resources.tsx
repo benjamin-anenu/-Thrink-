@@ -11,22 +11,17 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import ResourceForm from '@/components/ResourceForm';
 import ResourceGrid from '@/components/ResourceGrid';
 import ResourceListView from '@/components/ResourceListView';
-import ResourceFilters from '@/components/ResourceFilters';
-import ResourceComparisonModal from '@/components/ResourceComparisonModal';
-import ResourceComparisonToolbar from '@/components/ResourceComparisonToolbar';
 import ViewToggle from '@/components/ViewToggle';
 import ResourceQuickInsights from '@/components/resources/ResourceQuickInsights';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 const Resources = () => {
   const { resources, loading } = useResources();
-  const { utilizationMetrics } = useEnhancedResources();
   const { currentWorkspace } = useWorkspace();
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list view
-  const [showComparison, setShowComparison] = useState(false);
   const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
   const [filterConfig, setFilterConfig] = useState({
     departments: [] as string[],
@@ -222,27 +217,6 @@ const Resources = () => {
             </div>
           </div>
 
-          {/* Comparison Toolbar */}
-          {selectedForComparison.size > 0 && (
-            <ResourceComparisonToolbar
-              selectedCount={selectedForComparison.size}
-              onCompare={() => setShowComparison(true)}
-              onClear={() => setSelectedForComparison(new Set())}
-              maxSelections={5}
-            />
-          )}
-
-          {/* Filters Panel */}
-          {showFilters && (
-            <ResourceFilters
-              filterConfig={filterConfig}
-              onFilterChange={setFilterConfig}
-              departments={uniqueDepartments}
-              skills={uniqueSkills}
-              onClose={() => setShowFilters(false)}
-            />
-          )}
-
           {/* Resources Display */}
           {viewMode === 'grid' ? (
             <ResourceGrid
@@ -254,7 +228,6 @@ const Resources = () => {
           ) : (
             <ResourceListView
               resources={filteredResources}
-              utilizationMetrics={utilizationMetrics}
               showCompareMode={selectedForComparison.size > 0}
               selectedForComparison={selectedForComparison}
               onCompareToggle={handleCompareToggle}
@@ -310,18 +283,6 @@ const Resources = () => {
       {/* Resource Form Modal */}
       {showResourceForm && (
         <ResourceForm onClose={() => setShowResourceForm(false)} />
-      )}
-
-      {/* Comparison Modal */}
-      {showComparison && (
-        <ResourceComparisonModal
-          resourceIds={Array.from(selectedForComparison)}
-          isOpen={showComparison}
-          onClose={() => {
-            setShowComparison(false);
-            setSelectedForComparison(new Set());
-          }}
-        />
       )}
     </div>
   );
