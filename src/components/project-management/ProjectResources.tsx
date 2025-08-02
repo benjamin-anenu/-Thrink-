@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { useProject } from '@/contexts/ProjectContext';
@@ -34,8 +33,8 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
         // Count tasks per resource
         resourceTaskCounts.set(resourceId, (resourceTaskCounts.get(resourceId) || 0) + 1);
         
-        // Sum effort points (use duration as fallback, default to 1)
-        const effort = task.estimated_hours || task.duration || 1;
+        // Sum effort points (use duration, default to 1)
+        const effort = task.duration || 1;
         resourceEffortPoints.set(resourceId, (resourceEffortPoints.get(resourceId) || 0) + effort);
       });
     }
@@ -95,7 +94,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
 
   // Calculate real metrics from actual task assignments
   const totalResources = assignedResourceIds.size; // Unique resources assigned to tasks
-  const availableResources = resources.length - totalResources; // Workspace resources not assigned to this project
+  const availableResources = Math.max(resources.length - totalResources, 0); // Workspace resources not assigned to this project
   const avgUtilization = totalResources > 0 
     ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / totalResources)
     : 0;
@@ -133,7 +132,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <Target className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Available</p>
-                <p className="font-semibold">{Math.max(availableResources, 0)}</p>
+                <p className="font-semibold">{availableResources}</p>
               </div>
             </div>
           </CardContent>
