@@ -11,7 +11,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <>
       <Header />
-      <main className="pt-20">
+      <main className="pt-24">
         {children}
       </main>
       <TinkAssistant />

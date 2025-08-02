@@ -2,6 +2,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import Layout from '@/components/Layout';
 import SimpleDashboard from '@/components/dashboard/SimpleDashboard';
 import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
 import FirstUserOnboarding from '@/components/FirstUserOnboarding';
@@ -30,8 +31,8 @@ const Dashboard: React.FC = () => {
 
   // Regular dashboard for users with workspaces
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <Layout>
+      <div className="container mx-auto px-4 max-w-7xl">
         <PageHeader 
           title="Dashboard" 
           description="Overview of your projects, tasks, and team performance"
@@ -70,7 +71,7 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
