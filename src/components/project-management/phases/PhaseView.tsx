@@ -1,8 +1,5 @@
-
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { usePhaseManagement } from '@/hooks/usePhaseManagement';
-import { useEnhancedMilestones } from '@/hooks/useEnhancedMilestones';
 import { ProjectPhase } from '@/types/project';
 import { PhaseCard } from './PhaseCard';
 import { PhaseCreateModal } from './PhaseCreateModal';
@@ -10,29 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Plus, Layers } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 
-// Define a separate interface for enhanced phases to avoid type conflicts
-interface EnhancedPhase extends Omit<ProjectPhase, 'milestones'> {
-  milestones: import('@/hooks/useEnhancedMilestones').EnhancedMilestone[];
+interface PhaseViewProps {
+  projectId: string;
 }
 
-export const PhaseView: React.FC = () => {
-  const { projectId } = useParams();
-  
+export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
   const {
     phases,
-    loading: phasesLoading,
+    loading,
     error,
     createPhase,
     updatePhase,
     deletePhase,
     refreshPhases
-  } = usePhaseManagement(projectId || '');
-
-  const { milestones, loading: milestonesLoading } = useEnhancedMilestones(projectId);
+  } = usePhaseManagement(projectId);
 
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingPhase, setEditingPhase] = useState<EnhancedPhase | null>(null);
+  const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
 
   const handleToggleExpand = (phaseId: string) => {
     setExpandedPhases(prev => {
@@ -50,7 +42,7 @@ export const PhaseView: React.FC = () => {
     await createPhase(phaseData);
   };
 
-  const handleEditPhase = (phase: EnhancedPhase) => {
+  const handleEditPhase = (phase: ProjectPhase) => {
     setEditingPhase(phase);
     // TODO: Open edit modal
   };
@@ -66,7 +58,7 @@ export const PhaseView: React.FC = () => {
     console.log('Add milestone to phase:', phaseId);
   };
 
-  if (phasesLoading || milestonesLoading) {
+  if (loading) {
     return <LoadingState>Loading project phases...</LoadingState>;
   }
 
@@ -97,12 +89,6 @@ export const PhaseView: React.FC = () => {
     );
   }
 
-  // Convert phases to enhanced phases with proper typing
-  const enhancedPhases: EnhancedPhase[] = phases.map(phase => ({
-    ...phase,
-    milestones: milestones.filter(m => m.phase_id === phase.id)
-  }));
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -119,7 +105,7 @@ export const PhaseView: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {enhancedPhases.map((phase) => (
+        {phases.map((phase) => (
           <PhaseCard
             key={phase.id}
             phase={phase}
@@ -136,7 +122,7 @@ export const PhaseView: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreatePhase={handleCreatePhase}
-        projectId={projectId || ''}
+        projectId={projectId}
       />
     </div>
   );

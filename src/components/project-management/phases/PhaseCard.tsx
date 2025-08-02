@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ProjectPhase } from '@/types/project';
-import { EnhancedMilestone } from '@/hooks/useEnhancedMilestones';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,16 +8,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { MilestoneList } from './MilestoneList';
 
-// Define interface for enhanced phase to avoid type conflicts
-interface EnhancedPhase extends Omit<ProjectPhase, 'milestones'> {
-  milestones: EnhancedMilestone[];
-}
-
 interface PhaseCardProps {
-  phase: EnhancedPhase;
+  phase: ProjectPhase;
   isExpanded: boolean;
   onToggleExpand: (phaseId: string) => void;
-  onEdit: (phase: EnhancedPhase) => void;
+  onEdit: (phase: ProjectPhase) => void;
   onDelete: (phaseId: string) => void;
   onAddMilestone: (phaseId: string) => void;
 }
@@ -88,10 +82,10 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge className={statusColors[phase.status as keyof typeof statusColors] || statusColors.planned}>
+            <Badge className={statusColors[phase.status]}>
               {phase.status}
             </Badge>
-            <Badge variant="outline" className={priorityColors[phase.priority as keyof typeof priorityColors] || priorityColors.Medium}>
+            <Badge variant="outline" className={priorityColors[phase.priority]}>
               {phase.priority}
             </Badge>
             
