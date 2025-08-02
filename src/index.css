@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
@@ -6,75 +7,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* Light mode - pure white */
-    --foreground: 240 10% 3.9%; /* Light mode - dark text */
-
-    --card: 0 0% 100%; /* Light mode - white cards */
-    --card-foreground: 240 10% 3.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-
-    --primary: 217 91% 60%; /* Premium blue */
-    --primary-foreground: 0 0% 98%;
-
-    --secondary: 240 4.8% 95.9%; /* Light mode - light grey */
-    --secondary-foreground: 240 5.9% 10%;
-
-    --muted: 240 4.8% 95.9%; /* Light mode - subtle background */
-    --muted-foreground: 240 3.8% 46.1%; /* Light mode - muted text */
-
-    --accent: 240 4.8% 95.9%; /* Light mode - accent background */
-    --accent-foreground: 240 5.9% 10%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 240 5.9% 90%; /* Light mode - light borders */
-    --input: 240 5.9% 90%; /* Light mode - input backgrounds */
-    --ring: 217 91% 60%; /* Premium focus ring */
-
-    --radius: 0.75rem;
-    
-    /* Enhanced semantic status colors for light mode */
-    --success: 120 60% 50%;
-    --success-foreground: 0 0% 98%;
-    --success-muted: 120 60% 96%;
-    --success-muted-foreground: 120 60% 20%;
-    
-    --warning: 43 96% 56%;
-    --warning-foreground: 43 100% 11%;
-    --warning-muted: 43 100% 95%;
-    --warning-muted-foreground: 43 96% 25%;
-    
-    --error: 0 84% 60%;
-    --error-foreground: 0 0% 98%;
-    --error-muted: 0 100% 97%;
-    --error-muted-foreground: 0 84% 25%;
-    
-    --info: 217 91% 60%;
-    --info-foreground: 0 0% 98%;
-    --info-muted: 217 100% 97%;
-    --info-muted-foreground: 217 91% 25%;
-    
-    /* Surface colors for layered UI */
-    --surface: 0 0% 100%;
-    --surface-foreground: 240 10% 3.9%;
-    --surface-muted: 240 4.8% 98%;
-    --surface-hover: 240 4.8% 95.9%;
-    
-    /* Premium gradients */
-    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
-    --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
-    --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
-    
-    /* Light mode shadows */
-    --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-    --shadow-elevated: 0 10px 40px -8px rgba(59, 130, 246, 0.1);
-    --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.2);
-  }
-
-  .dark {
+    /* Dark mode variables - now the default and only theme */
     --background: 0 0% 3%; /* Ultra dark */
     --foreground: 0 0% 98%; /* Premium white */
 
@@ -102,8 +35,10 @@
     --border: 0 0% 15%; /* Subtle borders */
     --input: 0 0% 12%;
     --ring: 217 91% 60%; /* Premium focus ring */
+
+    --radius: 0.75rem;
     
-    /* Enhanced semantic status colors for dark mode */
+    /* Enhanced semantic status colors */
     --success: 120 60% 50%;
     --success-foreground: 0 0% 100%;
     --success-muted: 120 20% 15%;
@@ -124,11 +59,16 @@
     --info-muted: 217 30% 15%;
     --info-muted-foreground: 217 91% 80%;
     
-    /* Surface colors for layered UI in dark mode */
+    /* Surface colors for layered UI */
     --surface: 0 0% 6%;
     --surface-foreground: 0 0% 98%;
     --surface-muted: 0 0% 10%;
     --surface-hover: 0 0% 12%;
+    
+    /* Premium gradients */
+    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
+    --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+    --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
     
     /* Dark mode shadows */
     --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
@@ -373,22 +313,6 @@
       opacity: 1;
       box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
     }
-  }
-
-  /* Premium Glass Effects */
-  .glass-card {
-    background: rgba(6, 6, 6, 0.6);
-    backdrop-filter: blur(40px);
-    border: 1px solid rgba(59, 130, 246, 0.1);
-    box-shadow: var(--shadow-premium);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .glass-card:hover {
-    background: rgba(6, 6, 6, 0.8);
-    border-color: rgba(59, 130, 246, 0.25);
-    box-shadow: var(--shadow-elevated);
-    transform: translateY(-4px);
   }
 
   /* Premium Button Effects */

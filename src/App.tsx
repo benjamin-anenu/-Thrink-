@@ -114,7 +114,7 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false}>
         <TooltipProvider>
           <ErrorBoundary>
             <NetworkErrorHandler>
