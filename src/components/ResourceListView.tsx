@@ -12,12 +12,14 @@ import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 interface ResourceListViewProps {
   resources: Resource[];
   onViewDetails: (resource: Resource) => void;
+  onEditResource: (resource: Resource) => void;
   onShowResourceForm: () => void;
 }
 
 const ResourceListView: React.FC<ResourceListViewProps> = ({ 
   resources, 
-  onViewDetails, 
+  onViewDetails,
+  onEditResource,
   onShowResourceForm 
 }) => {
   const { deleteResource } = useEnhancedResources();
@@ -38,11 +40,6 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
 
   const handleDelete = async (resourceId: string) => {
     await deleteResource(resourceId);
-  };
-
-  const handleEdit = (resource: Resource) => {
-    console.log('Edit resource:', resource.id);
-    // TODO: Implement edit functionality
   };
 
   if (resources.length === 0) {
@@ -125,7 +122,7 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleEdit(resource)}
+                    onClick={() => onEditResource(resource)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

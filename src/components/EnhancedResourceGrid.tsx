@@ -9,6 +9,7 @@ interface EnhancedResourceGridProps {
   resources: Resource[];
   utilizationMetrics: Record<string, TaskUtilizationMetrics>;
   onViewDetails: (resource: Resource) => void;
+  onEditResource: (resource: Resource) => void;
   onShowResourceForm: () => void;
   showCompareMode?: boolean;
   selectedForComparison?: Set<string>;
@@ -18,7 +19,8 @@ interface EnhancedResourceGridProps {
 const EnhancedResourceGrid = ({ 
   resources, 
   utilizationMetrics,
-  onViewDetails, 
+  onViewDetails,
+  onEditResource,
   onShowResourceForm,
   showCompareMode = false,
   selectedForComparison = new Set(),
@@ -41,6 +43,7 @@ const EnhancedResourceGrid = ({
           resource={resource}
           utilizationMetrics={utilizationMetrics[resource.id]}
           onViewDetails={onViewDetails}
+          onEditResource={onEditResource}
           showCompareCheckbox={showCompareMode}
           isSelectedForComparison={selectedForComparison.has(resource.id)}
           onCompareToggle={onCompareToggle}
