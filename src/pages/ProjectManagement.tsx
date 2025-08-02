@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +21,8 @@ import ProjectCalendar from '@/components/calendar/ProjectCalendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useProject } from '@/contexts/ProjectContext';
 import ProjectCalendarModal from '@/components/project-management/ProjectCalendarModal';
+import { useTasks } from '@/hooks/useTasks';
+import { useResources } from '@/hooks/useResources';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +31,10 @@ const ProjectManagement: React.FC = () => {
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const { events, createEvent } = useCalendarEvents();
+  
+  // Fetch tasks and resources for the project
+  const { tasks } = useTasks(id || '');
+  const { resources } = useResources();
   
   const project = projects.find(p => p.id === id);
 
@@ -62,6 +69,33 @@ const ProjectManagement: React.FC = () => {
 
   const handleEventClick = (event: any) => {
     console.log('Event clicked:', event);
+  };
+
+  // Calculate project statistics from real data
+  const projectTasks = tasks || [];
+  const totalTasks = projectTasks.length;
+  
+  // Get assigned resources for this project
+  const assignedResourceIds = new Set();
+  projectTasks.forEach(task => {
+    if (task.assignedResources) {
+      task.assignedResources.forEach(resourceId => assignedResourceIds.add(resourceId));
+    }
+  });
+  const teamSize = assignedResourceIds.size;
+
+  // Format dates
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Not set';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Invalid date';
+    }
   };
 
   return (
@@ -102,7 +136,7 @@ const ProjectManagement: React.FC = () => {
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">Start Date</p>
-                    <p className="text-xs text-muted-foreground">{project.startDate}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(project.startDate)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -114,7 +148,7 @@ const ProjectManagement: React.FC = () => {
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">End Date</p>
-                    <p className="text-xs text-muted-foreground">{project.endDate}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(project.endDate)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -126,7 +160,7 @@ const ProjectManagement: React.FC = () => {
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">Team Size</p>
-                    <p className="text-xs text-muted-foreground">{project.resources?.length || 0} members</p>
+                    <p className="text-xs text-muted-foreground">{teamSize} members</p>
                   </div>
                 </div>
               </CardContent>
@@ -138,7 +172,7 @@ const ProjectManagement: React.FC = () => {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">Tasks</p>
-                    <p className="text-xs text-muted-foreground">{project.tasks?.length || 0} tasks</p>
+                    <p className="text-xs text-muted-foreground">{totalTasks} tasks</p>
                   </div>
                 </div>
               </CardContent>
