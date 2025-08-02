@@ -16,30 +16,30 @@ import { useRealTimeDashboardData } from '@/hooks/useRealTimeDashboardData';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const SimpleDashboard: React.FC = () => {
-  const { stats, loading } = useRealTimeDashboardData();
+  const { metrics, loading } = useRealTimeDashboardData();
 
   const quickStats = [
     {
       title: 'Total Projects',
-      value: stats.totalProjects.toString(),
+      value: metrics.totalProjects.toString(),
       icon: FolderOpen,
       color: 'text-blue-500'
     },
     {
       title: 'Active Projects',
-      value: stats.activeProjects.toString(),
+      value: metrics.activeProjects.toString(),
       icon: TrendingUp,
       color: 'text-green-500'
     },
     {
       title: 'Available Resources',
-      value: stats.availableResources.toString(),
+      value: metrics.availableResources.toString(),
       icon: Users,
       color: 'text-purple-500'
     },
     {
       title: 'Avg Progress',
-      value: `${stats.avgProgress}%`,
+      value: `${metrics.avgProgress}%`,
       icon: CheckCircle,
       color: 'text-orange-500'
     }
@@ -131,8 +131,8 @@ const SimpleDashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {stats.upcomingDeadlines.length > 0 ? (
-                  stats.upcomingDeadlines.map((item, index) => (
+                {metrics.upcomingDeadlines.length > 0 ? (
+                  metrics.upcomingDeadlines.map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{item.name}</p>
@@ -165,8 +165,8 @@ const SimpleDashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {stats.recentActivity.length > 0 ? (
-                  stats.recentActivity.map((activity, index) => (
+                {metrics.recentActivity.length > 0 ? (
+                  metrics.recentActivity.map((activity, index) => (
                     <div key={index} className="space-y-1">
                       <p className="font-medium">{activity.action}</p>
                       <p className="text-sm text-muted-foreground">

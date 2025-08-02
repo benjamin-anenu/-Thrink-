@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Filter } from 'lucide-react';
-import { useStakeholders } from '@/contexts/StakeholderContext';
+import { useStakeholders } from '@/hooks/useStakeholders';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import StakeholderForm from '@/components/StakeholderForm';
 import StakeholderGridView from '@/components/StakeholderGridView';
@@ -24,7 +24,7 @@ const Stakeholders = () => {
     return stakeholders.filter(stakeholder =>
       stakeholder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       stakeholder.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stakeholder.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (stakeholder.department || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       stakeholder.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [stakeholders, searchTerm]);
@@ -122,7 +122,11 @@ const Stakeholders = () => {
 
       {/* Stakeholder Form Modal */}
       {showStakeholderForm && (
-        <StakeholderForm onClose={() => setShowStakeholderForm(false)} />
+        <StakeholderForm 
+          open={showStakeholderForm}
+          onClose={() => setShowStakeholderForm(false)}
+          onSave={() => setShowStakeholderForm(false)}
+        />
       )}
     </div>
   );
