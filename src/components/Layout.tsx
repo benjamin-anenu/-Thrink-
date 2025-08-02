@@ -14,6 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className="pt-24 min-h-screen">
         {children}
       </main>
+      {/* Single TinkAssistant instance for the entire app */}
       <TinkAssistant />
     </>
   );
