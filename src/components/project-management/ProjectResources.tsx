@@ -2,6 +2,7 @@
 import React from 'react';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 import { useProject } from '@/contexts/ProjectContext';
+import { useTasks } from '@/hooks/useTasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -15,32 +16,70 @@ interface ProjectResourcesProps {
 const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   const { resources, loading } = useEnhancedResources();
   const { getProject } = useProject();
+  const { tasks } = useTasks(projectId);
   
   // Get real project data
   const project = getProject(projectId);
   
-  // Filter resources that are assigned to this project
+  // Calculate assigned resource IDs from project tasks
+  const assignedResourceIds = new Set<string>();
+  const resourceTaskCounts = new Map<string, number>();
+  const resourceEffortPoints = new Map<string, number>();
+  
+  tasks.forEach(task => {
+    if (task.assigned_resources && Array.isArray(task.assigned_resources)) {
+      task.assigned_resources.forEach(resourceId => {
+        assignedResourceIds.add(resourceId);
+        
+        // Count tasks per resource
+        resourceTaskCounts.set(resourceId, (resourceTaskCounts.get(resourceId) || 0) + 1);
+        
+        // Sum effort points (use duration as fallback, default to 1)
+        const effort = task.estimated_hours || task.duration || 1;
+        resourceEffortPoints.set(resourceId, (resourceEffortPoints.get(resourceId) || 0) + effort);
+      });
+    }
+  });
+
+  // Filter resources that are actually assigned to this project's tasks
   const projectResources = resources.filter(resource => 
-    project?.resources?.includes(resource.id) || 
-    project?.resources?.includes(resource.name)
+    assignedResourceIds.has(resource.id)
   );
 
-  // Map database resources to display format with defaults
-  const displayResources = projectResources.map(resource => ({
-    id: resource.id,
-    name: resource.name || 'Unknown',
-    role: resource.role || 'Team Member',
-    department: resource.department || 'General',
-    email: resource.email || '',
-    phone: '',
-    location: '',
-    skills: [], // Will be enhanced later with skills table
-    availability: 100, // Default availability
-    currentProjects: [project?.name || ''].filter(Boolean),
-    hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
-    utilization: 75, // Default utilization - can be calculated from assignments
-    status: 'Available' // Default status
-  }));
+  // Map database resources to display format with real calculations
+  const displayResources = projectResources.map(resource => {
+    const taskCount = resourceTaskCounts.get(resource.id) || 0;
+    const totalEffort = resourceEffortPoints.get(resource.id) || 0;
+    
+    // Calculate utilization based on task count (assuming 10 tasks = 100% utilization)
+    const utilization = Math.min(Math.round((taskCount / 10) * 100), 100);
+    
+    // Calculate availability (inverse of utilization)
+    const availability = Math.max(100 - utilization, 0);
+    
+    // Determine status based on utilization
+    let status: 'Available' | 'Busy' | 'Overallocated' = 'Available';
+    if (utilization >= 100) status = 'Overallocated';
+    else if (utilization >= 70) status = 'Busy';
+    
+    return {
+      id: resource.id,
+      name: resource.name || 'Unknown',
+      role: resource.role || 'Team Member',
+      department: resource.department || 'General',
+      email: resource.email || '',
+      phone: '',
+      location: '',
+      skills: [], // Will be enhanced later with skills table
+      availability,
+      currentProjects: [project?.name || ''].filter(Boolean),
+      hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
+      utilization,
+      status,
+      taskCount,
+      totalEffort
+    };
+  });
 
   const getAvailabilityColor = (availability: string) => {
     if (availability === 'Available') return 'bg-green-100 text-green-800';
@@ -54,13 +93,15 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
     return 'text-green-600';
   };
 
-  // Calculate real metrics
-  const totalResources = displayResources.length;
-  const availableResources = displayResources.filter(r => r.status === 'Available').length;
+  // Calculate real metrics from actual task assignments
+  const totalResources = assignedResourceIds.size; // Unique resources assigned to tasks
+  const availableResources = resources.length - totalResources; // Workspace resources not assigned to this project
   const avgUtilization = totalResources > 0 
     ? Math.round(displayResources.reduce((acc, r) => acc + r.utilization, 0) / totalResources)
     : 0;
-  const totalHours = displayResources.reduce((acc, r) => acc + (r.utilization * 40 / 100), 0);
+  
+  // Calculate total hours from actual task effort
+  const totalHours = Array.from(resourceEffortPoints.values()).reduce((sum, effort) => sum + effort, 0);
 
   if (loading) {
     return (
@@ -92,7 +133,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <Target className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Available</p>
-                <p className="font-semibold">{availableResources}</p>
+                <p className="font-semibold">{Math.max(availableResources, 0)}</p>
               </div>
             </div>
           </CardContent>
@@ -116,7 +157,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               <TrendingUp className="h-8 w-8 text-purple-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Hours</p>
-                <p className="font-semibold">{totalHours.toFixed(0)}h</p>
+                <p className="font-semibold">{totalHours}h</p>
               </div>
             </div>
           </CardContent>
@@ -186,6 +227,11 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
                       <p className="text-sm text-muted-foreground">{resource.email}</p>
                     </div>
                   )}
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>Tasks: {resource.taskCount}</span>
+                    <span>Total Effort: {resource.totalEffort}h</span>
+                  </div>
                   
                   {resource.currentProjects.length > 0 && (
                     <div>
