@@ -1,99 +1,370 @@
 
-import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Logo from './Logo';
-import UserButton from './auth/UserButton';
 import WorkspaceSelector from './WorkspaceSelector';
+import { UserButton } from './auth/UserButton';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { NotificationBell } from './notifications/NotificationModal';
+import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Link, useLocation } from 'react-router-dom';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
+  const location = useLocation();
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
-  const location = useLocation();
+  const [activePage, setActivePage] = useState('features');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    // Set active page based on current route
+    const path = location.pathname;
+    if (path === '/dashboard') setActivePage('dashboard');
+    else if (path === '/projects') setActivePage('projects');
+    else if (path === '/resources') setActivePage('resources');
+    else if (path === '/stakeholders') setActivePage('stakeholders');
+    else if (path === '/analytics') setActivePage('analytics');
+    else if (path === '/ai-hub') setActivePage('ai-hub');
+    else if (path === '/' && location.hash) {
+      const section = location.hash.substring(1);
+      setActivePage(section);
+    } else {
+      setActivePage('features');
+    }
+  }, [location]);
+  
+  const handleNavClick = (page: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setActivePage(page);
+    if (page === 'features' || page === 'pricing') {
+      const element = document.getElementById(page);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
-  
-  // Navigation items for authenticated users
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard' },
-    { path: '/projects', label: 'Projects' },
-    { path: '/resources', label: 'Resources' },
-    { path: '/stakeholders', label: 'Stakeholders' },
-    { path: '/analytics', label: 'Analytics' },
-    { path: '/ai-hub', label: 'AI Hub' },
-    { path: '/workspaces', label: 'Workspaces' }
-  ];
 
-  // Define consistent header height
-  const HEADER_HEIGHT = 'h-16'; // 64px consistent height
-  
   return (
-    <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 border-b border-border/40",
-      "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      HEADER_HEIGHT
-    )}>
-      <div className="container mx-auto px-4 h-full flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center gap-4">
-          <Logo />
+    <div className="fixed top-0 w-full z-50 pt-4 px-4">
+      <header className={cn(
+        "w-full max-w-7xl mx-auto transition-all duration-300 rounded-2xl border",
+        scrolled 
+          ? "bg-card/95 backdrop-blur-xl border-border/50 shadow-lg py-3 px-6" 
+          : "bg-card/90 backdrop-blur-md border-border/30 py-4 px-8"
+      )}>
+        <div className="flex items-center justify-between">
+          {/* Logo - Left */}
+          <div className="flex-shrink-0">
+            <Link to="/">
+              <Logo />
+            </Link>
+          </div>
           
-          {/* Workspace Selector - only show for authenticated users */}
-          {user && !isLandingPage && !isAuthPage && (
-            <div className="hidden md:block">
-              <WorkspaceSelector />
-            </div>
-          )}
-        </div>
-
-        {/* Navigation - only for authenticated users */}
-        {user && !isLandingPage && !isAuthPage && (
-          <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200",
-                  location.pathname === item.path
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          
+          {/* Mobile menu button */}
+          <button 
+            className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            onClick={toggleMobileMenu}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          
+          {/* Desktop navigation - Center */}
+          <nav className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2">
+            <div className="bg-muted/30 backdrop-blur-md rounded-full px-1 py-1 border border-border/50">
+              <ToggleGroup type="single" value={activePage} onValueChange={(value) => value && setActivePage(value)}>
+                {isLandingPage ? (
+                  <>
+                    <ToggleGroupItem 
+                      value="features"
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'features' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={handleNavClick('features')}
+                    >
+                      <CircleDot size={12} className="mr-1" /> Features
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="pricing" 
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'pricing' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      onClick={handleNavClick('pricing')}
+                    >
+                      <DollarSign size={12} className="mr-1" /> Pricing
+                    </ToggleGroupItem>
+                  </>
+                ) : user && (
+                  <>
+                    <ToggleGroupItem 
+                      value="dashboard"
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'dashboard' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/dashboard">
+                        <LayoutDashboard size={12} className="mr-1" /> Dashboard
+                      </Link>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="projects" 
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'projects' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/projects">
+                        <FolderOpen size={12} className="mr-1" /> Projects
+                      </Link>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="resources" 
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'resources' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/resources">
+                        <Users size={12} className="mr-1" /> Resources
+                      </Link>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="stakeholders" 
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'stakeholders' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/stakeholders">
+                        <UserCheck size={12} className="mr-1" /> Stakeholders
+                      </Link>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="analytics" 
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'analytics' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/analytics">
+                        <BarChart3 size={12} className="mr-1" /> Analytics
+                      </Link>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="ai-hub" 
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full transition-all relative text-xs font-medium",
+                        activePage === 'ai-hub' 
+                          ? 'text-primary-foreground bg-primary shadow-sm' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      asChild
+                    >
+                      <Link to="/ai-hub">
+                        <Brain size={12} className="mr-1" /> AI Hub
+                      </Link>
+                    </ToggleGroupItem>
+                  </>
                 )}
-              >
-                {item.label}
-              </Link>
-            ))}
+              </ToggleGroup>
+            </div>
           </nav>
-        )}
-
-        {/* Right side actions */}
-        <div className="flex items-center gap-2">
-          {user ? (
-            <UserButton />
-          ) : (
-            !isAuthPage && (
-              <div className="flex items-center gap-2">
-                <Link 
-                  to="/auth" 
-                  className="px-4 py-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
-                >
-                  Sign In
+          
+          {/* Right side actions */}
+          <div className="hidden md:flex items-center gap-3">
+            {!isLandingPage && !isAuthPage && user && <WorkspaceSelector />}
+            
+            {isLandingPage && !user && (
+              <div className="flex gap-2">
+                <Link to="/auth?tab=signin">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                    Sign In
+                  </Button>
                 </Link>
-                <Link 
-                  to="/auth" 
-                  className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                >
-                  Get Started
+                <Link to="/auth?tab=signup">
+                  <Button size="sm" className="bg-gradient-to-r from-primary to-blue-600 text-white shadow-md hover:shadow-lg transition-all">
+                    Get Started
+                  </Button>
                 </Link>
               </div>
-            )
-          )}
+            )}
+            
+            {user && (
+              <>
+                <NotificationBell />
+                <UserButton />
+              </>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
-      </div>
-    </header>
+        
+        {/* Mobile navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mt-4 pt-4 border-t border-border/50">
+            <div className="flex flex-col gap-2">
+              {!isLandingPage && !isAuthPage && user && (
+                <div className="pb-2 border-b border-border/50 mb-2">
+                  <WorkspaceSelector />
+                </div>
+              )}
+              
+              {isLandingPage ? (
+                <>
+                  <a 
+                    href="#features" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'features' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={handleNavClick('features')}
+                  >
+                    <CircleDot size={16} className="mr-2" /> Features
+                  </a>
+                  <a 
+                    href="#pricing" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'pricing' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={handleNavClick('pricing')}
+                  >
+                    <DollarSign size={16} className="mr-2" /> Pricing
+                  </a>
+                </>
+              ) : user && (
+                <>
+                  <Link 
+                    to="/dashboard" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'dashboard' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <LayoutDashboard size={16} className="mr-2" /> Dashboard
+                  </Link>
+                  <Link 
+                    to="/projects" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'projects' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <FolderOpen size={16} className="mr-2" /> Projects
+                  </Link>
+                  <Link 
+                    to="/resources" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'resources' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Users size={16} className="mr-2" /> Resources
+                  </Link>
+                  <Link 
+                    to="/stakeholders" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'stakeholders' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <UserCheck size={16} className="mr-2" /> Stakeholders
+                  </Link>
+                  <Link 
+                    to="/analytics" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'analytics' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <BarChart3 size={16} className="mr-2" /> Analytics
+                  </Link>
+                  <Link 
+                    to="/ai-hub" 
+                    className={cn(
+                      "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                      activePage === 'ai-hub' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Brain size={16} className="mr-2" /> AI Hub
+                  </Link>
+                </>
+              )}
+              
+              {isLandingPage && !user && (
+                <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
+                  <Link to="/auth?tab=signin">
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/auth?tab=signup">
+                    <Button className="w-full bg-gradient-to-r from-primary to-blue-600" onClick={() => setMobileMenuOpen(false)}>
+                      Get Started
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between px-3 py-2 pt-2 border-t border-border/50">
+                <span className="text-sm text-muted-foreground">Theme</span>
+                <ThemeToggle />
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+    </div>
   );
 };
 
