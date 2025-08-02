@@ -202,7 +202,7 @@ const ProjectManagement = () => {
         </TabsContent>
 
         <TabsContent value="timeline">
-          <ProjectTimeline projectId={projectId || ''} />
+          <ProjectTimeline />
         </TabsContent>
 
         <TabsContent value="resources">
