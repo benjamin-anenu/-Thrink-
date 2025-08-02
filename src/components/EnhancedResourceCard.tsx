@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +30,7 @@ interface EnhancedResourceCardProps {
   resource: Resource;
   utilizationMetrics?: TaskUtilizationMetrics;
   onViewDetails: (resource: Resource) => void;
+  onEditResource: (resource: Resource) => void;
   showCompareCheckbox?: boolean;
   isSelectedForComparison?: boolean;
   onCompareToggle?: (resourceId: string, selected: boolean) => void;
@@ -39,7 +39,8 @@ interface EnhancedResourceCardProps {
 const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({ 
   resource, 
   utilizationMetrics,
-  onViewDetails, 
+  onViewDetails,
+  onEditResource,
   showCompareCheckbox = false,
   isSelectedForComparison = false,
   onCompareToggle 
@@ -94,11 +95,6 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const handleEdit = () => {
-    console.log('Edit resource:', resource.id);
-    // TODO: Implement edit functionality
   };
 
   const handleViewDetails = () => {
@@ -261,7 +257,7 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleEdit}
+            onClick={() => onEditResource(resource)}
           >
             <Edit className="h-4 w-4" />
           </Button>
