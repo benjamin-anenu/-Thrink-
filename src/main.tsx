@@ -8,9 +8,6 @@ import { initializeRealTimeServices } from './services/index.ts'
 // Initialize the complete real-time system
 initializeRealTimeServices();
 
-// Force dark mode by adding the class to the document element
-document.documentElement.classList.add('dark');
-
 const container = document.getElementById("root");
 if (!container) {
   throw new Error("Root container not found");

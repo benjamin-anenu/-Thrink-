@@ -15,90 +15,84 @@ import {
   Clock,
   BarChart3
 } from 'lucide-react';
-import { useProject } from '@/contexts/ProjectContext';
-import { useResources } from '@/contexts/ResourceContext';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const SystemOwnerDashboard: React.FC = () => {
-  const { projects } = useProject();
-  const { resources } = useResources();
-  const { workspaces } = useWorkspace();
-
-  // Calculate system-wide metrics
-  const totalWorkspaces = workspaces?.length || 0;
-  const totalUsers = resources.length;
-  const totalActiveProjects = projects.filter(p => p.status === 'In Progress').length;
-  const systemHealth = projects.length > 0 
-    ? Math.round(projects.reduce((acc, p) => acc + (p.health?.score || 75), 0) / projects.length)
-    : 98;
-
   const systemMetrics = [
     {
       title: 'Total Workspaces',
-      value: totalWorkspaces.toString(),
+      value: '12',
       change: '+2',
       icon: Building2,
       color: 'text-blue-500'
     },
     {
       title: 'Total Users',
-      value: totalUsers.toString(),
+      value: '148',
       change: '+15',
       icon: Users,
       color: 'text-green-500'
     },
     {
       title: 'Active Projects',
-      value: totalActiveProjects.toString(),
+      value: '67',
       change: '+8',
       icon: FolderOpen,
       color: 'text-purple-500'
     },
     {
       title: 'System Health',
-      value: `${systemHealth}%`,
+      value: '98%',
       change: '+1%',
       icon: Activity,
       color: 'text-emerald-500'
     }
   ];
 
-  // Group projects by workspace for workspace overview
-  const workspaceData = workspaces?.map(workspace => {
-    const workspaceProjects = projects.filter(p => p.workspaceId === workspace.id);
-    const workspaceResources = resources.filter(r => r.workspaceId === workspace.id);
-    const avgProgress = workspaceProjects.length > 0 
-      ? Math.round(workspaceProjects.reduce((acc, p) => acc + p.progress, 0) / workspaceProjects.length)
-      : 0;
-    
-    return {
-      name: workspace.name,
-      users: workspaceResources.length,
-      projects: workspaceProjects.length,
-      progress: avgProgress,
-      status: avgProgress > 70 ? 'active' : 'warning',
+  const workspaceData = [
+    {
+      name: 'Engineering Team',
+      users: 25,
+      projects: 8,
+      progress: 85,
+      status: 'active',
       lastActivity: '2 hours ago'
-    };
-  }) || [];
+    },
+    {
+      name: 'Marketing Department',
+      users: 12,
+      projects: 5,
+      progress: 72,
+      status: 'active',
+      lastActivity: '1 hour ago'
+    },
+    {
+      name: 'Product Design',
+      users: 18,
+      projects: 12,
+      progress: 91,
+      status: 'active',
+      lastActivity: '30 minutes ago'
+    },
+    {
+      name: 'Sales Team',
+      users: 8,
+      projects: 3,
+      progress: 45,
+      status: 'warning',
+      lastActivity: '5 hours ago'
+    }
+  ];
 
-  // Get top performing resources across all workspaces
-  const topPerformers = resources
-    .filter(r => r.utilization > 70)
-    .slice(0, 3)
-    .map(resource => {
-      const workspace = workspaces?.find(w => w.id === resource.workspaceId);
-      return {
-        name: resource.name,
-        workspace: workspace?.name || 'Unknown',
-        completedTasks: Math.floor(resource.utilization / 4), // Estimate based on utilization
-        efficiency: `${resource.utilization}%`
-      };
-    });
+  const topPerformers = [
+    { name: 'Alice Johnson', workspace: 'Engineering', completedTasks: 24, efficiency: '95%' },
+    { name: 'Bob Smith', workspace: 'Marketing', completedTasks: 18, efficiency: '89%' },
+    { name: 'Carol Davis', workspace: 'Design', completedTasks: 22, efficiency: '92%' },
+  ];
 
   const systemAlerts = [
-    { type: 'warning' as const, message: 'Low activity detected in some workspaces', time: '2 hours ago' },
-    { type: 'info' as const, message: 'System backup completed successfully', time: '1 day ago' },
-    { type: 'success' as const, message: 'New workspace created successfully', time: '1 day ago' },
+    { type: 'warning', message: 'Sales Team workspace has low activity', time: '2 hours ago' },
+    { type: 'info', message: 'New workspace created: HR Department', time: '1 day ago' },
+    { type: 'success', message: 'System backup completed successfully', time: '1 day ago' },
   ];
 
   return (
@@ -144,42 +138,38 @@ const SystemOwnerDashboard: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {workspaceData.length > 0 ? (
-                workspaceData.map((workspace, index) => (
-                  <div key={index} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">{workspace.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {workspace.users} users • {workspace.projects} projects
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant={workspace.status === 'active' ? 'default' : 'secondary'}
-                        >
-                          {workspace.status}
-                        </Badge>
-                      </div>
+              {workspaceData.map((workspace, index) => (
+                <div key={index} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">{workspace.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {workspace.users} users • {workspace.projects} projects
+                      </p>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progress</span>
-                        <span>{workspace.progress}%</span>
-                      </div>
-                      <Progress value={workspace.progress} className="h-2" />
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant={workspace.status === 'active' ? 'default' : 'secondary'}
+                      >
+                        {workspace.status}
+                      </Badge>
                     </div>
-                    
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Last activity: {workspace.lastActivity}
-                    </p>
                   </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground">No workspaces found</p>
-              )}
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{workspace.progress}%</span>
+                    </div>
+                    <Progress value={workspace.progress} className="h-2" />
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Last activity: {workspace.lastActivity}
+                  </p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
@@ -195,22 +185,18 @@ const SystemOwnerDashboard: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {topPerformers.length > 0 ? (
-                topPerformers.map((user, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.workspace}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{user.completedTasks} tasks</p>
-                      <p className="text-sm text-green-500">{user.efficiency}</p>
-                    </div>
+              {topPerformers.map((user, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{user.name}</p>
+                    <p className="text-sm text-muted-foreground">{user.workspace}</p>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No performance data available</p>
-              )}
+                  <div className="text-right">
+                    <p className="font-medium">{user.completedTasks} tasks</p>
+                    <p className="text-sm text-green-500">{user.efficiency}</p>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
@@ -256,15 +242,11 @@ const SystemOwnerDashboard: React.FC = () => {
               <div className="text-sm text-muted-foreground">User Engagement</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-500">
-                {projects.length > 0 ? Math.round((projects.filter(p => p.status === 'Completed').length / projects.length) * 100) : 94}%
-              </div>
+              <div className="text-2xl font-bold text-green-500">94%</div>
               <div className="text-sm text-muted-foreground">Project Success Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-500">
-                {resources.length > 0 ? Math.round(resources.reduce((acc, r) => acc + r.utilization, 0) / resources.length) : 76}%
-              </div>
+              <div className="text-2xl font-bold text-purple-500">76%</div>
               <div className="text-sm text-muted-foreground">Resource Utilization</div>
             </div>
           </div>

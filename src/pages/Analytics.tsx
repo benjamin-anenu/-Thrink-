@@ -79,7 +79,7 @@ const Analytics = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 pb-8">
+      <div className="flex-1 container mx-auto px-4 pb-8">
         <AnalyticsHeader systemHealth={systemHealth} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

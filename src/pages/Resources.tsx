@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import Layout from '@/components/Layout';
-import PageHeader from '@/components/PageHeader';
+import Header from '@/components/Header';
+
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
 import SkillsMatrix from '@/components/SkillsMatrix';
 import AssignmentModal from '@/components/AssignmentModal';
@@ -197,35 +198,42 @@ const Resources = () => {
   );
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 pb-8">
-        <PageHeader 
-          title="Resources"
-          description="AI-powered resource management with utilization tracking"
-          badge={{ text: "AI Enhanced", icon: Brain }}
-        />
-
-        <div className="flex items-center gap-2 mb-8">
-          <Button 
-            variant="outline" 
-            onClick={handleGenerateAIRecommendations}
-            className="flex items-center gap-2"
-          >
-            <Brain size={16} />
-            Generate AI Insights
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleRefreshUtilization}
-            className="flex items-center gap-2"
-          >
-            <Zap size={16} />
-            Refresh Metrics
-          </Button>
-          <Button onClick={() => setShowResourceForm(true)} className="flex items-center gap-2">
-            <Plus size={16} />
-            Add Resource
-          </Button>
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <Header />
+      <main className="flex-1 container mx-auto px-4 pt-28 pb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
+              Resources
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Brain className="h-3 w-3" />
+                AI Enhanced
+              </Badge>
+            </h1>
+            <p className="text-muted-foreground">AI-powered resource management with utilization tracking</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleGenerateAIRecommendations}
+              className="flex items-center gap-2"
+            >
+              <Brain size={16} />
+              Generate AI Insights
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleRefreshUtilization}
+              className="flex items-center gap-2"
+            >
+              <Zap size={16} />
+              Refresh Metrics
+            </Button>
+            <Button onClick={() => setShowResourceForm(true)} className="flex items-center gap-2">
+              <Plus size={16} />
+              Add Resource
+            </Button>
+          </div>
         </div>
 
         {/* Enhanced Resource Stats */}
@@ -316,39 +324,41 @@ const Resources = () => {
             </div>
           </TabsContent>
         </Tabs>
+      </main>
 
-        {/* Modals */}
-        <ResourceCreationWizard
-          open={showResourceForm}
-          onOpenChange={setShowResourceForm}
-        />
+      {/* Modals */}
+      <ResourceCreationWizard
+        open={showResourceForm}
+        onOpenChange={setShowResourceForm}
+      />
 
-        <ResourceDetailsModal
-          isOpen={showResourceDetailsModal}
-          onClose={() => setShowResourceDetailsModal(false)}
-          resource={selectedResourceForDetails}
-          onAssignTask={handleAssignTaskFromDetails}
-        />
+      <ResourceDetailsModal
+        isOpen={showResourceDetailsModal}
+        onClose={() => setShowResourceDetailsModal(false)}
+        resource={selectedResourceForDetails}
+        onAssignTask={handleAssignTaskFromDetails}
+      />
 
-        <AssignmentModal
-          isOpen={showAssignmentModal}
-          onClose={() => setShowAssignmentModal(false)}
-          onAssign={(data) => {
-            console.log('Assignment created:', data);
-            toast.success('Resource assigned successfully');
-          }}
-          resourceData={mappedResources.map(r => ({ id: r.id, name: r.name }))}
-          projectData={[]}
-        />
+      <AssignmentModal
+        isOpen={showAssignmentModal}
+        onClose={() => setShowAssignmentModal(false)}
+        onAssign={(data) => {
+          console.log('Assignment created:', data);
+          toast.success('Resource assigned successfully');
+        }}
+        resourceData={mappedResources.map(r => ({ id: r.id, name: r.name }))}
+        projectData={[]}
+      />
 
-        <ResourceComparisonModal
-          open={showComparisonModal}
-          onOpenChange={setShowComparisonModal}
-          selectedResourceIds={Array.from(selectedForComparison)}
-          workspaceId={currentWorkspace?.id || ''}
-        />
-      </div>
-    </Layout>
+      <ResourceComparisonModal
+        open={showComparisonModal}
+        onOpenChange={setShowComparisonModal}
+        selectedResourceIds={Array.from(selectedForComparison)}
+        workspaceId={currentWorkspace?.id || ''}
+      />
+
+
+    </div>
   );
 };
 

@@ -12,97 +12,46 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-import { useProject } from '@/contexts/ProjectContext';
-import { useResources } from '@/contexts/ResourceContext';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const SimpleDashboard: React.FC = () => {
-  const { projects } = useProject();
-  const { resources } = useResources();
-  const { currentWorkspace } = useWorkspace();
-
-  // Filter data by current workspace
-  const workspaceProjects = projects.filter(project => 
-    !currentWorkspace || project.workspaceId === currentWorkspace.id
-  );
-  
-  const workspaceResources = resources.filter(resource => 
-    !currentWorkspace || resource.workspaceId === currentWorkspace.id
-  );
-
-  // Calculate real metrics
-  const totalProjects = workspaceProjects.length;
-  const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress').length;
-  const availableResources = workspaceResources.length;
-  const avgProgress = workspaceProjects.length > 0 
-    ? Math.round(workspaceProjects.reduce((acc, p) => acc + p.progress, 0) / workspaceProjects.length)
-    : 0;
-
   const quickStats = [
     {
       title: 'Total Projects',
-      value: totalProjects.toString(),
+      value: '24',
       icon: FolderOpen,
       color: 'text-blue-500'
     },
     {
       title: 'Active Projects',
-      value: activeProjects.toString(),
+      value: '8',
       icon: TrendingUp,
       color: 'text-green-500'
     },
     {
       title: 'Available Resources',
-      value: availableResources.toString(),
+      value: '12',
       icon: Users,
       color: 'text-purple-500'
     },
     {
       title: 'Avg Progress',
-      value: `${avgProgress}%`,
+      value: '68%',
       icon: CheckCircle,
       color: 'text-orange-500'
     }
   ];
 
-  // Get upcoming deadlines from real project data
-  const upcomingDeadlines = workspaceProjects
-    .filter(project => {
-      const endDate = new Date(project.endDate);
-      const today = new Date();
-      const daysDiff = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-      return daysDiff >= 0 && daysDiff <= 7; // Projects due in the next 7 days
-    })
-    .map(project => {
-      const endDate = new Date(project.endDate);
-      const today = new Date();
-      const daysDiff = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-      
-      let deadline = '';
-      if (daysDiff === 0) deadline = 'Today';
-      else if (daysDiff === 1) deadline = 'Tomorrow';
-      else deadline = `In ${daysDiff} days`;
-      
-      let priority: 'high' | 'medium' | 'low' = 'low';
-      if (daysDiff <= 1) priority = 'high';
-      else if (daysDiff <= 3) priority = 'medium';
-      
-      return {
-        name: project.name,
-        deadline,
-        priority
-      };
-    })
-    .slice(0, 3); // Show only top 3
+  const upcomingDeadlines = [
+    { name: 'Project Alpha', deadline: 'Tomorrow', priority: 'high' },
+    { name: 'Beta Release', deadline: 'In 3 days', priority: 'medium' },
+    { name: 'Marketing Campaign', deadline: 'Next week', priority: 'low' },
+  ];
 
-  // Get recent activity from projects (simplified)
-  const recentActivity = workspaceProjects
-    .slice(0, 3)
-    .map(project => ({
-      action: project.status === 'Completed' ? 'Project completed' : 'Status updated',
-      project: project.name,
-      time: '2 hours ago' // This could be enhanced with real timestamps
-    }));
+  const recentActivity = [
+    { action: 'Task completed', project: 'Project Alpha', time: '2 hours ago' },
+    { action: 'New resource assigned', project: 'Beta Release', time: '4 hours ago' },
+    { action: 'Milestone reached', project: 'Marketing Campaign', time: '1 day ago' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -144,26 +93,22 @@ const SimpleDashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {upcomingDeadlines.length > 0 ? (
-                  upcomingDeadlines.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {item.deadline}
-                        </p>
-                      </div>
-                      <Badge 
-                        variant={item.priority === 'high' ? 'destructive' : item.priority === 'medium' ? 'secondary' : 'outline'}
-                      >
-                        {item.priority}
-                      </Badge>
+                {upcomingDeadlines.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {item.deadline}
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No upcoming deadlines</p>
-                )}
+                    <Badge 
+                      variant={item.priority === 'high' ? 'destructive' : item.priority === 'medium' ? 'secondary' : 'outline'}
+                    >
+                      {item.priority}
+                    </Badge>
+                  </div>
+                ))}
               </CardContent>
             </Card>
 
@@ -176,18 +121,14 @@ const SimpleDashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {recentActivity.length > 0 ? (
-                  recentActivity.map((activity, index) => (
-                    <div key={index} className="space-y-1">
-                      <p className="font-medium">{activity.action}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {activity.project} • {activity.time}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No recent activity</p>
-                )}
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="space-y-1">
+                    <p className="font-medium">{activity.action}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {activity.project} • {activity.time}
+                    </p>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
