@@ -10,8 +10,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { MilestoneList } from './MilestoneList';
 
+// Define interface for enhanced phase to avoid type conflicts
+interface EnhancedPhase extends Omit<ProjectPhase, 'milestones'> {
+  milestones: EnhancedMilestone[];
+}
+
 interface PhaseCardProps {
-  phase: ProjectPhase & { milestones: EnhancedMilestone[] };
+  phase: EnhancedPhase;
   isExpanded: boolean;
   onToggleExpand: (phaseId: string) => void;
   onEdit: (phase: ProjectPhase) => void;

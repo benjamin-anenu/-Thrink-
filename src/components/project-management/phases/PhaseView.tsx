@@ -13,6 +13,11 @@ interface PhaseViewProps {
   projectId: string;
 }
 
+// Define a separate interface for enhanced phases to avoid type conflicts
+interface EnhancedPhase extends Omit<ProjectPhase, 'milestones'> {
+  milestones: import('@/hooks/useEnhancedMilestones').EnhancedMilestone[];
+}
+
 export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
   const {
     phases,
@@ -93,8 +98,8 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
     );
   }
 
-  // Convert enhanced milestones to the format expected by PhaseCard
-  const enhancedPhases = phases.map(phase => ({
+  // Convert phases to enhanced phases with proper typing
+  const enhancedPhases: EnhancedPhase[] = phases.map(phase => ({
     ...phase,
     milestones: milestones.filter(m => m.phase_id === phase.id)
   }));
