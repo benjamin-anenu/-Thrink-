@@ -11,16 +11,16 @@ import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 interface ResourceListViewProps {
   resources: Resource[];
-  showCompareMode?: boolean;
-  selectedForComparison?: Set<string>;
-  onCompareToggle?: (resourceId: string, selected: boolean) => void;
+  onViewDetails: (resource: Resource) => void;
+  onEditResource: (resource: Resource) => void;
+  onShowResourceForm: () => void;
 }
 
 const ResourceListView: React.FC<ResourceListViewProps> = ({ 
   resources, 
-  showCompareMode = false,
-  selectedForComparison = new Set(),
-  onCompareToggle
+  onViewDetails,
+  onEditResource,
+  onShowResourceForm 
 }) => {
   const { deleteResource } = useEnhancedResources();
 
@@ -46,6 +46,7 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-4">No resources found matching your search.</p>
+        <Button onClick={onShowResourceForm}>Add New Resource</Button>
       </div>
     );
   }
@@ -114,14 +115,14 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {}}
+                    onClick={() => onViewDetails(resource)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {}}
+                    onClick={() => onEditResource(resource)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

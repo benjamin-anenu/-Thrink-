@@ -62,6 +62,8 @@ const ResourceOverview = ({ resources, onViewDetails, onShowResourceForm }: Reso
       {/* Resources Grid */}
       <ResourceGrid
         resources={filteredResources}
+        onViewDetails={onViewDetails}
+        onShowResourceForm={onShowResourceForm}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +20,7 @@ import { ProjectIssueLog } from '@/components/project-management/issues/ProjectI
 import ProjectCalendar from '@/components/calendar/ProjectCalendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useProject } from '@/contexts/ProjectContext';
-import ProjectCalendarModal from '@/components/project-management/ProjectCalendarModal';
+import { ProjectCalendarModal } from '@/components/project-management/ProjectCalendarModal';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();

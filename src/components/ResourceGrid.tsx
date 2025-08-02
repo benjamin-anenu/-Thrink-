@@ -6,6 +6,8 @@ import { Resource } from '@/contexts/ResourceContext';
 
 interface ResourceGridProps {
   resources: Resource[];
+  onViewDetails: (resource: Resource) => void;
+  onShowResourceForm: () => void;
   showCompareMode?: boolean;
   selectedForComparison?: Set<string>;
   onCompareToggle?: (resourceId: string, selected: boolean) => void;
@@ -13,6 +15,8 @@ interface ResourceGridProps {
 
 const ResourceGrid = ({ 
   resources, 
+  onViewDetails, 
+  onShowResourceForm,
   showCompareMode = false,
   selectedForComparison = new Set(),
   onCompareToggle
@@ -21,6 +25,7 @@ const ResourceGrid = ({
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-4">No resources found matching your search.</p>
+        <Button onClick={onShowResourceForm}>Add New Resource</Button>
       </div>
     );
   }
@@ -31,7 +36,7 @@ const ResourceGrid = ({
         <ResourceCard
           key={resource.id}
           resource={resource}
-          onViewDetails={() => {}}
+          onViewDetails={onViewDetails}
           showCompareCheckbox={showCompareMode}
           isSelectedForComparison={selectedForComparison.has(resource.id)}
           onCompareToggle={onCompareToggle}

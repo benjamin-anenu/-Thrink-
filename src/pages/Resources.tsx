@@ -1,136 +1,169 @@
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Filter } from 'lucide-react';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Layout from '@/components/Layout';
-import ResourceForm from '@/components/ResourceForm';
-import ResourceGrid from '@/components/ResourceGrid';
 import ResourceListView from '@/components/ResourceListView';
+import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
+import ResourceStats from '@/components/ResourceStats';
+import ResourceDashboard from '@/components/ResourceDashboard';
+import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
+import ResourceDetailsModal from '@/components/ResourceDetailsModal';
 import ViewToggle from '@/components/ViewToggle';
-import ResourceQuickInsights from '@/components/resources/ResourceQuickInsights';
-import { useResources } from '@/hooks/useResources';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, BarChart3, Users } from 'lucide-react';
+import { useEnhancedResources } from '@/hooks/useEnhancedResources';
+import type { Resource as ContextResource } from '@/contexts/ResourceContext';
+import ResourceEditModal from '@/components/ResourceEditModal';
 
-const Resources = () => {
-  const { currentWorkspace } = useWorkspace();
-  const { resources, loading } = useResources();
-  const [showResourceForm, setShowResourceForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list view
-  const [showFilters, setShowFilters] = useState(false);
+const Resources: React.FC = () => {
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'grid' | 'list'>('grid');
+  const [selectedResource, setSelectedResource] = useState<ContextResource | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [resourceToEdit, setResourceToEdit] = useState<ContextResource | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { resources, utilizationMetrics } = useEnhancedResources();
 
-  // Filter resources based on search
-  const filteredResources = resources.filter(resource =>
-    resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    resource.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    resource.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    resource.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleResourceCreated = () => {
+    setIsWizardOpen(false);
+  };
 
-  if (!currentWorkspace) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">No Workspace Selected</h2>
-            <p className="text-muted-foreground">Please select a workspace to view resources.</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  const handleViewDetails = (resource: ContextResource) => {
+    console.log('View details for resource:', resource.id);
+    setSelectedResource(resource);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditResource = (resource: ContextResource) => {
+    console.log('Edit resource:', resource.id);
+    setResourceToEdit(resource);
+    setIsEditModalOpen(true);
+  };
+
+  const handleShowResourceForm = () => {
+    setIsWizardOpen(true);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedResource(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setResourceToEdit(null);
+  };
+
+  // Transform database resources to match context interface
+  const transformedResources: ContextResource[] = resources.map(resource => ({
+    id: resource.id,
+    name: resource.name || '',
+    role: resource.role || '',
+    department: resource.department || '',
+    email: resource.email || '',
+    phone: '+1 (555) 123-4567', // Default phone number for display
+    location: 'Remote',
+    skills: ['React', 'TypeScript', 'Node.js'],
+    availability: 100,
+    currentProjects: ['Project Alpha', 'Project Beta'],
+    hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
+    utilization: 75,
+    status: 'Available' as 'Available' | 'Busy' | 'Overallocated',
+    workspaceId: resource.workspace_id,
+    createdAt: resource.created_at,
+    updatedAt: resource.updated_at
+  }));
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Resources</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your team members and their skills
-            </p>
-          </div>
-          <Button onClick={() => setShowResourceForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Resource Management</h1>
+          <Button onClick={() => setIsWizardOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
             Add Resource
           </Button>
         </div>
 
-        {/* Quick Insights */}
-        <ResourceQuickInsights />
-
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="skills">Skills Matrix</TabsTrigger>
-            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              View Resources
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4">
-            {/* Search and View Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Search resources..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+          <TabsContent value="dashboard" className="space-y-6">
+            <ResourceDashboard />
+          </TabsContent>
+
+          <TabsContent value="resources" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
                 <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={showFilters ? 'bg-muted' : ''}
+                  variant={currentView === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('grid')}
                 >
-                  <Filter className="h-4 w-4" />
+                  Grid
+                </Button>
+                <Button
+                  variant={currentView === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('list')}
+                >
+                  List
                 </Button>
               </div>
+            </div>
 
-              <ViewToggle
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
+            <ResourceStats />
+            
+            {currentView === 'grid' ? (
+              <EnhancedResourceGrid 
+                resources={transformedResources}
+                utilizationMetrics={utilizationMetrics}
+                onViewDetails={handleViewDetails}
+                onEditResource={handleEditResource}
+                onShowResourceForm={handleShowResourceForm}
               />
-            </div>
-
-            {/* Resources Display */}
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-muted-foreground">Loading resources...</div>
-              </div>
             ) : (
-              <>
-                {viewMode === 'grid' ? (
-                  <ResourceGrid resources={filteredResources} />
-                ) : (
-                  <ResourceListView resources={filteredResources} />
-                )}
-              </>
+              <ResourceListView 
+                resources={transformedResources}
+                onViewDetails={handleViewDetails}
+                onEditResource={handleEditResource}
+                onShowResourceForm={handleShowResourceForm}
+              />
             )}
-          </TabsContent>
-
-          <TabsContent value="skills">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Skills matrix coming soon...</p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="assignments">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Resource assignments coming soon...</p>
-            </div>
           </TabsContent>
         </Tabs>
 
-        {/* Resource Form Modal */}
-        {showResourceForm && (
-          <ResourceForm onClose={() => setShowResourceForm(false)} />
+        {isWizardOpen && (
+          <ResourceCreationWizard
+            open={isWizardOpen}
+            onOpenChange={setIsWizardOpen}
+          />
+        )}
+
+        {selectedResource && (
+          <ResourceDetailsModal
+            resource={selectedResource}
+            isOpen={isDetailsModalOpen}
+            onClose={handleCloseDetailsModal}
+          />
+        )}
+
+        {resourceToEdit && (
+          <ResourceEditModal
+            resource={resourceToEdit}
+            isOpen={isEditModalOpen}
+            onClose={handleCloseEditModal}
+          />
         )}
       </div>
     </Layout>
