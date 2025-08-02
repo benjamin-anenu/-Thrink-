@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import Layout from '@/components/Layout';
-import ProjectTable from '@/components/ProjectTable';
+import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
 import ProjectCreationWizard from '@/components/ProjectCreationWizard';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -28,7 +28,7 @@ const Projects: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <ProjectTable />
+          <ProjectDisplay />
         </div>
 
         {isWizardOpen && (
