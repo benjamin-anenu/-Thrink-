@@ -5,10 +5,10 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import RealTimeStatus from './RealTimeStatus';
 
 interface DashboardHeaderProps {
-  aiConfidence: number;
+  aiConfidence?: number;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ aiConfidence }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ aiConfidence = 95 }) => {
   const { currentWorkspace } = useWorkspace();
   
   return (

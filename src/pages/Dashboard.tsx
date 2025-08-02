@@ -4,15 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Header from '@/components/Header';
 import WorkspaceBanner from '@/components/WorkspaceBanner';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
-import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
-import RealTimeStatus from '@/components/dashboard/RealTimeStatus';
-import AIInsights from '@/components/dashboard/AIInsights';
+import SimpleDashboard from '@/components/dashboard/SimpleDashboard';
+import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
 import FirstUserOnboarding from '@/components/FirstUserOnboarding';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, loading: authLoading } = useAuth();
+  const { user, isFirstUser, isSystemOwner, loading: authLoading } = useAuth();
   const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
 
   // Show loading state while authentication is loading
@@ -40,8 +37,6 @@ const Dashboard: React.FC = () => {
       
       <div className="container mx-auto px-4 pt-32 pb-8 max-w-7xl">
         <div className="space-y-8">
-          <DashboardHeader />
-          
           {/* Show loading state for workspace data */}
           {workspaceLoading && (
             <div className="text-center py-8">
@@ -50,8 +45,8 @@ const Dashboard: React.FC = () => {
             </div>
           )}
           
-          {/* Show workspace selection prompt if no current workspace */}
-          {!workspaceLoading && !currentWorkspace && (
+          {/* Show workspace selection prompt if no current workspace and not system owner */}
+          {!workspaceLoading && !currentWorkspace && !isSystemOwner && (
             <div className="text-center py-12">
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground">No Workspace Selected</h2>
@@ -62,19 +57,14 @@ const Dashboard: React.FC = () => {
             </div>
           )}
           
-          {/* Regular dashboard content when workspace is available */}
-          {!workspaceLoading && currentWorkspace && (
+          {/* Show appropriate dashboard based on user role */}
+          {!workspaceLoading && (isSystemOwner || currentWorkspace) && (
             <>
-              <DashboardMetrics />
-              <div className="grid gap-8 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-8">
-                  <ProjectDisplay />
-                  <RealTimeStatus />
-                </div>
-                <div className="space-y-8">
-                  <AIInsights />
-                </div>
-              </div>
+              {isSystemOwner ? (
+                <SystemOwnerDashboard />
+              ) : (
+                <SimpleDashboard />
+              )}
             </>
           )}
         </div>
