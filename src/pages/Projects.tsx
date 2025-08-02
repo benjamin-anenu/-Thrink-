@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
-import { ProjectCreationWizard } from '@/components/ProjectCreationWizard';
-import { ProjectTable } from '@/components/ProjectTable';
+import ProjectCreationWizard from '@/components/ProjectCreationWizard';
+import ProjectTable from '@/components/ProjectTable';
 import PageHeader from '@/components/PageHeader';
 
 const Projects = () => {
