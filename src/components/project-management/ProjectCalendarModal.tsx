@@ -1,14 +1,12 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { CalendarDays, AlertTriangle, Clock, Target } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, AlertTriangle } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
-import { useProject } from '@/contexts/ProjectContext';
-import { format, isSameDay, parseISO } from 'date-fns';
+import { format, isSameDay, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 
 interface ProjectCalendarModalProps {
   isOpen: boolean;
@@ -17,107 +15,115 @@ interface ProjectCalendarModalProps {
   projectName: string;
 }
 
-export const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({
+const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({
   isOpen,
   onClose,
   projectId,
   projectName
 }) => {
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const { events } = useCalendarEvents();
-  const { projects } = useProject();
-
-  // Get all events for the workspace (not just current project)
-  const allEvents = events;
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [displayMonth, setDisplayMonth] = useState<Date>(new Date());
   
-  // Separate current project events from other project events
-  const currentProjectEvents = allEvents.filter(event => event.projectId === projectId);
-  const otherProjectEvents = allEvents.filter(event => event.projectId !== projectId);
+  const { events, loading, allWorkspaceEvents } = useCalendarEvents(projectId, true);
 
-  // Create project color mapping
-  const projectColors = useMemo(() => {
-    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-indigo-500'];
-    const colorMap: Record<string, string> = {};
-    
-    projects.forEach((project, index) => {
-      if (project.id === projectId) {
-        colorMap[project.id] = 'bg-primary'; // Current project in primary color
-      } else {
-        colorMap[project.id] = colors[index % colors.length];
-      }
-    });
-    
-    return colorMap;
-  }, [projects, projectId]);
+  // Color coding for different event types
+  const getEventColor = (event: any) => {
+    if (event.project_id === projectId) {
+      return 'bg-blue-500 text-white'; // Current project tasks - blue
+    }
+    return 'bg-orange-500 text-white'; // Other projects - orange
+  };
 
   // Get events for selected date
-  const selectedDateEvents = selectedDate ? [
-    ...currentProjectEvents.filter(event => isSameDay(event.date, selectedDate)),
-    ...otherProjectEvents.filter(event => isSameDay(event.date, selectedDate))
-  ] : [];
-
-  // Check if date has events
-  const hasEvents = (date: Date) => {
-    return allEvents.some(event => isSameDay(event.date, date));
+  const getEventsForDate = (date: Date) => {
+    return allWorkspaceEvents.filter(event => 
+      isSameDay(new Date(event.start_date), date)
+    );
   };
 
-  // Check if date has conflicts (multiple projects)
-  const hasConflicts = (date: Date) => {
-    const dateEvents = allEvents.filter(event => isSameDay(event.date, date));
-    const projectIds = new Set(dateEvents.map(event => event.projectId));
-    return projectIds.size > 1;
+  // Get conflicts for current project on selected date
+  const getConflictsForDate = (date: Date) => {
+    const dateEvents = getEventsForDate(date);
+    const currentProjectEvents = dateEvents.filter(e => e.project_id === projectId);
+    const otherProjectEvents = dateEvents.filter(e => e.project_id !== projectId);
+    
+    return {
+      hasConflicts: currentProjectEvents.length > 0 && otherProjectEvents.length > 0,
+      currentProjectEvents,
+      otherProjectEvents,
+      totalEvents: dateEvents.length
+    };
   };
 
-  // Custom day renderer for calendar
+  // Custom day renderer for the calendar
   const renderDay = (date: Date) => {
-    const dayEvents = allEvents.filter(event => isSameDay(event.date, date));
-    const hasCurrentProject = dayEvents.some(event => event.projectId === projectId);
-    const hasOtherProjects = dayEvents.some(event => event.projectId !== projectId);
-    const isConflict = hasCurrentProject && hasOtherProjects;
-
-    if (dayEvents.length === 0) return null;
-
+    const conflicts = getConflictsForDate(date);
+    const hasCurrentProject = conflicts.currentProjectEvents.length > 0;
+    const hasOtherProjects = conflicts.otherProjectEvents.length > 0;
+    
+    let className = "relative w-full h-full flex items-center justify-center";
+    
+    if (hasCurrentProject && hasOtherProjects) {
+      className += " bg-red-100 border-2 border-red-500"; // Conflicts
+    } else if (hasCurrentProject) {
+      className += " bg-blue-100 border border-blue-300"; // Current project only
+    } else if (hasOtherProjects) {
+      className += " bg-orange-100 border border-orange-300"; // Other projects only
+    }
+    
     return (
-      <div className="absolute bottom-0 right-0 flex gap-1">
-        {hasCurrentProject && (
-          <div className="w-2 h-2 rounded-full bg-primary"></div>
-        )}
-        {hasOtherProjects && (
-          <div className={`w-2 h-2 rounded-full ${isConflict ? 'bg-destructive' : 'bg-orange-500'}`}></div>
+      <div className={className}>
+        <span>{format(date, 'd')}</span>
+        {conflicts.totalEvents > 0 && (
+          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+            {conflicts.totalEvents}
+          </div>
         )}
       </div>
     );
   };
 
+  const selectedDateConflicts = selectedDate ? getConflictsForDate(selectedDate) : null;
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setDisplayMonth(prev => 
+      direction === 'next' ? addMonths(prev, 1) : subMonths(prev, 1)
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" />
+            <CalendarIcon className="h-5 w-5" />
             Project Calendar - {projectName}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Calendar View */}
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar Section */}
+          <div className="lg:col-span-2">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Calendar View</CardTitle>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-primary"></div>
-                    <span>Current Project</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                    <span>Other Projects</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-destructive"></div>
-                    <span>Conflicts</span>
-                  </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-lg">
+                  {format(displayMonth, 'MMMM yyyy')}
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigateMonth('prev')}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigateMonth('next')}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -125,170 +131,153 @@ export const ProjectCalendarModal: React.FC<ProjectCalendarModalProps> = ({
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
+                  month={displayMonth}
+                  onMonthChange={setDisplayMonth}
                   className="rounded-md border"
                   components={{
-                    Day: ({ date, ...props }) => (
-                      <div className="relative">
-                        <button {...props} />
+                    Day: ({ date }) => (
+                      <button
+                        className="w-full h-10 text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                        onClick={() => setSelectedDate(date)}
+                      >
                         {renderDay(date)}
-                      </div>
+                      </button>
                     )
                   }}
                 />
-              </CardContent>
-            </Card>
-
-            {/* Legend */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Project Legend</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {projects.map(project => {
-                  const projectEventCount = allEvents.filter(e => e.projectId === project.id).length;
-                  if (projectEventCount === 0) return null;
-                  
-                  return (
-                    <div key={project.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${projectColors[project.id]}`}></div>
-                        <span className={project.id === projectId ? 'font-semibold' : ''}>{project.name}</span>
-                      </div>
-                      <Badge variant="outline">{projectEventCount} events</Badge>
-                    </div>
-                  );
-                })}
+                
+                {/* Legend */}
+                <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+                    <span>Current Project Tasks</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
+                    <span>Other Project Tasks</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded"></div>
+                    <span>Conflicts</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Event Details */}
+          {/* Selected Date Details */}
           <div className="space-y-4">
-            {selectedDate ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <span>Events on {format(selectedDate, 'MMMM d, yyyy')}</span>
-                    {hasConflicts(selectedDate) && (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Conflict
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {selectedDateEvents.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No events on this date</p>
-                  ) : (
-                    selectedDateEvents.map((event, index) => {
-                      const eventProject = projects.find(p => p.id === event.projectId);
-                      const isCurrentProject = event.projectId === projectId;
-                      
-                      return (
-                        <div
-                          key={`${event.id}-${index}`}
-                          className={`p-3 rounded-lg border ${
-                            isCurrentProject ? 'bg-primary/10 border-primary/20' : 'bg-muted/50'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium">{event.title}</h4>
-                            <div className="flex items-center gap-2">
-                              {event.type === 'milestone' && <Target className="h-4 w-4 text-primary" />}
-                              {event.type !== 'milestone' && <Clock className="h-4 w-4 text-muted-foreground" />}
-                              <Badge 
-                                variant={isCurrentProject ? 'default' : 'secondary'}
-                                className="text-xs"
-                              >
-                                {eventProject?.name || 'Unknown Project'}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          {event.description && (
-                            <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
-                          )}
-                          
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span className="capitalize">{event.type}</span>
-                            {event.startTime && event.endTime && (
-                              <span>{event.startTime} - {event.endTime}</span>
-                            )}
-                            {event.location && (
-                              <span>{event.location}</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Select a date to view events and conflicts</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Conflict Summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  Potential Conflicts
+                <CardTitle className="text-base">
+                  {selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : 'Select a date'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {(() => {
-                  const conflictDates = allEvents.reduce((acc, event) => {
-                    const dateKey = format(event.date, 'yyyy-MM-dd');
-                    if (!acc[dateKey]) acc[dateKey] = [];
-                    acc[dateKey].push(event);
-                    return acc;
-                  }, {} as Record<string, typeof allEvents>);
+                {selectedDate && selectedDateConflicts ? (
+                  <div className="space-y-4">
+                    {/* Conflict Warning */}
+                    {selectedDateConflicts.hasConflicts && (
+                      <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <span className="text-sm text-red-800 font-medium">
+                          Schedule Conflict Detected!
+                        </span>
+                      </div>
+                    )}
 
-                  const conflicts = Object.entries(conflictDates)
-                    .filter(([_, events]) => {
-                      const projectIds = new Set(events.map(e => e.projectId));
-                      return projectIds.size > 1;
-                    })
-                    .slice(0, 5); // Show only first 5 conflicts
-
-                  return conflicts.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No conflicts detected</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {conflicts.map(([dateKey, events]) => (
-                        <div
-                          key={dateKey}
-                          className="p-2 rounded border bg-destructive/5 cursor-pointer hover:bg-destructive/10"
-                          onClick={() => setSelectedDate(parseISO(dateKey))}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{format(parseISO(dateKey), 'MMM d, yyyy')}</span>
-                            <Badge variant="outline">{events.length} events</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {new Set(events.map(e => e.projectName)).size} projects affected
-                          </p>
+                    {/* Current Project Events */}
+                    {selectedDateConflicts.currentProjectEvents.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2 text-blue-700">
+                          {projectName} Tasks ({selectedDateConflicts.currentProjectEvents.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {selectedDateConflicts.currentProjectEvents.map((event, index) => (
+                            <div key={index} className="p-2 bg-blue-50 rounded border border-blue-200">
+                              <div className="font-medium text-sm">{event.title}</div>
+                              <div className="text-xs text-gray-600 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {format(new Date(event.start_date), 'HH:mm')} - 
+                                {format(new Date(event.end_date), 'HH:mm')}
+                              </div>
+                              {event.description && (
+                                <div className="text-xs text-gray-600 mt-1">{event.description}</div>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                      </div>
+                    )}
+
+                    {/* Other Projects Events */}
+                    {selectedDateConflicts.otherProjectEvents.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2 text-orange-700">
+                          Other Projects ({selectedDateConflicts.otherProjectEvents.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {selectedDateConflicts.otherProjectEvents.map((event, index) => (
+                            <div key={index} className="p-2 bg-orange-50 rounded border border-orange-200">
+                              <div className="font-medium text-sm">{event.title}</div>
+                              <div className="text-xs text-gray-600">{event.project_name || 'Unknown Project'}</div>
+                              <div className="text-xs text-gray-600 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {format(new Date(event.start_date), 'HH:mm')} - 
+                                {format(new Date(event.end_date), 'HH:mm')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No Events */}
+                    {selectedDateConflicts.totalEvents === 0 && (
+                      <div className="text-center py-6 text-gray-500">
+                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No tasks scheduled for this date</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Select a date to view details</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Calendar Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Total Events</span>
+                  <Badge variant="secondary">{allWorkspaceEvents.length}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Current Project</span>
+                  <Badge variant="secondary">
+                    {events.length}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Other Projects</span>
+                  <Badge variant="secondary">
+                    {allWorkspaceEvents.length - events.length}
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
           </div>
-        </div>
-
-        <div className="flex justify-end mt-6">
-          <Button onClick={onClose}>Close</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
+
+export default ProjectCalendarModal;

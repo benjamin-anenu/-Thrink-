@@ -43,18 +43,41 @@ export const useRealTimeDashboardData = () => {
     }
 
     const calculateStats = () => {
-      // Calculate project stats
-      const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-      const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress');
+      console.log('Calculating dashboard stats with data:', { projects, resources, currentWorkspace });
       
-      // Calculate average progress
-      const avgProgress = workspaceProjects.length > 0
-        ? Math.round(workspaceProjects.reduce((sum, p) => sum + (p.progress || 0), 0) / workspaceProjects.length)
-        : 0;
+      // Calculate project stats - count both "In Progress" and "Planning" as active
+      const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
+      const activeProjects = workspaceProjects.filter(p => 
+        p.status === 'In Progress' || p.status === 'Planning'
+      );
+      
+      console.log('Workspace projects:', workspaceProjects);
+      console.log('Active projects:', activeProjects);
+      
+      // Calculate average progress based on completed tasks ratio
+      let totalTasks = 0;
+      let completedTasks = 0;
+      
+      workspaceProjects.forEach(project => {
+        if (project.tasks && Array.isArray(project.tasks)) {
+          totalTasks += project.tasks.length;
+          completedTasks += project.tasks.filter(task => task.status === 'Completed').length;
+        }
+      });
+      
+      const avgProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
+      console.log('Progress calculation:', { totalTasks, completedTasks, avgProgress });
 
-      // Calculate available resources
+      // Calculate available resources - those with utilization < 80%
       const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
       const availableResources = workspaceResources.filter(r => r.utilization < 80).length;
+      
+      console.log('Resource calculation:', { 
+        workspaceResources: workspaceResources.length, 
+        availableResources,
+        resourceDetails: workspaceResources.map(r => ({ name: r.name, utilization: r.utilization }))
+      });
 
       // Get upcoming deadlines from tasks
       const upcomingDeadlines = workspaceProjects.flatMap(project => 
@@ -83,15 +106,18 @@ export const useRealTimeDashboardData = () => {
           time: new Date(project.updatedAt!).toLocaleDateString()
         }));
 
-      setStats({
+      const finalStats = {
         totalProjects: workspaceProjects.length,
         activeProjects: activeProjects.length,
         availableResources,
         avgProgress,
         upcomingDeadlines,
         recentActivity
-      });
+      };
       
+      console.log('Final dashboard stats:', finalStats);
+      
+      setStats(finalStats);
       setLoading(false);
     };
 
