@@ -2,7 +2,6 @@
 import React from 'react';
 import Header from './Header';
 import WorkspaceBanner from './WorkspaceBanner';
-import TinkAssistant from './TinkAssistant';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,7 +15,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className="pt-32">
         {children}
       </main>
-      <TinkAssistant />
     </>
   );
 };

@@ -20,17 +20,17 @@ const WorkspaceBanner = () => {
   
   return (
     <div className="fixed top-20 left-0 right-0 z-30 px-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-4xl mx-auto"> {/* Reduced from max-w-7xl to max-w-4xl */}
         <div className={cn(
-          "bg-card/90 backdrop-blur-sm border border-border/40 rounded-lg px-4 py-2",
-          "flex items-center justify-center gap-2 shadow-sm"
+          "bg-card/90 backdrop-blur-sm border border-border/40 rounded-lg px-3 py-1.5", /* Reduced padding */
+          "flex items-center justify-center gap-2 shadow-sm max-w-md mx-auto" /* Added max-width and center */
         )}>
           <span className="text-xs text-muted-foreground">Workspace:</span>
           <span className="font-medium text-foreground text-sm">{currentWorkspace.name}</span>
           {currentWorkspace.description && (
             <>
               <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-xs text-muted-foreground">{currentWorkspace.description}</span>
+              <span className="text-xs text-muted-foreground truncate max-w-32">{currentWorkspace.description}</span>
             </>
           )}
         </div>

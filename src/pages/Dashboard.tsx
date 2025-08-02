@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
   }
 
   // Show first user onboarding if this is the first user without any workspaces
-  if (user && isFirstUser) {
+  if (user && isFirstUser && !currentWorkspace) {
     return <FirstUserOnboarding />;
   }
 
