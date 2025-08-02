@@ -13,7 +13,6 @@ import ResourceGrid from '@/components/ResourceGrid';
 import ResourceListView from '@/components/ResourceListView';
 import ViewToggle from '@/components/ViewToggle';
 import ResourceQuickInsights from '@/components/resources/ResourceQuickInsights';
-import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 const Resources = () => {
   const { resources, loading } = useResources();
@@ -21,7 +20,7 @@ const Resources = () => {
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // Default to list view
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
   const [filterConfig, setFilterConfig] = useState({
     departments: [] as string[],
@@ -221,16 +220,10 @@ const Resources = () => {
           {viewMode === 'grid' ? (
             <ResourceGrid
               resources={filteredResources}
-              showCompareMode={selectedForComparison.size > 0}
-              selectedForComparison={selectedForComparison}
-              onCompareToggle={handleCompareToggle}
             />
           ) : (
             <ResourceListView
               resources={filteredResources}
-              showCompareMode={selectedForComparison.size > 0}
-              selectedForComparison={selectedForComparison}
-              onCompareToggle={handleCompareToggle}
             />
           )}
 

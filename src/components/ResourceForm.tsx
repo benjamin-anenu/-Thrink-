@@ -41,7 +41,12 @@ const ResourceForm = ({ onClose, resource }: ResourceFormProps) => {
     if (resource?.id) {
       await updateResource(resource.id, formData);
     } else {
-      await createResource(formData);
+      // Ensure workspace_id is defined for creation
+      const resourceData = {
+        ...formData,
+        workspace_id: formData.workspace_id || 'default-workspace'
+      };
+      await createResource(resourceData);
     }
     
     onClose();
