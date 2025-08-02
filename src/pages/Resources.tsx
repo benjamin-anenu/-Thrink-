@@ -178,12 +178,12 @@ const Resources = () => {
     email: resource.email || '',
     phone: '',
     location: '',
-    skills: [],
-    availability: 100,
-    currentProjects: [],
+    skills: [], // Will be enhanced with skills table later
+    availability: 100, // Default availability
+    currentProjects: [], // Will be calculated from assignments
     hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
-    utilization: 75,
-    status: normalizeStatus('Available'),
+    utilization: 75, // Default utilization
+    status: normalizeStatus('Available'), // Use normalized status
     workspaceId: resource.workspace_id || '',
     createdAt: resource.created_at,
     updatedAt: resource.updated_at,
@@ -202,6 +202,7 @@ const Resources = () => {
         <PageHeader 
           title="Resources"
           description="AI-powered resource management with utilization tracking"
+          badge={{ text: "AI Enhanced", icon: Brain }}
         />
 
         <div className="flex items-center gap-2 mb-8">
@@ -227,6 +228,7 @@ const Resources = () => {
           </Button>
         </div>
 
+        {/* Enhanced Resource Stats */}
         <EnhancedResourceStats />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -259,6 +261,7 @@ const Resources = () => {
                 <ViewToggle view={viewMode} onViewChange={setViewMode} />
               </div>
 
+              {/* Resource Comparison Toolbar */}
               <ResourceComparisonToolbar
                 selectedCount={selectedForComparison.size}
                 onCompare={handleCompare}
