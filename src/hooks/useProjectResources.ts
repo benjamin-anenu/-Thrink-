@@ -63,18 +63,33 @@ export const useProjectResources = (projectId: string) => {
           return;
         }
 
-        // Fetch resource details
-        const { data: resourcesData, error: resourcesError } = await supabase
-          .from('resource_profiles')
+        // Fetch resource details - try both resources and resource_profiles tables
+        let resourcesData = [];
+        
+        // First try the resources table
+        const { data: resourcesFromResources, error: resourcesError } = await supabase
+          .from('resources')
           .select('*')
           .in('id', Array.from(resourceIds))
           .eq('workspace_id', currentWorkspace.id);
 
-        if (resourcesError) throw resourcesError;
+        if (!resourcesError && resourcesFromResources && resourcesFromResources.length > 0) {
+          resourcesData = resourcesFromResources;
+        } else {
+          // Fallback to resource_profiles table
+          const { data: resourcesFromProfiles, error: profilesError } = await supabase
+            .from('resource_profiles')
+            .select('*')
+            .in('id', Array.from(resourceIds))
+            .eq('workspace_id', currentWorkspace.id);
+
+          if (profilesError) throw profilesError;
+          resourcesData = resourcesFromProfiles || [];
+        }
 
         // Calculate utilization and task counts for each resource
         const enhancedResources = await Promise.all(
-          (resourcesData || []).map(async (resource) => {
+          resourcesData.map(async (resource) => {
             // Count total tasks assigned to this resource
             const { count: totalTaskCount } = await supabase
               .from('project_tasks')
@@ -94,10 +109,10 @@ export const useProjectResources = (projectId: string) => {
 
             return {
               id: resource.id,
-              name: resource.name || 'Unknown',
+              name: resource.name || resource.employee_id || 'Unknown',
               email: resource.email || '',
-              role: resource.role || 'Team Member',
-              department: resource.department || 'General',
+              role: resource.role || resource.seniority_level || 'Team Member',
+              department: resource.department || resource.department_id || 'General',
               hourly_rate: resource.hourly_rate || 0,
               utilization,
               task_count: totalTaskCount || 0,

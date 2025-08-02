@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -62,15 +61,12 @@ const ProjectManagement = () => {
     return <LoadingState>Loading project data...</LoadingState>;
   }
 
-  // Calculate project metrics
   const totalTasks = projectTasks.length;
   const completedTasks = projectTasks.filter(task => task.status === 'Completed').length;
   const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  // Get team size from actual resource assignments
   const teamSize = resources.length;
 
-  // Calculate project health
   const overdueTasks = projectTasks.filter(task => {
     if (task.status === 'Completed' || !task.end_date) return false;
     return new Date(task.end_date) < new Date();
@@ -79,13 +75,11 @@ const ProjectManagement = () => {
   const healthScore = Math.max(0, 100 - (overdueTasks * 10));
   const healthStatus = healthScore >= 80 ? 'green' : healthScore >= 60 ? 'yellow' : 'red';
 
-  // Use phase-based dates for project header, fallback to project dates
   const displayStartDate = projectDateRange.startDate || project.startDate;
   const displayEndDate = projectDateRange.endDate || project.endDate;
 
   return (
     <div className="p-6 space-y-6">
-      {/* Project Header with Phase-based Dates */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -161,7 +155,6 @@ const ProjectManagement = () => {
         </div>
       </div>
 
-      {/* Project Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center gap-2">
@@ -196,7 +189,7 @@ const ProjectManagement = () => {
 
         <TabsContent value="overview">
           <ProjectOverview 
-            projectId={projectId || ''} 
+            project={project}
             tasks={projectTasks}
             milestones={milestones}
             phases={phases}

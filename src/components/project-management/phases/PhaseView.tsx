@@ -93,20 +93,10 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
     );
   }
 
-  // Enhance phases with milestone data
+  // Convert enhanced milestones to the format expected by PhaseCard
   const enhancedPhases = phases.map(phase => ({
     ...phase,
-    milestones: milestones.filter(m => m.phase_id === phase.id).map(m => ({
-      id: m.id,
-      name: m.name,
-      description: m.description,
-      date: m.computed_end_date || m.due_date,
-      baselineDate: m.due_date,
-      status: m.status as any,
-      tasks: [],
-      progress: m.progress,
-      sortOrderInPhase: 0
-    }))
+    milestones: milestones.filter(m => m.phase_id === phase.id)
   }));
 
   return (

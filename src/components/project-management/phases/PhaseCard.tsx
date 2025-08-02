@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { ProjectPhase } from '@/types/project';
+import { EnhancedMilestone } from '@/hooks/useEnhancedMilestones';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +11,7 @@ import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Edit, Trash2 } from 'l
 import { MilestoneList } from './MilestoneList';
 
 interface PhaseCardProps {
-  phase: ProjectPhase;
+  phase: ProjectPhase & { milestones: EnhancedMilestone[] };
   isExpanded: boolean;
   onToggleExpand: (phaseId: string) => void;
   onEdit: (phase: ProjectPhase) => void;
@@ -82,10 +84,10 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge className={statusColors[phase.status]}>
+            <Badge className={statusColors[phase.status as keyof typeof statusColors] || statusColors.planned}>
               {phase.status}
             </Badge>
-            <Badge variant="outline" className={priorityColors[phase.priority]}>
+            <Badge variant="outline" className={priorityColors[phase.priority as keyof typeof priorityColors] || priorityColors.Medium}>
               {phase.priority}
             </Badge>
             
