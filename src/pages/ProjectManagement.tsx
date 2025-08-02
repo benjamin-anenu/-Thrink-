@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar } from 'lucide-react';
+import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar, Layers, AlertTriangle } from 'lucide-react';
 import ProjectOverview from '@/components/project-management/ProjectOverview';
 import TaskStatistics from '@/components/project-management/TaskStatistics';
 import ProjectTimeline from '@/components/project-management/ProjectTimeline';
@@ -13,12 +13,17 @@ import ProjectResources from '@/components/project-management/ProjectResources';
 import ProjectReports from '@/components/project-management/ProjectReports';
 import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
 import KanbanBoard from '@/components/project-management/KanbanBoard';
+import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
+import { PhaseView } from '@/components/project-management/phases/PhaseView';
+import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
+import { ProjectCalendar } from '@/components/calendar/ProjectCalendar';
 import { useProject } from '@/contexts/ProjectContext';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { projects } = useProject();
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
+  const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
   
   const project = projects.find(p => p.id === id);
 
@@ -32,6 +37,19 @@ const ProjectManagement: React.FC = () => {
       </div>
     );
   }
+
+  const handleSwitchToIssueLog = (taskId?: string) => {
+    setIssueTaskFilter(taskId);
+    // We'll need to programmatically switch to the issues tab
+    const tabsTrigger = document.querySelector('[data-value="issues"]') as HTMLElement;
+    if (tabsTrigger) {
+      tabsTrigger.click();
+    }
+  };
+
+  const handleClearTaskFilter = () => {
+    setIssueTaskFilter(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -110,10 +128,13 @@ const ProjectManagement: React.FC = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="plan">Project Plan</TabsTrigger>
+          <TabsTrigger value="phases">Phases</TabsTrigger>
+          <TabsTrigger value="issues" data-value="issues">Issues</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -133,7 +154,7 @@ const ProjectManagement: React.FC = () => {
                 onClick={() => setViewMode('gantt')}
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Gantt Chart
+                Table View
               </Button>
               <Button
                 variant={viewMode === 'kanban' ? 'default' : 'outline'}
@@ -147,30 +168,30 @@ const ProjectManagement: React.FC = () => {
           </div>
 
           {viewMode === 'gantt' ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Gantt Chart View
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  <div className="text-center">
-                    <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Gantt Chart view coming soon</p>
-                    <p className="text-sm">This will show your project timeline in a visual gantt format</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ProjectGanttChart projectId={project.id} onSwitchToIssueLog={handleSwitchToIssueLog} />
           ) : (
             <KanbanBoard projectId={project.id} />
           )}
         </TabsContent>
 
+        <TabsContent value="phases" className="space-y-4">
+          <PhaseView projectId={project.id} />
+        </TabsContent>
+
+        <TabsContent value="issues" className="space-y-4">
+          <ProjectIssueLog 
+            projectId={project.id} 
+            taskFilter={issueTaskFilter}
+            onClearTaskFilter={handleClearTaskFilter}
+          />
+        </TabsContent>
+
         <TabsContent value="timeline" className="space-y-4">
           <ProjectTimeline projectId={project.id} />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="space-y-4">
+          <ProjectCalendar projectId={project.id} />
         </TabsContent>
 
         <TabsContent value="resources" className="space-y-4">
