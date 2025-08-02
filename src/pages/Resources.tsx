@@ -4,6 +4,7 @@ import Layout from '@/components/Layout';
 import ResourceListView from '@/components/ResourceListView';
 import EnhancedResourceGrid from '@/components/EnhancedResourceGrid';
 import { ResourceCreationWizard } from '@/components/ResourceCreationWizard';
+import { ResourceDetailsModal } from '@/components/ResourceDetailsModal';
 import ViewToggle from '@/components/ViewToggle';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -13,6 +14,8 @@ import type { Resource as ContextResource } from '@/contexts/ResourceContext';
 const Resources: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'grid' | 'list'>('grid');
+  const [selectedResource, setSelectedResource] = useState<ContextResource | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const { resources, utilizationMetrics } = useEnhancedResources();
 
   const handleResourceCreated = () => {
@@ -21,10 +24,17 @@ const Resources: React.FC = () => {
 
   const handleViewDetails = (resource: ContextResource) => {
     console.log('View details for resource:', resource.id);
+    setSelectedResource(resource);
+    setIsDetailsModalOpen(true);
   };
 
   const handleShowResourceForm = () => {
     setIsWizardOpen(true);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedResource(null);
   };
 
   // Transform database resources to match context interface
@@ -34,11 +44,11 @@ const Resources: React.FC = () => {
     role: resource.role || '',
     department: resource.department || '',
     email: resource.email || '',
-    phone: '',
-    location: '',
-    skills: [],
+    phone: '+1 (555) 123-4567', // Default phone number for display
+    location: 'Remote',
+    skills: ['React', 'TypeScript', 'Node.js'],
     availability: 100,
-    currentProjects: [],
+    currentProjects: ['Project Alpha', 'Project Beta'],
     hourlyRate: resource.hourly_rate ? `$${resource.hourly_rate}/hr` : '$0/hr',
     utilization: 75,
     status: 'Available' as 'Available' | 'Busy' | 'Overallocated',
@@ -85,6 +95,14 @@ const Resources: React.FC = () => {
           <ResourceCreationWizard
             open={isWizardOpen}
             onOpenChange={setIsWizardOpen}
+          />
+        )}
+
+        {selectedResource && (
+          <ResourceDetailsModal
+            resource={selectedResource}
+            open={isDetailsModalOpen}
+            onClose={handleCloseDetailsModal}
           />
         )}
       </div>

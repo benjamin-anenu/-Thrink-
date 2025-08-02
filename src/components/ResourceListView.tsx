@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Eye, Trash2, Mail, Phone } from 'lucide-react';
+import { Eye, Trash2, Edit } from 'lucide-react';
 import { Resource } from '@/contexts/ResourceContext';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
@@ -40,6 +40,11 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
     await deleteResource(resourceId);
   };
 
+  const handleEdit = (resource: Resource) => {
+    console.log('Edit resource:', resource.id);
+    // TODO: Implement edit functionality
+  };
+
   if (resources.length === 0) {
     return (
       <div className="text-center py-12">
@@ -60,7 +65,7 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
             <TableHead>Status</TableHead>
             <TableHead>Utilization</TableHead>
             <TableHead>Rate</TableHead>
-            <TableHead>Contact</TableHead>
+            <TableHead>Phone</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -106,18 +111,7 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
                 <p className="font-medium">{resource.hourlyRate || 'N/A'}</p>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-2">
-                  {resource.email && (
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <Mail className="h-3 w-3" />
-                    </Button>
-                  )}
-                  {resource.phone && (
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <Phone className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
+                <p className="text-sm">{resource.phone || 'N/A'}</p>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
@@ -127,6 +121,13 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
                     onClick={() => onViewDetails(resource)}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(resource)}
+                  >
+                    <Edit className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>

@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Eye,
-  Trash2
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Resource } from '@/contexts/ResourceContext';
@@ -93,6 +94,15 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleEdit = () => {
+    console.log('Edit resource:', resource.id);
+    // TODO: Implement edit functionality
+  };
+
+  const handleViewDetails = () => {
+    onViewDetails(resource);
   };
 
   const currentUtilization = utilizationMetrics?.utilization_percentage || utilization || 0;
@@ -239,13 +249,21 @@ const EnhancedResourceCard: React.FC<EnhancedResourceCardProps> = ({
 
         <div className="flex gap-2 pt-2">
           <Button 
-            onClick={() => onViewDetails(resource)} 
+            onClick={handleViewDetails}
             className="flex-1"
             size="sm"
             variant="outline"
           >
             <Eye className="h-4 w-4 mr-2" />
             View Details
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEdit}
+          >
+            <Edit className="h-4 w-4" />
           </Button>
           
           <AlertDialog>

@@ -1,184 +1,201 @@
 
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import { useProject } from '@/contexts/ProjectContext';
+import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import ProjectOverview from '@/components/project-management/ProjectOverview';
-import ProjectTimeline from '@/components/project-management/ProjectTimeline';
-import ProjectResources from '@/components/project-management/ProjectResources';
-import KanbanBoard from '@/components/project-management/KanbanBoard';
-import ProjectReports from '@/components/project-management/ProjectReports';
-import ProjectDocumentation from '@/components/project-management/ProjectDocumentation';
-import { PhaseView } from '@/components/project-management/phases/PhaseView';
-import ProjectGanttChart from '@/components/project-management/ProjectGanttChart';
-import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
-import { useTaskManagement } from '@/hooks/useTaskManagement';
-import { CheckCircle2, Clock, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Calendar, Clock, Users, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { useProjects } from '@/contexts/ProjectContext';
 
-const ProjectManagement: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const projectId = id; // Create alias for backward compatibility with child components
-  const { projects } = useProject();
-  const { tasks } = useTaskManagement(projectId);
-  
-  const project = projects.find(p => p.id === projectId);
+const ProjectManagement = () => {
+  const { projects } = useProjects();
+  const [activeTab, setActiveTab] = useState('overview');
 
-  if (!projectId) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-destructive mb-4">Project Not Found</h1>
-            <p className="text-muted-foreground">No project ID provided.</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  // Calculate statistics
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
+  const completedProjects = projects.filter(p => p.status === 'Completed').length;
+  const onHoldProjects = projects.filter(p => p.status === 'On Hold').length;
 
-  if (!project) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-destructive mb-4">Project Not Found</h1>
-            <p className="text-muted-foreground">The requested project could not be found.</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Calculate task statistics
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
-  const inProgressTasks = tasks.filter(task => task.status === 'In Progress').length;
-  const overdueTasks = tasks.filter(task => {
-    if (task.status === 'Completed') return false;
-    const today = new Date();
-    const endDate = new Date(task.endDate);
-    return endDate < today;
-  }).length;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'In Progress': return 'bg-blue-100 text-blue-800';
+      case 'Completed': return 'bg-green-100 text-green-800';
+      case 'On Hold': return 'bg-yellow-100 text-yellow-800';
+      case 'Cancelled': return 'bg-red-100 text-red-800';
+      case 'Planning': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-            <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>
-              {project.status}
-            </Badge>
-          </div>
-          {project.description && (
-            <p className="text-muted-foreground">{project.description}</p>
-          )}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Project Management</h1>
+          <Button>Create New Project</Button>
         </div>
 
-        {/* Task Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Tasks</p>
-                  <p className="text-2xl font-bold">{totalTasks}</p>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalProjects}</div>
+              <p className="text-xs text-muted-foreground">All projects in workspace</p>
             </CardContent>
           </Card>
-
+          
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{completedTasks}</p>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeProjects}</div>
+              <p className="text-xs text-muted-foreground">Currently in progress</p>
             </CardContent>
           </Card>
-
+          
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">In Progress</p>
-                  <p className="text-2xl font-bold">{inProgressTasks}</p>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{completedProjects}</div>
+              <p className="text-xs text-muted-foreground">Successfully finished</p>
             </CardContent>
           </Card>
-
+          
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-8 w-8 text-red-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Overdue</p>
-                  <p className="text-2xl font-bold">{overdueTasks}</p>
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">On Hold</CardTitle>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{onHoldProjects}</div>
+              <p className="text-xs text-muted-foreground">Paused projects</p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="phases">Phases</TabsTrigger>
-            <TabsTrigger value="plan">Project Plan</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="plan">Project Plan</TabsTrigger>
             <TabsTrigger value="resources">Resources</TabsTrigger>
             <TabsTrigger value="issues">Issues</TabsTrigger>
-            <TabsTrigger value="documentation">Documentation</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <ProjectOverview project={project} />
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid gap-6">
+              {projects.map((project) => (
+                <Card key={project.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xl">{project.name}</CardTitle>
+                      <Badge variant="secondary" className={getStatusColor(project.status)}>
+                        {project.status}
+                      </Badge>
+                    </div>
+                    <CardDescription>{project.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">${project.budget?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{project.teamMembers?.length || 0} team members</span>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Progress</span>
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                      <Progress value={project.progress} className="w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           <TabsContent value="phases">
-            <PhaseView projectId={projectId} />
-          </TabsContent>
-
-          <TabsContent value="plan">
-            <ProjectGanttChart 
-              projectId={projectId} 
-              onSwitchToIssueLog={(taskId) => {
-                // Switch to issues tab with task filter
-                const tabsList = document.querySelector('[role="tablist"]');
-                const issuesTab = tabsList?.querySelector('[value="issues"]') as HTMLElement;
-                issuesTab?.click();
-              }}
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Phases</CardTitle>
+                <CardDescription>Manage project phases and milestones</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Phase management functionality will be implemented here.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="timeline">
-            <ProjectTimeline projectId={projectId} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Timeline</CardTitle>
+                <CardDescription>Visualize project timeline and dependencies</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Timeline view will be implemented here.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="plan">
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Plan</CardTitle>
+                <CardDescription>Detailed project planning and task management</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Project plan functionality will be implemented here.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="resources">
-            <ProjectResources projectId={projectId} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Resources</CardTitle>
+                <CardDescription>Manage project resources and assignments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Resource management functionality will be implemented here.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="issues">
-            <ProjectIssueLog projectId={projectId} />
-          </TabsContent>
-
-          <TabsContent value="documentation">
-            <ProjectDocumentation />
-          </TabsContent>
-
-          <TabsContent value="reports">
-            <ProjectReports projectId={projectId} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Issues</CardTitle>
+                <CardDescription>Track and manage project issues and blockers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Issue tracking functionality will be implemented here.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
