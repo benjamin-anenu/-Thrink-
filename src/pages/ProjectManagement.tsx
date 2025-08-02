@@ -17,6 +17,7 @@ import ProjectGanttChart from '@/components/project-management/ProjectGanttChart
 import { PhaseView } from '@/components/project-management/phases/PhaseView';
 import { ProjectIssueLog } from '@/components/project-management/issues/ProjectIssueLog';
 import ProjectCalendar from '@/components/calendar/ProjectCalendar';
+import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useProject } from '@/contexts/ProjectContext';
 
 const ProjectManagement: React.FC = () => {
@@ -24,6 +25,7 @@ const ProjectManagement: React.FC = () => {
   const { projects } = useProject();
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
+  const { events, createEvent } = useCalendarEvents();
   
   const project = projects.find(p => p.id === id);
 
@@ -49,6 +51,13 @@ const ProjectManagement: React.FC = () => {
 
   const handleClearTaskFilter = () => {
     setIssueTaskFilter(undefined);
+  };
+
+  // Filter events for this specific project
+  const projectEvents = events.filter(event => event.projectId === project?.id);
+
+  const handleEventClick = (event: any) => {
+    console.log('Event clicked:', event);
   };
 
   return (
@@ -191,7 +200,11 @@ const ProjectManagement: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="calendar" className="space-y-4">
-          <ProjectCalendar projectId={project.id} />
+          <ProjectCalendar 
+            events={projectEvents}
+            onCreateEvent={createEvent}
+            onEventClick={handleEventClick}
+          />
         </TabsContent>
 
         <TabsContent value="resources" className="space-y-4">
