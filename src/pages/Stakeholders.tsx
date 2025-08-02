@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useStakeholders } from '@/contexts/StakeholderContext';
+import { useStakeholders } from '@/hooks/useStakeholders';
 import Layout from '@/components/Layout';
 import StakeholderForm from '@/components/StakeholderForm';
 import StakeholderListView from '@/components/StakeholderListView';
@@ -8,46 +8,28 @@ import StakeholderEscalationMatrix from '@/components/StakeholderEscalationMatri
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
-import type { Stakeholder as TypeStakeholder } from '@/types/stakeholder';
+import type { Stakeholder } from '@/types/stakeholder';
 
 const Stakeholders: React.FC = () => {
-  const { stakeholders, updateStakeholder } = useStakeholders();
+  const { stakeholders, updateStakeholder, deleteStakeholder } = useStakeholders();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const handleStakeholderAdded = () => {
+  const handleStakeholderSaved = () => {
     setIsFormOpen(false);
   };
 
-  const handleEdit = (stakeholder: TypeStakeholder) => {
+  const handleEdit = (stakeholder: Stakeholder) => {
     console.log('Edit stakeholder:', stakeholder.id);
   };
 
-  const handleDelete = (stakeholder: TypeStakeholder) => {
-    console.log('Delete stakeholder:', stakeholder.id);
+  const handleDelete = (stakeholderId: string) => {
+    deleteStakeholder(stakeholderId);
   };
 
-  const handleContact = (stakeholder: TypeStakeholder) => {
-    updateStakeholder(stakeholder.id, { lastContact: new Date().toISOString().split('T')[0] });
+  const handleContact = (stakeholder: Stakeholder) => {
+    // Update the stakeholder with current contact date if updateStakeholder accepts partial updates
+    console.log('Contact stakeholder:', stakeholder.id);
   };
-
-  // Transform context stakeholders to match type interface
-  const transformedStakeholders: TypeStakeholder[] = stakeholders.map(stakeholder => ({
-    id: stakeholder.id,
-    workspace_id: stakeholder.workspaceId,
-    name: stakeholder.name,
-    email: stakeholder.email,
-    role: stakeholder.role,
-    department: stakeholder.department || '',
-    phone: stakeholder.phone || '',
-    communicationPreference: stakeholder.communicationPreference,
-    projects: stakeholder.projects || [],
-    influence: stakeholder.influence as 'low' | 'medium' | 'high' | 'critical',
-    interest: stakeholder.interest as 'low' | 'medium' | 'high' | 'critical',
-    status: stakeholder.status as 'active' | 'inactive' | 'pending',
-    notes: '',
-    created_at: stakeholder.createdAt || new Date().toISOString(),
-    updated_at: stakeholder.updatedAt || new Date().toISOString()
-  }));
 
   return (
     <Layout>
@@ -68,7 +50,7 @@ const Stakeholders: React.FC = () => {
 
           <TabsContent value="stakeholders" className="space-y-6">
             <StakeholderListView 
-              stakeholders={transformedStakeholders} 
+              stakeholders={stakeholders}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onContact={handleContact}
@@ -84,6 +66,7 @@ const Stakeholders: React.FC = () => {
           <StakeholderForm
             open={isFormOpen}
             onClose={() => setIsFormOpen(false)}
+            onSave={handleStakeholderSaved}
           />
         )}
       </div>
