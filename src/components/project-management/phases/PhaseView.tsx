@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { usePhaseManagement } from '@/hooks/usePhaseManagement';
 import { useEnhancedMilestones } from '@/hooks/useEnhancedMilestones';
 import { ProjectPhase } from '@/types/project';
@@ -9,16 +10,14 @@ import { Button } from '@/components/ui/button';
 import { Plus, Layers } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 
-interface PhaseViewProps {
-  projectId: string;
-}
-
 // Define a separate interface for enhanced phases to avoid type conflicts
 interface EnhancedPhase extends Omit<ProjectPhase, 'milestones'> {
   milestones: import('@/hooks/useEnhancedMilestones').EnhancedMilestone[];
 }
 
-export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
+export const PhaseView: React.FC = () => {
+  const { projectId } = useParams();
+  
   const {
     phases,
     loading: phasesLoading,
@@ -27,7 +26,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
     updatePhase,
     deletePhase,
     refreshPhases
-  } = usePhaseManagement(projectId);
+  } = usePhaseManagement(projectId || '');
 
   const { milestones, loading: milestonesLoading } = useEnhancedMilestones(projectId);
 
@@ -137,7 +136,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreatePhase={handleCreatePhase}
-        projectId={projectId}
+        projectId={projectId || ''}
       />
     </div>
   );

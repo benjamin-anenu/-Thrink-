@@ -190,7 +190,6 @@ const ProjectManagement = () => {
         <TabsContent value="overview">
           <ProjectOverview 
             project={project}
-            phases={phases}
           />
         </TabsContent>
 
@@ -199,7 +198,7 @@ const ProjectManagement = () => {
         </TabsContent>
 
         <TabsContent value="phases">
-          <PhaseView projectId={projectId || ''} />
+          <PhaseView />
         </TabsContent>
 
         <TabsContent value="timeline">
