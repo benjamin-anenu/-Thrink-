@@ -1,21 +1,31 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Calendar, User, Clock, Target, MessageSquare, Paperclip,
-  Edit2, Save, X, Plus, Trash2, AlertCircle, CheckCircle,
-  Bold, Italic, Underline, List, ListOrdered
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Calendar, 
+  User, 
+  Clock, 
+  Edit3, 
+  Save, 
+  X, 
+  Plus, 
+  Trash2, 
+  CheckCircle2, 
+  Circle,
+  MessageSquare,
+  Paperclip
 } from 'lucide-react';
 import { ProjectTask } from '@/types/project';
+import { useSubtasks } from '@/hooks/useSubtasks';
 
 interface TaskDetailModalProps {
   task: ProjectTask | null;
@@ -24,13 +34,6 @@ interface TaskDetailModalProps {
   onSave?: (task: ProjectTask) => void;
   onDelete?: (taskId: string) => void;
   onUpdate?: (taskId: string, updates: Partial<ProjectTask>) => Promise<void>;
-}
-
-interface Subtask {
-  id: string;
-  title: string;
-  completed: boolean;
-  order: number;
 }
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
@@ -43,175 +46,160 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<ProjectTask | null>(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [activeTab, setActiveTab] = useState('details');
-  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-  const [newSubtask, setNewSubtask] = useState('');
-  const [richTextContent, setRichTextContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const {
+    subtasks,
+    loading: subtasksLoading,
+    createSubtask,
+    toggleSubtask,
+    deleteSubtask,
+    refreshSubtasks
+  } = useSubtasks(task?.id || '');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (task) {
-      setEditedTask({ ...task });
-      setRichTextContent(task.description || '');
-      // Mock subtasks for demonstration
-      setSubtasks([
-        { id: '1', title: 'Design wireframes', completed: true, order: 1 },
-        { id: '2', title: 'Create mockups', completed: true, order: 2 },
-        { id: '3', title: 'Get client approval', completed: false, order: 3 },
-        { id: '4', title: 'Implement frontend', completed: false, order: 4 },
-        { id: '5', title: 'Testing and QA', completed: false, order: 5 }
-      ]);
+      setEditedTask(task);
+      setIsEditing(false);
+      setActiveTab('details');
+      refreshSubtasks();
     }
-  }, [task]);
+  }, [task, refreshSubtasks]);
 
   if (!task) return null;
 
   const handleSave = async () => {
-    if (editedTask && (onSave || onUpdate)) {
-      const progress = getProgressPercentage();
-      const allSubtasksCompleted = subtasks.length > 0 && subtasks.every(st => st.completed);
+    if (!editedTask || !onUpdate) return;
+    
+    setIsSaving(true);
+    try {
+      // Calculate progress from subtasks
+      const progress = subtasks.length > 0 
+        ? Math.round((subtasks.filter(st => st.completed).length / subtasks.length) * 100)
+        : editedTask.progress;
       
-      const updatedTask = {
-        ...editedTask,
-        description: richTextContent,
-        progress,
-        status: allSubtasksCompleted ? 'Completed' as const : editedTask.status
-      };
+      // Auto-complete task if all subtasks are completed
+      const allSubtasksCompleted = subtasks.length > 0 && subtasks.every(st => st.completed);
+      const status = allSubtasksCompleted ? 'Completed' as const : editedTask.status;
 
-      try {
-        if (onUpdate) {
-          await onUpdate(editedTask.id, {
-            name: updatedTask.name,
-            description: updatedTask.description,
-            status: updatedTask.status,
-            progress: updatedTask.progress
-          });
-        } else if (onSave) {
-          onSave(updatedTask);
-        }
-        setIsEditing(false);
-      } catch (error) {
-        console.error('Failed to save task:', error);
-      }
+      await onUpdate(editedTask.id, {
+        name: editedTask.name,
+        description: editedTask.description,
+        status,
+        progress,
+        priority: editedTask.priority,
+        startDate: editedTask.startDate,
+        endDate: editedTask.endDate
+      });
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save task:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setEditedTask({ ...task });
-    setRichTextContent(task.description || '');
+    setEditedTask(task);
     setIsEditing(false);
   };
 
+  const handleSubtaskToggle = async (subtaskId: string) => {
+    await toggleSubtask(subtaskId);
+    
+    // Check if all subtasks are now completed and auto-update task
+    const updatedSubtasks = subtasks.map(st => 
+      st.id === subtaskId ? { ...st, completed: !st.completed } : st
+    );
+    
+    const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every(st => st.completed);
+    
+    if (allCompleted && onUpdate) {
+      await onUpdate(task.id, { 
+        status: 'Completed',
+        progress: 100
+      });
+    }
+  };
+
+  const handleAddSubtask = async () => {
+    if (newSubtaskTitle.trim()) {
+      await createSubtask(newSubtaskTitle.trim());
+      setNewSubtaskTitle('');
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    await deleteSubtask(subtaskId);
+  };
+
   const getProgressPercentage = () => {
-    if (subtasks.length === 0) return 0;
+    if (subtasks.length === 0) return task.progress;
     const completed = subtasks.filter(st => st.completed).length;
     return Math.round((completed / subtasks.length) * 100);
   };
 
-  const handleSubtaskToggle = async (subtaskId: string) => {
-    setSubtasks(prev => {
-      const updated = prev.map(st => 
-        st.id === subtaskId ? { ...st, completed: !st.completed } : st
-      );
-      
-      // Check if all subtasks are now completed
-      const allCompleted = updated.length > 0 && updated.every(st => st.completed);
-      
-      // Auto-update task status if all subtasks are completed
-      if (allCompleted && editedTask && onUpdate) {
-        const updatedTask = { ...editedTask, status: 'Completed' as const };
-        setEditedTask(updatedTask);
-        onUpdate(editedTask.id, { status: 'Completed' });
-      }
-      
-      return updated;
-    });
-  };
-
-  const addSubtask = () => {
-    if (newSubtask.trim()) {
-      const newTask: Subtask = {
-        id: Date.now().toString(),
-        title: newSubtask.trim(),
-        completed: false,
-        order: subtasks.length + 1
-      };
-      setSubtasks(prev => [...prev, newTask]);
-      setNewSubtask('');
-    }
-  };
-
-  const removeSubtask = (subtaskId: string) => {
-    setSubtasks(prev => prev.filter(st => st.id !== subtaskId));
-  };
-
-  const applyFormatting = (format: string) => {
-    // Basic rich text formatting - would need a proper rich text editor in production
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      document.execCommand(format, false, undefined);
-    }
-  };
-
-  const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'Completed': return 'success';
-      case 'In Progress': return 'info';
-      case 'On Hold': return 'warning';
-      case 'Cancelled': return 'error';
-      default: return 'default';
+      case 'Completed': return 'default';
+      case 'In Progress': return 'secondary';
+      case 'On Hold': return 'outline';
+      case 'Cancelled': return 'destructive';
+      default: return 'outline';
     }
   };
 
-  const getPriorityVariant = (priority: string): 'success' | 'warning' | 'error' | 'default' => {
+  const getPriorityVariant = (priority: string) => {
     switch (priority) {
-      case 'High': return 'error';
-      case 'Medium': return 'warning';
-      case 'Low': return 'success';
-      default: return 'default';
+      case 'Critical': return 'destructive';
+      case 'High': return 'secondary';
+      case 'Medium': return 'outline';
+      case 'Low': return 'outline';
+      default: return 'outline';
     }
   };
-
-  const currentTask = isEditing ? editedTask : task;
-  if (!currentTask) return null;
-
-  const completedSubtasks = subtasks.filter(st => st.completed).length;
-  const totalSubtasks = subtasks.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              {isEditing ? (
-                <Input
-                  value={editedTask?.name || ''}
-                  onChange={(e) => setEditedTask(prev => prev ? { ...prev, name: e.target.value } : prev)}
-                  className="text-xl font-bold border-none p-0 h-auto"
-                />
-              ) : (
-                <DialogTitle className="text-2xl font-bold">{currentTask.name}</DialogTitle>
-              )}
-            </div>
-            
+            <DialogTitle className="text-xl font-semibold">
+              {isEditing ? 'Edit Task' : 'Task Details'}
+            </DialogTitle>
             <div className="flex items-center gap-2">
-              <StatusBadge variant={getPriorityVariant(currentTask.priority)}>
-                {currentTask.priority}
-              </StatusBadge>
-              <StatusBadge variant={getStatusVariant(currentTask.status)}>
-                {currentTask.status}
-              </StatusBadge>
               {!isEditing ? (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                  <Edit2 className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Edit
                 </Button>
               ) : (
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={handleCancel}>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
                     <X className="h-4 w-4" />
+                    Cancel
                   </Button>
-                  <Button size="sm" onClick={handleSave}>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-2"
+                  >
                     <Save className="h-4 w-4" />
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               )}
@@ -219,184 +207,187 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
-            <TabsTrigger value="attachments">Files</TabsTrigger>
-          </TabsList>
+        <div className="flex-1 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="subtasks">
+                Subtasks ({subtasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="comments">Comments</TabsTrigger>
+              <TabsTrigger value="attachments">Attachments</TabsTrigger>
+            </TabsList>
 
-          <div className="mt-4 overflow-y-auto">
-            <TabsContent value="details" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Task Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        Description
-                      </label>
+            <div className="flex-1 overflow-auto mt-4">
+              <TabsContent value="details" className="space-y-4 m-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Task Name */}
+                  <div className="md:col-span-2">
+                    <Label htmlFor="task-name">Task Name</Label>
+                    {isEditing ? (
+                      <Input
+                        id="task-name"
+                        value={editedTask?.name || ''}
+                        onChange={(e) => setEditedTask(prev => prev ? {...prev, name: e.target.value} : null)}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <h3 className="text-lg font-medium mt-1">{task.name}</h3>
+                    )}
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <Label>Status</Label>
+                    <div className="mt-1">
                       {isEditing ? (
-                        <div className="space-y-2">
-                          {/* Rich Text Formatting Toolbar */}
-                          <div className="flex items-center gap-1 p-2 border rounded-md bg-muted/50">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => applyFormatting('bold')}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Bold className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => applyFormatting('italic')}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Italic className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => applyFormatting('underline')}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Underline className="h-3 w-3" />
-                            </Button>
-                            <div className="w-px h-4 bg-border mx-1" />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => applyFormatting('insertUnorderedList')}
-                              className="h-7 w-7 p-0"
-                            >
-                              <List className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => applyFormatting('insertOrderedList')}
-                              className="h-7 w-7 p-0"
-                            >
-                              <ListOrdered className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          
-                          <div
-                            contentEditable
-                            className="min-h-[120px] p-3 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                            onInput={(e) => setRichTextContent(e.currentTarget.textContent || '')}
-                            dangerouslySetInnerHTML={{ __html: richTextContent }}
-                          />
-                        </div>
+                        <Select
+                          value={editedTask?.status}
+                          onValueChange={(value) => setEditedTask(prev => prev ? {...prev, status: value as any} : null)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Not Started">Not Started</SelectItem>
+                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="Completed">Completed</SelectItem>
+                            <SelectItem value="On Hold">On Hold</SelectItem>
+                            <SelectItem value="Cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
-                        <div 
-                          className="text-sm mt-1 min-h-[60px] p-3 border rounded-md bg-muted/20"
-                          dangerouslySetInnerHTML={{ __html: richTextContent || 'No description provided' }}
-                        />
+                        <Badge variant={getStatusVariant(task.status)}>
+                          {task.status}
+                        </Badge>
                       )}
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Start Date</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{currentTask.startDate}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">End Date</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{currentTask.endDate}</span>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
 
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Assigned Resources</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {currentTask.assignedResources?.length || 0} assigned
+                  {/* Priority */}
+                  <div>
+                    <Label>Priority</Label>
+                    <div className="mt-1">
+                      {isEditing ? (
+                        <Select
+                          value={editedTask?.priority}
+                          onValueChange={(value) => setEditedTask(prev => prev ? {...prev, priority: value as any} : null)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant={getPriorityVariant(task.priority)}>
+                          {task.priority}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <Label>Start Date</Label>
+                    <div className="mt-1">
+                      {isEditing ? (
+                        <Input
+                          type="date"
+                          value={editedTask?.startDate || ''}
+                          onChange={(e) => setEditedTask(prev => prev ? {...prev, startDate: e.target.value} : null)}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {task.startDate || 'Not set'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <Label>End Date</Label>
+                    <div className="mt-1">
+                      {isEditing ? (
+                        <Input
+                          type="date"
+                          value={editedTask?.endDate || ''}
+                          onChange={(e) => setEditedTask(prev => prev ? {...prev, endDate: e.target.value} : null)}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {task.endDate || 'Not set'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="md:col-span-2">
+                    <Label>Progress</Label>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-3">
+                        <Progress value={getProgressPercentage()} className="flex-1" />
+                        <span className="text-sm font-medium">
+                          {getProgressPercentage()}%
                         </span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
 
+                  {/* Description */}
+                  <div className="md:col-span-2">
+                    <Label htmlFor="task-description">Description</Label>
+                    {isEditing ? (
+                      <Textarea
+                        id="task-description"
+                        value={editedTask?.description || ''}
+                        onChange={(e) => setEditedTask(prev => prev ? {...prev, description: e.target.value} : null)}
+                        rows={4}
+                        className="mt-1"
+                        placeholder="Enter task description..."
+                      />
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                        {task.description || 'No description provided'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="subtasks" className="space-y-4 m-0">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Progress & Status</CardTitle>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Subtasks</span>
+                      <Badge variant="secondary">
+                        {subtasks.filter(st => st.completed).length} / {subtasks.length} completed
+                      </Badge>
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Overall Progress</span>
-                        <span className="text-sm text-muted-foreground">
-                          {completedSubtasks}/{totalSubtasks} subtasks
-                        </span>
-                      </div>
-                      <Progress value={getProgressPercentage()} className="h-3" />
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span>{getProgressPercentage()}% complete</span>
-                        <span>{totalSubtasks - completedSubtasks} remaining</span>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-success" />
-                        <span>Completed: {completedSubtasks}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Remaining: {totalSubtasks - completedSubtasks}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="subtasks" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Subtasks</CardTitle>
-                    <Badge variant="outline">
-                      {completedSubtasks}/{totalSubtasks} completed
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    Break down your task into smaller, manageable subtasks
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Progress Overview */}
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">Subtasks Progress</span>
-                        <span className="text-sm text-muted-foreground">
+                  <CardContent className="space-y-3">
+                    {/* Progress Bar */}
+                    {subtasks.length > 0 && (
+                      <div className="space-y-2">
+                        <Progress value={getProgressPercentage()} />
+                        <p className="text-sm text-muted-foreground">
                           {getProgressPercentage()}% complete
-                        </span>
+                        </p>
                       </div>
-                      <Progress value={getProgressPercentage()} className="h-2" />
-                    </div>
+                    )}
 
                     {/* Subtask List */}
                     <div className="space-y-2">
                       {subtasks.map((subtask) => (
-                        <div
-                          key={subtask.id}
-                          className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/20 transition-colors"
-                        >
+                        <div key={subtask.id} className="flex items-center gap-3 p-2 rounded-lg border bg-card">
                           <Checkbox
                             checked={subtask.completed}
                             onCheckedChange={() => handleSubtaskToggle(subtask.id)}
@@ -404,16 +395,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           <span className={`flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
                             {subtask.title}
                           </span>
-                          {subtask.completed && (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeSubtask(subtask.id)}
-                            className="h-8 w-8 p-0"
+                            onClick={() => handleDeleteSubtask(subtask.id)}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
@@ -423,91 +411,92 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <div className="flex gap-2">
                       <Input
                         placeholder="Add a new subtask..."
-                        value={newSubtask}
-                        onChange={(e) => setNewSubtask(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addSubtask()}
-                        className="flex-1"
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
                       />
-                      <Button onClick={addSubtask} size="sm">
+                      <Button
+                        onClick={handleAddSubtask}
+                        disabled={!newSubtaskTitle.trim()}
+                        size="sm"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="comments" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Comments & Discussion</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+              <TabsContent value="comments" className="m-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5" />
+                      Comments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div className="text-center py-8 text-muted-foreground">
                       <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>No comments yet. Start the conversation!</p>
                     </div>
                     
-                    <div className="flex gap-2">
-                      <Input placeholder="Add a comment..." className="flex-1" />
-                      <Button size="sm">
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Comment
+                    <div className="flex gap-2 mt-4">
+                      <Textarea
+                        placeholder="Add a comment..."
+                        rows={2}
+                        className="flex-1"
+                      />
+                      <Button size="sm" className="self-end">
+                        Post
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="attachments" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Attachments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-surface-muted rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Paperclip className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">project-requirements.pdf</span>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Download
-                      </Button>
+              <TabsContent value="attachments" className="m-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Paperclip className="h-5 w-5" />
+                      Attachments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Paperclip className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No attachments yet. Upload files to get started!</p>
                     </div>
                     
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full mt-4">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Attachment
+                      Upload Attachment
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </div>
-        </Tabs>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
 
-        <div className="flex justify-between pt-4 border-t border-border">
+        {/* Footer Actions */}
+        <div className="flex justify-between items-center pt-4 border-t flex-shrink-0">
           <div>
             {onDelete && (
-              <Button variant="outline" onClick={() => onDelete(task.id)} className="text-destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
+              <Button
+                variant="destructive"
+                onClick={() => onDelete(task.id)}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
                 Delete Task
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-            {isEditing && (
-              <Button onClick={handleSave}>
-                Save Changes
-              </Button>
-            )}
-          </div>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

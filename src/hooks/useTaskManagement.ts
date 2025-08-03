@@ -315,6 +315,9 @@ export function useTaskManagement(projectId: string) {
         await onTaskAssigned(projectId);
       }
 
+      // Force refresh to ensure UI shows latest data
+      await fetchTasks();
+      
       toast.success('Task updated successfully');
     } catch (error) {
       console.error('[useTaskManagement] Update task error:', error);
