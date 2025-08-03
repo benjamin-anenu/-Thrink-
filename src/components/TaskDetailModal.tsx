@@ -64,12 +64,8 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setEditedTask(task);
       setIsEditing(false);
       setActiveTab('details');
-      // Only refresh subtasks if we have a valid task ID
-      if (task.id) {
-        refreshSubtasks();
-      }
     }
-  }, [task?.id, refreshSubtasks]);
+  }, [task]);
 
   if (!task) return null;
 
@@ -167,7 +163,10 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="task-description">
+        <div id="task-description" className="sr-only">
+          Task details and management interface for {task.name}
+        </div>
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Subtask {
@@ -18,7 +18,7 @@ export const useSubtasks = (taskId: string | null) => {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch subtasks for a task
-  const fetchSubtasks = async () => {
+  const fetchSubtasks = useCallback(async () => {
     if (!taskId || taskId.trim() === '') return;
     
     setLoading(true);
@@ -39,7 +39,7 @@ export const useSubtasks = (taskId: string | null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
 
   // Create a new subtask
   const createSubtask = async (title: string, description?: string) => {
@@ -124,8 +124,11 @@ export const useSubtasks = (taskId: string | null) => {
   useEffect(() => {
     if (taskId && taskId.trim() !== '') {
       fetchSubtasks();
+    } else {
+      setSubtasks([]);
+      setError(null);
     }
-  }, [taskId]);
+  }, [taskId, fetchSubtasks]);
 
   return {
     subtasks,
