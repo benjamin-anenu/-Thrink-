@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain, Search } from 'lucide-react';
+import { X, Send, Settings, Database, MessageCircle, Sparkles, Brain, Search, ToggleLeft, ToggleRight } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { HybridTinkService } from '@/services/HybridTinkService';
+import { LocalSearchService } from '@/services/LocalSearchService';
 import ModelSelector from './ModelSelector';
 import FormattedMessage from './FormattedMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,7 +48,9 @@ export const TinkAssistant: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [tinkService, setTinkService] = useState<HybridTinkService | null>(null);
+  const [localSearchService] = useState(new LocalSearchService());
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [useLocalMode, setUseLocalMode] = useState(false); // New toggle state
 
   // Drag functionality state - position in bottom right by default
   const [position, setPosition] = useState<Position>({ x: window.innerWidth - 220, y: window.innerHeight - 220 });
@@ -374,6 +377,15 @@ What would you like to explore today?`,
   };
 
   const handleSearchMode = async () => {
+    if (!currentWorkspace) {
+      toast({
+        title: "No Workspace",
+        description: "Please select a workspace to search your data.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const userMessage: TinkMessage = {
       id: Date.now().toString(),
       type: 'user',
@@ -382,40 +394,66 @@ What would you like to explore today?`,
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const query = inputValue;
     setInputValue('');
     setIsLoading(true);
 
     const typingMessage: TinkMessage = {
       id: 'typing',
       type: 'tink',
-      content: '🔍 Searching your workspace data...',
+      content: useLocalMode ? '🔍 Searching local data...' : '🔍 Searching your workspace data...',
       timestamp: new Date(),
       isLoading: true
     };
     setMessages(prev => [...prev, typingMessage]);
 
     try {
-      const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
-        body: {
-          userQuestion: inputValue,
-          mode: 'search',
-          workspaceId: currentWorkspace?.id || 'default'
-        }
-      });
+      let result;
+      
+      if (useLocalMode) {
+        // Use local search service
+        result = await localSearchService.processLocalQuery(query, currentWorkspace.id);
+        
+        setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
 
-      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+        const response: TinkMessage = {
+          id: (Date.now() + 1).toString(),
+          type: 'tink',
+          content: result.response,
+          timestamp: new Date(),
+          metadata: {
+            dataCount: result.dataCount,
+            processingTime: result.processingTime,
+            model: `local-${result.searchType}`
+          }
+        };
 
-      const aiResponse: TinkMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'tink',
-        content: data?.response || "No results found. Try keywords like 'my tasks', 'overdue projects', or 'team performance'.",
-        timestamp: new Date(),
-        metadata: {
-          processingTime: data?.processingTime
-        }
-      };
+        setMessages(prev => [...prev, response]);
+      } else {
+        // Use existing edge function search
+        const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
+          body: {
+            userQuestion: query,
+            mode: 'search',
+            workspaceId: currentWorkspace.id
+          }
+        });
 
-      setMessages(prev => [...prev, aiResponse]);
+        setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+
+        const aiResponse: TinkMessage = {
+          id: (Date.now() + 1).toString(),
+          type: 'tink',
+          content: data?.response || "No results found. Try keywords like 'my tasks', 'overdue projects', or 'team performance'.",
+          timestamp: new Date(),
+          metadata: {
+            processingTime: data?.processingTime,
+            model: 'edge-function'
+          }
+        };
+
+        setMessages(prev => [...prev, aiResponse]);
+      }
 
     } catch (error) {
       console.error('Search error:', error);
@@ -607,6 +645,31 @@ What would you like to explore today?`,
                     Search
                   </Button>
                 </div>
+                
+                {/* AI/Local Toggle - only show in search mode */}
+                {chatMode === 'search' && (
+                  <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+                    <Button
+                      variant={!useLocalMode ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setUseLocalMode(false)}
+                      className="h-8 px-3 text-xs transition-all duration-200"
+                    >
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI
+                    </Button>
+                    <Button
+                      variant={useLocalMode ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setUseLocalMode(true)}
+                      className="h-8 px-3 text-xs transition-all duration-200"
+                    >
+                      <Database className="w-3 h-3 mr-1" />
+                      Local
+                    </Button>
+                  </div>
+                )}
+                
                 
                 {/* Model Selector Button */}
                 <Button
