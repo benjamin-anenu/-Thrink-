@@ -57,16 +57,19 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     toggleSubtask,
     deleteSubtask,
     refreshSubtasks
-  } = useSubtasks(task?.id || '');
+  } = useSubtasks(task?.id || null);
 
   useEffect(() => {
     if (task) {
       setEditedTask(task);
       setIsEditing(false);
       setActiveTab('details');
-      refreshSubtasks();
+      // Only refresh subtasks if we have a valid task ID
+      if (task.id) {
+        refreshSubtasks();
+      }
     }
-  }, [task, refreshSubtasks]);
+  }, [task?.id, refreshSubtasks]);
 
   if (!task) return null;
 

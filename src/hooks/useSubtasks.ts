@@ -12,14 +12,14 @@ export interface Subtask {
   updated_at: string;
 }
 
-export const useSubtasks = (taskId: string) => {
+export const useSubtasks = (taskId: string | null) => {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch subtasks for a task
   const fetchSubtasks = async () => {
-    if (!taskId) return;
+    if (!taskId || taskId.trim() === '') return;
     
     setLoading(true);
     setError(null);
@@ -43,7 +43,7 @@ export const useSubtasks = (taskId: string) => {
 
   // Create a new subtask
   const createSubtask = async (title: string, description?: string) => {
-    if (!taskId) return null;
+    if (!taskId || taskId.trim() === '') return null;
 
     try {
       const maxOrder = Math.max(...subtasks.map(st => st.sort_order), -1);
@@ -122,7 +122,9 @@ export const useSubtasks = (taskId: string) => {
   };
 
   useEffect(() => {
-    fetchSubtasks();
+    if (taskId && taskId.trim() !== '') {
+      fetchSubtasks();
+    }
   }, [taskId]);
 
   return {
