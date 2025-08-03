@@ -60,7 +60,7 @@ export const useAIDashboardData = () => {
         const satisfactionTrend = await clientSatisfactionService.getSatisfactionTrend(currentWorkspace.id);
         setClientSatisfactionTrend(satisfactionTrend || []);
 
-        const budget = await budgetService.getBudgetData(currentWorkspace.id);
+        const budget = await budgetService.getWorkspaceBudgetSummary(currentWorkspace.id);
         setBudgetData(budget);
       } catch (error) {
         console.error('Error loading additional dashboard data:', error);
@@ -94,7 +94,7 @@ export const useAIDashboardData = () => {
     // Count only projects with "In Progress" status
     const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress').length;
     
-    // Calculate actual resource utilization - count resources with utilization < 80% as available
+    // Calculate actual resource utilization
     const avgUtilization = workspaceResources.length > 0 
       ? Math.round(workspaceResources.reduce((acc, r) => acc + (r.utilization || 0), 0) / workspaceResources.length)
       : 0;
