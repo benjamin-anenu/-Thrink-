@@ -46,7 +46,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
   };
 
   const getProgressPercentage = (task: ProjectTask) => {
-    // This would calculate based on subtasks once implemented
+    // Use database progress value - this should be updated when subtasks change
     return task.progress || 0;
   };
 

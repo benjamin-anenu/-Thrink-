@@ -109,17 +109,23 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const handleSubtaskToggle = async (subtaskId: string) => {
     await toggleSubtask(subtaskId);
     
-    // Check if all subtasks are now completed and auto-update task
+    // Calculate updated progress after toggling
     const updatedSubtasks = subtasks.map(st => 
       st.id === subtaskId ? { ...st, completed: !st.completed } : st
     );
     
+    const completedCount = updatedSubtasks.filter(st => st.completed).length;
+    const newProgress = updatedSubtasks.length > 0 
+      ? Math.round((completedCount / updatedSubtasks.length) * 100)
+      : task.progress;
+    
     const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every(st => st.completed);
     
-    if (allCompleted && onUpdate) {
+    // Update task progress and status if needed
+    if (onUpdate) {
       await onUpdate(task.id, { 
-        status: 'Completed',
-        progress: 100
+        status: allCompleted ? 'Completed' : task.status,
+        progress: newProgress
       });
     }
   };
@@ -128,11 +134,30 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (newSubtaskTitle.trim()) {
       await createSubtask(newSubtaskTitle.trim());
       setNewSubtaskTitle('');
+      
+      // Update task progress after adding subtask
+      const newProgress = subtasks.length > 0 
+        ? Math.round((subtasks.filter(st => st.completed).length / (subtasks.length + 1)) * 100)
+        : 0;
+      
+      if (onUpdate) {
+        await onUpdate(task.id, { progress: newProgress });
+      }
     }
   };
 
   const handleDeleteSubtask = async (subtaskId: string) => {
     await deleteSubtask(subtaskId);
+    
+    // Update task progress after deleting subtask
+    const remainingSubtasks = subtasks.filter(st => st.id !== subtaskId);
+    const newProgress = remainingSubtasks.length > 0 
+      ? Math.round((remainingSubtasks.filter(st => st.completed).length / remainingSubtasks.length) * 100)
+      : task.progress; // Fallback to original progress if no subtasks left
+    
+    if (onUpdate) {
+      await onUpdate(task.id, { progress: newProgress });
+    }
   };
 
   const getProgressPercentage = () => {
