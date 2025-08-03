@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Subtask {
@@ -16,10 +16,19 @@ export const useSubtasks = (taskId: string | null) => {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch subtasks for a task
   const fetchSubtasks = useCallback(async () => {
     if (!taskId || taskId.trim() === '') return;
+    
+    // Cancel previous request if it exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
     
     setLoading(true);
     setError(null);
@@ -29,13 +38,17 @@ export const useSubtasks = (taskId: string | null) => {
         .from('task_subtasks')
         .select('*')
         .eq('task_id', taskId)
-        .order('sort_order');
+        .order('sort_order')
+        .abortSignal(abortControllerRef.current.signal);
 
       if (error) throw error;
       setSubtasks(data || []);
     } catch (err) {
-      console.error('Error fetching subtasks:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch subtasks');
+      // Don't set error if request was aborted
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Error fetching subtasks:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch subtasks');
+      }
     } finally {
       setLoading(false);
     }
@@ -128,7 +141,14 @@ export const useSubtasks = (taskId: string | null) => {
       setSubtasks([]);
       setError(null);
     }
-  }, [taskId, fetchSubtasks]);
+    
+    // Cleanup: abort any pending requests when component unmounts or taskId changes
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [taskId]); // Only depend on taskId, not fetchSubtasks
 
   return {
     subtasks,
