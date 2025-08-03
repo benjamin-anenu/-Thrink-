@@ -5,8 +5,8 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { HybridTinkService } from '@/services/HybridTinkService';
-import { LocalSearchService } from '@/services/LocalSearchService';
+import { AIService } from '@/services/AIService';
+import { EnhancedLocalService } from '@/services/EnhancedLocalService';
 import ModelSelector from './ModelSelector';
 import FormattedMessage from './FormattedMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +26,7 @@ interface TinkMessage {
   };
 }
 
-type ChatMode = 'agent' | 'chat';
+type ChatMode = 'ai' | 'local';
 
 interface Position {
   x: number;
@@ -44,13 +44,12 @@ export const TinkAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [chatMode, setChatMode] = useState<'agent' | 'chat' | 'search'>('agent');
+  const [chatMode, setChatMode] = useState<ChatMode>('local');
   const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
   const [showModelSelector, setShowModelSelector] = useState(false);
-  const [tinkService, setTinkService] = useState<HybridTinkService | null>(null);
-  const [localSearchService] = useState(new LocalSearchService());
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
-  const [useLocalMode, setUseLocalMode] = useState(false); // New toggle state
+  const [aiService, setAiService] = useState<AIService | null>(null);
+  const [localService] = useState(new EnhancedLocalService());
+  const [apiKeyMissing, setApiKeyMissing] = useState(true);
 
   // Drag functionality state - position in bottom right by default
   const [position, setPosition] = useState<Position>({ x: window.innerWidth - 220, y: window.innerHeight - 220 });
@@ -88,24 +87,22 @@ export const TinkAssistant: React.FC = () => {
           // Check for OpenRouter API key
           const openRouterKey = await getOpenRouterKey();
           if (openRouterKey) {
-            setTinkService(new HybridTinkService(openRouterKey, selectedModel));
+            setAiService(new AIService(openRouterKey, selectedModel));
             setApiKeyMissing(false);
           } else {
-            // Initialize hybrid service without API key (quick responses only)
-            setTinkService(new HybridTinkService());
             setApiKeyMissing(true);
           }
           
           const welcomeMessage: TinkMessage = {
             id: '1',
             type: 'tink',
-            content: `Hey there! I'm Tink, your AI project management assistant. I'm here to help you analyze your data, plan your projects, and make better decisions.
+            content: `Hey there! I'm Tink, your intelligent project management assistant. I'm here to help you make sense of your workspace data and provide actionable insights.
 
-I can work in two modes:
-🔍 **Agent Mode**: I'll analyze your actual project data and provide insights
-💬 **Chat Mode**: I'll help you brainstorm and plan using my project management expertise
+I work in two modes:
+🤖 **AI Mode**: Advanced AI-powered analysis using OpenRouter models (requires API key)
+🏠 **Local Mode**: Intelligent local analysis with detailed, human-like responses
 
-What would you like to explore today?`,
+${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '}What would you like to explore today?`,
             timestamp: new Date()
           };
           setMessages([welcomeMessage]);
@@ -240,8 +237,8 @@ What would you like to explore today?`,
 
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
-    if (tinkService) {
-      tinkService.updateModel(modelId);
+    if (aiService) {
+      aiService.updateModel(modelId);
     }
     setShowModelSelector(false);
     
@@ -259,39 +256,25 @@ What would you like to explore today?`,
   const sendMessage = async () => {
     if (!inputValue.trim() || !userId || isLoading) return;
 
-    // Handle search mode (no API key needed)
-    if (chatMode === 'search') {
-      await handleSearchMode();
-      return;
-    }
-
-    // For agent/chat modes, check workspace and API key
+    // Check workspace requirement
     if (!currentWorkspace) {
       toast({
         title: "No Workspace",
-        description: "Please select a workspace to use AI features.",
+        description: "Please select a workspace to use Tink Assistant.",
         variant: "destructive"
       });
       return;
     }
 
-    // Check if API key is missing
-    if (apiKeyMissing) {
+    // For AI mode, check if service is available
+    if (chatMode === 'ai' && (apiKeyMissing || !aiService)) {
       toast({
-        title: "API Key Required",
-        description: "Please set up your OpenRouter API key to use Tink AI Assistant.",
+        title: "AI Mode Unavailable",
+        description: "AI mode requires an OpenRouter API key. Switching to Local mode for this query.",
         variant: "destructive"
       });
-      return;
-    }
-
-    // Check if service is available
-    if (!tinkService) {
-      toast({
-        title: "Service Unavailable",
-        description: "Tink AI service is not properly initialized. Please try again.",
-        variant: "destructive"
-      });
+      // Temporarily switch to local mode for this query
+      await handleLocalMode();
       return;
     }
 
@@ -303,6 +286,7 @@ What would you like to explore today?`,
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const query = inputValue;
     setInputValue('');
     setIsLoading(true);
     setIsTyping(true);
@@ -310,64 +294,70 @@ What would you like to explore today?`,
     const typingMessage: TinkMessage = {
       id: 'typing',
       type: 'tink',
-      content: chatMode === 'agent' 
-        ? '🔍 Analyzing your data and generating insights...' 
-        : '💭 Thinking through your question...',
+      content: chatMode === 'ai' 
+        ? '🤖 AI analyzing your workspace data...' 
+        : '🏠 Processing your request locally...',
       timestamp: new Date(),
       isLoading: true
     };
     setMessages(prev => [...prev, typingMessage]);
 
     try {
-      // Get conversation history for context
-      const conversationHistory = messages.slice(-4).map(msg => ({
-        message_role: msg.type === 'user' ? 'user' : 'assistant',
-        message_content: msg.content
-      }));
+      let result;
+      
+      if (chatMode === 'ai' && aiService) {
+        // AI Mode processing
+        const conversationHistory = messages.slice(-4).map(msg => ({
+          message_role: msg.type === 'user' ? 'user' : 'assistant',
+          message_content: msg.content
+        }));
 
-      const result = await tinkService.processQuery(
-        inputValue,
-        currentWorkspace.id,
-        conversationHistory,
-        chatMode
-      );
+        result = await aiService.processQuery(
+          query,
+          currentWorkspace.id,
+          conversationHistory,
+          'agent'
+        );
+      } else {
+        // Local Mode processing
+        result = await localService.processQuery(query, currentWorkspace.id);
+      }
 
       // Remove typing indicator
       setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
 
-      const aiResponse: TinkMessage = {
+      const response: TinkMessage = {
         id: (Date.now() + 1).toString(),
         type: 'tink',
-        content: result.response || "I'm having trouble responding right now. Could you try rephrasing your question?",
+        content: result.response || "I couldn't process your request at the moment.",
         timestamp: new Date(),
         metadata: {
-          query: result.query,
-          dataCount: result.data?.length || 0,
+          dataCount: result.dataCount,
           processingTime: result.processingTime,
-          model: result.model,
+          model: chatMode === 'ai' ? selectedModel : `enhanced-local-${result.searchType}`,
           insights: result.insights
         }
       };
 
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, response]);
 
     } catch (error) {
-      console.error('Error sending message to Enhanced Tink:', error);
+      console.error('Message processing error:', error);
       
       setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
       
       const errorResponse: TinkMessage = {
         id: (Date.now() + 1).toString(),
         type: 'tink',
-        content: "I'm experiencing some technical difficulties. Let me try a different approach to help you with your project management needs.",
+        content: "I encountered an issue processing your request. Please try rephrasing your question or check your connection.",
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, errorResponse]);
       
       toast({
-        title: "Connection Issue",
-        description: "Tink is having trouble connecting. Please try again.",
+        title: "Processing Error",
+        description: "Unable to process your request. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -376,15 +366,8 @@ What would you like to explore today?`,
     }
   };
 
-  const handleSearchMode = async () => {
-    if (!currentWorkspace) {
-      toast({
-        title: "No Workspace",
-        description: "Please select a workspace to search your data.",
-        variant: "destructive"
-      });
-      return;
-    }
+  const handleLocalMode = async () => {
+    if (!currentWorkspace) return;
 
     const userMessage: TinkMessage = {
       id: Date.now().toString(),
@@ -401,68 +384,40 @@ What would you like to explore today?`,
     const typingMessage: TinkMessage = {
       id: 'typing',
       type: 'tink',
-      content: useLocalMode ? '🔍 Searching local data...' : '🔍 Searching your workspace data...',
+      content: '🏠 Processing with enhanced local intelligence...',
       timestamp: new Date(),
       isLoading: true
     };
     setMessages(prev => [...prev, typingMessage]);
 
     try {
-      let result;
+      const result = await localService.processQuery(query, currentWorkspace.id);
       
-      if (useLocalMode) {
-        // Use local search service
-        result = await localSearchService.processLocalQuery(query, currentWorkspace.id);
-        
-        setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
 
-        const response: TinkMessage = {
-          id: (Date.now() + 1).toString(),
-          type: 'tink',
-          content: result.response,
-          timestamp: new Date(),
-          metadata: {
-            dataCount: result.dataCount,
-            processingTime: result.processingTime,
-            model: `local-${result.searchType}`
-          }
-        };
+      const response: TinkMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'tink',
+        content: result.response,
+        timestamp: new Date(),
+        metadata: {
+          dataCount: result.dataCount,
+          processingTime: result.processingTime,
+          model: `enhanced-local-${result.searchType}`,
+          insights: result.insights
+        }
+      };
 
-        setMessages(prev => [...prev, response]);
-      } else {
-        // Use existing edge function search
-        const { data, error } = await supabase.functions.invoke('tink-ai-chat', {
-          body: {
-            userQuestion: query,
-            mode: 'search',
-            workspaceId: currentWorkspace.id
-          }
-        });
-
-        setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
-
-        const aiResponse: TinkMessage = {
-          id: (Date.now() + 1).toString(),
-          type: 'tink',
-          content: data?.response || "No results found. Try keywords like 'my tasks', 'overdue projects', or 'team performance'.",
-          timestamp: new Date(),
-          metadata: {
-            processingTime: data?.processingTime,
-            model: 'edge-function'
-          }
-        };
-
-        setMessages(prev => [...prev, aiResponse]);
-      }
+      setMessages(prev => [...prev, response]);
 
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Local processing error:', error);
       setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
       
       const errorResponse: TinkMessage = {
         id: (Date.now() + 1).toString(),
         type: 'tink',
-        content: "Search temporarily unavailable. Try keywords like: 'my tasks', 'overdue projects', 'team members', 'my performance'.",
+        content: "Local processing encountered an issue. Please try a different approach or check your workspace data.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorResponse]);
@@ -470,6 +425,7 @@ What would you like to explore today?`,
       setIsLoading(false);
     }
   };
+
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -479,23 +435,17 @@ What would you like to explore today?`,
   };
 
   const quickActions = {
-    agent: [
-      { label: "Team Performance", icon: Database, query: "How is my team performing this month?" },
-      { label: "Project Status", icon: Database, query: "What's the current status of all my projects?" },
-      { label: "Upcoming Deadlines", icon: Database, query: "What are my upcoming deadlines this week?" },
-      { label: "Resource Utilization", icon: Database, query: "Show me our current resource utilization" }
+    ai: [
+      { label: "Team Performance", icon: Brain, query: "How is my team performing this month?" },
+      { label: "Project Analysis", icon: Brain, query: "Analyze my current projects and suggest improvements" },
+      { label: "Risk Assessment", icon: Brain, query: "What are the biggest risks in my projects?" },
+      { label: "Strategic Planning", icon: Brain, query: "Help me plan our next quarter milestones" }
     ],
-    chat: [
-      { label: "Risk Analysis", icon: MessageCircle, query: "What are the biggest risks in my current projects?" },
-      { label: "Productivity Tips", icon: MessageCircle, query: "How can I improve my team's productivity?" },
-      { label: "Planning Help", icon: MessageCircle, query: "Help me plan my next project milestone" },
-      { label: "Best Practices", icon: MessageCircle, query: "What are some project management best practices?" }
-    ],
-    search: [
-      { label: "My Tasks", icon: Search, query: "my tasks today" },
-      { label: "Overdue Items", icon: Search, query: "overdue projects" },
-      { label: "Team Status", icon: Search, query: "team performance" },
-      { label: "Available Resources", icon: Search, query: "available resources" }
+    local: [
+      { label: "My Tasks", icon: Database, query: "show me my current tasks" },
+      { label: "Project Status", icon: Database, query: "what's the status of my projects" },
+      { label: "Upcoming Deadlines", icon: Database, query: "what deadlines are coming up" },
+      { label: "Team Overview", icon: Database, query: "show me team performance and workload" }
     ]
   };
 
@@ -602,12 +552,12 @@ What would you like to explore today?`,
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     Tink AI 
                     <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                      {chatMode === 'agent' ? 'Data Expert' : chatMode === 'search' ? 'Search Mode' : 'AI Consultant'}
+                      {chatMode === 'ai' ? 'AI Mode' : 'Local Mode'}
                     </span>
                   </h3>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    {chatMode === 'search' ? 'Offline Search' : currentModel?.name || 'Claude 3.5 Sonnet'}
-                    <span className="text-xs opacity-60">• {chatMode === 'agent' ? 'Data analysis' : chatMode === 'search' ? 'Keyword search' : 'Consultation'}</span>
+                    {chatMode === 'ai' ? currentModel?.name || 'Claude 3.5 Sonnet' : 'Enhanced Local Intelligence'}
+                    <span className="text-xs opacity-60">• {chatMode === 'ai' ? 'AI-powered analysis' : 'Local data processing'}</span>
                   </p>
                 </div>
               </div>
@@ -616,59 +566,25 @@ What would you like to explore today?`,
                 {/* Mode Toggle */}
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                   <Button
-                    variant={chatMode === 'agent' ? 'default' : 'ghost'}
+                    variant={chatMode === 'ai' ? 'default' : 'ghost'}
                     disabled={apiKeyMissing}
                     size="sm"
-                    onClick={() => setChatMode('agent')}
+                    onClick={() => setChatMode('ai')}
+                    className="h-8 px-3 text-xs transition-all duration-200"
+                  >
+                    <Brain className="w-3 h-3 mr-1" />
+                    AI
+                  </Button>
+                  <Button
+                    variant={chatMode === 'local' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setChatMode('local')}
                     className="h-8 px-3 text-xs transition-all duration-200"
                   >
                     <Database className="w-3 h-3 mr-1" />
-                    Agent
-                  </Button>
-                  <Button
-                    variant={chatMode === 'chat' ? 'default' : 'ghost'}
-                    disabled={apiKeyMissing}
-                    size="sm"
-                    onClick={() => setChatMode('chat')}
-                    className="h-8 px-3 text-xs transition-all duration-200"
-                  >
-                    <MessageCircle className="w-3 h-3 mr-1" />
-                    Chat
-                  </Button>
-                  <Button
-                    variant={chatMode === 'search' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setChatMode('search')}
-                    className="h-8 px-3 text-xs transition-all duration-200"
-                  >
-                    <Search className="w-3 h-3 mr-1" />
-                    Search
+                    Local
                   </Button>
                 </div>
-                
-                {/* AI/Local Toggle - only show in search mode */}
-                {chatMode === 'search' && (
-                  <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
-                    <Button
-                      variant={!useLocalMode ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setUseLocalMode(false)}
-                      className="h-8 px-3 text-xs transition-all duration-200"
-                    >
-                      <Brain className="w-3 h-3 mr-1" />
-                      AI
-                    </Button>
-                    <Button
-                      variant={useLocalMode ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setUseLocalMode(true)}
-                      className="h-8 px-3 text-xs transition-all duration-200"
-                    >
-                      <Database className="w-3 h-3 mr-1" />
-                      Local
-                    </Button>
-                  </div>
-                )}
                 
                 
                 {/* Model Selector Button */}
@@ -790,11 +706,9 @@ What would you like to explore today?`,
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder={
-                    chatMode === 'agent' 
-                      ? "Ask me about your data: 'How is my team performing?' or 'What are my risks?'" 
-                      : chatMode === 'search'
-                      ? "Try keywords: 'my tasks today', 'overdue projects', 'team performance'"
-                      : "Chat with me about your projects: 'Help me plan my next milestone'"
+                    chatMode === 'ai' 
+                      ? "Ask me anything: 'How is my team performing?' or 'What are my project risks?'" 
+                      : "Search your data: 'my tasks today', 'overdue projects', 'team performance'"
                   }
                   className="flex-1 min-h-[60px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
                            rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 
@@ -809,7 +723,7 @@ What would you like to explore today?`,
                   className="h-12 w-12 rounded-xl bg-primary hover:bg-primary/90
                            shadow-sm hover:shadow-md transition-all duration-200 
                            disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!inputValue.trim() || isLoading || (chatMode !== 'search' && (apiKeyMissing || !tinkService))}
+                  disabled={!inputValue.trim() || isLoading || (chatMode === 'ai' && (apiKeyMissing || !aiService))}
                 >
                   <Send className="h-4 w-4 text-primary-foreground" />
                 </Button>
