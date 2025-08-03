@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Calendar, User, AlertTriangle, CheckCircle, Circle, Clock } from 'lucid
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { ProjectTask } from '@/types/project';
 import { formatDate } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface KanbanBoardProps {
   projectId: string;
@@ -17,8 +18,33 @@ interface KanbanBoardProps {
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => {
-  const { tasks, loading, updateTask } = useTaskManagement(projectId);
+  const { tasks, loading, updateTask, refreshTasks } = useTaskManagement(projectId);
   const [draggedTask, setDraggedTask] = useState<ProjectTask | null>(null);
+
+  // Set up real-time subscriptions for task updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('project-tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'project_tasks',
+          filter: `project_id=eq.${projectId}`
+        },
+        (payload) => {
+          console.log('Real-time task update received:', payload);
+          // Refresh tasks when any change is detected
+          refreshTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, refreshTasks]);
 
   const columns = [
     { id: 'Not Started', title: 'To Do', color: 'bg-muted/30 border-border' },
