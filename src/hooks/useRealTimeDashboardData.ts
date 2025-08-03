@@ -45,16 +45,20 @@ export const useRealTimeDashboardData = () => {
     const calculateStats = () => {
       // Calculate project stats
       const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-      const activeProjects = workspaceProjects.filter(p => p.status === 'In Progress');
+      const activeProjects = workspaceProjects.filter(p => 
+        ['Planning', 'Execution', 'Monitoring & Controlling'].includes(p.status)
+      );
       
       // Calculate average progress
       const avgProgress = workspaceProjects.length > 0
         ? Math.round(workspaceProjects.reduce((sum, p) => sum + (p.progress || 0), 0) / workspaceProjects.length)
         : 0;
 
-      // Calculate available resources
+      // Calculate available resources (not over-utilized and available for additional tasks)
       const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
-      const availableResources = workspaceResources.filter(r => r.utilization < 80).length;
+      const availableResources = workspaceResources.filter(r => 
+        (r.utilization || 0) <= 80
+      ).length;
 
       // Get upcoming deadlines from tasks
       const upcomingDeadlines = workspaceProjects.flatMap(project => 
