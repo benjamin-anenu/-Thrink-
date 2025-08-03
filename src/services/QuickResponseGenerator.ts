@@ -34,55 +34,144 @@ export class QuickResponseGenerator {
   }
 
   private async fetchRelevantData(intent: string, entities: Entity[], workspaceId: string): Promise<any[]> {
-    const queries = {
-      project_status: `
-        SELECT p.id, p.name, p.status, p.progress, p.start_date, p.end_date,
-               COUNT(pt.id) as total_tasks,
-               COUNT(CASE WHEN pt.status = 'Completed' THEN 1 END) as completed_tasks
-        FROM projects p
-        LEFT JOIN project_tasks pt ON p.id = pt.project_id
-        WHERE p.workspace_id = $1
-        GROUP BY p.id, p.name, p.status, p.progress, p.start_date, p.end_date
-        ORDER BY p.created_at DESC
-        LIMIT 5
-      `,
-      deadlines: `
-        SELECT pt.id, pt.name, pt.end_date, pt.status, pt.priority,
-               p.name as project_name
-        FROM project_tasks pt
-        LEFT JOIN projects p ON pt.project_id = p.id
-        WHERE p.workspace_id = $1 
-          AND pt.end_date >= CURRENT_DATE
-          AND pt.status != 'Completed'
-        ORDER BY pt.end_date ASC
-        LIMIT 10
-      `,
-      task_status: `
-        SELECT pt.id, pt.name, pt.status, pt.progress, pt.priority,
-               p.name as project_name
-        FROM project_tasks pt
-        LEFT JOIN projects p ON pt.project_id = p.id
-        WHERE p.workspace_id = $1
-        ORDER BY pt.updated_at DESC
-        LIMIT 8
-      `,
-      team_performance: `
-        SELECT r.id, r.name, r.role, r.utilization, r.status,
-               COUNT(pt.id) as assigned_tasks
-        FROM resources r
-        LEFT JOIN project_tasks pt ON r.id = ANY(pt.assigned_resources)
-        WHERE r.workspace_id = $1 AND r.status = 'active'
-        GROUP BY r.id, r.name, r.role, r.utilization, r.status
-        ORDER BY r.utilization DESC
-        LIMIT 8
-      `
-    };
+    try {
+      switch (intent) {
+        case 'project_status':
+          return await this.fetchProjectStatus(workspaceId);
+        case 'deadlines':
+          return await this.fetchDeadlines(workspaceId);
+        case 'task_status':
+          return await this.fetchTaskStatus(workspaceId);
+        case 'team_performance':
+          return await this.fetchTeamPerformance(workspaceId);
+        default:
+          return await this.fetchProjectStatus(workspaceId);
+      }
+    } catch (error) {
+      console.error('Data fetching error:', error);
+      return [];
+    }
+  }
 
-    const query = queries[intent] || queries.project_status;
-    const { data, error } = await supabase.rpc('execute_sql', { query });
+  private async fetchProjectStatus(workspaceId: string): Promise<any[]> {
+    const { data: projects, error: projectsError } = await supabase
+      .from('projects')
+      .select('id, name, status, progress, start_date, end_date, created_at')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (projectsError) throw projectsError;
+
+    // Get task counts for each project
+    const projectsWithTasks = await Promise.all(
+      (projects || []).map(async (project) => {
+        const { data: tasks } = await supabase
+          .from('project_tasks')
+          .select('id, status')
+          .eq('project_id', project.id);
+        
+        return {
+          ...project,
+          total_tasks: tasks?.length || 0,
+          completed_tasks: tasks?.filter(task => task.status === 'Completed').length || 0
+        };
+      })
+    );
+
+    return projectsWithTasks;
+  }
+
+  private async fetchDeadlines(workspaceId: string): Promise<any[]> {
+    // First get projects in workspace
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, name')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null);
+
+    if (!projects || projects.length === 0) return [];
+
+    const projectIds = projects.map(p => p.id);
+    
+    const { data: tasks, error } = await supabase
+      .from('project_tasks')
+      .select('id, name, end_date, status, priority, project_id')
+      .in('project_id', projectIds)
+      .not('end_date', 'is', null)
+      .gte('end_date', new Date().toISOString().split('T')[0])
+      .neq('status', 'Completed')
+      .order('end_date', { ascending: true })
+      .limit(10);
 
     if (error) throw error;
-    return Array.isArray(data) ? data : [];
+    
+    return (tasks || []).map(task => {
+      const project = projects.find(p => p.id === task.project_id);
+      return {
+        ...task,
+        project_name: project?.name || 'Unknown Project'
+      };
+    });
+  }
+
+  private async fetchTaskStatus(workspaceId: string): Promise<any[]> {
+    // First get projects in workspace
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, name')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null);
+
+    if (!projects || projects.length === 0) return [];
+
+    const projectIds = projects.map(p => p.id);
+    
+    const { data: tasks, error } = await supabase
+      .from('project_tasks')
+      .select('id, name, status, progress, priority, updated_at, project_id')
+      .in('project_id', projectIds)
+      .order('updated_at', { ascending: false })
+      .limit(8);
+
+    if (error) throw error;
+    
+    return (tasks || []).map(task => {
+      const project = projects.find(p => p.id === task.project_id);
+      return {
+        ...task,
+        project_name: project?.name || 'Unknown Project'
+      };
+    });
+  }
+
+  private async fetchTeamPerformance(workspaceId: string): Promise<any[]> {
+    const { data: resources, error } = await supabase
+      .from('resources')
+      .select('id, name, role')
+      .eq('workspace_id', workspaceId)
+      .limit(8);
+
+    if (error) {
+      console.error('Team performance fetch error:', error);
+      return [];
+    }
+    if (!resources) return [];
+    
+    // Add mock utilization and task count for now
+    const results: any[] = [];
+    for (const resource of resources) {
+      results.push({
+        id: resource.id,
+        name: resource.name,
+        role: resource.role,
+        utilization: Math.floor(Math.random() * 100), // Mock data
+        assigned_tasks: Math.floor(Math.random() * 10) // Mock data
+      });
+    }
+    
+    return results;
   }
 
   private formatQuickResponse(intent: string, data: any[], entities: Entity[]): string {

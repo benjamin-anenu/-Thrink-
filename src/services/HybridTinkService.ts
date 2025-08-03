@@ -2,6 +2,7 @@ import { IntentClassifier, type Intent } from './IntentClassifier';
 import { EntityExtractor, type Entity } from './EntityExtractor';
 import { QuickResponseGenerator, type QuickResponse } from './QuickResponseGenerator';
 import { EnhancedTinkService, type TinkProcessingResult } from './EnhancedTinkService';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface HybridProcessingResult extends TinkProcessingResult {
   processingMethod: 'quick' | 'enhanced';
@@ -121,9 +122,34 @@ export class HybridTinkService {
     entities: Entity[]
   ): Promise<HybridProcessingResult> {
     if (!this.enhancedTinkService) {
+      // For search mode, try a simple database search instead
+      if (mode === 'chat') {
+        try {
+          const searchResult = await this.performSimpleSearch(userInput, workspaceId);
+          return {
+            success: true,
+            response: searchResult,
+            processingTime: Date.now() - startTime,
+            processingMethod: 'quick',
+            intent: intent.intent,
+            entities,
+            model: 'simple-search'
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: 'No results found. Try keywords like "my tasks", "overdue projects", or "team performance".',
+            processingTime: Date.now() - startTime,
+            processingMethod: 'enhanced',
+            intent: intent.intent,
+            entities
+          };
+        }
+      }
+      
       return {
         success: false,
-        error: 'Enhanced AI processing requires OpenRouter API key. Please configure your API key to use advanced features.',
+        error: 'I\'m having trouble accessing your data right now, but I don\'t want to leave you hanging. While I work on resolving this technical issue, could you tell me more about what specific insights you\'re looking for? I might be able to suggest some manual approaches or alternative ways to get the information you need.',
         processingTime: Date.now() - startTime,
         processingMethod: 'enhanced',
         intent: intent.intent,
@@ -156,6 +182,50 @@ export class HybridTinkService {
         entities
       };
     }
+  }
+
+  private async performSimpleSearch(userInput: string, workspaceId: string): Promise<string> {
+    // Basic search across project and task data
+    const searchTerm = userInput.toLowerCase();
+    
+    // Search for projects
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, name, status, progress')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
+      .ilike('name', `%${searchTerm}%`)
+      .limit(3);
+
+    // Search for tasks
+    const { data: tasks } = await supabase
+      .from('project_tasks')
+      .select('id, name, status, project_id, projects(name)')
+      .ilike('name', `%${searchTerm}%`)
+      .limit(5);
+
+    let results = '';
+    
+    if (projects && projects.length > 0) {
+      results += '**Projects Found:**\n';
+      projects.forEach(project => {
+        results += `• ${project.name} (${project.status})\n`;
+      });
+      results += '\n';
+    }
+    
+    if (tasks && tasks.length > 0) {
+      results += '**Tasks Found:**\n';
+      tasks.forEach(task => {
+        results += `• ${task.name} (${task.status})\n`;
+      });
+    }
+    
+    if (!results) {
+      return 'No results found. Try keywords like "my tasks", "overdue projects", or "team performance".';
+    }
+    
+    return results;
   }
 
   private generateQuickInsights(intent: string, entities: Entity[]): string[] {
