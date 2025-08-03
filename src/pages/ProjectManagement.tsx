@@ -25,6 +25,7 @@ import ProjectCalendarModal from '@/components/project-management/ProjectCalenda
 import TaskDetailModal from '@/components/TaskDetailModal';
 import { useTasks } from '@/hooks/useTasks';
 import { useResources } from '@/hooks/useResources';
+import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { ProjectTask } from '@/types/project';
 
 const ProjectManagement: React.FC = () => {
@@ -40,6 +41,7 @@ const ProjectManagement: React.FC = () => {
   // Fetch tasks and resources for the project
   const { tasks } = useTasks(id || '');
   const { resources } = useResources();
+  const { updateTask } = useTaskManagement(id || '');
   
   const project = projects.find(p => p.id === id);
 
@@ -305,6 +307,7 @@ const ProjectManagement: React.FC = () => {
             setIsTaskModalOpen(false);
             setSelectedTask(null);
           }}
+          onUpdate={updateTask}
         />
       </div>
     </Layout>

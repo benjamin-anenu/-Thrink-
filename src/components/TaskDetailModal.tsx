@@ -23,6 +23,7 @@ interface TaskDetailModalProps {
   onClose: () => void;
   onSave?: (task: ProjectTask) => void;
   onDelete?: (taskId: string) => void;
+  onUpdate?: (taskId: string, updates: Partial<ProjectTask>) => Promise<void>;
 }
 
 interface Subtask {
@@ -37,7 +38,8 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  onDelete
+  onDelete,
+  onUpdate
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<ProjectTask | null>(null);
@@ -63,15 +65,33 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   if (!task) return null;
 
-  const handleSave = () => {
-    if (editedTask && onSave) {
+  const handleSave = async () => {
+    if (editedTask && (onSave || onUpdate)) {
+      const progress = getProgressPercentage();
+      const allSubtasksCompleted = subtasks.length > 0 && subtasks.every(st => st.completed);
+      
       const updatedTask = {
         ...editedTask,
         description: richTextContent,
-        progress: getProgressPercentage()
+        progress,
+        status: allSubtasksCompleted ? 'Completed' as const : editedTask.status
       };
-      onSave(updatedTask);
-      setIsEditing(false);
+
+      try {
+        if (onUpdate) {
+          await onUpdate(editedTask.id, {
+            name: updatedTask.name,
+            description: updatedTask.description,
+            status: updatedTask.status,
+            progress: updatedTask.progress
+          });
+        } else if (onSave) {
+          onSave(updatedTask);
+        }
+        setIsEditing(false);
+      } catch (error) {
+        console.error('Failed to save task:', error);
+      }
     }
   };
 
@@ -87,10 +107,24 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     return Math.round((completed / subtasks.length) * 100);
   };
 
-  const handleSubtaskToggle = (subtaskId: string) => {
-    setSubtasks(prev => prev.map(st => 
-      st.id === subtaskId ? { ...st, completed: !st.completed } : st
-    ));
+  const handleSubtaskToggle = async (subtaskId: string) => {
+    setSubtasks(prev => {
+      const updated = prev.map(st => 
+        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+      );
+      
+      // Check if all subtasks are now completed
+      const allCompleted = updated.length > 0 && updated.every(st => st.completed);
+      
+      // Auto-update task status if all subtasks are completed
+      if (allCompleted && editedTask && onUpdate) {
+        const updatedTask = { ...editedTask, status: 'Completed' as const };
+        setEditedTask(updatedTask);
+        onUpdate(editedTask.id, { status: 'Completed' });
+      }
+      
+      return updated;
+    });
   };
 
   const addSubtask = () => {
@@ -410,17 +444,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3 p-3 bg-surface-muted rounded-lg">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">John Doe</span>
-                          <span className="text-xs text-muted-foreground">2 hours ago</span>
-                        </div>
-                        <p className="text-sm">Task is progressing well, should be completed by the deadline.</p>
-                      </div>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No comments yet. Start the conversation!</p>
                     </div>
                     
                     <div className="flex gap-2">
