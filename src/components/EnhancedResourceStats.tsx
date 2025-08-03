@@ -17,9 +17,8 @@ import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 const EnhancedResourceStats = () => {
   const { resources, utilizationMetrics, aiRecommendations } = useEnhancedResources();
 
-  // Calculate enhanced metrics
+  // Calculate enhanced metrics from real data only
   const totalResources = resources.length;
-  // Fix: Use workspace_id instead of workspaceId to identify human resources
   const activeResources = resources.filter(r => r.workspace_id).length;
   
   const utilizationData = Object.values(utilizationMetrics);
@@ -57,7 +56,7 @@ const EnhancedResourceStats = () => {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{avgUtilization}%</div>
-          <Progress value={avgUtilization} className="mt-2" />
+          {avgUtilization > 0 && <Progress value={avgUtilization} className="mt-2" />}
         </CardContent>
       </Card>
 

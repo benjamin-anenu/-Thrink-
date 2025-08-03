@@ -6,26 +6,17 @@ import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 const ResourceStats = () => {
   const { resources } = useEnhancedResources();
 
-  // Calculate real metrics from database data with fallbacks for demo
-  const totalResources = Math.max(resources.length, 8); // Minimum 8 for demo
+  // Calculate real metrics from actual database data
+  const totalResources = resources.length;
   
   // Resources with complete basic information (name and email)
-  const activeResources = Math.max(
-    resources.filter(r => r.name && r.email).length,
-    Math.floor(totalResources * 0.85) // 85% active for demo
-  );
+  const activeResources = resources.filter(r => r.name && r.email).length;
   
   // Resources with roles assigned
-  const resourcesWithRoles = Math.max(
-    resources.filter(r => r.role && r.role.trim() !== '').length,
-    Math.floor(totalResources * 0.75) // 75% with roles for demo
-  );
+  const resourcesWithRoles = resources.filter(r => r.role && r.role.trim() !== '').length;
   
   // Resources with hourly rates defined (indicates they're billable/configured)
-  const billableResources = Math.max(
-    resources.filter(r => r.hourly_rate && r.hourly_rate > 0).length,
-    Math.floor(totalResources * 0.6) // 60% billable for demo
-  );
+  const billableResources = resources.filter(r => r.hourly_rate && r.hourly_rate > 0).length;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
