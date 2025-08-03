@@ -5,7 +5,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { EnhancedTinkService } from '@/services/EnhancedTinkService';
+import { HybridTinkService } from '@/services/HybridTinkService';
 import ModelSelector from './ModelSelector';
 import FormattedMessage from './FormattedMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +46,7 @@ export const TinkAssistant: React.FC = () => {
   const [chatMode, setChatMode] = useState<'agent' | 'chat' | 'search'>('agent');
   const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
   const [showModelSelector, setShowModelSelector] = useState(false);
-  const [tinkService, setTinkService] = useState<EnhancedTinkService | null>(null);
+  const [tinkService, setTinkService] = useState<HybridTinkService | null>(null);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   // Drag functionality state - position in bottom right by default
@@ -85,11 +85,12 @@ export const TinkAssistant: React.FC = () => {
           // Check for OpenRouter API key
           const openRouterKey = await getOpenRouterKey();
           if (openRouterKey) {
-            setTinkService(new EnhancedTinkService(openRouterKey, selectedModel));
+            setTinkService(new HybridTinkService(openRouterKey, selectedModel));
             setApiKeyMissing(false);
           } else {
+            // Initialize hybrid service without API key (quick responses only)
+            setTinkService(new HybridTinkService());
             setApiKeyMissing(true);
-            setChatMode('search'); // Auto-switch to search mode when no API key
           }
           
           const welcomeMessage: TinkMessage = {
@@ -237,7 +238,7 @@ What would you like to explore today?`,
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
     if (tinkService) {
-      tinkService.setModel(modelId);
+      tinkService.updateModel(modelId);
     }
     setShowModelSelector(false);
     
@@ -245,7 +246,7 @@ What would you like to explore today?`,
     const modelChangeMessage: TinkMessage = {
       id: `model-change-${Date.now()}`,
       type: 'tink',
-      content: `Great! I've switched to **${EnhancedTinkService.getAvailableModels().find(m => m.id === modelId)?.name}**. This model is optimized for ${modelId.includes('claude') ? 'thoughtful analysis and reasoning' : modelId.includes('gpt') ? 'creative problem-solving' : 'efficient processing'}. How can I help you now?`,
+      content: `Great! I've switched to **${modelId}**. This model is optimized for ${modelId.includes('claude') ? 'thoughtful analysis and reasoning' : modelId.includes('gpt') ? 'creative problem-solving' : 'efficient processing'}. How can I help you now?`,
       timestamp: new Date(),
       metadata: { model: modelId }
     };
@@ -321,7 +322,7 @@ What would you like to explore today?`,
         message_content: msg.content
       }));
 
-      const result = await tinkService.processIntelligentQuery(
+      const result = await tinkService.processQuery(
         inputValue,
         currentWorkspace.id,
         conversationHistory,
@@ -460,7 +461,7 @@ What would you like to explore today?`,
     ]
   };
 
-  const currentModel = EnhancedTinkService.getAvailableModels().find(m => m.id === selectedModel);
+  const currentModel = { name: selectedModel }; // Simplified for hybrid service
 
   // Show API key missing message if needed
   if (apiKeyMissing && isOpen) {
@@ -686,9 +687,9 @@ What would you like to explore today?`,
                             {message.metadata.processingTime && (
                               <span> • {message.metadata.processingTime}ms</span>
                             )}
-                            {message.metadata.model && (
-                              <span> • {EnhancedTinkService.getAvailableModels().find(m => m.id === message.metadata?.model)?.name}</span>
-                            )}
+                             {message.metadata.model && (
+                               <span> • {message.metadata.model}</span>
+                             )}
                           </div>
                         )}
                       </>
