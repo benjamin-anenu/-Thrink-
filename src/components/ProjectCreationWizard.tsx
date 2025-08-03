@@ -9,6 +9,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ProjectCreationService, ProjectCreationData } from '@/services/ProjectCreationService';
 import { ProjectDraftService, ProjectDraft } from '@/services/ProjectDraftService';
 import { DraftManagementModal } from './DraftManagementModal';
+import { useProjectStatus } from '@/hooks/useProjectStatus';
 import ProjectDetailsStep from '@/components/project-creation/ProjectDetailsStep';
 import KickoffSessionStep from '@/components/project-creation/KickoffSessionStep';
 import RequirementsGatheringStep from '@/components/project-creation/RequirementsGatheringStep';
@@ -71,6 +72,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
 
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const { onWizardComplete, onProjectPlanCreated } = useProjectStatus();
 
   // Set workspace ID when component mounts or workspace changes
   React.useEffect(() => {
@@ -247,6 +249,20 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       });
 
       onProjectCreated(project);
+      
+      // Trigger project status events
+      try {
+        // Wizard completion event
+        await onWizardComplete(project.id);
+        
+        // Project plan created event (if AI plan exists)
+        if (projectData.aiGenerated?.projectPlan) {
+          await onProjectPlanCreated(project.id);
+        }
+      } catch (statusError) {
+        console.error('Error updating project status:', statusError);
+        // Don't fail the project creation if status update fails
+      }
       
       // Delete the draft if it exists since project was created
       if (currentDraft) {

@@ -1,8 +1,31 @@
+// Project Status Lifecycle Enum
+export const ProjectStatus = {
+  INITIATION: 'Initiation',
+  PLANNING: 'Planning',
+  EXECUTION: 'Execution',
+  MONITORING_CONTROLLING: 'Monitoring & Controlling',
+  CLOSURE: 'Closure'
+} as const;
+
+export type ProjectStatusType = typeof ProjectStatus[keyof typeof ProjectStatus];
+
+// Legacy status mapping for backward compatibility
+export type LegacyProjectStatus = 'Planning' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled';
+
+// Status transitions configuration
+export const statusTransitions: Record<ProjectStatusType, ProjectStatusType[]> = {
+  [ProjectStatus.INITIATION]: [ProjectStatus.PLANNING],
+  [ProjectStatus.PLANNING]: [ProjectStatus.EXECUTION, ProjectStatus.INITIATION],
+  [ProjectStatus.EXECUTION]: [ProjectStatus.MONITORING_CONTROLLING, ProjectStatus.PLANNING],
+  [ProjectStatus.MONITORING_CONTROLLING]: [ProjectStatus.EXECUTION, ProjectStatus.CLOSURE],
+  [ProjectStatus.CLOSURE]: [] // Final state
+};
+
 export interface ProjectData {
   id: string;
   name: string;
   description: string;
-  status: 'Planning' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled';
+  status: ProjectStatusType | LegacyProjectStatus;
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   progress: number;
   health: ProjectHealth;
@@ -215,4 +238,102 @@ export interface TaskHierarchyState {
   hierarchyTree: TaskHierarchyNode[];
   expandedNodes: Set<string>;
   selectedTasks: Set<string>;
+}
+
+// Project Status Logic Functions
+export interface ProjectStatusLogic {
+  determineProjectStatus: (project: ProjectData) => ProjectStatusType;
+  isActiveProject: (project: ProjectData) => boolean;
+  canTransitionTo: (currentStatus: ProjectStatusType, targetStatus: ProjectStatusType) => boolean;
+  getAvailableTransitions: (currentStatus: ProjectStatusType) => ProjectStatusType[];
+  updateProjectStatus: (projectId: string, event: ProjectEvent) => Promise<void>;
+}
+
+// Project Events for Status Transitions
+export type ProjectEvent = 
+  | 'wizard_completed'
+  | 'project_plan_created'
+  | 'all_tasks_assigned'
+  | 'first_task_completed'
+  | 'all_tasks_completed'
+  | 'admin_override';
+
+export interface ProjectEventPayload {
+  projectId: string;
+  event: ProjectEvent;
+  metadata?: Record<string, any>;
+  adminOverrideStatus?: ProjectStatusType;
+}
+
+// Status Logic Helper Functions
+export function determineProjectStatus(project: ProjectData): ProjectStatusType {
+  // Check if project has AI-generated plan (wizard completed)
+  const hasProjectPlan = project.aiGenerated?.projectPlan && project.aiGenerated.projectPlan.length > 0;
+  
+  // Check if all tasks are assigned
+  const allTasksAssigned = project.tasks.length > 0 && 
+    project.tasks.every(task => task.assignedResources.length > 0 || task.assignedStakeholders.length > 0);
+  
+  // Calculate task completion stats
+  const completedTaskCount = project.tasks.filter(task => task.status === 'Completed').length;
+  const totalTaskCount = project.tasks.length;
+  
+  // Status determination logic
+  if (!hasProjectPlan) return ProjectStatus.INITIATION;
+  if (!allTasksAssigned || totalTaskCount === 0) return ProjectStatus.PLANNING;
+  if (completedTaskCount === 0) return ProjectStatus.EXECUTION;
+  if (completedTaskCount < totalTaskCount) return ProjectStatus.MONITORING_CONTROLLING;
+  return ProjectStatus.CLOSURE;
+}
+
+export function isActiveProject(project: ProjectData): boolean {
+  const currentStatus = typeof project.status === 'string' && project.status in ProjectStatus 
+    ? project.status as ProjectStatusType 
+    : determineProjectStatus(project);
+  
+  return currentStatus !== ProjectStatus.CLOSURE;
+}
+
+export function canTransitionTo(currentStatus: ProjectStatusType, targetStatus: ProjectStatusType): boolean {
+  return statusTransitions[currentStatus]?.includes(targetStatus) || false;
+}
+
+export function getAvailableTransitions(currentStatus: ProjectStatusType): ProjectStatusType[] {
+  return statusTransitions[currentStatus] || [];
+}
+
+export function getCompletedTaskCount(project: ProjectData): number {
+  return project.tasks.filter(task => task.status === 'Completed').length;
+}
+
+export function getTotalTaskCount(project: ProjectData): number {
+  return project.tasks.length;
+}
+
+export function allTasksAssigned(project: ProjectData): boolean {
+  return project.tasks.length > 0 && 
+    project.tasks.every(task => task.assignedResources.length > 0 || task.assignedStakeholders.length > 0);
+}
+
+// Legacy status mapping for backward compatibility
+export function mapLegacyStatus(legacyStatus: LegacyProjectStatus): ProjectStatusType {
+  switch (legacyStatus) {
+    case 'Planning': return ProjectStatus.PLANNING;
+    case 'In Progress': return ProjectStatus.EXECUTION;
+    case 'On Hold': return ProjectStatus.EXECUTION; // Treat as execution with issues
+    case 'Completed': return ProjectStatus.CLOSURE;
+    case 'Cancelled': return ProjectStatus.CLOSURE; // Final state
+    default: return ProjectStatus.INITIATION;
+  }
+}
+
+export function mapToLegacyStatus(status: ProjectStatusType): LegacyProjectStatus {
+  switch (status) {
+    case ProjectStatus.INITIATION: return 'Planning';
+    case ProjectStatus.PLANNING: return 'Planning';
+    case ProjectStatus.EXECUTION: return 'In Progress';
+    case ProjectStatus.MONITORING_CONTROLLING: return 'In Progress';
+    case ProjectStatus.CLOSURE: return 'Completed';
+    default: return 'Planning';
+  }
 }

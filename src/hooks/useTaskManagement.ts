@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectTask, ProjectMilestone, TaskHierarchyNode } from '@/types/project';
 import { toast } from 'sonner';
+import { useProjectStatus } from './useProjectStatus';
 
 // Helper function to map database fields to ProjectTask interface
 const mapDatabaseTaskToProjectTask = (dbTask: any): ProjectTask => {
@@ -85,6 +86,9 @@ export function useTaskManagement(projectId: string) {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+  
+  // Project status integration
+  const { onTaskAssigned, onTaskCompleted, onAllTasksCompleted } = useProjectStatus();
 
   // Helper function to validate UUID format
   const validateUUID = (id: string): boolean => {
@@ -290,6 +294,26 @@ export function useTaskManagement(projectId: string) {
       // Clear any previous errors
       setError(null);
       setRetryCount(0);
+
+      // Trigger project status events based on task changes
+      const updatedTasks = tasks.map(task => task.id === taskId ? mappedTask : task);
+      
+      // Check if task was just completed
+      if (updates.status === 'Completed' && mappedTask.status === 'Completed') {
+        await onTaskCompleted(projectId);
+        
+        // Check if all tasks are now completed
+        const allCompleted = updatedTasks.every(task => task.status === 'Completed');
+        if (allCompleted && updatedTasks.length > 0) {
+          await onAllTasksCompleted(projectId);
+        }
+      }
+      
+      // Check if task was assigned resources/stakeholders
+      if ((updates.assignedResources && updates.assignedResources.length > 0) || 
+          (updates.assignedStakeholders && updates.assignedStakeholders.length > 0)) {
+        await onTaskAssigned(projectId);
+      }
 
       toast.success('Task updated successfully');
     } catch (error) {
