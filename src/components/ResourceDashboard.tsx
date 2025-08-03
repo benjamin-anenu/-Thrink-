@@ -189,7 +189,7 @@ const ResourceDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Quick Insights */}
+      {/* Quick Insights with Dark Theme Colors */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Insights</CardTitle>
@@ -197,36 +197,36 @@ const ResourceDashboard: React.FC = () => {
         <CardContent>
           <div className="space-y-3">
             {metrics.overloadedResources > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <span className="text-sm">
+              <div className="flex items-center gap-2 p-3 bg-red-900/20 dark:bg-red-900/20 border border-red-700/30 dark:border-red-700/30 rounded-lg">
+                <AlertTriangle className="h-4 w-4 text-red-400 dark:text-red-400" />
+                <span className="text-sm text-foreground">
                   <strong>{metrics.overloadedResources}</strong> resources are overloaded and may need workload redistribution
                 </span>
               </div>
             )}
             
             {metrics.projectsWithGaps > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm">
+              <div className="flex items-center gap-2 p-3 bg-amber-900/20 dark:bg-amber-900/20 border border-amber-700/30 dark:border-amber-700/30 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-amber-400 dark:text-amber-400" />
+                <span className="text-sm text-foreground">
                   <strong>{metrics.projectsWithGaps}</strong> projects have resource gaps that need attention
                 </span>
               </div>
             )}
 
             {metrics.unassignedResources > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <Users className="h-4 w-4 text-blue-600" />
-                <span className="text-sm">
+              <div className="flex items-center gap-2 p-3 bg-blue-900/20 dark:bg-blue-900/20 border border-blue-700/30 dark:border-blue-700/30 rounded-lg">
+                <Users className="h-4 w-4 text-blue-400 dark:text-blue-400" />
+                <span className="text-sm text-foreground">
                   <strong>{metrics.unassignedResources}</strong> resources are available for new project assignments
                 </span>
               </div>
             )}
 
             {metrics.overloadedResources === 0 && metrics.projectsWithGaps === 0 && utilizationPercentage > 70 && utilizationPercentage < 85 && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <UserCheck className="h-4 w-4 text-green-600" />
-                <span className="text-sm">
+              <div className="flex items-center gap-2 p-3 bg-green-900/20 dark:bg-green-900/20 border border-green-700/30 dark:border-green-700/30 rounded-lg">
+                <UserCheck className="h-4 w-4 text-green-400 dark:text-green-400" />
+                <span className="text-sm text-foreground">
                   Resource allocation looks healthy with {utilizationPercentage.toFixed(1)}% utilization
                 </span>
               </div>
