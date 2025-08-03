@@ -22,8 +22,10 @@ import ProjectCalendar from '@/components/calendar/ProjectCalendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useProject } from '@/contexts/ProjectContext';
 import ProjectCalendarModal from '@/components/project-management/ProjectCalendarModal';
+import TaskDetailModal from '@/components/TaskDetailModal';
 import { useTasks } from '@/hooks/useTasks';
 import { useResources } from '@/hooks/useResources';
+import { ProjectTask } from '@/types/project';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +33,8 @@ const ProjectManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const { events, createEvent } = useCalendarEvents();
   
   // Fetch tasks and resources for the project
@@ -232,7 +236,13 @@ const ProjectManagement: React.FC = () => {
             {viewMode === 'gantt' ? (
               <ProjectGanttChart projectId={project.id} onSwitchToIssueLog={handleSwitchToIssueLog} />
             ) : (
-              <KanbanBoard projectId={project.id} />
+              <KanbanBoard 
+                projectId={project.id} 
+                onTaskClick={(task) => {
+                  setSelectedTask(task);
+                  setIsTaskModalOpen(true);
+                }}
+              />
             )}
           </TabsContent>
 
@@ -285,6 +295,16 @@ const ProjectManagement: React.FC = () => {
           onClose={() => setIsCalendarModalOpen(false)}
           projectId={project.id}
           projectName={project.name}
+        />
+
+        {/* Task Detail Modal */}
+        <TaskDetailModal
+          task={selectedTask}
+          isOpen={isTaskModalOpen}
+          onClose={() => {
+            setIsTaskModalOpen(false);
+            setSelectedTask(null);
+          }}
         />
       </div>
     </Layout>
