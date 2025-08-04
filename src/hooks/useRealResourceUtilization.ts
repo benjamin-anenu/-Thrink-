@@ -54,19 +54,30 @@ export const useRealResourceUtilization = (resourceIds: string[]) => {
     }
 
     try {
-      // Get all tasks for this resource and categorize them
-      const { data: allTasks, error: allTaskError } = await supabase
+      // Get all tasks for this resource using two separate queries to avoid PostgREST parsing issues
+      const { data: assigneeTasks, error: assigneeError } = await supabase
         .from('project_tasks')
         .select('id, status, complexity_score, assigned_resources, assignee_id, updated_at, created_at')
-        .or(`assignee_id.eq.${resourceId},"${resourceId}"=any(assigned_resources)`);
+        .eq('assignee_id', resourceId);
 
-      if (allTaskError) {
-        console.error('Error fetching tasks:', allTaskError);
+      const { data: assignedTasks, error: assignedError } = await supabase
+        .from('project_tasks')
+        .select('id, status, complexity_score, assigned_resources, assignee_id, updated_at, created_at')
+        .contains('assigned_resources', [resourceId]);
+
+      if (assigneeError || assignedError) {
+        console.error('Error fetching tasks:', assigneeError || assignedError);
         return createDefaultMetrics();
       }
 
-      const allTasksData = allTasks || [];
-      console.log(`Resource ${resourceId} - Total tasks found:`, allTasksData.length, allTasksData.map(t => ({ name: t.id, status: t.status })));
+      // Combine and deduplicate tasks
+      const allTasksMap = new Map();
+      [...(assigneeTasks || []), ...(assignedTasks || [])].forEach(task => {
+        allTasksMap.set(task.id, task);
+      });
+      const allTasksData = Array.from(allTasksMap.values());
+      
+      console.log(`Resource ${resourceId} - Total tasks found:`, allTasksData.length, allTasksData.map(t => ({ id: t.id, status: t.status })));
       
       // Active tasks are all non-completed tasks
       const taskData = allTasksData.filter(task => task.status !== 'Completed');
@@ -99,6 +110,8 @@ export const useRealResourceUtilization = (resourceIds: string[]) => {
       );
 
       const tasksCompleted = completedTasks.length;
+      
+      console.log(`Resource ${resourceId} - Final calculation: ${taskCount} active tasks, ${tasksCompleted} completed tasks, ${Math.round(utilizationPercentage)}% utilization`);
 
       // Determine status based on utilization
       let status: TaskUtilizationMetrics['status'];
