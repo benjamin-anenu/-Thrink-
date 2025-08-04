@@ -3,6 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Layout from '@/components/Layout';
+import { AppInitializationLoader } from '@/components/AppInitializationLoader';
+import { useAppInitialization } from '@/hooks/useAppInitialization';
 import ProjectDisplay from '@/components/dashboard/ProjectDisplay';
 import ProjectListView from '@/components/ProjectListView';
 import ProjectFilters, { ProjectFiltersState } from '@/components/ProjectFilters';
@@ -17,8 +19,17 @@ import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { transformProjectForModal, ProjectDetailsModalData } from '@/types/project-modal';
 
 const Projects: React.FC = () => {
+  return (
+    <AppInitializationLoader>
+      <ProjectsContent />
+    </AppInitializationLoader>
+  );
+};
+
+const ProjectsContent: React.FC = () => {
   const { projects, refreshProjects, loading } = useProject();
   const { currentWorkspace } = useWorkspace();
+  const { isFullyLoaded } = useAppInitialization();
   const navigate = useNavigate();
   
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -251,8 +262,9 @@ const Projects: React.FC = () => {
         )}
 
         <div className="space-y-6">
-          {loading && filteredProjects.length === 0 ? (
+          {(loading || !isFullyLoaded) && filteredProjects.length === 0 ? (
             <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <div className="text-muted-foreground">Loading projects...</div>
             </div>
           ) : currentView === 'grid' ? (
