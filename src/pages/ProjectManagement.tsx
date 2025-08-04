@@ -45,6 +45,7 @@ const ProjectManagement: React.FC = () => {
 
   // Early return for loading state - before any project lookup
   if (loading) {
+    console.log('[ProjectManagement] Loading projects...');
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
@@ -56,9 +57,16 @@ const ProjectManagement: React.FC = () => {
       </Layout>
     );
   }
-  
-
+   
   const project = projects.find(p => p.id === id);
+  
+  console.log('[ProjectManagement] Debug info:', {
+    projectId: id,
+    projectsCount: projects.length,
+    projectIds: projects.map(p => p.id),
+    foundProject: !!project,
+    loading
+  });
 
   // Show not found only if we're not loading and project doesn't exist
   if (!project) {
