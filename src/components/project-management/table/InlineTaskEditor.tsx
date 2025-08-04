@@ -129,14 +129,14 @@ const InlineTaskEditor: React.FC<InlineTaskEditorProps> = ({
       <TableCell className={densityClass}>-</TableCell>
       <TableCell className={densityClass}>
         <Select
-          value={taskData.milestoneId || ''}
-          onValueChange={(value) => setTaskData({ ...taskData, milestoneId: value || undefined })}
+          value={taskData.milestoneId || 'no-milestone'}
+          onValueChange={(value) => setTaskData({ ...taskData, milestoneId: value === 'no-milestone' ? undefined : value })}
         >
           <SelectTrigger className="border-none bg-transparent p-0 h-auto focus:ring-0">
             <SelectValue placeholder="No milestone" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No milestone</SelectItem>
+            <SelectItem value="no-milestone">No milestone</SelectItem>
             {milestones.map((milestone) => (
               <SelectItem key={milestone.id} value={milestone.id}>
                 {milestone.name}

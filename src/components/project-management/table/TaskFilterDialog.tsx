@@ -96,14 +96,14 @@ const TaskFilterDialog: React.FC<TaskFilterDialogProps> = ({
           <div>
             <Label>Status</Label>
             <Select
-              value={localFilters.status || ''}
-              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, status: value || undefined }))}
+              value={localFilters.status || 'all-statuses'}
+              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, status: value === 'all-statuses' ? undefined : value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all-statuses">All statuses</SelectItem>
                 <SelectItem value="Not Started">Not Started</SelectItem>
                 <SelectItem value="In Progress">In Progress</SelectItem>
                 <SelectItem value="Completed">Completed</SelectItem>
@@ -116,14 +116,14 @@ const TaskFilterDialog: React.FC<TaskFilterDialogProps> = ({
           <div>
             <Label>Priority</Label>
             <Select
-              value={localFilters.priority || ''}
-              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, priority: value || undefined }))}
+              value={localFilters.priority || 'all-priorities'}
+              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, priority: value === 'all-priorities' ? undefined : value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All priorities" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All priorities</SelectItem>
+                <SelectItem value="all-priorities">All priorities</SelectItem>
                 <SelectItem value="Low">Low</SelectItem>
                 <SelectItem value="Medium">Medium</SelectItem>
                 <SelectItem value="High">High</SelectItem>
@@ -135,14 +135,14 @@ const TaskFilterDialog: React.FC<TaskFilterDialogProps> = ({
           <div>
             <Label>Assignee</Label>
             <Select
-              value={localFilters.assignee || ''}
-              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, assignee: value || undefined }))}
+              value={localFilters.assignee || 'all-assignees'}
+              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, assignee: value === 'all-assignees' ? undefined : value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All assignees" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All assignees</SelectItem>
+                <SelectItem value="all-assignees">All assignees</SelectItem>
                 <SelectItem value="unassigned">Unassigned</SelectItem>
                 {availableResources.map(resource => (
                   <SelectItem key={resource.id} value={resource.id}>
@@ -157,14 +157,14 @@ const TaskFilterDialog: React.FC<TaskFilterDialogProps> = ({
           <div>
             <Label>Milestone</Label>
             <Select
-              value={localFilters.milestone || ''}
-              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, milestone: value || undefined }))}
+              value={localFilters.milestone || 'all-milestones'}
+              onValueChange={(value) => setLocalFilters(prev => ({ ...prev, milestone: value === 'all-milestones' ? undefined : value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All milestones" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All milestones</SelectItem>
+                <SelectItem value="all-milestones">All milestones</SelectItem>
                 <SelectItem value="no-milestone">No milestone</SelectItem>
                 {milestones.map(milestone => (
                   <SelectItem key={milestone.id} value={milestone.id}>
