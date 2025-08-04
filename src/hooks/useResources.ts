@@ -121,7 +121,6 @@ export const useResources = () => {
       if (updates.seniority_level !== undefined) dbUpdates.seniority_level = updates.seniority_level;
       if (updates.mentorship_capacity !== undefined) dbUpdates.mentorship_capacity = updates.mentorship_capacity;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
-      if (updates.hourly_rate !== undefined) dbUpdates.hourly_rate = updates.hourly_rate;
       
       const { error } = await supabase
         .from('resources')
