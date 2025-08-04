@@ -15,6 +15,7 @@ interface PhaseCardProps {
   onEdit: (phase: ProjectPhase) => void;
   onDelete: (phaseId: string) => void;
   onAddMilestone: (phaseId: string) => void;
+  onAssignMilestones: (phaseId: string) => void;
 }
 
 const statusColors = {
@@ -38,12 +39,16 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
   onToggleExpand,
   onEdit,
   onDelete,
-  onAddMilestone
+  onAddMilestone,
+  onAssignMilestones
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Not set';
+  const formatDate = (dateString?: string, computed?: string) => {
+    if (computed) {
+      return `${new Date(computed).toLocaleDateString()} (auto)`;
+    }
+    if (!dateString) return 'Calculated from tasks';
     return new Date(dateString).toLocaleDateString();
   };
 
@@ -121,6 +126,15 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
                 <DropdownMenuItem 
                   onClick={(e) => {
                     e.stopPropagation();
+                    onAssignMilestones(phase.id);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Assign Existing Milestones
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onDelete(phase.id);
                   }}
                   className="text-destructive"
@@ -136,11 +150,11 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div>
             <p className="text-xs text-muted-foreground">Start Date</p>
-            <p className="text-sm font-medium">{formatDate(phase.startDate)}</p>
+            <p className="text-sm font-medium">{formatDate(phase.startDate, phase.computedStartDate)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">End Date</p>
-            <p className="text-sm font-medium">{formatDate(phase.endDate)}</p>
+            <p className="text-sm font-medium">{formatDate(phase.endDate, phase.computedEndDate)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Milestones</p>

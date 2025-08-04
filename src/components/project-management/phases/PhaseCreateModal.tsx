@@ -36,8 +36,6 @@ export const PhaseCreateModal: React.FC<PhaseCreateModalProps> = ({
     projectId,
     name: '',
     description: '',
-    startDate: '',
-    endDate: '',
     status: 'planned',
     priority: 'Medium',
     color: '#3b82f6'
@@ -64,8 +62,6 @@ export const PhaseCreateModal: React.FC<PhaseCreateModalProps> = ({
       projectId,
       name: '',
       description: '',
-      startDate: '',
-      endDate: '',
       status: 'planned',
       priority: 'Medium',
       color: '#3b82f6'
@@ -104,24 +100,13 @@ export const PhaseCreateModal: React.FC<PhaseCreateModalProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                />
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Dates</Label>
+              <div className="bg-muted/50 p-3 rounded-md">
+                <p className="text-sm text-muted-foreground">
+                  Phase dates will be automatically calculated based on the tasks in its milestones.
+                  Start date = earliest task start date, End date = latest task end date.
+                </p>
               </div>
             </div>
 

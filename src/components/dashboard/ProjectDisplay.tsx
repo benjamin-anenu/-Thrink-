@@ -111,6 +111,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
     };
   };
 
+  // Don't show "No Projects Found" if still loading
   if (projects.length === 0) {
     return (
       <div className="text-center py-12">

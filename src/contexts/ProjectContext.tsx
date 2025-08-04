@@ -41,7 +41,7 @@ export const useProject = () => {
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allProjects, setAllProjects] = useState<ProjectData[]>([]);
   const [currentProject, setCurrentProjectState] = useState<ProjectData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
 
   // Filter projects by current workspace

@@ -108,6 +108,8 @@ export interface ProjectPhase {
   createdBy?: string;
   
   // Computed/derived fields
+  computedStartDate?: string;
+  computedEndDate?: string;
   milestones?: ProjectMilestone[];
   taskCount?: number;
   completedTaskCount?: number;

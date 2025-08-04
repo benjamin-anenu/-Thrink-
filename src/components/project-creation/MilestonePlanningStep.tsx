@@ -22,6 +22,7 @@ interface Milestone {
   deliverables: string[];
   criteria: string[];
   assignedTo: string[];
+  phaseId?: string;
 }
 
 interface MilestonePlanningStepProps {
@@ -37,7 +38,8 @@ const MilestonePlanningStep: React.FC<MilestonePlanningStepProps> = ({ data, onD
     dependencies: [],
     deliverables: [],
     criteria: [],
-    assignedTo: []
+    assignedTo: [],
+    phaseId: ''
   });
 
   const priorities = [
@@ -68,7 +70,8 @@ const MilestonePlanningStep: React.FC<MilestonePlanningStepProps> = ({ data, onD
         dependencies: newMilestone.dependencies || [],
         deliverables: newMilestone.deliverables || [],
         criteria: newMilestone.criteria || [],
-        assignedTo: newMilestone.assignedTo || []
+        assignedTo: newMilestone.assignedTo || [],
+        phaseId: newMilestone.phaseId
       };
       
       const updatedMilestones = [...milestones, milestone];
@@ -79,7 +82,8 @@ const MilestonePlanningStep: React.FC<MilestonePlanningStepProps> = ({ data, onD
         dependencies: [],
         deliverables: [],
         criteria: [],
-        assignedTo: []
+        assignedTo: [],
+        phaseId: ''
       });
       
       onDataChange({
@@ -199,44 +203,63 @@ const MilestonePlanningStep: React.FC<MilestonePlanningStepProps> = ({ data, onD
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Priority</Label>
-              <Select 
-                value={newMilestone.priority} 
-                onValueChange={(value) => setNewMilestone({...newMilestone, priority: value as any})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {priorities.map(priority => (
-                    <SelectItem key={priority.value} value={priority.value}>
-                      {priority.value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Priority</Label>
+                <Select 
+                  value={newMilestone.priority} 
+                  onValueChange={(value) => setNewMilestone({...newMilestone, priority: value as any})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priorities.map(priority => (
+                      <SelectItem key={priority.value} value={priority.value}>
+                        {priority.value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Phase</Label>
+                <Select 
+                  value={newMilestone.phaseId || ''} 
+                  onValueChange={(value) => setNewMilestone({...newMilestone, phaseId: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select phase" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no-phase">No Phase</SelectItem>
+                    {(data.phases || []).map((phase: any) => (
+                      <SelectItem key={phase.id} value={phase.id}>
+                        {phase.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Assigned To</Label>
+                <Select 
+                  value={newMilestone.assignedTo?.[0] || ''} 
+                  onValueChange={(value) => setNewMilestone({...newMilestone, assignedTo: [value]})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select stakeholder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stakeholders.map((stakeholder: any) => (
+                      <SelectItem key={stakeholder.id} value={stakeholder.id}>
+                        {stakeholder.name} ({stakeholder.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label>Assigned To</Label>
-              <Select 
-                value={newMilestone.assignedTo?.[0] || ''} 
-                onValueChange={(value) => setNewMilestone({...newMilestone, assignedTo: [value]})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select stakeholder" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stakeholders.map((stakeholder: any) => (
-                    <SelectItem key={stakeholder.id} value={stakeholder.id}>
-                      {stakeholder.name} ({stakeholder.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
           <Button onClick={addMilestone} className="w-full">
             <Plus size={16} className="mr-2" />

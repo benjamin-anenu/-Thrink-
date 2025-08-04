@@ -17,7 +17,7 @@ import ProjectDetailsModal from '@/components/ProjectDetailsModal';
 import { transformProjectForModal, ProjectDetailsModalData } from '@/types/project-modal';
 
 const Projects: React.FC = () => {
-  const { projects, refreshProjects } = useProject();
+  const { projects, refreshProjects, loading } = useProject();
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   
@@ -251,7 +251,11 @@ const Projects: React.FC = () => {
         )}
 
         <div className="space-y-6">
-          {currentView === 'grid' ? (
+          {loading && filteredProjects.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground">Loading projects...</div>
+            </div>
+          ) : currentView === 'grid' ? (
             <ProjectDisplay
               projects={filteredProjects}
               onViewDetails={handleViewDetails}
