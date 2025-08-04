@@ -150,7 +150,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-500" />
-                  <span>{project.teamSize || 0} Members</span>
+                  <span>{(project.resources?.length || project.teamSize || 0)} Members</span>
                 </div>
                 {stats.overdueTasks > 0 && (
                   <div className="flex items-center gap-2 col-span-2">

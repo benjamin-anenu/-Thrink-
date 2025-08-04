@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Edit, Trash2, Users, Calendar } from 'lucide-react';
-import { ProjectData } from '@/types/project';
+import { ProjectData, determineProjectStatus } from '@/types/project';
 
 interface ProjectListViewProps {
   projects: ProjectData[];
@@ -42,6 +42,19 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
     }
   };
 
+  const calculateProjectStats = (project: ProjectData) => {
+    const tasks = project.tasks || [];
+    const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+    const totalTasks = tasks.length;
+    const actualProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : project.progress || 0;
+    const actualStatus = determineProjectStatus(project);
+    
+    return {
+      actualProgress,
+      actualStatus
+    };
+  };
+
   if (projects.length === 0) {
     return (
       <div className="text-center py-12">
@@ -68,7 +81,9 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {projects.map((project) => (
+          {projects.map((project) => {
+            const stats = calculateProjectStats(project);
+            return (
             <TableRow key={project.id} className="hover:bg-muted/50">
               <TableCell>
                 <div>
@@ -79,9 +94,9 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant={getStatusVariant(project.status)}>
-                  {project.status}
-                </Badge>
+                 <Badge variant={getStatusVariant(stats.actualStatus)}>
+                   {stats.actualStatus}
+                 </Badge>
               </TableCell>
               <TableCell>
                 <Badge variant="outline" className={getPriorityColor(project.priority)}>
@@ -90,14 +105,14 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
               </TableCell>
               <TableCell>
                 <div className="space-y-1">
-                  <Progress value={project.progress} className="h-2 w-16" />
-                  <span className="text-xs text-muted-foreground">{project.progress}%</span>
+                   <Progress value={stats.actualProgress} className="h-2 w-16" />
+                   <span className="text-xs text-muted-foreground">{stats.actualProgress}%</span>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{project.teamSize || 0}</span>
+                  <span className="text-sm">{(project.resources?.length || project.teamSize || 0)}</span>
                 </div>
               </TableCell>
               <TableCell>
@@ -167,7 +182,8 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>
