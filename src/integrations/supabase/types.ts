@@ -1006,6 +1006,8 @@ export type Database = {
       milestones: {
         Row: {
           baseline_date: string | null
+          computed_end_date: string | null
+          computed_start_date: string | null
           created_at: string
           description: string | null
           due_date: string | null
@@ -1021,6 +1023,8 @@ export type Database = {
         }
         Insert: {
           baseline_date?: string | null
+          computed_end_date?: string | null
+          computed_start_date?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -1036,6 +1040,8 @@ export type Database = {
         }
         Update: {
           baseline_date?: string | null
+          computed_end_date?: string | null
+          computed_start_date?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -2171,6 +2177,8 @@ export type Database = {
           ai_processing_started_at: string | null
           ai_processing_status: string | null
           budget: string | null
+          computed_end_date: string | null
+          computed_start_date: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -2197,6 +2205,8 @@ export type Database = {
           ai_processing_started_at?: string | null
           ai_processing_status?: string | null
           budget?: string | null
+          computed_end_date?: string | null
+          computed_start_date?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -2223,6 +2233,8 @@ export type Database = {
           ai_processing_started_at?: string | null
           ai_processing_status?: string | null
           budget?: string | null
+          computed_end_date?: string | null
+          computed_start_date?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -4021,9 +4033,30 @@ export type Database = {
         Args: { invitation_token: string }
         Returns: boolean
       }
+      calculate_milestone_dates: {
+        Args: { milestone_id_param: string }
+        Returns: {
+          computed_start_date: string
+          computed_end_date: string
+        }[]
+      }
       calculate_milestone_progress: {
         Args: { milestone_id_param: string }
         Returns: number
+      }
+      calculate_phase_dates_from_milestones: {
+        Args: { phase_id_param: string }
+        Returns: {
+          computed_start_date: string
+          computed_end_date: string
+        }[]
+      }
+      calculate_project_dates_from_phases: {
+        Args: { project_id_param: string }
+        Returns: {
+          computed_start_date: string
+          computed_end_date: string
+        }[]
       }
       calculate_task_dates_from_dependencies: {
         Args: {
