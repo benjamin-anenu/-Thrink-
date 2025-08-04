@@ -48,15 +48,20 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
 
       // Fetch tasks for progress calculation
       const { data: tasksData } = await supabase
-        .from('tasks')
+        .from('project_tasks')
         .select('*')
         .eq('project_id', baseProject.id);
 
-      // Fetch team members
-      const { data: teamData } = await supabase
-        .from('project_team_members')
+      // Fetch resource assignments for team members
+      const { data: assignmentsData } = await supabase
+        .from('project_assignments')
         .select('*')
         .eq('project_id', baseProject.id);
+
+      // Fetch resources data for team member details
+      const { data: resourcesData } = await supabase
+        .from('resources')
+        .select('*');
 
       // Fetch milestones
       const { data: milestonesData } = await supabase
@@ -64,22 +69,37 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         .select('*')
         .eq('project_id', baseProject.id);
 
+      // Fetch project budgets
+      const { data: budgetData } = await supabase
+        .from('project_budgets')
+        .select('*')
+        .eq('project_id', baseProject.id);
+
+      // Fetch project issues for risks
+      const { data: issuesData } = await supabase
+        .from('project_issues')
+        .select('*')
+        .eq('project_id', baseProject.id);
+
       // Calculate real-time progress from tasks
       const tasks = tasksData || [];
-      const completedTasks = tasks.filter(task => task.status === 'completed');
+      const completedTasks = tasks.filter(task => task.status === 'Completed');
       const realTimeProgress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
 
-      // Calculate budget spent based on progress
-      const realBudget = Number(projectData?.budget) || Number(baseProject.budget) || 0;
-      const realSpent = Math.round((realBudget * realTimeProgress) / 100);
+      // Calculate budget from project_budgets table
+      const totalBudget = budgetData?.reduce((sum, budget) => sum + Number(budget.allocated_amount || 0), 0) || 0;
+      const totalSpent = budgetData?.reduce((sum, budget) => sum + Number(budget.spent_amount || 0), 0) || 0;
 
-      // Transform team members
-      const team = teamData?.map(member => ({
-        id: member.id,
-        name: member.name,
-        role: member.role,
-        avatar: undefined
-      })) || [];
+      // Transform team members from resource assignments
+      const team = assignmentsData?.map(assignment => {
+        const resource = resourcesData?.find(r => r.id === assignment.resource_id);
+        return {
+          id: assignment.id,
+          name: resource?.name || 'Unknown',
+          role: assignment.role || resource?.role || 'Team Member',
+          avatar: undefined
+        };
+      }) || [];
 
       // Transform milestones
       const milestones = milestonesData?.map(milestone => ({
@@ -89,17 +109,29 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         completed: milestone.status === 'completed'
       })) || [];
 
+      // Transform issues to risks with proper type safety
+      const risks = issuesData?.map(issue => {
+        const impact = ['Low', 'Medium', 'High'].includes(issue.severity) ? issue.severity as 'Low' | 'Medium' | 'High' : 'Medium';
+        const probability = ['Low', 'Medium', 'High'].includes(issue.priority) ? issue.priority as 'Low' | 'Medium' | 'High' : 'Medium';
+        return {
+          id: issue.id,
+          description: issue.title || issue.description || 'Unknown Risk',
+          impact,
+          probability
+        };
+      }) || [];
+
       // Create updated project with real-time data
       const updatedProject: ProjectDetailsModalData = {
         ...baseProject,
         name: projectData?.name || baseProject.name,
         description: projectData?.description || baseProject.description,
         progress: realTimeProgress,
-        spent: realSpent,
-        budget: realBudget,
+        spent: totalSpent,
+        budget: totalBudget || Number(projectData?.budget) || 0,
         team,
         milestones,
-        risks: baseProject.risks || [],
+        risks,
         startDate: projectData?.start_date || baseProject.startDate,
         endDate: projectData?.end_date || baseProject.endDate,
         health: baseProject.health
