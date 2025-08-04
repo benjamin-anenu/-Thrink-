@@ -313,3 +313,25 @@ export const updatePhaseDates = async (phaseId: string): Promise<void> => {
     console.error('Error updating phase dates:', error);
   }
 };
+
+// Real-time milestone progress calculation
+export const calculateRealTimeMilestoneProgress = async (milestoneId: string): Promise<number> => {
+  try {
+    const { data: tasks } = await supabase
+      .from('project_tasks')
+      .select('progress, status')
+      .eq('milestone_id', milestoneId);
+
+    if (!tasks || tasks.length === 0) return 0;
+
+    const totalProgress = tasks.reduce((sum, task) => {
+      if (task.status === 'Completed') return sum + 100;
+      return sum + (task.progress || 0);
+    }, 0);
+
+    return Math.round(totalProgress / tasks.length);
+  } catch (error) {
+    console.error('Error calculating milestone progress:', error);
+    return 0;
+  }
+};

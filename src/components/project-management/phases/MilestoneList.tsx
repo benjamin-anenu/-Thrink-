@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProjectMilestone } from '@/types/project';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, Target } from 'lucide-react';
+import { calculateRealTimeMilestoneProgress } from '@/utils/phaseCalculations';
 
 interface MilestoneListProps {
   milestones: ProjectMilestone[];
@@ -22,10 +23,35 @@ export const MilestoneList: React.FC<MilestoneListProps> = ({
   phaseId,
   onAddMilestone
 }) => {
+  const [milestoneProgress, setMilestoneProgress] = useState<Record<string, number>>({});
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString();
   };
+
+  // Calculate real-time progress for all milestones
+  useEffect(() => {
+    const calculateProgress = async () => {
+      const progressMap: Record<string, number> = {};
+      
+      for (const milestone of milestones) {
+        try {
+          const progress = await calculateRealTimeMilestoneProgress(milestone.id);
+          progressMap[milestone.id] = progress;
+        } catch (error) {
+          console.error('Error calculating milestone progress:', error);
+          progressMap[milestone.id] = milestone.progress || 0;
+        }
+      }
+      
+      setMilestoneProgress(progressMap);
+    };
+
+    if (milestones.length > 0) {
+      calculateProgress();
+    }
+  }, [milestones]);
 
   if (milestones.length === 0) {
     return (
@@ -80,8 +106,8 @@ export const MilestoneList: React.FC<MilestoneListProps> = ({
                 <div>
                   Tasks: {milestone.tasks?.length || 0}
                 </div>
-                <div>
-                  Progress: {milestone.progress}%
+                <div className={milestoneProgress[milestone.id] > 0 ? "text-primary font-medium" : ""}>
+                  Progress: {milestoneProgress[milestone.id] !== undefined ? milestoneProgress[milestone.id] : milestone.progress || 0}%
                 </div>
               </div>
             </div>

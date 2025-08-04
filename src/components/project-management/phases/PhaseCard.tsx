@@ -48,7 +48,7 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
     if (computed) {
       return `${new Date(computed).toLocaleDateString()} (auto)`;
     }
-    if (!dateString) return 'Calculated from tasks';
+    if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString();
   };
 
