@@ -76,6 +76,7 @@ export function usePhaseManagement(projectId?: string) {
     setError(null);
 
     try {
+      console.log('🔍 Fetching phases for project:', projectId);
       const { data: phasesData, error: phasesError } = await supabase
         .from('phases')
         .select(`
@@ -96,9 +97,11 @@ export function usePhaseManagement(projectId?: string) {
         .eq('project_id', projectId)
         .order('sort_order');
 
+      console.log('📊 Phases query result:', { phasesData, phasesError });
       if (phasesError) throw phasesError;
 
       const mappedPhases = (phasesData || []).map(phase => {
+        console.log('🔄 Mapping phase:', phase);
         const mappedPhase = mapDatabasePhaseToProjectPhase(phase);
         
         // Map milestones
@@ -115,9 +118,11 @@ export function usePhaseManagement(projectId?: string) {
           sortOrderInPhase: m.sort_order_in_phase || 0
         })).sort((a: any, b: any) => (a.sortOrderInPhase || 0) - (b.sortOrderInPhase || 0));
 
+        console.log('✅ Mapped phase with milestones:', mappedPhase);
         return mappedPhase;
       });
 
+      console.log('📋 Final mapped phases:', mappedPhases);
       setPhases(mappedPhases);
     } catch (err: any) {
       console.error('Error fetching phases:', err);
