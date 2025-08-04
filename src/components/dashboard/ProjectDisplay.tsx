@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Calendar, Users, 
   CheckCircle, AlertTriangle, 
@@ -12,6 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectData, determineProjectStatus, ProjectStatusType } from '@/types/project';
 import { useProjectStatus } from '@/hooks/useProjectStatus';
+import { calculateRealTimeProjectProgress, getProjectPhaseDetails } from '@/utils/phaseCalculations';
 
 interface Task {
   id: string;
@@ -40,10 +42,40 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   deletingProject
 }) => {
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
+  const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
+  const [phaseDetails, setPhaseDetails] = useState<Record<string, any[]>>({});
   const { updateProjectStatus } = useProjectStatus();
 
-  // Load tasks for all projects
-  // Remove separate task loading since tasks are now included in projects from ProjectContext
+  // Load project progress and phase details
+  useEffect(() => {
+    const loadProjectData = async () => {
+      const progressData: Record<string, number> = {};
+      const phaseData: Record<string, any[]> = {};
+      
+      for (const project of projects) {
+        try {
+          // Calculate real-time progress
+          const progress = await calculateRealTimeProjectProgress(project.id);
+          progressData[project.id] = progress;
+          
+          // Get phase details for tooltip
+          const phases = await getProjectPhaseDetails(project.id);
+          phaseData[project.id] = phases;
+        } catch (error) {
+          console.error(`Error loading data for project ${project.id}:`, error);
+          progressData[project.id] = project.progress || 0;
+          phaseData[project.id] = [];
+        }
+      }
+      
+      setProjectProgress(progressData);
+      setPhaseDetails(phaseData);
+    };
+
+    if (projects.length > 0) {
+      loadProjectData();
+    }
+  }, [projects]);
 
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
@@ -79,7 +111,10 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                         completedTasks > 0 ? 'Execution' as ProjectStatusType :
                         'Planning' as ProjectStatusType;
 
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    // Use real-time calculated progress if available
+    const completionRate = projectProgress[project.id] !== undefined ? 
+                          projectProgress[project.id] : 
+                          (totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0);
 
     // Calculate team size from unique assigned resources
     const assignedResourceIds = new Set<string>();
@@ -111,6 +146,39 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
     };
   };
 
+  const renderPhaseTooltip = (projectId: string) => {
+    const phases = phaseDetails[projectId] || [];
+    
+    if (phases.length === 0) {
+      return (
+        <div className="p-2">
+          <p className="text-sm text-muted-foreground">No phases available</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="p-3 max-w-sm">
+        <h4 className="font-medium mb-2">Project Phases</h4>
+        <div className="space-y-2">
+          {phases.map((phase) => (
+            <div key={phase.id} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  phase.status === 'completed' ? 'bg-green-500' :
+                  phase.status === 'active' ? 'bg-blue-500' :
+                  phase.status === 'on-hold' ? 'bg-yellow-500' : 'bg-gray-400'
+                }`} />
+                <span className="truncate max-w-32">{phase.name}</span>
+              </div>
+              <span className="font-medium">{phase.progress}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Don't show "No Projects Found" if still loading
   if (projects.length === 0) {
     return (
@@ -125,40 +193,50 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {projects.map((project) => {
-        const stats = calculateProjectStats(project);
-        
-        return (
-          <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getStatusVariant(stats.actualStatus)}>
-                      {stats.actualStatus}
-                    </Badge>
-                    <Badge variant="outline" className={getPriorityColor(project.priority)}>
-                      {project.priority}
-                    </Badge>
+    <TooltipProvider>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.map((project) => {
+          const stats = calculateProjectStats(project);
+          
+          return (
+            <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusVariant(stats.actualStatus)}>
+                        {stats.actualStatus}
+                      </Badge>
+                      <Badge variant="outline" className={getPriorityColor(project.priority)}>
+                        {project.priority}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {project.description}
-              </p>
-            </CardHeader>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {project.description}
+                </p>
+              </CardHeader>
 
-            <CardContent className="space-y-4">
-              {/* Progress */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span>{stats.completionRate}%</span>
+              <CardContent className="space-y-4">
+                {/* Progress with Tooltip */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>{stats.completionRate}%</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <Progress value={stats.completionRate} className="h-2" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="border">
+                      {renderPhaseTooltip(project.id)}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-                <Progress value={stats.completionRate} className="h-2" />
-              </div>
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -231,9 +309,10 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
               </div>
             </CardContent>
           </Card>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 };
 

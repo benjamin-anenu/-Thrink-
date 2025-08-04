@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProjectPhase } from '@/types/project';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { MilestoneList } from './MilestoneList';
+import { calculateRealTimePhaseProgress, calculatePhaseDatesFromMilestones } from '@/utils/phaseCalculations';
 
 interface PhaseCardProps {
   phase: ProjectPhase;
@@ -43,10 +44,35 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
   onAssignMilestones
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [realTimeProgress, setRealTimeProgress] = useState<number>(phase.progress || 0);
+  const [computedDates, setComputedDates] = useState<{ startDate: string | null, endDate: string | null }>({
+    startDate: null,
+    endDate: null
+  });
+
+  // Calculate real-time progress and dates
+  useEffect(() => {
+    const updatePhaseData = async () => {
+      try {
+        // Calculate real-time progress
+        const progress = await calculateRealTimePhaseProgress(phase.id);
+        setRealTimeProgress(progress);
+        
+        // Calculate computed dates
+        const dates = await calculatePhaseDatesFromMilestones(phase.id);
+        setComputedDates(dates);
+      } catch (error) {
+        console.error('Error updating phase data:', error);
+        setRealTimeProgress(phase.progress || 0);
+      }
+    };
+
+    updatePhaseData();
+  }, [phase.id, phase.milestones]);
 
   const formatDate = (dateString?: string, computed?: string) => {
     if (computed) {
-      return `${new Date(computed).toLocaleDateString()} (auto)`;
+      return `${new Date(computed).toLocaleDateString()} (computed)`;
     }
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString();
@@ -150,11 +176,11 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div>
             <p className="text-xs text-muted-foreground">Start Date</p>
-            <p className="text-sm font-medium">{formatDate(phase.startDate, phase.computedStartDate)}</p>
+            <p className="text-sm font-medium">{formatDate(phase.startDate, computedDates.startDate)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">End Date</p>
-            <p className="text-sm font-medium">{formatDate(phase.endDate, phase.computedEndDate)}</p>
+            <p className="text-sm font-medium">{formatDate(phase.endDate, computedDates.endDate)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Milestones</p>
@@ -163,8 +189,10 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
           <div>
             <p className="text-xs text-muted-foreground">Progress</p>
             <div className="flex items-center gap-2">
-              <Progress value={phase.progress} className="flex-1 h-2" />
-              <span className="text-sm font-medium">{phase.progress}%</span>
+              <Progress value={realTimeProgress} className="flex-1 h-2" />
+              <span className={`text-sm font-medium ${realTimeProgress !== (phase.progress || 0) ? "text-primary" : ""}`}>
+                {realTimeProgress}%
+              </span>
             </div>
           </div>
         </div>

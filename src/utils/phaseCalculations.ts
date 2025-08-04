@@ -335,3 +335,197 @@ export const calculateRealTimeMilestoneProgress = async (milestoneId: string): P
     return 0;
   }
 };
+
+// Calculate milestone dates from task data
+export const calculateMilestoneDates = async (milestoneId: string): Promise<{ startDate: string | null, endDate: string | null }> => {
+  try {
+    const { data: tasks } = await supabase
+      .from('project_tasks')
+      .select('start_date, end_date')
+      .eq('milestone_id', milestoneId);
+
+    if (!tasks || tasks.length === 0) {
+      return { startDate: null, endDate: null };
+    }
+
+    const startDates = tasks
+      .map(task => task.start_date)
+      .filter(date => date != null)
+      .sort();
+
+    const endDates = tasks
+      .map(task => task.end_date)
+      .filter(date => date != null)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    return {
+      startDate: startDates[0] || null,
+      endDate: endDates[0] || null
+    };
+  } catch (error) {
+    console.error('Error calculating milestone dates:', error);
+    return { startDate: null, endDate: null };
+  }
+};
+
+// Calculate phase dates from milestone data
+export const calculatePhaseDatesFromMilestones = async (phaseId: string): Promise<{ startDate: string | null, endDate: string | null }> => {
+  try {
+    const { data: milestones } = await supabase
+      .from('milestones')
+      .select('id')
+      .eq('phase_id', phaseId);
+
+    if (!milestones || milestones.length === 0) {
+      return { startDate: null, endDate: null };
+    }
+
+    // Calculate dates for each milestone and find the range
+    const milestoneDates = await Promise.all(
+      milestones.map(m => calculateMilestoneDates(m.id))
+    );
+
+    const allStartDates = milestoneDates
+      .map(dates => dates.startDate)
+      .filter(date => date != null)
+      .sort();
+
+    const allEndDates = milestoneDates
+      .map(dates => dates.endDate)
+      .filter(date => date != null)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    return {
+      startDate: allStartDates[0] || null,
+      endDate: allEndDates[0] || null
+    };
+  } catch (error) {
+    console.error('Error calculating phase dates from milestones:', error);
+    return { startDate: null, endDate: null };
+  }
+};
+
+// Calculate project dates from phase data
+export const calculateProjectDatesFromPhases = async (projectId: string): Promise<{ startDate: string | null, endDate: string | null }> => {
+  try {
+    const { data: phases } = await supabase
+      .from('phases')
+      .select('id, computed_start_date, computed_end_date, start_date, end_date')
+      .eq('project_id', projectId);
+
+    if (!phases || phases.length === 0) {
+      return { startDate: null, endDate: null };
+    }
+
+    // Use computed dates first, fall back to manual dates
+    const allStartDates = phases
+      .map(phase => phase.computed_start_date || phase.start_date)
+      .filter(date => date != null)
+      .sort();
+
+    const allEndDates = phases
+      .map(phase => phase.computed_end_date || phase.end_date)
+      .filter(date => date != null)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    return {
+      startDate: allStartDates[0] || null,
+      endDate: allEndDates[0] || null
+    };
+  } catch (error) {
+    console.error('Error calculating project dates from phases:', error);
+    return { startDate: null, endDate: null };
+  }
+};
+
+// Real-time phase progress calculation
+export const calculateRealTimePhaseProgress = async (phaseId: string): Promise<number> => {
+  try {
+    const { data: milestones } = await supabase
+      .from('milestones')
+      .select('id')
+      .eq('phase_id', phaseId);
+
+    if (!milestones || milestones.length === 0) return 0;
+
+    const milestoneProgresses = await Promise.all(
+      milestones.map(m => calculateRealTimeMilestoneProgress(m.id))
+    );
+
+    const totalProgress = milestoneProgresses.reduce((sum, progress) => sum + progress, 0);
+    return Math.round(totalProgress / milestoneProgresses.length);
+  } catch (error) {
+    console.error('Error calculating phase progress:', error);
+    return 0;
+  }
+};
+
+// Real-time project progress calculation
+export const calculateRealTimeProjectProgress = async (projectId: string): Promise<number> => {
+  try {
+    const { data: phases } = await supabase
+      .from('phases')
+      .select('id')
+      .eq('project_id', projectId);
+
+    if (!phases || phases.length === 0) {
+      // Fallback: calculate from all tasks in project
+      const { data: tasks } = await supabase
+        .from('project_tasks')
+        .select('progress, status')
+        .eq('project_id', projectId);
+
+      if (!tasks || tasks.length === 0) return 0;
+
+      const totalProgress = tasks.reduce((sum, task) => {
+        if (task.status === 'Completed') return sum + 100;
+        return sum + (task.progress || 0);
+      }, 0);
+
+      return Math.round(totalProgress / tasks.length);
+    }
+
+    const phaseProgresses = await Promise.all(
+      phases.map(p => calculateRealTimePhaseProgress(p.id))
+    );
+
+    const totalProgress = phaseProgresses.reduce((sum, progress) => sum + progress, 0);
+    return Math.round(totalProgress / phaseProgresses.length);
+  } catch (error) {
+    console.error('Error calculating project progress:', error);
+    return 0;
+  }
+};
+
+// Get project phase details with progress for tooltip
+export const getProjectPhaseDetails = async (projectId: string) => {
+  try {
+    const { data: phases } = await supabase
+      .from('phases')
+      .select('id, name, status, priority, computed_start_date, computed_end_date, start_date, end_date')
+      .eq('project_id', projectId)
+      .order('sort_order');
+
+    if (!phases) return [];
+
+    const phaseDetails = await Promise.all(
+      phases.map(async (phase) => {
+        const progress = await calculateRealTimePhaseProgress(phase.id);
+        return {
+          id: phase.id,
+          name: phase.name,
+          status: phase.status,
+          priority: phase.priority,
+          progress,
+          startDate: phase.computed_start_date || phase.start_date,
+          endDate: phase.computed_end_date || phase.end_date
+        };
+      })
+    );
+
+    return phaseDetails;
+  } catch (error) {
+    console.error('Error getting project phase details:', error);
+    return [];
+  }
+};
