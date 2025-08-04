@@ -54,19 +54,25 @@ export const useRealResourceUtilization = (resourceIds: string[]) => {
     }
 
     try {
-      // Get actual task count from project_tasks where resource is assigned
-      const { data: taskData, error: taskError } = await supabase
+      // Get all tasks for this resource and categorize them
+      const { data: allTasks, error: allTaskError } = await supabase
         .from('project_tasks')
-        .select('id, status, complexity_score, assigned_resources, assignee_id')
-        .or(`assignee_id.eq.${resourceId},assigned_resources.cs.{${resourceId}}`)
-        .in('status', ['To Do', 'In Progress', 'In Review']);
+        .select('id, status, complexity_score, assigned_resources, assignee_id, updated_at, created_at')
+        .or(`assignee_id.eq.${resourceId},"${resourceId}"=any(assigned_resources)`);
 
-      if (taskError) {
-        console.error('Error fetching tasks:', taskError);
+      if (allTaskError) {
+        console.error('Error fetching tasks:', allTaskError);
         return createDefaultMetrics();
       }
 
-      const tasks = taskData || [];
+      const allTasksData = allTasks || [];
+      console.log(`Resource ${resourceId} - Total tasks found:`, allTasksData.length, allTasksData.map(t => ({ name: t.id, status: t.status })));
+      
+      // Active tasks are all non-completed tasks
+      const taskData = allTasksData.filter(task => task.status !== 'Completed');
+      console.log(`Resource ${resourceId} - Active tasks:`, taskData.length);
+
+      const tasks = taskData;
       const taskCount = tasks.length;
       const taskCapacity = 10; // Default capacity
       const utilizationPercentage = Math.min((taskCount / taskCapacity) * 100, 100);
@@ -87,14 +93,12 @@ export const useRealResourceUtilization = (resourceIds: string[]) => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: completedTasksData } = await supabase
-        .from('project_tasks')
-        .select('id')
-        .or(`assignee_id.eq.${resourceId},assigned_resources.cs.{${resourceId}}`)
-        .eq('status', 'Completed')
-        .gte('completed_at', thirtyDaysAgo.toISOString());
+      const completedTasks = allTasksData.filter(task => 
+        task.status === 'Completed' && 
+        new Date(task.updated_at || task.created_at) >= thirtyDaysAgo
+      );
 
-      const tasksCompleted = completedTasksData?.length || 0;
+      const tasksCompleted = completedTasks.length;
 
       // Determine status based on utilization
       let status: TaskUtilizationMetrics['status'];

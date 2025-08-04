@@ -5,14 +5,15 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import type { Resource } from '@/types/resource';
 import { useRealResourceUtilization } from './useRealResourceUtilization';
 
-export const useEnhancedResources = () => {
+export const useEnhancedResourcesWithUtilization = () => {
+  const [baseResources, setBaseResources] = useState<any[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
 
-  const loadResources = async (existingUtilizationMetrics?: Record<string, any>) => {
+  const loadBaseResources = async () => {
     if (!currentWorkspace) {
-      setResources([]);
+      setBaseResources([]);
       setLoading(false);
       return;
     }
@@ -28,10 +29,24 @@ export const useEnhancedResources = () => {
 
       if (error) throw error;
       
-      // Map database fields to interface fields and merge with utilization metrics
-      const currentUtilizationMetrics = existingUtilizationMetrics || {};
-      const mappedData = (data || []).map(item => {
-        const utilizationData = currentUtilizationMetrics[item.id] || {
+      setBaseResources(data || []);
+    } catch (error) {
+      console.error('Error loading resources:', error);
+      toast.error('Failed to load resources');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get resource IDs for utilization hook
+  const resourceIds = baseResources.map(r => r.id);
+  const { utilizationMetrics, aiRecommendations, loading: utilizationLoading, refreshUtilizationData } = useRealResourceUtilization(resourceIds);
+
+  // Update resources when utilization metrics change or base resources change
+  useEffect(() => {
+    if (baseResources.length > 0) {
+      const mappedData = baseResources.map(item => {
+        const utilizationData = utilizationMetrics[item.id] || {
           utilization_percentage: 0,
           task_count: 0,
           status: 'Underutilized' as const
@@ -63,13 +78,8 @@ export const useEnhancedResources = () => {
       });
       
       setResources(mappedData);
-    } catch (error) {
-      console.error('Error loading resources:', error);
-      toast.error('Failed to load resources');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [baseResources, utilizationMetrics]);
 
   const deleteResource = async (resourceId: string) => {
     if (!currentWorkspace) return false;
@@ -84,7 +94,7 @@ export const useEnhancedResources = () => {
       if (error) throw error;
 
       toast.success('Resource deleted successfully');
-      await loadResources(); // Refresh the list
+      await loadBaseResources(); // Refresh the list
       return true;
     } catch (error) {
       console.error('Error deleting resource:', error);
@@ -94,11 +104,12 @@ export const useEnhancedResources = () => {
   };
 
   const refreshResources = async () => {
-    await loadResources();
+    await loadBaseResources();
+    await refreshUtilizationData();
   };
 
   useEffect(() => {
-    loadResources();
+    loadBaseResources();
     
     // Set up real-time subscriptions
     const resourceSubscription = supabase
@@ -112,7 +123,7 @@ export const useEnhancedResources = () => {
           filter: `workspace_id=eq.${currentWorkspace?.id}`
         },
         () => {
-          loadResources();
+          loadBaseResources();
         }
       )
       .subscribe();
@@ -121,17 +132,6 @@ export const useEnhancedResources = () => {
       supabase.removeChannel(resourceSubscription);
     };
   }, [currentWorkspace]);
-
-  // Get resource IDs for utilization hook
-  const resourceIds = resources.map(r => r.id);
-  const { utilizationMetrics, aiRecommendations, loading: utilizationLoading, refreshUtilizationData } = useRealResourceUtilization(resourceIds);
-
-  // Update resources when utilization metrics change
-  useEffect(() => {
-    if (!utilizationLoading && Object.keys(utilizationMetrics).length > 0) {
-      loadResources(utilizationMetrics);
-    }
-  }, [utilizationMetrics, utilizationLoading]);
 
   return {
     resources,

@@ -10,7 +10,7 @@ import ViewToggle from '@/components/ViewToggle';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, BarChart3, Users } from 'lucide-react';
-import { useEnhancedResources } from '@/hooks/useEnhancedResources';
+import { useEnhancedResourcesWithUtilization } from '@/hooks/useEnhancedResourcesWithUtilization';
 import { Resource } from '@/types/resource';
 import ResourceEditModal from '@/components/ResourceEditModal';
 
@@ -23,7 +23,7 @@ const Resources: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'resources'>('dashboard');
 
-  const { resources, loading, utilizationMetrics, refreshResources } = useEnhancedResources();
+  const { resources, loading, utilizationMetrics, refreshResources } = useEnhancedResourcesWithUtilization();
 
   const handleShowResourceForm = () => {
     setIsWizardOpen(true);
