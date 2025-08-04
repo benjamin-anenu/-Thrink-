@@ -42,66 +42,102 @@ export const useRealTimeDashboardData = () => {
       return;
     }
 
-    const calculateStats = () => {
-      // Calculate project stats
-      const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
-      const activeProjects = workspaceProjects.filter(p => 
-        ['Planning', 'Execution', 'Monitoring & Controlling'].includes(p.status)
-      );
-      
-      // Calculate average progress
-      const avgProgress = workspaceProjects.length > 0
-        ? Math.round(workspaceProjects.reduce((sum, p) => sum + (p.progress || 0), 0) / workspaceProjects.length)
-        : 0;
+    const fetchStats = async () => {
+      try {
+        // Calculate project stats
+        const workspaceProjects = projects.filter(p => p.workspaceId === currentWorkspace.id);
+        const activeProjects = workspaceProjects.filter(p => 
+          ['Planning', 'Execution', 'Monitoring & Controlling'].includes(p.status)
+        );
+        
+        // Calculate average progress
+        const avgProgress = workspaceProjects.length > 0
+          ? Math.round(workspaceProjects.reduce((sum, p) => sum + (p.progress || 0), 0) / workspaceProjects.length)
+          : 0;
 
-      // Calculate available resources (not over-utilized and available for additional tasks)
-      const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
-      const availableResources = workspaceResources.filter(r => 
-        (r.utilization || 0) <= 80
-      ).length;
+        // Calculate available resources (not over-utilized and available for additional tasks)
+        const workspaceResources = resources.filter(r => r.workspaceId === currentWorkspace.id);
+        const availableResources = workspaceResources.filter(r => 
+          (r.utilization || 0) <= 80
+        ).length;
 
-      // Get upcoming deadlines from tasks
-      const upcomingDeadlines = workspaceProjects.flatMap(project => 
-        project.tasks
-          .filter(task => {
-            const deadline = new Date(task.endDate);
-            const now = new Date();
-            const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            return daysUntil <= 7 && daysUntil >= 0 && task.status !== 'Completed';
-          })
-          .map(task => ({
-            name: `${project.name} - ${task.name}`,
-            deadline: new Date(task.endDate).toLocaleDateString(),
-            priority: task.priority?.toLowerCase() as 'high' | 'medium' | 'low' || 'medium'
-          }))
-      ).slice(0, 3);
+        // Get upcoming deadlines from tasks
+        const upcomingDeadlines = workspaceProjects.flatMap(project => 
+          project.tasks
+            .filter(task => {
+              const deadline = new Date(task.endDate);
+              const now = new Date();
+              const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              return daysUntil <= 7 && daysUntil >= 0 && task.status !== 'Completed';
+            })
+            .map(task => ({
+              name: `${project.name} - ${task.name}`,
+              deadline: new Date(task.endDate).toLocaleDateString(),
+              priority: task.priority?.toLowerCase() as 'high' | 'medium' | 'low' || 'medium'
+            }))
+        ).slice(0, 3);
 
-      // Generate recent activity from project data
-      const recentActivity = workspaceProjects
-        .filter(p => p.updatedAt)
-        .sort((a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime())
-        .slice(0, 3)
-        .map(project => ({
-          action: `Project ${project.status.toLowerCase()}`,
-          project: project.name,
-          time: new Date(project.updatedAt!).toLocaleDateString()
-        }));
+        // Get recent activity from actual database
+        const { data: recentTasks, error: tasksError } = await supabase
+          .from('project_tasks')
+          .select(`
+            id,
+            name,
+            status,
+            progress,
+            updated_at,
+            projects!inner(
+              name,
+              workspace_id
+            )
+          `)
+          .eq('projects.workspace_id', currentWorkspace.id)
+          .or('status.eq.Completed,status.eq.In Progress,progress.gte.50')
+          .order('updated_at', { ascending: false })
+          .limit(8);
 
-      setStats({
-        totalProjects: workspaceProjects.length,
-        activeProjects: activeProjects.length,
-        availableResources,
-        avgProgress,
-        upcomingDeadlines,
-        recentActivity
-      });
-      
-      setLoading(false);
+        const recentActivity = (recentTasks || []).map(task => {
+          const updatedTime = new Date(task.updated_at);
+          const now = new Date();
+          const hoursAgo = Math.floor((now.getTime() - updatedTime.getTime()) / (1000 * 60 * 60));
+          
+          let action = '';
+          if (task.status === 'Completed') {
+            action = `${task.name} completed`;
+          } else if (task.progress >= 100) {
+            action = `${task.name} is 100% complete`;
+          } else if (task.progress >= 50) {
+            action = `${task.name} is ${task.progress}% complete`;
+          } else {
+            action = `${task.name} updated`;
+          }
+          
+          return {
+            action,
+            project: task.projects.name,
+            time: hoursAgo === 0 ? 'Just now' : hoursAgo === 1 ? '1 hour ago' : `${hoursAgo} hours ago`
+          };
+        });
+
+        setStats({
+          totalProjects: workspaceProjects.length,
+          activeProjects: activeProjects.length,
+          availableResources,
+          avgProgress,
+          upcomingDeadlines,
+          recentActivity
+        });
+        
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    calculateStats();
+    fetchStats();
     
-    // Set up real-time subscription for project changes
+    // Set up real-time subscription for task updates
     const channel = supabase
       .channel('dashboard-updates')
       .on(
@@ -109,12 +145,24 @@ export const useRealTimeDashboardData = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'projects',
-          filter: `workspace_id=eq.${currentWorkspace.id}`
+          table: 'project_tasks'
         },
-        () => {
-          // Recalculate stats when projects change
-          setTimeout(calculateStats, 100); // Small delay to ensure context updates
+        (payload) => {
+          console.log('Real-time task update:', payload);
+          // Refetch stats when tasks are updated
+          fetchStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects'
+        },
+        (payload) => {
+          console.log('Real-time project update:', payload);
+          fetchStats();
         }
       )
       .subscribe();
