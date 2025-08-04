@@ -42,6 +42,17 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   const tasks = project.tasks || [];
   const milestones = project.milestones || [];
   
+  // Calculate team size from unique assigned resources
+  const assignedResourceIds = new Set<string>();
+  tasks.forEach(task => {
+    if (task.assignedResources) {
+      task.assignedResources.forEach(resourceId => {
+        assignedResourceIds.add(resourceId);
+      });
+    }
+  });
+  const actualTeamSize = assignedResourceIds.size || project.teamSize || 0;
+  
   const projectStats = {
     totalTasks: tasks.length,
     completedTasks: tasks.filter(t => t.status === 'Completed').length,
@@ -49,7 +60,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
     delayedTasks: tasks.filter(t => new Date(t.endDate) > new Date(t.baselineEndDate)).length,
     totalMilestones: milestones.length,
     completedMilestones: milestones.filter(m => m.status === 'completed').length,
-    averageProgress: tasks.length > 0 ? Math.round(tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length) : 0
+    averageProgress: tasks.length > 0 ? Math.round(tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length) : 0,
+    actualTeamSize
   };
 
   return (
@@ -137,7 +149,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
               <Users className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Team Size</p>
-                <p className="font-semibold">{project.teamSize || 0} members</p>
+                <p className="font-semibold">{projectStats.actualTeamSize} members</p>
                 <p className="text-xs text-muted-foreground">Active contributors</p>
               </div>
             </div>
