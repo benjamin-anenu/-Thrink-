@@ -30,7 +30,17 @@ import { ProjectTask } from '@/types/project';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { projects } = useProject();
+  
+  // Check if ProjectProvider is available
+  let projects: any[] = [];
+  let contextAvailable = true;
+  
+  try {
+    const projectContext = useProject();
+    projects = projectContext.projects;
+  } catch (error) {
+    contextAvailable = false;
+  }
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
@@ -43,6 +53,20 @@ const ProjectManagement: React.FC = () => {
   const { resources } = useResources();
   const { updateTask } = useTaskManagement(id || '');
   
+  // If context is not available, show loading
+  if (!contextAvailable) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Loading Project...</h2>
+            <p className="text-muted-foreground">Initializing project management system.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   const project = projects.find(p => p.id === id);
 
   if (!project) {
