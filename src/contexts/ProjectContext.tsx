@@ -244,7 +244,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           tasks: m.task_ids || [],
           progress: m.progress || 0
         })),
-        tasks: [], // Tasks will be loaded separately when needed
+        tasks: [], // Will be populated by loadProjectTasks
         createdAt: project.created_at,
         updatedAt: project.updated_at,
         aiProcessingStatus: (project.ai_processing_status as 'pending' | 'processing' | 'completed' | 'failed') || 'pending',
@@ -253,12 +253,97 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
 
       setAllProjects(transformedProjects);
+      
+      // Load tasks for all projects
+      await loadProjectTasks(transformedProjects);
     } catch (error) {
       console.error('Error fetching projects:', error);
       // Fallback to demo data if there's an error
       initializeRealisticProject();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProjectTasks = async (projects: ProjectData[]) => {
+    if (projects.length === 0) return;
+
+    try {
+      const { data: tasksData, error } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .in('project_id', projects.map(p => p.id));
+
+      if (error) throw error;
+
+      // Group tasks by project ID and update project state
+      const tasksByProject: Record<string, ProjectTask[]> = {};
+      tasksData?.forEach(task => {
+        if (!tasksByProject[task.project_id]) {
+          tasksByProject[task.project_id] = [];
+        }
+        tasksByProject[task.project_id].push({
+          id: task.id,
+          name: task.name,
+          description: task.description || '',
+          startDate: task.start_date || '',
+          endDate: task.end_date || '',
+          baselineStartDate: task.baseline_start_date || task.start_date || '',
+          baselineEndDate: task.baseline_end_date || task.end_date || '',
+          progress: task.progress || 0,
+          assignedResources: task.assigned_resources || [],
+          assignedStakeholders: task.assigned_stakeholders || [],
+          dependencies: task.dependencies || [],
+          priority: (task.priority as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium',
+          status: (task.status as 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled' | 'Not Started') || 'Not Started',
+          milestoneId: task.milestone_id,
+          duration: task.duration || 1,
+          parentTaskId: task.parent_task_id,
+          hierarchyLevel: task.hierarchy_level || 0,
+          sortOrder: task.sort_order || 0,
+          manualOverrideDates: task.manual_override_dates || false
+        });
+      });
+
+      // Update projects with their tasks and fetch AI data
+      await loadProjectAIData(projects, tasksByProject);
+    } catch (error) {
+      console.error('Error loading project tasks:', error);
+    }
+  };
+
+  const loadProjectAIData = async (projects: ProjectData[], tasksByProject: Record<string, ProjectTask[]>) => {
+    try {
+      const { data: aiData, error } = await supabase
+        .from('project_ai_data')
+        .select('*')
+        .in('project_id', projects.map(p => p.id));
+
+      if (error) throw error;
+
+      // Group AI data by project ID
+      const aiDataByProject: Record<string, any> = {};
+      aiData?.forEach(data => {
+        aiDataByProject[data.project_id] = data;
+      });
+
+      // Update projects with tasks and AI data
+      setAllProjects(prev => prev.map(project => ({
+        ...project,
+        tasks: tasksByProject[project.id] || [],
+        aiGenerated: {
+          projectPlan: aiDataByProject[project.id]?.project_plan || '',
+          riskAssessment: aiDataByProject[project.id]?.risk_assessment || '',
+          recommendations: aiDataByProject[project.id]?.recommendations || []
+        }
+      })));
+    } catch (error) {
+      console.error('Error loading project AI data:', error);
+      // Still update projects with tasks even if AI data fails
+      setAllProjects(prev => prev.map(project => ({
+        ...project,
+        tasks: tasksByProject[project.id] || []
+      })));
     }
   };
 

@@ -278,8 +278,14 @@ export function determineProjectStatus(project: ProjectData): ProjectStatusType 
   const completedTaskCount = project.tasks.filter(task => task.status === 'Completed').length;
   const totalTaskCount = project.tasks.length;
   
-  // Status determination logic
-  if (!hasProjectPlan) return ProjectStatus.INITIATION;
+  // Status determination logic - Enhanced to handle manual projects
+  if (!hasProjectPlan && totalTaskCount === 0) return ProjectStatus.INITIATION;
+  if (!hasProjectPlan && totalTaskCount > 0) {
+    // Manual project with tasks - determine status based on task completion
+    if (completedTaskCount === 0) return ProjectStatus.EXECUTION;
+    if (completedTaskCount < totalTaskCount) return ProjectStatus.MONITORING_CONTROLLING;
+    return ProjectStatus.CLOSURE;
+  }
   if (!allTasksAssigned || totalTaskCount === 0) return ProjectStatus.PLANNING;
   if (completedTaskCount === 0) return ProjectStatus.EXECUTION;
   if (completedTaskCount < totalTaskCount) return ProjectStatus.MONITORING_CONTROLLING;

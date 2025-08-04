@@ -10,7 +10,8 @@ import {
   Eye, Edit, Trash2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { ProjectData } from '@/types/project';
+import { ProjectData, determineProjectStatus } from '@/types/project';
+import { useProjectStatus } from '@/hooks/useProjectStatus';
 
 interface Task {
   id: string;
@@ -39,46 +40,10 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   deletingProject
 }) => {
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
+  const { updateProjectStatus } = useProjectStatus();
 
   // Load tasks for all projects
-  useEffect(() => {
-    const loadProjectTasks = async () => {
-      if (projects.length === 0) return;
-
-      try {
-        const { data: tasks, error } = await supabase
-          .from('project_tasks')
-          .select('*')
-          .in('project_id', projects.map(p => p.id));
-
-        if (error) throw error;
-
-        // Group tasks by project ID
-        const tasksByProject: Record<string, Task[]> = {};
-        tasks?.forEach(task => {
-          if (!tasksByProject[task.project_id]) {
-            tasksByProject[task.project_id] = [];
-          }
-          tasksByProject[task.project_id].push({
-            id: task.id,
-            name: task.name,
-            status: task.status || 'Pending',
-            priority: task.priority || 'Medium',
-            assigneeId: task.assignee_id,
-            startDate: task.start_date,
-            endDate: task.end_date,
-            description: task.description
-          });
-        });
-
-        setProjectTasks(tasksByProject);
-      } catch (error) {
-        console.error('Error loading project tasks:', error);
-      }
-    };
-
-    loadProjectTasks();
-  }, [projects]);
+  // Remove separate task loading since tasks are now included in projects from ProjectContext
 
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
@@ -100,7 +65,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   };
 
   const calculateProjectStats = (project: ProjectData) => {
-    const tasks = projectTasks[project.id] || [];
+    const tasks = project.tasks || []; // Use tasks from project instead of separate fetch
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     const totalTasks = tasks.length;
     const overdueTasks = tasks.filter(t => {
@@ -108,11 +73,24 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
       return new Date(t.endDate) < new Date();
     }).length;
 
+    // Get the actual project status using enhanced logic
+    const actualStatus = determineProjectStatus(project);
+
+    // Update project status in database if it differs from stored status
+    if (actualStatus !== project.status) {
+      updateProjectStatus(project.id, 'admin_override', { 
+        oldStatus: project.status, 
+        newStatus: actualStatus,
+        reason: 'Task completion changed'
+      }, actualStatus);
+    }
+
     return {
       totalTasks,
       completedTasks,
       overdueTasks,
-      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      actualStatus
     };
   };
 
@@ -140,8 +118,8 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                 <div className="space-y-1">
                   <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusVariant(project.status)}>
-                      {project.status}
+                    <Badge variant={getStatusVariant(stats.actualStatus)}>
+                      {stats.actualStatus}
                     </Badge>
                     <Badge variant="outline" className={getPriorityColor(project.priority)}>
                       {project.priority}
