@@ -40,33 +40,54 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
   const loadExtendedProjectData = async (baseProject: ProjectDetailsModalData) => {
     setLoading(true);
     try {
-      // Load additional data that might be missing
-      const [teamData, milestonesData, risksData] = await Promise.all([
-        supabase.from('project_team_members').select('*').eq('project_id', baseProject.id),
-        supabase.from('milestones').select('*').eq('project_id', baseProject.id),
-        // For now, we'll use empty risks since we don't have a risks table
-        Promise.resolve({ data: [], error: null })
+      // Load real project data from database
+      const [projectData, tasksData, budgetData, teamData, milestonesData] = await Promise.all([
+        supabase.from('projects').select('*').eq('id', baseProject.id).single(),
+        supabase.from('project_tasks').select('*').eq('project_id', baseProject.id),
+        supabase.from('project_budgets').select('*').eq('project_id', baseProject.id),
+        supabase.from('resources').select('id, name, role, department').eq('id', 'ANY(ARRAY[]::uuid[])'), // Will get real team data later
+        supabase.from('milestones').select('*').eq('project_id', baseProject.id)
       ]);
 
-      const team = teamData.data?.map(member => ({
+      // Calculate real progress from tasks
+      const tasks = tasksData.data || [];
+      const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+      const totalTasks = tasks.length;
+      const realProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      // Calculate real budget spent
+      const budgets = budgetData.data || [];
+      const totalBudget = budgets.reduce((sum, budget) => sum + (budget.allocated_amount || 0), 0);
+      const totalSpent = budgets.reduce((sum, budget) => sum + (budget.spent_amount || 0), 0);
+
+      // Get real team members from project's resources array
+      const realTeamData = await supabase
+        .from('resources')
+        .select('id, name, role, department')
+        .in('id', projectData.data?.resources || []);
+
+      const team = realTeamData.data?.map(member => ({
         id: member.id,
         name: member.name,
         role: member.role,
         avatar: undefined
-      })) || baseProject.team || [];
+      })) || [];
 
       const milestones = milestonesData.data?.map(milestone => ({
         id: milestone.id,
         name: milestone.name,
         date: milestone.due_date,
         completed: milestone.status === 'completed'
-      })) || baseProject.milestones || [];
+      })) || [];
 
       setExtendedProject({
         ...baseProject,
+        progress: realProgress,
+        budget: totalBudget,
+        spent: totalSpent,
         team,
         milestones,
-        risks: baseProject.risks || [] // Keep existing risks for now
+        risks: baseProject.risks || []
       });
     } catch (error) {
       console.error('Error loading extended project data:', error);

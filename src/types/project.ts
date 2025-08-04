@@ -26,6 +26,7 @@ export interface ProjectData {
   name: string;
   description: string;
   status: ProjectStatusType | LegacyProjectStatus;
+  actualStatus?: ProjectStatusType | LegacyProjectStatus; // Calculated status
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   progress: number;
   health: ProjectHealth;

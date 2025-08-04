@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ProjectData, ProjectTask, ProjectMilestone, RebaselineRequest } from '@/types/project';
+import { ProjectData, ProjectTask, ProjectMilestone, RebaselineRequest, determineProjectStatus } from '@/types/project';
 import { PerformanceTracker } from '@/services/PerformanceTracker';
 import { EmailReminderService } from '@/services/EmailReminderService';
 import { NotificationIntegrationService } from '@/services/NotificationIntegrationService';
@@ -228,7 +228,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
         startDate: project.start_date || '',
         endDate: project.end_date || '',
-        teamSize: project.team_size || 0,
+        teamSize: (project.resources || []).length, // Calculate from actual resources array
         budget: project.budget || '',
         tags: project.tags || [],
         workspaceId: project.workspace_id,
@@ -328,22 +328,42 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       // Update projects with tasks and AI data
-      setAllProjects(prev => prev.map(project => ({
-        ...project,
-        tasks: tasksByProject[project.id] || [],
-        aiGenerated: {
-          projectPlan: aiDataByProject[project.id]?.project_plan || '',
-          riskAssessment: aiDataByProject[project.id]?.risk_assessment || '',
-          recommendations: aiDataByProject[project.id]?.recommendations || []
-        }
-      })));
+      setAllProjects(prev => prev.map(project => {
+        const projectWithTasks = {
+          ...project,
+          tasks: tasksByProject[project.id] || [],
+          aiGenerated: {
+            projectPlan: aiDataByProject[project.id]?.project_plan || '',
+            riskAssessment: aiDataByProject[project.id]?.risk_assessment || '',
+            recommendations: aiDataByProject[project.id]?.recommendations || []
+          }
+        };
+        
+        // Calculate the actual status based on project state
+        const actualStatus = determineProjectStatus(projectWithTasks);
+        
+        return {
+          ...projectWithTasks,
+          actualStatus: actualStatus
+        };
+      }));
     } catch (error) {
       console.error('Error loading project AI data:', error);
       // Still update projects with tasks even if AI data fails
-      setAllProjects(prev => prev.map(project => ({
-        ...project,
-        tasks: tasksByProject[project.id] || []
-      })));
+      setAllProjects(prev => prev.map(project => {
+        const projectWithTasks = {
+          ...project,
+          tasks: tasksByProject[project.id] || []
+        };
+        
+        // Calculate the actual status based on project state
+        const actualStatus = determineProjectStatus(projectWithTasks);
+        
+        return {
+          ...projectWithTasks,
+          actualStatus: actualStatus
+        };
+      }));
     }
   };
 
