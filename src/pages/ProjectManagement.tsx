@@ -30,7 +30,7 @@ import { ProjectTask } from '@/types/project';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { projects } = useProject();
+  const { projects, loading } = useProject();
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
@@ -46,6 +46,21 @@ const ProjectManagement: React.FC = () => {
 
   const project = projects.find(p => p.id === id);
 
+  // Show loading state while projects are being fetched
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading project...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show not found only if we're not loading and project doesn't exist
   if (!project) {
     return (
       <Layout>
