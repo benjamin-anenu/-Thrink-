@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -29,7 +28,32 @@ export const useEnhancedResources = () => {
 
       if (error) throw error;
       
-      setResources(data || []);
+      // Map database fields to interface fields
+      const mappedData = (data || []).map(item => ({
+        ...item,
+        type: 'human' as 'human' | 'ai' | 'external',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        skills: [] as string[],
+        availability: item.availability ? `${item.availability}%` : '100%',
+        cost: 0,
+        utilization: 0, // This will be calculated elsewhere
+        workspace_id: item.workspace_id || '',
+        name: item.name || '',
+        email: item.email || '',
+        role: item.role || '',
+        department: item.department || '',
+        phone: item.phone || '',
+        location: item.location || '',
+        employment_type: item.employment_type || '',
+        seniority_level: item.seniority_level || '',
+        mentorship_capacity: item.mentorship_capacity || false,
+        notes: item.notes || '',
+        hourly_rate: (item as any).hourly_rate || 0,
+        created_at: item.created_at || '',
+        updated_at: item.updated_at || '',
+      }));
+      
+      setResources(mappedData);
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');

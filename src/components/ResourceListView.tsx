@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Trash2, Edit } from 'lucide-react';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
 interface ResourceListViewProps {
@@ -105,7 +105,7 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
                 </div>
               </TableCell>
               <TableCell>
-                <p className="font-medium">{resource.hourlyRate || 'N/A'}</p>
+                <p className="font-medium">{resource.hourly_rate ? `$${resource.hourly_rate}/hr` : 'N/A'}</p>
               </TableCell>
               <TableCell>
                 <p className="text-sm">{resource.phone || 'N/A'}</p>

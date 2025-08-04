@@ -28,7 +28,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 import { useEnhancedResourceDetails } from '@/hooks/useEnhancedResourceDetails';
 import { useRealResourceUtilization } from '@/hooks/useRealResourceUtilization';
 
@@ -130,9 +130,9 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Hourly Rate</span>
-                        <span className="text-sm">
-                          Not available
-                        </span>
+                         <span className="text-sm">
+                           {resource.hourly_rate ? `$${resource.hourly_rate}/hr` : 'Not set'}
+                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
@@ -358,11 +358,11 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{resource.phone}</span>
+                  <span>{resource.phone || 'Not provided'}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{resource.location}</span>
+                  <span>{resource.location || 'Not specified'}</span>
                 </div>
               </CardContent>
             </Card>

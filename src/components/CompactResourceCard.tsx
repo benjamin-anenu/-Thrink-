@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Trash2, Edit, Mail, Phone, MapPin } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 import { TaskUtilizationMetrics } from '@/types/enhanced-resource';
 import { useEnhancedResources } from '@/hooks/useEnhancedResources';
 
@@ -98,7 +98,7 @@ const CompactResourceCard: React.FC<CompactResourceCardProps> = ({
             <span className="text-xs font-medium">Availability</span>
             <span className="text-xs text-muted-foreground">{resource.availability}%</span>
           </div>
-          <Progress value={resource.availability} className="h-2" />
+          <Progress value={parseInt(resource.availability?.replace('%', '') || '100')} className="h-2" />
         </div>
 
         <div className="space-y-2">

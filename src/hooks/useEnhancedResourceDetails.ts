@@ -99,14 +99,14 @@ export const useEnhancedResourceDetails = (resourceId: string) => {
         setSkills(mappedSkills);
       }
 
-      // Load project history from tasks
+      // Load project history from tasks - check both assignee_id and assigned_resources array
       const { data: taskData, error: taskError } = await supabase
         .from('project_tasks')
         .select(`
           *,
           projects!inner(name, status)
         `)
-        .eq('assignee_id', resourceId)
+        .or(`assignee_id.eq.${resourceId},assigned_resources.cs.{${resourceId}}`)
         .limit(10);
 
       if (taskError) {

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import CompactResourceCard from '@/components/CompactResourceCard';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 import { TaskUtilizationMetrics } from '@/types/enhanced-resource';
 
 interface EnhancedResourceGridProps {

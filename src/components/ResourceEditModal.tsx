@@ -19,7 +19,7 @@ import { Slider } from '@/components/ui/slider';
 import { User, Mail, Briefcase, Building, DollarSign, Phone, MapPin } from 'lucide-react';
 import { useResources } from '@/hooks/useResources';
 import { useDepartments } from '@/hooks/useDepartments';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 import { toast } from 'sonner';
 
 interface ResourceEditModalProps {
@@ -90,10 +90,10 @@ const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
         department: resource.department || '',
         phone: resource.phone || '',
         location: resource.location || 'Remote',
-        hourlyRate: parseFloat(resource.hourlyRate?.replace('$', '').replace('/hr', '')) || 0,
+        hourlyRate: resource.hourly_rate || 0,
         employmentType: 'Full-time',
         seniorityLevel: 'Mid-Level',
-        availability: resource.availability || 100,
+        availability: parseInt(resource.availability?.replace('%', '') || '100'),
         mentorshipCapacity: false,
         notes: ''
       });
@@ -113,8 +113,12 @@ const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
         department: formData.department,
         phone: formData.phone,
         location: formData.location,
-        hourlyRate: `$${formData.hourlyRate}/hr`,
-        availability: formData.availability
+        hourly_rate: parseFloat(formData.hourlyRate.toString()) || 0,
+        availability: `${formData.availability}%`,
+        employment_type: formData.employmentType,
+        seniority_level: formData.seniorityLevel,
+        mentorship_capacity: formData.mentorshipCapacity,
+        notes: formData.notes,
       };
 
       const success = await updateResource(resource.id, updatedData);

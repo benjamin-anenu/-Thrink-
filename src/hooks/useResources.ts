@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -20,16 +19,24 @@ export const useResources = () => {
       // Map database fields to interface fields
       const mappedData = (data || []).map(item => ({
         ...item,
-        type: 'human' as 'human' | 'ai' | 'external', // Map to correct type
-        status: 'active' as 'active' | 'inactive' | 'pending', // Map to correct status
-        skills: [] as string[], // Default empty array
-        availability: '100%', // Default availability string
-        cost: 0, // Default cost
+        type: 'human' as 'human' | 'ai' | 'external',
+        status: 'active' as 'active' | 'inactive' | 'pending',
+        skills: [] as string[],
+        availability: item.availability ? `${item.availability}%` : '100%',
+        cost: 0,
+        utilization: 0, // This will be calculated elsewhere
         workspace_id: item.workspace_id || '',
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
         department: item.department || '',
+        phone: item.phone || '',
+        location: item.location || '',
+        employment_type: item.employment_type || '',
+        seniority_level: item.seniority_level || '',
+        mentorship_capacity: item.mentorship_capacity || false,
+        notes: item.notes || '',
+        hourly_rate: (item as any).hourly_rate || 0,
         created_at: item.created_at || '',
         updated_at: item.updated_at || '',
       }));
@@ -51,6 +58,9 @@ export const useResources = () => {
         email: resource.email,
         role: resource.role,
         workspace_id: resource.workspace_id,
+        department: resource.department,
+        phone: resource.phone,
+        location: resource.location,
       };
       
       const { data, error } = await supabase
@@ -67,9 +77,17 @@ export const useResources = () => {
         type: 'human' as 'human' | 'ai' | 'external',
         status: 'active' as 'active' | 'inactive' | 'pending',
         skills: [] as string[],
-        availability: '100%',
+        availability: data[0].availability ? `${data[0].availability}%` : '100%',
         cost: 0,
+        utilization: 0,
         department: data[0].department || '',
+        phone: data[0].phone || '',
+        location: data[0].location || '',
+        employment_type: data[0].employment_type || '',
+        seniority_level: data[0].seniority_level || '',
+        mentorship_capacity: data[0].mentorship_capacity || false,
+        notes: data[0].notes || '',
+        hourly_rate: (data[0] as any).hourly_rate || 0,
       } : null;
       
       return mappedResult as Resource;
@@ -82,19 +100,28 @@ export const useResources = () => {
 
   const updateResource = async (id: string, updates: Partial<Resource>) => {
     try {
-      // Only update fields that exist in database
-      const dbUpdates = {
-        name: updates.name,
-        email: updates.email,
-        role: updates.role,
-      };
+      // Map to database fields - include ALL editable fields
+      const dbUpdates: any = {};
       
-      // Remove undefined values
-      Object.keys(dbUpdates).forEach(key => {
-        if (dbUpdates[key] === undefined) {
-          delete dbUpdates[key];
-        }
-      });
+      // Map only fields that exist in the database schema
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.email !== undefined) dbUpdates.email = updates.email;
+      if (updates.role !== undefined) dbUpdates.role = updates.role;
+      if (updates.department !== undefined) dbUpdates.department = updates.department;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+      if (updates.location !== undefined) dbUpdates.location = updates.location;
+      if (updates.availability !== undefined) {
+        // Convert percentage string to number
+        const availabilityValue = typeof updates.availability === 'string' 
+          ? parseInt(updates.availability.replace('%', '')) 
+          : updates.availability;
+        dbUpdates.availability = availabilityValue;
+      }
+      if (updates.employment_type !== undefined) dbUpdates.employment_type = updates.employment_type;
+      if (updates.seniority_level !== undefined) dbUpdates.seniority_level = updates.seniority_level;
+      if (updates.mentorship_capacity !== undefined) dbUpdates.mentorship_capacity = updates.mentorship_capacity;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      if (updates.hourly_rate !== undefined) dbUpdates.hourly_rate = updates.hourly_rate;
       
       const { error } = await supabase
         .from('resources')
