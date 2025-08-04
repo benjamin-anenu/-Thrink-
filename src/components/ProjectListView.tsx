@@ -79,8 +79,8 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant={getStatusVariant(project.actualStatus || project.status)}>
-                  {project.actualStatus || project.status}
+                <Badge variant={getStatusVariant(project.status)}>
+                  {project.status}
                 </Badge>
               </TableCell>
               <TableCell>
