@@ -156,6 +156,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return
     }
 
+    console.log('[Workspace] Auth ready, fetching workspaces...')
     fetchWorkspaces();
   }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
 

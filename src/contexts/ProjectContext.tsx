@@ -92,7 +92,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load projects from Supabase when workspace changes
   useEffect(() => {
     if (currentWorkspace) {
+      console.log('[ProjectContext] Workspace changed, refreshing projects for:', currentWorkspace.name);
       refreshProjects();
+    } else {
+      console.log('[ProjectContext] No workspace, clearing projects');
+      setAllProjects([]);
+      setLoading(false);
     }
   }, [currentWorkspace]);
 
@@ -170,8 +175,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [projects]);
 
   const refreshProjects = async () => {
-    if (!currentWorkspace) return;
+    if (!currentWorkspace) {
+      console.log('[ProjectContext] No workspace, skipping project refresh');
+      return;
+    }
     
+    console.log('[ProjectContext] Refreshing projects for workspace:', currentWorkspace.name);
     setLoading(true);
     try {
       const { data: projectsData, error } = await supabase
