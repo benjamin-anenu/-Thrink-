@@ -211,14 +211,35 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                   <div className="space-y-3">
                     {currentProjects.length > 0 ? (
                       currentProjects.map((project, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div>
+                        <div key={index} className="p-3 bg-muted/30 rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
                             <p className="font-medium">{project.project_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {project.tasks_completed} tasks completed
-                            </p>
+                            <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>
+                              {project.status}
+                            </Badge>
                           </div>
-                          <Badge variant="secondary">{project.status}</Badge>
+                          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                            <div>Completed: {project.tasks_completed}</div>
+                            <div>Active: {project.active_tasks}</div>
+                            {project.overdue_tasks > 0 && (
+                              <div className="text-destructive">Overdue: {project.overdue_tasks}</div>
+                            )}
+                          </div>
+                          {project.recent_activity && project.recent_activity.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium">Recent Activity:</p>
+                              {project.recent_activity.slice(0, 2).map((activity: any, actIndex: number) => (
+                                <div key={actIndex} className="text-xs flex items-center justify-between">
+                                  <span className={activity.is_overdue ? 'text-destructive' : ''}>
+                                    {activity.task_name}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {activity.status}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))
                     ) : (

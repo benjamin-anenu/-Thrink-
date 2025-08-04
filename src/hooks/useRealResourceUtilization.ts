@@ -48,17 +48,105 @@ export const useRealResourceUtilization = (resourceIds: string[]) => {
   const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
 
-  const calculateUtilizationForResource = async (resourceId: string) => {
-    if (!currentWorkspace) return;
+  const calculateUtilizationForResource = async (resourceId: string): Promise<TaskUtilizationMetrics> => {
+    if (!currentWorkspace) {
+      return createDefaultMetrics();
+    }
 
     try {
-      // Calculate utilization manually since function may not be available yet
-      // This is a simplified version - the full function will be available after migration
-      console.log('Calculating utilization for resource:', resourceId);
+      // Get actual task count from project_tasks where resource is assigned
+      const { data: taskData, error: taskError } = await supabase
+        .from('project_tasks')
+        .select('id, status, complexity_score, assigned_resources, assignee_id')
+        .or(`assignee_id.eq.${resourceId},assigned_resources.cs.{${resourceId}}`)
+        .in('status', ['To Do', 'In Progress', 'In Review']);
+
+      if (taskError) {
+        console.error('Error fetching tasks:', taskError);
+        return createDefaultMetrics();
+      }
+
+      const tasks = taskData || [];
+      const taskCount = tasks.length;
+      const taskCapacity = 10; // Default capacity
+      const utilizationPercentage = Math.min((taskCount / taskCapacity) * 100, 100);
+
+      // Calculate task complexity breakdown
+      let simpleTasksCount = 0;
+      let mediumTasksCount = 0;
+      let complexTasksCount = 0;
+
+      tasks.forEach(task => {
+        const complexity = task.complexity_score || 3;
+        if (complexity <= 3) simpleTasksCount++;
+        else if (complexity <= 7) mediumTasksCount++;
+        else complexTasksCount++;
+      });
+
+      // Get completed tasks count (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: completedTasksData } = await supabase
+        .from('project_tasks')
+        .select('id')
+        .or(`assignee_id.eq.${resourceId},assigned_resources.cs.{${resourceId}}`)
+        .eq('status', 'Completed')
+        .gte('completed_at', thirtyDaysAgo.toISOString());
+
+      const tasksCompleted = completedTasksData?.length || 0;
+
+      // Determine status based on utilization
+      let status: TaskUtilizationMetrics['status'];
+      if (utilizationPercentage === 0) status = 'Underutilized';
+      else if (utilizationPercentage <= 30) status = 'Underutilized';
+      else if (utilizationPercentage <= 70) status = 'Well Utilized';
+      else if (utilizationPercentage <= 90) status = 'Optimally Loaded';
+      else if (utilizationPercentage <= 100) status = 'Overloaded';
+      else status = 'Severely Overloaded';
+
+      return {
+        task_count: taskCount,
+        task_capacity: taskCapacity,
+        utilization_percentage: Math.round(utilizationPercentage),
+        weighted_task_load: taskCount,
+        weighted_capacity: taskCapacity,
+        weighted_utilization: Math.round(utilizationPercentage),
+        simple_tasks: simpleTasksCount,
+        medium_tasks: mediumTasksCount,
+        complex_tasks: complexTasksCount,
+        tasks_completed: tasksCompleted,
+        status,
+        utilization_trend: 0, // Could be calculated based on historical data
+        optimal_task_range: [5, 15],
+        predicted_completion_count: Math.round(taskCount * 0.8), // 80% completion rate estimate
+        bottleneck_risk: taskCount > 8 ? Math.min(taskCount - 5, 10) : 0,
+        context_switch_penalty: Math.min(taskCount * 0.1, 3)
+      };
     } catch (error) {
-      console.error('Error in utilization calculation:', error);
+      console.error('Error calculating utilization:', error);
+      return createDefaultMetrics();
     }
   };
+
+  const createDefaultMetrics = (): TaskUtilizationMetrics => ({
+    task_count: 0,
+    task_capacity: 10,
+    utilization_percentage: 0,
+    weighted_task_load: 0,
+    weighted_capacity: 10,
+    weighted_utilization: 0,
+    simple_tasks: 0,
+    medium_tasks: 0,
+    complex_tasks: 0,
+    tasks_completed: 0,
+    status: 'Underutilized',
+    utilization_trend: 0,
+    optimal_task_range: [5, 15],
+    predicted_completion_count: 0,
+    bottleneck_risk: 0,
+    context_switch_penalty: 0
+  });
 
   const loadUtilizationData = async () => {
     if (!currentWorkspace || resourceIds.length === 0) {
@@ -71,65 +159,19 @@ export const useRealResourceUtilization = (resourceIds: string[]) => {
     try {
       setLoading(true);
 
-      // Calculate utilization for each resource
-      await Promise.all(resourceIds.map(calculateUtilizationForResource));
+      // Calculate real-time utilization for each resource
+      const metricsPromises = resourceIds.map(async (resourceId) => {
+        const metrics = await calculateUtilizationForResource(resourceId);
+        return { resourceId, metrics };
+      });
 
-      // Fetch calculated utilization metrics
-      const { data: metricsData, error: metricsError } = await supabase
-        .from('resource_utilization_metrics')
-        .select('*')
-        .in('resource_id', resourceIds)
-        .eq('workspace_id', currentWorkspace.id);
-
-      if (metricsError) throw metricsError;
-
-      // Transform metrics data
-      const metricsMap: Record<string, TaskUtilizationMetrics> = {};
+      const calculatedMetrics = await Promise.all(metricsPromises);
       
-      if (metricsData && metricsData.length > 0) {
-        metricsData.forEach((item: any) => {
-          metricsMap[item.resource_id] = {
-            task_count: item.task_count || 0,
-            task_capacity: item.task_capacity || 10,
-            utilization_percentage: item.utilization_percentage || 0,
-            weighted_task_load: item.weighted_task_load || 0,
-            weighted_capacity: item.weighted_capacity || 10,
-            weighted_utilization: item.weighted_utilization || 0,
-            simple_tasks: item.simple_tasks || 0,
-            medium_tasks: item.medium_tasks || 0,
-            complex_tasks: item.complex_tasks || 0,
-            tasks_completed: item.tasks_completed || 0,
-            status: item.status || 'Well Utilized',
-            utilization_trend: item.utilization_trend || 0,
-            optimal_task_range: [item.optimal_task_range_min || 5, item.optimal_task_range_max || 15],
-            predicted_completion_count: item.predicted_completion_count || 0,
-            bottleneck_risk: item.bottleneck_risk_score || 0,
-            context_switch_penalty: item.context_switch_penalty || 0
-          };
-        });
-      } else {
-        // Generate fallback data for resources without metrics
-        resourceIds.forEach(resourceId => {
-          metricsMap[resourceId] = {
-            task_count: 0,
-            task_capacity: 10,
-            utilization_percentage: 0,
-            weighted_task_load: 0,
-            weighted_capacity: 10,
-            weighted_utilization: 0,
-            simple_tasks: 0,
-            medium_tasks: 0,
-            complex_tasks: 0,
-            tasks_completed: 0,
-            status: 'Underutilized',
-            utilization_trend: 0,
-            optimal_task_range: [5, 15],
-            predicted_completion_count: 0,
-            bottleneck_risk: 0,
-            context_switch_penalty: 0
-          };
-        });
-      }
+      // Transform to metrics map
+      const metricsMap: Record<string, TaskUtilizationMetrics> = {};
+      calculatedMetrics.forEach(({ resourceId, metrics }) => {
+        metricsMap[resourceId] = metrics;
+      });
 
       setUtilizationMetrics(metricsMap);
 

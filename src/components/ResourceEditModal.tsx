@@ -21,6 +21,7 @@ import { useResources } from '@/hooks/useResources';
 import { useDepartments } from '@/hooks/useDepartments';
 import { Resource } from '@/types/resource';
 import { toast } from 'sonner';
+import SkillsManagementModal from './SkillsManagementModal';
 
 interface ResourceEditModalProps {
   isOpen: boolean;
@@ -79,6 +80,7 @@ const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
     notes: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
   
   const { updateResource } = useResources();
   const { departments, loading: departmentsLoading } = useDepartments();
@@ -373,6 +375,24 @@ const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
             </CardContent>
           </Card>
 
+          {/* Skills Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Skills & Expertise</CardTitle>
+              <CardDescription>Manage skills and proficiency levels</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsSkillsModalOpen(true)}
+                className="w-full"
+              >
+                Manage Skills
+              </Button>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
@@ -382,6 +402,17 @@ const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
             </Button>
           </div>
         </form>
+
+        {/* Skills Management Modal */}
+        {resource && (
+          <SkillsManagementModal
+            isOpen={isSkillsModalOpen}
+            onClose={() => setIsSkillsModalOpen(false)}
+            resourceId={resource.id}
+            resourceName={resource.name}
+            onSkillsUpdated={onResourceUpdated}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
