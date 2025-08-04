@@ -144,7 +144,7 @@ const SkillsManagementModal: React.FC<SkillsManagementModalProps> = ({
             proficiency_level: skill.proficiency_level,
             years_experience: skill.years_experience,
             confidence_score: skill.confidence_score,
-            improvement_trend: 'stable' // Default value
+            improvement_trend: 'Stable' // Default value
           }));
 
         if (skillsToInsert.length > 0) {
