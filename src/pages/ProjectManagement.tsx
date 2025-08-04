@@ -111,8 +111,22 @@ const ProjectManagementContent: React.FC<{
     isFullyLoaded
   });
 
-  // Show not found only if fully loaded and project doesn't exist
-  if (isFullyLoaded && !project) {
+  // Show project-specific loading if app is loaded but project is still being resolved
+  if (isFullyLoaded && loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading project details...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show not found only if fully loaded, not loading, and project doesn't exist after checking all projects
+  if (isFullyLoaded && !loading && projects.length > 0 && !project) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
