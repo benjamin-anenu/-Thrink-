@@ -27,10 +27,13 @@ import { useTasks } from '@/hooks/useTasks';
 import { useResources } from '@/hooks/useResources';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { ProjectTask } from '@/types/project';
+import { AppInitializationLoader } from '@/components/AppInitializationLoader';
+import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { projects, loading } = useProject();
+  const { isFullyLoaded } = useAppInitialization();
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
@@ -43,21 +46,60 @@ const ProjectManagement: React.FC = () => {
   const { resources } = useResources();
   const { updateTask } = useTaskManagement(id || '');
 
-  // Early return for loading state - before any project lookup
-  if (loading) {
-    console.log('[ProjectManagement] Loading projects...');
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading project...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-   
+  return (
+    <AppInitializationLoader>
+      <ProjectManagementContent 
+        id={id}
+        projects={projects}
+        loading={loading}
+        isFullyLoaded={isFullyLoaded}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        issueTaskFilter={issueTaskFilter}
+        setIssueTaskFilter={setIssueTaskFilter}
+        isCalendarModalOpen={isCalendarModalOpen}
+        setIsCalendarModalOpen={setIsCalendarModalOpen}
+        selectedTask={selectedTask}
+        setSelectedTask={setSelectedTask}
+        isTaskModalOpen={isTaskModalOpen}
+        setIsTaskModalOpen={setIsTaskModalOpen}
+        events={events}
+        createEvent={createEvent}
+        tasks={tasks}
+        resources={resources}
+        updateTask={updateTask}
+      />
+    </AppInitializationLoader>
+  );
+};
+
+const ProjectManagementContent: React.FC<{
+  id: string | undefined;
+  projects: any[];
+  loading: boolean;
+  isFullyLoaded: boolean;
+  viewMode: 'gantt' | 'kanban';
+  setViewMode: (mode: 'gantt' | 'kanban') => void;
+  issueTaskFilter: string | undefined;
+  setIssueTaskFilter: (filter: string | undefined) => void;
+  isCalendarModalOpen: boolean;
+  setIsCalendarModalOpen: (open: boolean) => void;
+  selectedTask: ProjectTask | null;
+  setSelectedTask: (task: ProjectTask | null) => void;
+  isTaskModalOpen: boolean;
+  setIsTaskModalOpen: (open: boolean) => void;
+  events: any[];
+  createEvent: any;
+  tasks: any[];
+  resources: any[];
+  updateTask: any;
+}> = ({ 
+  id, projects, loading, isFullyLoaded, viewMode, setViewMode, 
+  issueTaskFilter, setIssueTaskFilter, isCalendarModalOpen, setIsCalendarModalOpen,
+  selectedTask, setSelectedTask, isTaskModalOpen, setIsTaskModalOpen,
+  events, createEvent, tasks, resources, updateTask 
+}) => {
+  
   const project = projects.find(p => p.id === id);
   
   console.log('[ProjectManagement] Debug info:', {
@@ -65,11 +107,12 @@ const ProjectManagement: React.FC = () => {
     projectsCount: projects.length,
     projectIds: projects.map(p => p.id),
     foundProject: !!project,
-    loading
+    loading,
+    isFullyLoaded
   });
 
-  // Show not found only if we're not loading and project doesn't exist
-  if (!project) {
+  // Show not found only if fully loaded and project doesn't exist
+  if (isFullyLoaded && !project) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
@@ -80,6 +123,11 @@ const ProjectManagement: React.FC = () => {
         </div>
       </Layout>
     );
+  }
+
+  // If not fully loaded or no project yet, don't render anything (AppInitializationLoader will handle loading)
+  if (!isFullyLoaded || !project) {
+    return null;
   }
 
   const handleSwitchToIssueLog = (taskId?: string) => {
