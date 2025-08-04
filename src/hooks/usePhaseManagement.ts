@@ -346,7 +346,14 @@ export function usePhaseManagement(projectId?: string) {
       // Fallback to basic calculation
       const today = new Date();
       const endDate = phase.endDate ? new Date(phase.endDate) : null;
-      const progress = phase.progress || (await calculatePhaseProgress(phase));
+      
+      // Explicitly handle the async calculation
+      let progress: number;
+      try {
+        progress = phase.progress ?? (await calculatePhaseProgress(phase));
+      } catch {
+        progress = phase.progress ?? 0;
+      }
       
       if (endDate && endDate < today && progress < 100) {
         return { status: 'red' as const, score: 30 };
