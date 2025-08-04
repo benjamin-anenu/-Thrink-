@@ -42,11 +42,8 @@ const ProjectManagement: React.FC = () => {
   const { tasks } = useTasks(id || '');
   const { resources } = useResources();
   const { updateTask } = useTaskManagement(id || '');
-  
 
-  const project = projects.find(p => p.id === id);
-
-  // Show loading state while projects are being fetched
+  // Early return for loading state - before any project lookup
   if (loading) {
     return (
       <Layout>
@@ -59,6 +56,9 @@ const ProjectManagement: React.FC = () => {
       </Layout>
     );
   }
+  
+
+  const project = projects.find(p => p.id === id);
 
   // Show not found only if we're not loading and project doesn't exist
   if (!project) {
