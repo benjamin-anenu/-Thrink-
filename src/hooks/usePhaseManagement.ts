@@ -154,6 +154,14 @@ export function usePhaseManagement(projectId?: string) {
       const createdPhase = mapDatabasePhaseToProjectPhase(data);
       setPhases(prev => [...prev, createdPhase].sort((a, b) => a.sortOrder - b.sortOrder));
       
+      // Auto-update progress for the new phase
+      setTimeout(async () => {
+        const progress = await calculatePhaseProgress(createdPhase);
+        if (progress > 0) {
+          await updatePhase(createdPhase.id, { progress });
+        }
+      }, 100);
+      
       toast.success('Phase created successfully');
       return createdPhase;
     } catch (err: any) {
@@ -284,20 +292,35 @@ export function usePhaseManagement(projectId?: string) {
     }
   };
 
-  // Calculate phase progress
-  const calculatePhaseProgress = (phase: ProjectPhase): number => {
+  // Calculate phase progress from actual task data
+  const calculatePhaseProgress = async (phase: ProjectPhase): Promise<number> => {
     if (!phase.milestones || phase.milestones.length === 0) return 0;
     
-    const totalTasks = phase.milestones.reduce((sum, milestone) => 
-      sum + (milestone.tasks?.length || 0), 0);
-    
-    if (totalTasks === 0) return 0;
-    
-    // For now, use milestone progress as proxy
-    const avgMilestoneProgress = phase.milestones.reduce((sum, milestone) => 
-      sum + milestone.progress, 0) / phase.milestones.length;
-    
-    return Math.round(avgMilestoneProgress);
+    try {
+      // Get all task IDs from milestones
+      const allTaskIds = phase.milestones.flatMap(m => m.tasks || []);
+      
+      if (allTaskIds.length === 0) return 0;
+      
+      // Fetch actual task data
+      const { data: tasks, error } = await supabase
+        .from('project_tasks')
+        .select('progress, status')
+        .in('id', allTaskIds);
+      
+      if (error || !tasks?.length) return 0;
+      
+      // Calculate weighted progress (completed tasks count as 100%, others by progress)
+      const totalProgress = tasks.reduce((sum, task) => {
+        if (task.status === 'Completed') return sum + 100;
+        return sum + (task.progress || 0);
+      }, 0);
+      
+      return Math.round(totalProgress / tasks.length);
+    } catch (error) {
+      console.error('Error calculating phase progress:', error);
+      return 0;
+    }
   };
 
   // Get enhanced phase health using new calculation system

@@ -79,7 +79,12 @@ export const calculateTaskHealth = (task: ProjectTask): HealthStatus => {
   const endDate = task.endDate ? new Date(task.endDate) : null;
   const progress = task.progress || 0;
   
-  // Critical: Overdue and incomplete
+  // Already completed tasks are always on-track
+  if (task.status === 'Completed' || progress >= 100) {
+    return 'on-track';
+  }
+  
+  // Critical: Overdue and incomplete (heavily penalized)
   if (endDate && endDate < today && progress < 100) {
     return 'critical';
   }
@@ -162,13 +167,13 @@ export const calculatePhaseHealth = async (phase: ProjectPhase): Promise<HealthS
     // Critical if any milestone is critical
     if (milestoneHealths.includes('critical')) return 'critical';
     
-    // At-risk if >25% of milestones are at-risk or critical  
+    // At-risk if >20% of milestones are at-risk or critical (more sensitive)
     const riskCount = milestoneHealths.filter(h => h === 'at-risk' || h === 'critical').length;
-    if (riskCount / milestoneHealths.length > 0.25) return 'at-risk';
+    if (riskCount / milestoneHealths.length > 0.20) return 'at-risk';
     
-    // Caution if >40% of milestones are caution or worse
+    // Caution if >30% of milestones are caution or worse (more sensitive)
     const cautionCount = milestoneHealths.filter(h => h !== 'on-track').length;
-    if (cautionCount / milestoneHealths.length > 0.4) return 'caution';
+    if (cautionCount / milestoneHealths.length > 0.30) return 'caution';
     
     return 'on-track';
   } catch (error) {
@@ -233,24 +238,20 @@ export const calculateProjectHealth = async (projectId: string): Promise<Project
       mappedPhases.map(phase => calculatePhaseHealth(phase))
     );
     
-    // Critical if any phase is critical
-    if (phaseHealths.includes('critical')) {
-      return { status: 'red', score: 20 };
-    }
+    // Calculate weighted health score with heavy penalty for overdue tasks
+    const healthScores = phaseHealths.map(health => getHealthScore(health));
+    const avgScore = healthScores.reduce((sum, score) => sum + score, 0) / healthScores.length;
     
-    // At-risk if >20% of phases are at-risk or critical
-    const riskCount = phaseHealths.filter(h => h === 'at-risk' || h === 'critical').length;
-    if (riskCount / phaseHealths.length > 0.2) {
-      return { status: 'red', score: 40 };
-    }
+    // Additional penalty for critical phases (overdue tasks)
+    const criticalPenalty = phaseHealths.filter(h => h === 'critical').length * 15;
+    const atRiskPenalty = phaseHealths.filter(h => h === 'at-risk').length * 8;
     
-    // Caution if >30% of phases are caution or worse
-    const cautionCount = phaseHealths.filter(h => h !== 'on-track').length;
-    if (cautionCount / phaseHealths.length > 0.3) {
-      return { status: 'yellow', score: 70 };
-    }
+    const finalScore = Math.max(10, Math.round(avgScore - criticalPenalty - atRiskPenalty));
     
-    return { status: 'green', score: 95 };
+    // Determine status based on final score
+    if (finalScore >= 85) return { status: 'green', score: finalScore };
+    if (finalScore >= 65) return { status: 'yellow', score: finalScore };
+    return { status: 'red', score: finalScore };
   } catch (error) {
     console.error('Error calculating project health:', error);
     return { status: 'yellow', score: 50 };
