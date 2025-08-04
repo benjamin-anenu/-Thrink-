@@ -46,12 +46,29 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
     const tasks = project.tasks || [];
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     const totalTasks = tasks.length;
-    const actualProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : project.progress || 0;
-    const actualStatus = determineProjectStatus(project);
+    
+    // Calculate real-time progress and status
+    const actualProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const actualStatus = totalTasks === 0 ? project.status :
+                        completedTasks === totalTasks ? 'Closure' as const :
+                        completedTasks > 0 ? 'Execution' as const :
+                        'Planning' as const;
+    
+    // Calculate team size from unique assigned resources
+    const assignedResourceIds = new Set<string>();
+    tasks.forEach(task => {
+      if (task.assignedResources) {
+        task.assignedResources.forEach(resourceId => {
+          assignedResourceIds.add(resourceId);
+        });
+      }
+    });
+    const actualTeamSize = assignedResourceIds.size || project.teamSize || 0;
     
     return {
       actualProgress,
-      actualStatus
+      actualStatus,
+      actualTeamSize
     };
   };
 
@@ -112,7 +129,7 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
               <TableCell>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{(project.resources?.length || project.teamSize || 0)}</span>
+                  <span className="text-sm">{stats.actualTeamSize}</span>
                 </div>
               </TableCell>
               <TableCell>

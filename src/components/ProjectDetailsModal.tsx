@@ -84,16 +84,26 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
       const totalBudget = budgetData?.reduce((sum, budget) => sum + Number(budget.allocated_amount || 0), 0) || 0;
       const totalSpent = budgetData?.reduce((sum, budget) => sum + Number(budget.spent_amount || 0), 0) || 0;
 
-      // Transform team members from project resources array
-      const team = (projectData?.resources || []).map(resourceId => {
+      // Get unique team members from task assignments
+      const assignedResourceIds = new Set<string>();
+      tasks.forEach(task => {
+        if (task.assigned_resources) {
+          task.assigned_resources.forEach(resourceId => {
+            assignedResourceIds.add(resourceId);
+          });
+        }
+      });
+
+      // Transform team members from unique assigned resources
+      const team = Array.from(assignedResourceIds).map(resourceId => {
         const resource = resourcesData?.find(r => r.id === resourceId);
-        return {
+        return resource ? {
           id: resourceId,
-          name: resource?.name || 'Unknown Resource',
-          role: resource?.role || 'Team Member',
+          name: resource.name || 'Unknown Resource',
+          role: resource.role || 'Team Member',
           avatar: undefined
-        };
-      }).filter(member => member.name !== 'Unknown Resource'); // Filter out invalid resources
+        } : null;
+      }).filter(member => member !== null) as Array<{id: string, name: string, role: string, avatar?: string}>;
 
       // Transform milestones
       const milestones = milestonesData?.map(milestone => ({
@@ -116,9 +126,10 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
       }) || [];
 
       // Calculate actual status from tasks with proper type safety
-      const actualStatus = tasks.length > 0 && completedTasks.length === tasks.length ? 'Completed' :
-                          tasks.length > 0 && completedTasks.length > 0 ? 'In Progress' :
-                          (projectData?.status as any) || baseProject.status;
+      const actualStatus = tasks.length === 0 ? (projectData?.status as any) || baseProject.status :
+                          completedTasks.length === tasks.length ? 'Closure' as const :
+                          completedTasks.length > 0 ? 'Execution' as const :
+                          'Planning' as const;
 
       // Create updated project with real-time data
       const updatedProject: ProjectDetailsModalData = {

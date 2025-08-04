@@ -10,7 +10,7 @@ import {
   Eye, Edit, Trash2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { ProjectData, determineProjectStatus } from '@/types/project';
+import { ProjectData, determineProjectStatus, ProjectStatusType } from '@/types/project';
 import { useProjectStatus } from '@/hooks/useProjectStatus';
 
 interface Task {
@@ -65,7 +65,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
   };
 
   const calculateProjectStats = (project: ProjectData) => {
-    const tasks = project.tasks || []; // Use tasks from project instead of separate fetch
+    const tasks = project.tasks || [];
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     const totalTasks = tasks.length;
     const overdueTasks = tasks.filter(t => {
@@ -73,24 +73,41 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
       return new Date(t.endDate) < new Date();
     }).length;
 
-    // Get the actual project status using enhanced logic
-    const actualStatus = determineProjectStatus(project);
+    // Calculate real-time status and progress
+    const actualStatus = totalTasks === 0 ? project.status :
+                        completedTasks === totalTasks ? 'Closure' as ProjectStatusType :
+                        completedTasks > 0 ? 'Execution' as ProjectStatusType :
+                        'Planning' as ProjectStatusType;
+
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Calculate team size from unique assigned resources
+    const assignedResourceIds = new Set<string>();
+    tasks.forEach(task => {
+      if (task.assignedResources) {
+        task.assignedResources.forEach(resourceId => {
+          assignedResourceIds.add(resourceId);
+        });
+      }
+    });
+    const actualTeamSize = assignedResourceIds.size || project.teamSize || 0;
 
     // Update project status in database if it differs from stored status
-    if (actualStatus !== project.status) {
+    if (actualStatus !== project.status && (actualStatus as any) !== project.status) {
       updateProjectStatus(project.id, 'admin_override', { 
         oldStatus: project.status, 
         newStatus: actualStatus,
         reason: 'Task completion changed'
-      }, actualStatus);
+      }, actualStatus as ProjectStatusType);
     }
 
     return {
       totalTasks,
       completedTasks,
       overdueTasks,
-      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-      actualStatus
+      completionRate,
+      actualStatus,
+      actualTeamSize
     };
   };
 
@@ -150,7 +167,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-500" />
-                  <span>{(project.resources?.length || project.teamSize || 0)} Members</span>
+                  <span>{stats.actualTeamSize} Members</span>
                 </div>
                 {stats.overdueTasks > 0 && (
                   <div className="flex items-center gap-2 col-span-2">
