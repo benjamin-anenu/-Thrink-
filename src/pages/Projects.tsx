@@ -119,12 +119,15 @@ const Projects: React.FC = () => {
 
   const handleViewDetails = async (project: any) => {
     try {
+      // Use the calculated status from the project
+      const calculatedStatus = project.actualStatus || project.status;
+      
       const modalProject = transformProjectForModal(
         {
           id: project.id,
           name: project.name,
           description: project.description,
-          status: project.status,
+          status: calculatedStatus,
           priority: project.priority,
           progress: project.progress,
           start_date: project.startDate,
@@ -135,7 +138,7 @@ const Projects: React.FC = () => {
           team_size: project.teamSize,
           workspace_id: project.workspaceId
         },
-        [], // tasks will be loaded in modal
+        project.tasks || [], // pass the project tasks
         [], // team members will be loaded in modal
         [], // milestones will be loaded in modal
         []  // risks will be loaded in modal
@@ -146,12 +149,13 @@ const Projects: React.FC = () => {
     } catch (error) {
       console.error('Error preparing project details:', error);
       // Still try to open modal with basic data
+      const fallbackStatus = project.actualStatus || project.status || 'Planning';
       setSelectedProject({
         id: project.id || '',
         name: project.name || 'Unnamed Project',
         description: project.description || '',
-        status: 'Planning',
-        priority: 'Medium',
+        status: fallbackStatus,
+        priority: project.priority || 'Medium',
         progress: project.progress || 0,
         startDate: project.startDate || new Date().toISOString().split('T')[0],
         endDate: project.endDate || new Date().toISOString().split('T')[0],
