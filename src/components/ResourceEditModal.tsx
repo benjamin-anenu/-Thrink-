@@ -26,6 +26,7 @@ interface ResourceEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   resource: Resource | null;
+  onResourceUpdated?: () => void;
 }
 
 const EMPLOYMENT_TYPES = [
@@ -60,7 +61,8 @@ const LOCATIONS = [
 const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
   isOpen,
   onClose,
-  resource
+  resource,
+  onResourceUpdated
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -124,6 +126,7 @@ const ResourceEditModal: React.FC<ResourceEditModalProps> = ({
       const success = await updateResource(resource.id, updatedData);
       if (success) {
         toast.success('Resource updated successfully');
+        onResourceUpdated?.(); // Call the refresh callback
         onClose();
       }
     } catch (error) {

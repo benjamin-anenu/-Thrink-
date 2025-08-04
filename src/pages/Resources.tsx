@@ -23,7 +23,7 @@ const Resources: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'resources'>('dashboard');
 
-  const { resources, loading, utilizationMetrics } = useEnhancedResources();
+  const { resources, loading, utilizationMetrics, refreshResources } = useEnhancedResources();
 
   const handleShowResourceForm = () => {
     setIsWizardOpen(true);
@@ -51,6 +51,16 @@ const Resources: React.FC = () => {
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedResourceForEdit(null);
+  };
+
+  const handleResourceUpdated = () => {
+    // Refresh the enhanced resources data
+    refreshResources();
+    // Close details modal to force refresh when reopened
+    if (isDetailsModalOpen) {
+      setIsDetailsModalOpen(false);
+      setSelectedResource(null);
+    }
   };
 
   // Resources are already properly formatted from useEnhancedResources
@@ -136,6 +146,7 @@ const Resources: React.FC = () => {
             isOpen={isEditModalOpen}
             onClose={handleCloseEditModal}
             resource={selectedResourceForEdit}
+            onResourceUpdated={handleResourceUpdated}
           />
         )}
       </div>
