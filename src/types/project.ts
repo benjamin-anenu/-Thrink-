@@ -31,6 +31,8 @@ export interface ProjectData {
   health: ProjectHealth;
   startDate: string;
   endDate: string;
+  computed_start_date?: string; // Added computed dates from database
+  computed_end_date?: string;   // Added computed dates from database
   teamSize: number;
   budget: string;
   tags: string[];

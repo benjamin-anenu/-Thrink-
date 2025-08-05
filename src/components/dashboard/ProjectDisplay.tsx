@@ -255,16 +255,18 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                 )}
               </div>
 
-              {/* Timeline */}
+              {/* Timeline - Use computed dates for projects with phases */}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>
-                  {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'} - 
-                  {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                  {project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() : 
+                   project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'} - 
+                  {project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() : 
+                   project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
                 </span>
               </div>
 
-              {/* Health Indicator */}
+              {/* Health Indicator - Fixed logic */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
@@ -272,7 +274,10 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                     project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
                   <span className="text-sm text-muted-foreground">
-                    Health: {project.health?.score || 100}%
+                    Health: {project.health?.score || 50}% ({
+                      project.health?.status === 'green' ? 'On Track' :
+                      project.health?.status === 'yellow' ? 'Caution' : 'At Risk'
+                    })
                   </span>
                 </div>
               </div>

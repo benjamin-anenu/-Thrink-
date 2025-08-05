@@ -49,7 +49,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getDaysRemaining = () => {
-    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : new Date(project.endDate);
+    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : 
+                   (project.endDate ? new Date(project.endDate) : new Date());
     const today = new Date();
     const diffTime = endDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -57,8 +58,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getProjectDuration = () => {
-    const startDate = projectDates.startDate ? new Date(projectDates.startDate) : new Date(project.startDate);
-    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : new Date(project.endDate);
+    const startDate = projectDates.startDate ? new Date(projectDates.startDate) : 
+                     (project.startDate ? new Date(project.startDate) : new Date());
+    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : 
+                   (project.endDate ? new Date(project.endDate) : new Date());
     const diffTime = endDate.getTime() - startDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -149,8 +152,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <p className="text-sm text-muted-foreground">Timeline</p>
                 <p className="font-semibold">{getProjectDuration()} days</p>
                 <p className="text-xs text-muted-foreground">
-                  {projectDates.startDate ? new Date(projectDates.startDate).toLocaleDateString() : 'Not set'} - 
-                  {projectDates.endDate ? new Date(projectDates.endDate).toLocaleDateString() : 'Not set'}
+                  {projectDates.startDate ? new Date(projectDates.startDate).toLocaleDateString() : 
+                   (project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set')} - 
+                  {projectDates.endDate ? new Date(projectDates.endDate).toLocaleDateString() : 
+                   (project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set')}
                 </p>
               </div>
             </div>
@@ -284,21 +289,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <div className="h-3 bg-green-500 rounded mb-2"></div>
                 <p className="text-sm font-medium">On Track</p>
                 <p className="text-xs text-muted-foreground">
-                  {projectStats.totalTasks > 0 ? Math.round((projectStats.completedTasks / projectStats.totalTasks) * 100) : 0}% Tasks
+                  {Math.round((projectStats.completedTasks / Math.max(projectStats.totalTasks, 1)) * 100)}% of Tasks
                 </p>
               </div>
               <div className="text-center p-3 border rounded-lg">
                 <div className="h-3 bg-yellow-500 rounded mb-2"></div>
-                <p className="text-sm font-medium">At Risk</p>
+                <p className="text-sm font-medium">In Progress</p>
                 <p className="text-xs text-muted-foreground">
-                  {projectStats.totalTasks > 0 ? Math.round(((projectStats.totalTasks - projectStats.completedTasks - projectStats.delayedTasks) / projectStats.totalTasks) * 100) : 0}% Tasks
+                  {Math.round((projectStats.inProgressTasks / Math.max(projectStats.totalTasks, 1)) * 100)}% of Tasks
                 </p>
               </div>
               <div className="text-center p-3 border rounded-lg">
                 <div className="h-3 bg-red-500 rounded mb-2"></div>
-                <p className="text-sm font-medium">Critical</p>
+                <p className="text-sm font-medium">Delayed</p>
                 <p className="text-xs text-muted-foreground">
-                  {projectStats.totalTasks > 0 ? Math.round((projectStats.delayedTasks / projectStats.totalTasks) * 100) : 0}% Tasks
+                  {Math.round((projectStats.delayedTasks / Math.max(projectStats.totalTasks, 1)) * 100)}% of Tasks
                 </p>
               </div>
             </div>
