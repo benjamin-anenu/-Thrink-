@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import ResourceCard from '@/components/ResourceCard';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 
 interface ResourceGridProps {
   resources: Resource[];

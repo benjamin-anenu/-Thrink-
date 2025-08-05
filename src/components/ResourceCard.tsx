@@ -20,7 +20,7 @@ import {
   Eye
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 
 interface ResourceCardProps {
   resource: Resource;
@@ -47,27 +47,37 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
     location,
     skills,
     availability,
-    currentProjects,
-    hourlyRate,
+    hourly_rate,
     utilization,
     status
   } = resource;
 
-  const getStatusValue = (status: string): 'active' | 'inactive' | 'pending' => {
-    if (status.toLowerCase() === 'available') return 'active';
-    if (status.toLowerCase() === 'busy') return 'pending';
+  // For backwards compatibility, create derived values
+  const currentProjects: string[] = [];
+  const hourlyRate = hourly_rate || 0;
+
+  const getStatusValue = (status?: string): 'active' | 'inactive' | 'pending' => {
+    if (!status) return 'inactive';
+    if (status.toLowerCase() === 'available' || status.toLowerCase() === 'active') return 'active';
+    if (status.toLowerCase() === 'busy' || status.toLowerCase() === 'pending') return 'pending';
     return 'inactive';
   };
 
   const getPerformanceIndicator = () => {
-    if (utilization >= 90) {
+    const utilizationNum = utilization || 0;
+    if (utilizationNum >= 90) {
       return <TrendingUp className="h-4 w-4 text-red-500" />;
-    } else if (utilization >= 70) {
+    } else if (utilizationNum >= 70) {
       return <TrendingUp className="h-4 w-4 text-green-500" />;
     } else {
       return <TrendingDown className="h-4 w-4 text-yellow-500" />;
     }
   };
+
+  // Convert availability to number for Progress component
+  const availabilityPercent = typeof availability === 'string' ? 
+    parseInt(availability.replace('%', '')) || 0 : 
+    availability || 0;
 
   const getInitials = (name: string) => {
     if (!name) return 'N/A';
@@ -125,15 +135,15 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
           </div>
           <div className="flex items-center space-x-2">
             {getPerformanceIndicator()}
-            <p className="text-sm text-muted-foreground">Utilization: {utilization}%</p>
+            <p className="text-sm text-muted-foreground">Utilization: {utilization || 0}%</p>
           </div>
         </div>
 
         <div>
           <p className="text-sm font-medium mb-2">Availability</p>
           <div className="flex items-center space-x-2">
-            <Progress value={availability} />
-            <p className="text-sm text-muted-foreground">{availability}%</p>
+            <Progress value={availabilityPercent} />
+            <p className="text-sm text-muted-foreground">{availability}</p>
           </div>
         </div>
 

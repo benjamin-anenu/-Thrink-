@@ -1,10 +1,15 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useEnhancedResources } from '@/hooks/useEnhancedResources';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Resource } from '@/types/resource';
 
-const ResourceStats = () => {
-  const { resources } = useEnhancedResources();
+interface ResourceStatsProps {
+  resources: Resource[];
+  loading: boolean;
+}
+
+const ResourceStats = ({ resources, loading }: ResourceStatsProps) => {
 
   // Calculate real metrics from actual database data
   const totalResources = resources.length;
@@ -17,6 +22,21 @@ const ResourceStats = () => {
   
   // Resources with hourly rates defined (indicates they're billable/configured)
   const billableResources = resources.filter(r => r.hourly_rate && r.hourly_rate > 0).length;
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardContent className="pt-6">
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-4 w-24" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

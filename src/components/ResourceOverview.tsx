@@ -5,15 +5,16 @@ import { Search } from 'lucide-react';
 import ResourceStats from '@/components/ResourceStats';
 import ResourceGrid from '@/components/ResourceGrid';
 import ResourceFilters from '@/components/ResourceFilters';
-import { Resource } from '@/contexts/ResourceContext';
+import { Resource } from '@/types/resource';
 
 interface ResourceOverviewProps {
   resources: Resource[];
+  loading?: boolean;
   onViewDetails: (resource: Resource) => void;
   onShowResourceForm: () => void;
 }
 
-const ResourceOverview = ({ resources, onViewDetails, onShowResourceForm }: ResourceOverviewProps) => {
+const ResourceOverview = ({ resources, loading = false, onViewDetails, onShowResourceForm }: ResourceOverviewProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -57,7 +58,7 @@ const ResourceOverview = ({ resources, onViewDetails, onShowResourceForm }: Reso
       )}
 
       {/* Resource Summary */}
-      <ResourceStats />
+      <ResourceStats resources={resources} loading={loading} />
 
       {/* Resources Grid */}
       <ResourceGrid
