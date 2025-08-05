@@ -15,15 +15,16 @@ export const ZoomControl: React.FC = () => {
     const root = document.getElementById('root');
     if (root) {
       const scale = currentZoom;
-      const compensationFactor = 100 / (scale * 100);
       
       root.style.transform = `scale(${scale})`;
-      root.style.transformOrigin = 'top left';
-      root.style.width = `${compensationFactor * 100}%`;
-      root.style.height = `${compensationFactor * 100}%`;
-      root.style.maxWidth = `${1280 * compensationFactor}px`;
+      root.style.transformOrigin = 'center';
       root.style.margin = '0 auto';
-      root.style.overflow = 'auto';
+      
+      // Clean up any conflicting styles
+      root.style.width = '';
+      root.style.height = '';
+      root.style.maxWidth = '';
+      root.style.overflow = '';
     }
   }, [currentZoom]);
 
