@@ -1,11 +1,7 @@
 
-/* Global 90% scaling applied to entire application */
+/* Root container - zoom controlled by ZoomControl component */
 #root {
-  transform: scale(0.9);
-  transform-origin: top left;
-  width: 111.11%; /* Compensate for 90% scaling (100/90 = 111.11%) */
-  height: 111.11%;
-  max-width: 1422px; /* Adjusted from 1280px to account for scaling */
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0;
   text-align: center;

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const ZOOM_LEVELS = [25, 50, 75, 90, 100, 110, 125, 150, 175, 200];
-const DEFAULT_ZOOM = 100;
+const DEFAULT_ZOOM = 90;
 
 export function ZoomControl() {
   const [zoomLevel, setZoomLevel] = useState(DEFAULT_ZOOM);
@@ -25,11 +25,15 @@ export function ZoomControl() {
   const applyZoom = (zoom: number) => {
     const rootElement = document.getElementById('root');
     if (rootElement) {
-      rootElement.style.transform = `scale(${zoom / 100})`;
+      const scale = zoom / 100;
+      rootElement.style.transform = `scale(${scale})`;
       rootElement.style.transformOrigin = 'top left';
-      rootElement.style.width = `${10000 / zoom}%`;
-      rootElement.style.height = `${10000 / zoom}%`;
+      rootElement.style.width = `${100 / scale}%`;
+      rootElement.style.height = `${100 / scale}%`;
       rootElement.style.transition = 'transform 0.2s ease-in-out';
+      
+      // Handle overflow for the body to ensure proper scrolling
+      document.body.style.overflow = scale > 1 ? 'auto' : 'auto';
     }
   };
 
