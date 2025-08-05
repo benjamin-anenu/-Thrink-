@@ -215,7 +215,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) throw error;
 
       // Transform the data to match our ProjectData interface
-      const transformedProjects: ProjectData[] = (projectsData || []).map(project => ({
+      const transformedProjects: ProjectData[] = (projectsData || []).map(project => {
+        console.log(`[ProjectContext] Raw project data for ${project.name}:`, {
+          computed_start_date: project.computed_start_date,
+          computed_end_date: project.computed_end_date,
+          start_date: project.start_date,
+          end_date: project.end_date
+        });
+        
+        return {
         id: project.id,
         name: project.name,
         description: project.description || '',
@@ -228,6 +236,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
         startDate: project.start_date || '',
         endDate: project.end_date || '',
+        computed_start_date: project.computed_start_date,
+        computed_end_date: project.computed_end_date,
         teamSize: project.team_size || 0,
         budget: project.budget || '',
         tags: project.tags || [],
@@ -250,7 +260,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         aiProcessingStatus: (project.ai_processing_status as 'pending' | 'processing' | 'completed' | 'failed') || 'pending',
         aiProcessingStartedAt: project.ai_processing_started_at,
         aiProcessingCompletedAt: project.ai_processing_completed_at
-      }));
+        };
+      });
 
       setAllProjects(transformedProjects);
       

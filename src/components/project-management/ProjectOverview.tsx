@@ -14,6 +14,16 @@ interface ProjectOverviewProps {
 }
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
+  // Debug logging to see what project data we're receiving
+  useEffect(() => {
+    console.log('[ProjectOverview] Received project data:', {
+      name: project.name,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      computed_start_date: project.computed_start_date,
+      computed_end_date: project.computed_end_date
+    });
+  }, [project]);
   const [realTimeProgress, setRealTimeProgress] = useState<number>(0);
   const [projectDates, setProjectDates] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [healthData, setHealthData] = useState(project.health);

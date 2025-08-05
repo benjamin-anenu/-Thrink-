@@ -34,13 +34,23 @@ interface ProjectDisplayProps {
   deletingProject: string | null;
 }
 
-const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
-  projects,
-  onViewDetails,
-  onManageProject,
-  onDeleteProject,
-  deletingProject
-}) => {
+  const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
+    projects,
+    onViewDetails,
+    onManageProject,
+    onDeleteProject,
+    deletingProject
+  }) => {
+    // Debug logging to see what data we're receiving
+    useEffect(() => {
+      console.log('[ProjectDisplay] Received projects:', projects.map(p => ({
+        name: p.name,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        computed_start_date: p.computed_start_date,
+        computed_end_date: p.computed_end_date
+      })));
+    }, [projects]);
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
   const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
   const [phaseDetails, setPhaseDetails] = useState<Record<string, any[]>>({});
@@ -259,10 +269,23 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>
-                  {project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() : 
-                   project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'} - 
-                  {project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() : 
-                   project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                  {(() => {
+                    const startDisplay = project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() : 
+                                        project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set';
+                    const endDisplay = project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() : 
+                                      project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set';
+                    
+                    console.log(`[ProjectDisplay] ${project.name} date calculation:`, {
+                      computed_start_date: project.computed_start_date,
+                      computed_end_date: project.computed_end_date,
+                      startDate: project.startDate,
+                      endDate: project.endDate,
+                      displayStart: startDisplay,
+                      displayEnd: endDisplay
+                    });
+                    
+                    return `${startDisplay} - ${endDisplay}`;
+                  })()}
                 </span>
               </div>
 
