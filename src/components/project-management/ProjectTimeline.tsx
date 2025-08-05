@@ -6,10 +6,12 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useMilestones } from '@/hooks/useMilestones';
+import { usePhaseManagement } from '@/hooks/usePhaseManagement';
 import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import MilestoneCard from './timeline/MilestoneCard';
 import CriticalPathAnalysis from './timeline/CriticalPathAnalysis';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ProjectTimelineProps {
   projectId: string;
@@ -18,6 +20,7 @@ interface ProjectTimelineProps {
 const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   const { tasks, loading: tasksLoading } = useTaskManagement(projectId);
   const { milestones, loading: milestonesLoading } = useMilestones(projectId);
+  const { phases, loading: phasesLoading } = usePhaseManagement(projectId);
   const [realTimeData, setRealTimeData] = useState<any>(null);
 
   // Real-time data subscription
@@ -57,7 +60,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
     };
   }, [projectId]);
 
-  if (tasksLoading || milestonesLoading) {
+  if (tasksLoading || milestonesLoading || phasesLoading) {
     return (
       <div className="p-6 text-center text-muted-foreground">
         Loading timeline data...
@@ -65,11 +68,24 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
     );
   }
 
+  // Calculate milestone progress
+  const getMilestoneProgress = (milestone: any) => {
+    const milestoneTasks = tasks.filter(task => task.milestoneId === milestone.id);
+    if (milestoneTasks.length === 0) return 0;
+    
+    const completedMilestoneTasks = milestoneTasks.filter(task => task.status === 'Completed').length;
+    return Math.round((completedMilestoneTasks / milestoneTasks.length) * 100);
+  };
+
   // Calculate real-time metrics
   const today = new Date();
   const completedTasks = tasks.filter(task => task.status === 'Completed').length;
   const totalTasks = tasks.length;
-  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  // Calculate phase-based overall progress (more accurate than simple task completion ratio)
+  const overallProgress = phases.length > 0 
+    ? Math.round(phases.reduce((sum, phase) => sum + (phase.progress || 0), 0) / phases.length)
+    : totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Calculate overdue items
   const overdueTasks = tasks.filter(task => 
@@ -77,14 +93,20 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
     isAfter(today, new Date(task.endDate))
   );
 
-  const overdueMilestones = milestones.filter(milestone => 
-    milestone.status !== 'completed' && 
-    isAfter(today, new Date(milestone.date))
-  );
+  const overdueMilestones = milestones.filter(milestone => {
+    const progress = getMilestoneProgress(milestone);
+    const status = progress === 100 ? 'completed' : milestone.status;
+    return status !== 'completed' && 
+           isAfter(today, new Date(milestone.date));
+  });
 
   // Find next milestone
   const upcomingMilestones = milestones
-    .filter(m => m.status !== 'completed' && !isAfter(today, new Date(m.date)))
+    .filter(m => {
+      const progress = getMilestoneProgress(m);
+      const status = progress === 100 ? 'completed' : m.status;
+      return status !== 'completed' && !isAfter(today, new Date(m.date));
+    })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const nextMilestone = upcomingMilestones[0];
@@ -100,14 +122,6 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   if (healthScore < 60) healthStatus = 'red';
   else if (healthScore < 80) healthStatus = 'yellow';
 
-  // Calculate milestone progress
-  const getMilestoneProgress = (milestone: any) => {
-    const milestoneTasks = tasks.filter(task => task.milestoneId === milestone.id);
-    if (milestoneTasks.length === 0) return 0;
-    
-    const completedMilestoneTasks = milestoneTasks.filter(task => task.status === 'Completed').length;
-    return Math.round((completedMilestoneTasks / milestoneTasks.length) * 100);
-  };
 
   // Calculate variance metrics
   const taskVariances = tasks.map(task => {
@@ -153,7 +167,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <AlertTriangle className={`h-8 w-8 ${overdueTasks.length > 0 ? 'text-red-500' : 'text-green-500'}`} />
+              <AlertTriangle className={`h-8 w-8 ${(overdueTasks.length + overdueMilestones.length) > 0 ? 'text-red-500' : 'text-green-500'}`} />
               <div>
                 <p className="text-sm text-muted-foreground">Overdue Items</p>
                 <p className="font-semibold">{overdueTasks.length + overdueMilestones.length}</p>
@@ -174,7 +188,22 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               }`} />
               <div>
                 <p className="text-sm text-muted-foreground">Project Health</p>
-                <p className="font-semibold">{healthScore}/100</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="font-semibold cursor-help">{healthScore}/100</p>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-sm">Health score calculation:</p>
+                      <p className="text-xs mt-1">
+                        100 - (overdue tasks × 10) - (overdue milestones × 15) - (critical tasks × 5)
+                      </p>
+                      <p className="text-xs mt-1 opacity-75">
+                        Current: 100 - ({overdueTasks.length} × 10) - ({overdueMilestones.length} × 15) - ({criticalTasks} × 5) = {healthScore}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <Badge variant={healthStatus === 'red' ? 'destructive' : healthStatus === 'yellow' ? 'secondary' : 'default'}>
                   {healthStatus === 'red' ? 'At Risk' : healthStatus === 'yellow' ? 'Caution' : 'Healthy'}
                 </Badge>
@@ -228,11 +257,18 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Milestones Completed</span>
                 <span className="font-medium">
-                  {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
+                  {milestones.filter(m => {
+                    const progress = getMilestoneProgress(m);
+                    return progress === 100 || m.status === 'completed';
+                  }).length}/{milestones.length}
                 </span>
               </div>
               <Progress 
-                value={milestones.length > 0 ? (milestones.filter(m => m.status === 'completed').length / milestones.length) * 100 : 0}
+                value={milestones.length > 0 ? 
+                  (milestones.filter(m => {
+                    const progress = getMilestoneProgress(m);
+                    return progress === 100 || m.status === 'completed';
+                  }).length / milestones.length) * 100 : 0}
                 className="h-2"
               />
             </div>
@@ -272,9 +308,9 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <h4 className="font-semibold mb-2">Next Milestone</h4>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">{nextMilestone.name}</span>
-                <span className="font-medium">
-                  {Math.max(0, differenceInDays(new Date(nextMilestone.date), today))} days remaining
-                </span>
+                 <span className="font-medium">
+                   {Math.max(0, differenceInDays(new Date(nextMilestone.date), today))} days remaining
+                 </span>
               </div>
             </div>
           )}
