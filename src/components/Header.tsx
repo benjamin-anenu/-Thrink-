@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Logo from './Logo';
 import WorkspaceSelector from './WorkspaceSelector';
 import { UserButton } from './auth/UserButton';
-import { ZoomControl } from '@/components/ui/zoom-control';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from './notifications/NotificationModal';
 import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -222,7 +222,7 @@ const Header = () => {
                 <UserButton />
               </>
             )}
-            <ZoomControl />
+            <ThemeToggle />
           </div>
         </div>
         
@@ -341,8 +341,8 @@ const Header = () => {
                 )}
                 
                 <div className="flex items-center justify-between px-3 py-2 pt-2 border-t border-border/50">
-                  <span className="text-sm text-muted-foreground">Zoom</span>
-                  <ZoomControl />
+                  <span className="text-sm text-muted-foreground">Theme</span>
+                  <ThemeToggle />
                 </div>
               </div>
             </div>
