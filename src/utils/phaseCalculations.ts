@@ -478,28 +478,54 @@ export const calculateRealTimePhaseProgress = async (phaseId: string): Promise<n
   }
 };
 
-// Real-time project progress calculation (FIXED VERSION)
+// Real-time project progress calculation (PHASE-BASED HIERARCHY)
 export const calculateRealTimeProjectProgress = async (projectId: string): Promise<number> => {
   try {
-    console.log(`Calculating progress for project: ${projectId}`);
+    console.log(`[PROJECT PROGRESS] Calculating progress for project: ${projectId}`);
     
-    // Always calculate from all tasks in project for consistency
+    // First try to calculate from phases (proper hierarchy)
+    const { data: phases, error: phasesError } = await supabase
+      .from('phases')
+      .select('id, progress')
+      .eq('project_id', projectId);
+
+    if (!phasesError && phases && phases.length > 0) {
+      console.log(`[PROJECT PROGRESS] Found ${phases.length} phases, calculating from phase hierarchy`);
+      
+      // Calculate progress for each phase real-time
+      const phaseProgresses = await Promise.all(
+        phases.map(async (phase) => {
+          const phaseProgress = await calculateRealTimePhaseProgress(phase.id);
+          console.log(`[PROJECT PROGRESS] Phase ${phase.id} progress: ${phaseProgress}%`);
+          return phaseProgress;
+        })
+      );
+
+      const totalProgress = phaseProgresses.reduce((sum, progress) => sum + progress, 0);
+      const avgProgress = Math.round(totalProgress / phaseProgresses.length);
+      console.log(`[PROJECT PROGRESS] Phase-based calculation result: ${avgProgress}%`);
+      
+      return avgProgress;
+    }
+
+    // Fallback: calculate directly from tasks (for projects without phases)
+    console.log(`[PROJECT PROGRESS] No phases found, falling back to task-based calculation`);
     const { data: tasks, error } = await supabase
       .from('project_tasks')
       .select('progress, status')
       .eq('project_id', projectId);
 
     if (error) {
-      console.error('Error fetching tasks:', error);
+      console.error('[PROJECT PROGRESS] Error fetching tasks:', error);
       return 0;
     }
 
     if (!tasks || tasks.length === 0) {
-      console.log('No tasks found for project');
+      console.log('[PROJECT PROGRESS] No tasks found for project');
       return 0;
     }
 
-    console.log(`Found ${tasks.length} tasks for project`);
+    console.log(`[PROJECT PROGRESS] Found ${tasks.length} tasks for project`);
 
     const totalProgress = tasks.reduce((sum, task) => {
       if (task.status === 'Completed') return sum + 100;
@@ -507,11 +533,11 @@ export const calculateRealTimeProjectProgress = async (projectId: string): Promi
     }, 0);
 
     const avgProgress = Math.round(totalProgress / tasks.length);
-    console.log(`Calculated progress: ${avgProgress}% (total: ${totalProgress}, tasks: ${tasks.length})`);
+    console.log(`[PROJECT PROGRESS] Task-based calculation result: ${avgProgress}%`);
     
     return avgProgress;
   } catch (error) {
-    console.error('Error calculating project progress:', error);
+    console.error('[PROJECT PROGRESS] Error calculating project progress:', error);
     return 0;
   }
 };
