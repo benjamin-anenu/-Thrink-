@@ -56,7 +56,7 @@ const Header = () => {
   const isAuthPage = location.pathname === '/auth';
 
   return (
-    <div className="fixed top-0 w-full z-50 bg-background border-b border-border">
+    <div className="fixed top-0 left-0 right-0 w-full z-[100] bg-background border-b border-border backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
       <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
         <div className="flex items-center justify-between h-full">
           {/* Logo - Left */}
