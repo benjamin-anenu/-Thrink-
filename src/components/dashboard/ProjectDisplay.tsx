@@ -203,42 +203,42 @@ interface ProjectDisplayProps {
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         {projects.map((project) => {
           const stats = calculateProjectStats(project);
           
           return (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200">
-              <CardHeader className="pb-3">
+            <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200 animate-fade-in min-h-[120px]">
+              <CardHeader className="p-4 md:p-6 pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={getStatusVariant(stats.actualStatus)}>
+                  <div className="space-y-1 flex-1">
+                    <CardTitle className="text-base md:text-lg line-clamp-1 pr-2">{project.name}</CardTitle>
+                    <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                      <Badge variant={getStatusVariant(stats.actualStatus)} className="text-xs">
                         {stats.actualStatus}
                       </Badge>
-                      <Badge variant="outline" className={getPriorityColor(project.priority)}>
+                      <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-xs`}>
                         {project.priority}
                       </Badge>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2">
+                <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mt-2">
                   {project.description}
                 </p>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="p-4 md:p-6 pt-0 space-y-3 md:space-y-4">
                 {/* Progress with Tooltip */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span>Progress</span>
-                    <span>{stats.completionRate}%</span>
+                    <span className="font-medium">{stats.completionRate}%</span>
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="cursor-help">
-                        <Progress value={stats.completionRate} className="h-2" />
+                        <Progress value={stats.completionRate} className="h-2 w-full" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="border">
@@ -248,32 +248,32 @@ interface ProjectDisplayProps {
                 </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+              <div className="grid grid-cols-2 gap-2 md:gap-4 text-xs md:text-sm">
+                <div className="flex items-center gap-1 md:gap-2">
+                  <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-500" />
                   <span>{stats.completedTasks}/{stats.totalTasks} Tasks</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-500" />
+                <div className="flex items-center gap-1 md:gap-2">
+                  <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-500" />
                   <span>{stats.actualTeamSize} Members</span>
                 </div>
                 {stats.overdueTasks > 0 && (
-                  <div className="flex items-center gap-2 col-span-2">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <div className="flex items-center gap-1 md:gap-2 col-span-2">
+                    <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-500" />
                     <span className="text-red-500">{stats.overdueTasks} Overdue</span>
                   </div>
                 )}
               </div>
 
               {/* Timeline - Use computed dates first, then manual dates */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>
+              <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-muted-foreground">
+                <Calendar className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="truncate">
                   {(() => {
-                    const startDisplay = project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() : 
-                                        project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set';
-                    const endDisplay = project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() : 
-                                      project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set';
+                    const startDisplay = project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 
+                                        project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Not set';
+                    const endDisplay = project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 
+                                      project.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Not set';
                     
                     console.log(`[ProjectDisplay] ${project.name} date calculation:`, {
                       computed_start_date: project.computed_start_date,
@@ -291,12 +291,12 @@ interface ProjectDisplayProps {
 
               {/* Health Indicator - Fixed logic */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 md:gap-2">
                   <div className={`w-2 h-2 rounded-full ${
                     project.health?.status === 'green' ? 'bg-green-500' :
                     project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs md:text-sm text-muted-foreground">
                     Health: {project.health?.score || 50}% ({
                       project.health?.status === 'green' ? 'On Track' :
                       project.health?.status === 'yellow' ? 'Caution' : 'At Risk'
@@ -306,23 +306,23 @@ interface ProjectDisplayProps {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-col md:flex-row gap-2 pt-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onViewDetails(project)}
-                  className="flex-1"
+                  className="flex-1 min-h-[44px] md:min-h-[36px] text-xs md:text-sm"
                 >
-                  <Eye className="h-4 w-4 mr-2" />
+                  <Eye className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                   View Details
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onManageProject(project)}
-                  className="flex-1"
+                  className="flex-1 min-h-[44px] md:min-h-[36px] text-xs md:text-sm"
                 >
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Edit className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                   Manage
                 </Button>
                 <Button
@@ -330,8 +330,9 @@ interface ProjectDisplayProps {
                   size="sm"
                   onClick={() => onDeleteProject(project)}
                   disabled={deletingProject === project.id}
+                  className="md:flex-none min-h-[44px] md:min-h-[36px]"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
               </div>
             </CardContent>
