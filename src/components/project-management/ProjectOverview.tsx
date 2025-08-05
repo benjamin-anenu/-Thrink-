@@ -161,34 +161,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
         </CardContent>
       </Card>
 
-      {/* Project Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-blue-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Timeline</p>
-                <p className="font-semibold">{getProjectDuration()} days</p>
-                <p className="text-xs text-muted-foreground">
+      {/* Project Metrics - 2x2 grid on mobile */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <Card className="h-20 md:h-auto">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <Calendar className="h-5 md:h-8 w-5 md:w-8 text-blue-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm text-muted-foreground">Timeline</p>
+                <p className="text-sm md:text-base font-semibold truncate">{getProjectDuration()} days</p>
+                <p className="text-xs text-muted-foreground hidden md:block">
                   {(() => {
                     const startDisplay = project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() :
                                         (project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set');
                     const endDisplay = project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() :
                                       (project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set');
-                    
-                    console.log(`[ProjectOverview] ${project.name} date display logic:`, {
-                      computed_start_date: project.computed_start_date,
-                      computed_end_date: project.computed_end_date,
-                      computed_start_exists: !!project.computed_start_date,
-                      computed_end_exists: !!project.computed_end_date,
-                      manual_start: project.startDate,
-                      manual_end: project.endDate,
-                      displaying_start: startDisplay,
-                      displaying_end: endDisplay,
-                      showing_computed: !!project.computed_start_date && !!project.computed_end_date
-                    });
-                    
                     return `${startDisplay} - ${endDisplay}`;
                   })()}
                 </p>
@@ -197,107 +184,107 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Clock className="h-8 w-8 text-orange-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Days Remaining</p>
-                <p className="font-semibold">{getDaysRemaining()} days</p>
-                <p className="text-xs text-muted-foreground">Until completion</p>
+        <Card className="h-20 md:h-auto">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <Clock className="h-5 md:h-8 w-5 md:w-8 text-orange-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm text-muted-foreground">Days Left</p>
+                <p className="text-sm md:text-base font-semibold truncate">{getDaysRemaining()} days</p>
+                <p className="text-xs text-muted-foreground hidden md:block">Until completion</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-green-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Team Size</p>
-                <p className="font-semibold">{projectStats.actualTeamSize} members</p>
-                <p className="text-xs text-muted-foreground">Active contributors</p>
+        <Card className="h-20 md:h-auto">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <Users className="h-5 md:h-8 w-5 md:w-8 text-green-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm text-muted-foreground">Team</p>
+                <p className="text-sm md:text-base font-semibold truncate">{projectStats.actualTeamSize} members</p>
+                <p className="text-xs text-muted-foreground hidden md:block">Active contributors</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-8 w-8 text-purple-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Budget</p>
-                <p className="font-semibold">{project.budget || 'Not set'}</p>
-                <p className="text-xs text-muted-foreground">Total allocated</p>
+        <Card className="h-20 md:h-auto">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <DollarSign className="h-5 md:h-8 w-5 md:w-8 text-purple-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm text-muted-foreground">Budget</p>
+                <p className="text-sm md:text-base font-semibold truncate">{project.budget || 'Not set'}</p>
+                <p className="text-xs text-muted-foreground hidden md:block">Total allocated</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Task & Milestone Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Task & Milestone Statistics - stacked on mobile */}
+      <div className="grid grid-cols-1 gap-4 md:gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Target className="h-5 w-5" />
+          <CardHeader className="pb-3 md:pb-6">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <Target className="h-4 md:h-5 w-4 md:w-5" />
               Task Statistics
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{projectStats.completedTasks}</p>
-                <p className="text-sm text-muted-foreground">Completed</p>
+          <CardContent className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-lg">
+                <p className="text-lg md:text-2xl font-bold text-green-600">{projectStats.completedTasks}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Completed</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">{projectStats.inProgressTasks}</p>
-                <p className="text-sm text-muted-foreground">In Progress</p>
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-lg">
+                <p className="text-lg md:text-2xl font-bold text-blue-600">{projectStats.inProgressTasks}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">In Progress</p>
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Tasks</span>
-              <span className="font-semibold">{projectStats.totalTasks}</span>
+              <span className="text-xs md:text-sm text-muted-foreground">Total Tasks</span>
+              <span className="text-sm md:text-base font-semibold">{projectStats.totalTasks}</span>
             </div>
             {projectStats.delayedTasks > 0 && (
               <div className="flex justify-between items-center text-orange-600">
-                <span className="text-sm flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4" />
+                <span className="text-xs md:text-sm flex items-center gap-1">
+                  <AlertTriangle className="h-3 md:h-4 w-3 md:w-4" />
                   Delayed Tasks
                 </span>
-                <span className="font-semibold">{projectStats.delayedTasks}</span>
+                <span className="text-sm md:text-base font-semibold">{projectStats.delayedTasks}</span>
               </div>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
+          <CardHeader className="pb-3 md:pb-6">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <MapPin className="h-4 md:h-5 w-4 md:w-5" />
               Milestone Progress
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{projectStats.completedMilestones}</p>
-                <p className="text-sm text-muted-foreground">Completed</p>
+          <CardContent className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-lg">
+                <p className="text-lg md:text-2xl font-bold text-green-600">{projectStats.completedMilestones}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Completed</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-600">{projectStats.totalMilestones - projectStats.completedMilestones}</p>
-                <p className="text-sm text-muted-foreground">Remaining</p>
+              <div className="text-center p-2 md:p-3 bg-muted/50 rounded-lg">
+                <p className="text-lg md:text-2xl font-bold text-gray-600">{projectStats.totalMilestones - projectStats.completedMilestones}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Remaining</p>
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Milestones</span>
-              <span className="font-semibold">{projectStats.totalMilestones}</span>
+              <span className="text-xs md:text-sm text-muted-foreground">Total Milestones</span>
+              <span className="text-sm md:text-base font-semibold">{projectStats.totalMilestones}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Completion Rate</span>
-              <span className="font-semibold">{projectStats.totalMilestones > 0 ? Math.round((projectStats.completedMilestones / projectStats.totalMilestones) * 100) : 0}%</span>
+              <span className="text-xs md:text-sm text-muted-foreground">Completion Rate</span>
+              <span className="text-sm md:text-base font-semibold">{projectStats.totalMilestones > 0 ? Math.round((projectStats.completedMilestones / projectStats.totalMilestones) * 100) : 0}%</span>
             </div>
           </CardContent>
         </Card>

@@ -543,3 +543,19 @@
   background: hsl(var(--muted));
   border-radius: 4px;
 }
+
+@layer utilities {
+  .border-style-none {
+    border-style: none !important;
+  }
+  
+  /* Hide scrollbar for mobile tabs while keeping scroll functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

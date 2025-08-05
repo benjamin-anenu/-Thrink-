@@ -196,12 +196,20 @@ const ProjectManagementContent: React.FC<{
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Project Header */}
         <div className="border-b pb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold">{project.name}</h1>
-              <p className="text-muted-foreground mt-1">{project.description}</p>
+          {/* Mobile-optimized header layout */}
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold">{project.name}</h1>
+              <p className="text-muted-foreground mt-1 text-sm md:text-base">{project.description}</p>
+              <div className="mt-2 md:hidden">
+                <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
+                  {project.status}
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* Desktop badge and actions */}
+            <div className="hidden md:flex items-center gap-2">
               <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
                 {project.status}
               </Badge>
@@ -219,24 +227,36 @@ const ProjectManagementContent: React.FC<{
                 Settings
               </Button>
             </div>
+            
+            {/* Mobile actions - full width buttons */}
+            <div className="flex flex-col gap-2 md:hidden">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsCalendarModalOpen(true)}
+                className="w-full h-11 flex items-center justify-center gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                Calendar View
+              </Button>
+              <Button variant="outline" size="sm" className="w-full h-11">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </div>
           </div>
 
-          {/* Project Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
+          {/* Project Quick Stats - 2x2 grid on mobile */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <Card className="h-20 md:h-auto">
+              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
                 <div className="flex items-center">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Start Date</p>
-                    <p className="text-xs text-muted-foreground">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="ml-2 min-w-0">
+                    <p className="text-xs md:text-sm font-medium truncate">Start Date</p>
+                    <p className="text-xs text-muted-foreground truncate">
                       {(() => {
                         const displayDate = project.computed_start_date || project.startDate;
-                        console.log(`[ProjectManagement] Start Date Card - using ${project.computed_start_date ? 'computed' : 'manual'} date:`, {
-                          computed_start_date: project.computed_start_date,
-                          manual_startDate: project.startDate,
-                          displaying: displayDate
-                        });
                         return formatDate(displayDate);
                       })()}
                     </p>
@@ -245,20 +265,15 @@ const ProjectManagementContent: React.FC<{
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="h-20 md:h-auto">
+              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
                 <div className="flex items-center">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">End Date</p>
-                    <p className="text-xs text-muted-foreground">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="ml-2 min-w-0">
+                    <p className="text-xs md:text-sm font-medium truncate">End Date</p>
+                    <p className="text-xs text-muted-foreground truncate">
                       {(() => {
                         const displayDate = project.computed_end_date || project.endDate;
-                        console.log(`[ProjectManagement] End Date Card - using ${project.computed_end_date ? 'computed' : 'manual'} date:`, {
-                          computed_end_date: project.computed_end_date,
-                          manual_endDate: project.endDate,
-                          displaying: displayDate
-                        });
                         return formatDate(displayDate);
                       })()}
                     </p>
@@ -267,25 +282,25 @@ const ProjectManagementContent: React.FC<{
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="h-20 md:h-auto">
+              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
                 <div className="flex items-center">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Team Size</p>
-                    <p className="text-xs text-muted-foreground">{teamSize} members</p>
+                  <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="ml-2 min-w-0">
+                    <p className="text-xs md:text-sm font-medium truncate">Team Size</p>
+                    <p className="text-xs text-muted-foreground truncate">{teamSize} members</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
+            <Card className="h-20 md:h-auto">
+              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
                 <div className="flex items-center">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Tasks</p>
-                    <p className="text-xs text-muted-foreground">{totalTasks} tasks</p>
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="ml-2 min-w-0">
+                    <p className="text-xs md:text-sm font-medium truncate">Tasks</p>
+                    <p className="text-xs text-muted-foreground truncate">{totalTasks} tasks</p>
                   </div>
                 </div>
               </CardContent>
@@ -298,17 +313,35 @@ const ProjectManagementContent: React.FC<{
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-9">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="phases">Phases</TabsTrigger>
-            <TabsTrigger value="plan">Project Plan</TabsTrigger>
-            <TabsTrigger value="resources">Resources</TabsTrigger>
-            <TabsTrigger value="issues" data-value="issues">Issues</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="rebaseline">Rebaseline History</TabsTrigger>
-          </TabsList>
+          {/* Mobile-optimized horizontally scrollable tabs */}
+          <div className="relative">
+            <TabsList className="hidden md:grid w-full grid-cols-9">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="phases">Phases</TabsTrigger>
+              <TabsTrigger value="plan">Project Plan</TabsTrigger>
+              <TabsTrigger value="resources">Resources</TabsTrigger>
+              <TabsTrigger value="issues" data-value="issues">Issues</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="rebaseline">Rebaseline History</TabsTrigger>
+            </TabsList>
+            
+            {/* Mobile scrollable tabs */}
+            <div className="md:hidden">
+              <TabsList className="flex w-full overflow-x-auto snap-x snap-mandatory no-scrollbar p-1">
+                <TabsTrigger value="overview" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Overview</TabsTrigger>
+                <TabsTrigger value="phases" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Phases</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Plan</TabsTrigger>
+                <TabsTrigger value="resources" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Resources</TabsTrigger>
+                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Issues</TabsTrigger>
+                <TabsTrigger value="timeline" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Timeline</TabsTrigger>
+                <TabsTrigger value="reports" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Reports</TabsTrigger>
+                <TabsTrigger value="documents" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Docs</TabsTrigger>
+                <TabsTrigger value="rebaseline" className="flex-shrink-0 snap-start h-11 px-4 text-sm">History</TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="space-y-4">
             <ProjectOverview project={project} />
@@ -319,13 +352,16 @@ const ProjectManagementContent: React.FC<{
           </TabsContent>
 
           <TabsContent value="plan" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Project Plan</h2>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+              <h2 className="text-xl md:text-2xl font-semibold">Project Plan</h2>
+              
+              {/* Mobile-optimized view toggle buttons */}
+              <div className="flex flex-col gap-2 md:flex-row md:gap-2">
                 <Button
                   variant={viewMode === 'gantt' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('gantt')}
+                  className="w-full md:w-auto h-11 md:h-9"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Table View
@@ -334,6 +370,7 @@ const ProjectManagementContent: React.FC<{
                   variant={viewMode === 'kanban' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('kanban')}
+                  className="w-full md:w-auto h-11 md:h-9"
                 >
                   <Kanban className="h-4 w-4 mr-2" />
                   Kanban Board
