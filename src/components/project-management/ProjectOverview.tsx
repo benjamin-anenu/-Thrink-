@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { ProjectData } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +7,38 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import HealthIndicator from '@/components/HealthIndicator';
 import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { calculateRealTimeProjectProgress, calculateProjectDatesFromPhases, calculateProjectHealth } from '@/utils/phaseCalculations';
 
 interface ProjectOverviewProps {
   project: ProjectData;
 }
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
+  const [realTimeProgress, setRealTimeProgress] = useState<number>(0);
+  const [projectDates, setProjectDates] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
+  const [healthData, setHealthData] = useState(project.health);
+
+  // Load real-time data
+  useEffect(() => {
+    const loadRealTimeData = async () => {
+      try {
+        const [progress, dates, health] = await Promise.all([
+          calculateRealTimeProjectProgress(project.id),
+          calculateProjectDatesFromPhases(project.id),
+          calculateProjectHealth(project.id)
+        ]);
+        
+        setRealTimeProgress(progress);
+        setProjectDates(dates);
+        setHealthData(health);
+      } catch (error) {
+        console.error('Error loading real-time project data:', error);
+      }
+    };
+
+    loadRealTimeData();
+  }, [project.id]);
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'High': return 'bg-red-500';
@@ -23,7 +49,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getDaysRemaining = () => {
-    const endDate = new Date(project.endDate);
+    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : new Date(project.endDate);
     const today = new Date();
     const diffTime = endDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -31,8 +57,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getProjectDuration = () => {
-    const startDate = new Date(project.startDate);
-    const endDate = new Date(project.endDate);
+    const startDate = projectDates.startDate ? new Date(projectDates.startDate) : new Date(project.startDate);
+    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : new Date(project.endDate);
     const diffTime = endDate.getTime() - startDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -75,7 +101,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
               <Badge variant="outline" className={`${getPriorityColor(project.priority)} text-white`}>
                 {project.priority} Priority
               </Badge>
-              <HealthIndicator health={project.health.status} score={project.health.score} />
+            <HealthIndicator health={healthData.status} score={healthData.score} />
             </div>
           </div>
         </CardHeader>
@@ -91,8 +117,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
             <div>
               <p className="text-sm font-medium mb-2">Overall Progress</p>
               <div className="flex items-center gap-2">
-                <Progress value={projectStats.averageProgress} className="flex-1" />
-                <span className="text-sm font-medium">{projectStats.averageProgress}%</span>
+                <Progress value={realTimeProgress} className="flex-1" />
+                <span className="text-sm font-medium">{realTimeProgress}%</span>
               </div>
             </div>
           </div>
@@ -123,7 +149,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <p className="text-sm text-muted-foreground">Timeline</p>
                 <p className="font-semibold">{getProjectDuration()} days</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                  {projectDates.startDate ? new Date(projectDates.startDate).toLocaleDateString() : 'Not set'} - 
+                  {projectDates.endDate ? new Date(projectDates.endDate).toLocaleDateString() : 'Not set'}
                 </p>
               </div>
             </div>
@@ -241,16 +268,16 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             Project Health Analysis
-            <HealthIndicator health={project.health.status} score={project.health.score} />
+            <HealthIndicator health={healthData.status} score={healthData.score} />
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm">Overall Health Score</span>
-              <span className="font-semibold">{project.health.score}/100</span>
+              <span className="font-semibold">{healthData.score}/100</span>
             </div>
-            <Progress value={project.health.score} className="h-2" />
+            <Progress value={healthData.score} className="h-2" />
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <div className="text-center p-3 border rounded-lg">
@@ -264,7 +291,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <div className="h-3 bg-yellow-500 rounded mb-2"></div>
                 <p className="text-sm font-medium">At Risk</p>
                 <p className="text-xs text-muted-foreground">
-                  {projectStats.totalTasks > 0 ? Math.round((projectStats.inProgressTasks / projectStats.totalTasks) * 100) : 0}% Tasks
+                  {projectStats.totalTasks > 0 ? Math.round(((projectStats.totalTasks - projectStats.completedTasks - projectStats.delayedTasks) / projectStats.totalTasks) * 100) : 0}% Tasks
                 </p>
               </div>
               <div className="text-center p-3 border rounded-lg">
@@ -289,39 +316,43 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
             {tasks.length > 0 ? (
               <>
                 {tasks
-                  .filter(task => task.status === 'Completed' || (task.progress && task.progress > 80))
-                  .slice(-5)
-                  .map((task, index) => (
+                  .filter(task => task.status === 'Completed')
+                  .sort((a, b) => new Date(b.endDate || '').getTime() - new Date(a.endDate || '').getTime())
+                  .slice(0, 3)
+                  .map((task) => (
                     <div key={task.id} className="flex items-start gap-3">
-                      <div className={`h-2 w-2 rounded-full mt-2 ${
-                        task.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'
-                      }`}></div>
+                      <div className="h-2 w-2 rounded-full mt-2 bg-green-500"></div>
                       <div>
-                        <p className="text-sm">
-                          {task.status === 'Completed' 
-                            ? `Task "${task.name}" completed`
-                            : `Task "${task.name}" is ${task.progress || 0}% complete`
-                          }
-                        </p>
+                        <p className="text-sm">Task "{task.name}" completed</p>
                         <p className="text-xs text-muted-foreground">
-                          {task.status === 'Completed' ? 'Completed' : 'Updated'} recently
+                          Completed on {task.endDate ? new Date(task.endDate).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
                     </div>
                   ))}
                 
+                {tasks
+                  .filter(task => task.status === 'In Progress' && (task.progress || 0) > 50)
+                  .sort((a, b) => (b.progress || 0) - (a.progress || 0))
+                  .slice(0, 2)
+                  .map((task) => (
+                    <div key={task.id} className="flex items-start gap-3">
+                      <div className="h-2 w-2 rounded-full mt-2 bg-blue-500"></div>
+                      <div>
+                        <p className="text-sm">Task "{task.name}" is {task.progress || 0}% complete</p>
+                        <p className="text-xs text-muted-foreground">In progress</p>
+                      </div>
+                    </div>
+                  ))}
+                
                 {milestones
-                  .filter(milestone => milestone.status === 'completed' || milestone.status === 'in-progress')
+                  .filter(milestone => milestone.status === 'completed')
                   .slice(-2)
                   .map((milestone) => (
                     <div key={milestone.id} className="flex items-start gap-3">
-                      <div className={`h-2 w-2 rounded-full mt-2 ${
-                        milestone.status === 'completed' ? 'bg-yellow-500' : 'bg-purple-500'
-                      }`}></div>
+                      <div className="h-2 w-2 rounded-full mt-2 bg-yellow-500"></div>
                       <div>
-                        <p className="text-sm">
-                          Milestone "{milestone.name}" {milestone.status === 'completed' ? 'achieved' : 'in progress'}
-                        </p>
+                        <p className="text-sm">Milestone "{milestone.name}" achieved</p>
                         <p className="text-xs text-muted-foreground">
                           Due: {new Date(milestone.date).toLocaleDateString()}
                         </p>

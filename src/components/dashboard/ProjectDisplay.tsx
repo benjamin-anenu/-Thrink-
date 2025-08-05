@@ -111,10 +111,9 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                         completedTasks > 0 ? 'Execution' as ProjectStatusType :
                         'Planning' as ProjectStatusType;
 
-    // Use real-time calculated progress if available
+    // Always use real-time calculated progress for consistency
     const completionRate = projectProgress[project.id] !== undefined ? 
-                          projectProgress[project.id] : 
-                          (totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0);
+                          projectProgress[project.id] : 0;
 
     // Calculate team size from unique assigned resources
     const assignedResourceIds = new Set<string>();

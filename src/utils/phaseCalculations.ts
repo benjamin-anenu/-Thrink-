@@ -73,7 +73,7 @@ export const calculatePhaseDates = async (phaseId: string): Promise<{ startDate:
   }
 };
 
-// Level 1: Task Health (base level)
+// Level 1: Task Health (base level) - FIXED VERSION
 export const calculateTaskHealth = (task: ProjectTask): HealthStatus => {
   const today = new Date();
   const endDate = task.endDate ? new Date(task.endDate) : null;
@@ -84,20 +84,38 @@ export const calculateTaskHealth = (task: ProjectTask): HealthStatus => {
     return 'on-track';
   }
   
-  // Critical: Overdue and incomplete (heavily penalized)
-  if (endDate && endDate < today && progress < 100) {
-    return 'critical';
+  // Not started tasks
+  if (task.status === 'Not Started' || progress === 0) {
+    if (endDate && endDate < today) return 'critical'; // Overdue
+    if (endDate) {
+      const daysUntilDue = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilDue <= 1) return 'at-risk'; // Due very soon
+      if (daysUntilDue <= 3) return 'caution'; // Due soon
+    }
+    return 'on-track';
   }
   
-  // At-risk: Due soon with low progress
-  if (endDate) {
-    const daysUntilDue = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntilDue <= 3 && progress < 80) return 'at-risk';
-    if (daysUntilDue <= 7 && progress < 50) return 'at-risk';
+  // In progress tasks
+  if (task.status === 'In Progress') {
+    // Critical: Overdue and incomplete
+    if (endDate && endDate < today) return 'critical';
+    
+    // At-risk: Due soon with low progress
+    if (endDate) {
+      const daysUntilDue = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilDue <= 3 && progress < 80) return 'at-risk';
+      if (daysUntilDue <= 7 && progress < 50) return 'at-risk';
+    }
+    
+    // Caution: Very low progress
+    if (progress < 25) return 'caution';
+    
+    return 'on-track';
   }
   
-  // Caution: Behind expected progress
-  if (progress < 25) return 'caution';
+  // On Hold or Cancelled tasks
+  if (task.status === 'On Hold') return 'caution';
+  if (task.status === 'Cancelled') return 'critical';
   
   return 'on-track';
 };
@@ -460,37 +478,38 @@ export const calculateRealTimePhaseProgress = async (phaseId: string): Promise<n
   }
 };
 
-// Real-time project progress calculation
+// Real-time project progress calculation (FIXED VERSION)
 export const calculateRealTimeProjectProgress = async (projectId: string): Promise<number> => {
   try {
-    const { data: phases } = await supabase
-      .from('phases')
-      .select('id')
+    console.log(`Calculating progress for project: ${projectId}`);
+    
+    // Always calculate from all tasks in project for consistency
+    const { data: tasks, error } = await supabase
+      .from('project_tasks')
+      .select('progress, status')
       .eq('project_id', projectId);
 
-    if (!phases || phases.length === 0) {
-      // Fallback: calculate from all tasks in project
-      const { data: tasks } = await supabase
-        .from('project_tasks')
-        .select('progress, status')
-        .eq('project_id', projectId);
-
-      if (!tasks || tasks.length === 0) return 0;
-
-      const totalProgress = tasks.reduce((sum, task) => {
-        if (task.status === 'Completed') return sum + 100;
-        return sum + (task.progress || 0);
-      }, 0);
-
-      return Math.round(totalProgress / tasks.length);
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      return 0;
     }
 
-    const phaseProgresses = await Promise.all(
-      phases.map(p => calculateRealTimePhaseProgress(p.id))
-    );
+    if (!tasks || tasks.length === 0) {
+      console.log('No tasks found for project');
+      return 0;
+    }
 
-    const totalProgress = phaseProgresses.reduce((sum, progress) => sum + progress, 0);
-    return Math.round(totalProgress / phaseProgresses.length);
+    console.log(`Found ${tasks.length} tasks for project`);
+
+    const totalProgress = tasks.reduce((sum, task) => {
+      if (task.status === 'Completed') return sum + 100;
+      return sum + (task.progress || 0);
+    }, 0);
+
+    const avgProgress = Math.round(totalProgress / tasks.length);
+    console.log(`Calculated progress: ${avgProgress}% (total: ${totalProgress}, tasks: ${tasks.length})`);
+    
+    return avgProgress;
   } catch (error) {
     console.error('Error calculating project progress:', error);
     return 0;
