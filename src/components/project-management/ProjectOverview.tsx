@@ -22,17 +22,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   useEffect(() => {
     const loadRealTimeData = async () => {
       try {
+        console.log(`[PROJECT OVERVIEW] Loading data for project: ${project.id}`);
+        
         const [progress, dates, health] = await Promise.all([
           calculateRealTimeProjectProgress(project.id),
           calculateProjectDatesFromPhases(project.id),
           calculateProjectHealth(project.id)
         ]);
         
+        console.log(`[PROJECT OVERVIEW] Results:`, { progress, dates, health });
+        
         setRealTimeProgress(progress);
         setProjectDates(dates);
         setHealthData(health);
       } catch (error) {
-        console.error('Error loading real-time project data:', error);
+        console.error('[PROJECT OVERVIEW] Error loading real-time project data:', error);
       }
     };
 

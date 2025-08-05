@@ -426,32 +426,54 @@ export const calculatePhaseDatesFromMilestones = async (phaseId: string): Promis
 // Calculate project dates from phase data
 export const calculateProjectDatesFromPhases = async (projectId: string): Promise<{ startDate: string | null, endDate: string | null }> => {
   try {
-    const { data: phases } = await supabase
+    console.log(`[PROJECT DATES] Calculating dates for project: ${projectId}`);
+    
+    const { data: phases, error } = await supabase
       .from('phases')
-      .select('id, computed_start_date, computed_end_date, start_date, end_date')
-      .eq('project_id', projectId);
+      .select('id, computed_start_date, computed_end_date, start_date, end_date, name')
+      .eq('project_id', projectId)
+      .order('sort_order');
+
+    console.log(`[PROJECT DATES] Phases query result:`, { phases, error });
+
+    if (error) {
+      console.error(`[PROJECT DATES] Error fetching phases:`, error);
+      return { startDate: null, endDate: null };
+    }
 
     if (!phases || phases.length === 0) {
+      console.log(`[PROJECT DATES] No phases found for project ${projectId}`);
       return { startDate: null, endDate: null };
     }
 
     // Use computed dates first, fall back to manual dates
     const allStartDates = phases
-      .map(phase => phase.computed_start_date || phase.start_date)
+      .map(phase => {
+        const startDate = phase.computed_start_date || phase.start_date;
+        console.log(`[PROJECT DATES] Phase "${phase.name}": computed_start=${phase.computed_start_date}, start=${phase.start_date}, using=${startDate}`);
+        return startDate;
+      })
       .filter(date => date != null)
       .sort();
 
     const allEndDates = phases
-      .map(phase => phase.computed_end_date || phase.end_date)
+      .map(phase => {
+        const endDate = phase.computed_end_date || phase.end_date;
+        console.log(`[PROJECT DATES] Phase "${phase.name}": computed_end=${phase.computed_end_date}, end=${phase.end_date}, using=${endDate}`);
+        return endDate;
+      })
       .filter(date => date != null)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-    return {
+    const result = {
       startDate: allStartDates[0] || null,
       endDate: allEndDates[0] || null
     };
+
+    console.log(`[PROJECT DATES] Final result:`, result);
+    return result;
   } catch (error) {
-    console.error('Error calculating project dates from phases:', error);
+    console.error('[PROJECT DATES] Error calculating project dates from phases:', error);
     return { startDate: null, endDate: null };
   }
 };
