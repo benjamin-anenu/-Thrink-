@@ -229,7 +229,17 @@ const ProjectManagementContent: React.FC<{
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">Start Date</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(project.startDate)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(() => {
+                        const displayDate = project.computed_start_date || project.startDate;
+                        console.log(`[ProjectManagement] Start Date Card - using ${project.computed_start_date ? 'computed' : 'manual'} date:`, {
+                          computed_start_date: project.computed_start_date,
+                          manual_startDate: project.startDate,
+                          displaying: displayDate
+                        });
+                        return formatDate(displayDate);
+                      })()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -241,7 +251,17 @@ const ProjectManagementContent: React.FC<{
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <div className="ml-2">
                     <p className="text-sm font-medium">End Date</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(project.endDate)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(() => {
+                        const displayDate = project.computed_end_date || project.endDate;
+                        console.log(`[ProjectManagement] End Date Card - using ${project.computed_end_date ? 'computed' : 'manual'} date:`, {
+                          computed_end_date: project.computed_end_date,
+                          manual_endDate: project.endDate,
+                          displaying: displayDate
+                        });
+                        return formatDate(displayDate);
+                      })()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
