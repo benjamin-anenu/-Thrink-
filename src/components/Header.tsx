@@ -56,8 +56,8 @@ const Header = () => {
   const isAuthPage = location.pathname === '/auth';
 
   return (
-    <div className="fixed top-0 w-full z-50 bg-background border-b border-border">
-      <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
+    <div className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur-md border-b border-border">
+      <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 md:h-16">
         <div className="flex items-center justify-between h-full">
           {/* Logo - Left */}
           <div className="flex-shrink-0">
@@ -66,13 +66,21 @@ const Header = () => {
             </Link>
           </div>
           
-          {/* Mobile menu button */}
-          <button 
-            className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            onClick={toggleMobileMenu}
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile right side - User icons + Menu button */}
+          <div className="md:hidden flex items-center gap-2">
+            {user && (
+              <>
+                <NotificationBell />
+                <UserButton />
+              </>
+            )}
+            <button 
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              onClick={toggleMobileMenu}
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
           
           {/* Desktop navigation - Center */}
           <nav className="hidden md:flex items-center">
@@ -228,7 +236,7 @@ const Header = () => {
         
         {/* Mobile navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border shadow-lg">
+          <div className="md:hidden absolute top-14 left-0 right-0 bg-background/95 backdrop-blur-md border-b border-border shadow-lg">
             <div className="p-4">
               <div className="flex flex-col gap-2">
                 {!isLandingPage && !isAuthPage && user && (
