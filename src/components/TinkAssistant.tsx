@@ -10,6 +10,7 @@ import { EnhancedLocalService } from '@/services/EnhancedLocalService';
 import ModelSelector from './ModelSelector';
 import FormattedMessage from './FormattedMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TinkMessage {
   id: string;
@@ -38,6 +39,7 @@ export const TinkAssistant: React.FC = () => {
   const [isDragStarted, setIsDragStarted] = useState(false);
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<TinkMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -480,6 +482,11 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
         </div>
       </div>
     );
+  }
+
+  // Don't render on mobile
+  if (isMobile) {
+    return null;
   }
 
   return (

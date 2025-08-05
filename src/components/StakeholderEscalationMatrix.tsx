@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Users, Shield } from 'lucide-react';
 import IntelligentEscalationMatrix from '@/components/IntelligentEscalationMatrix';
+import StakeholderEscalationMatrixMobile from '@/components/StakeholderEscalationMatrixMobile';
 import { useProjects } from '@/hooks/useProjects';
 import { useEscalationMatrix } from '@/hooks/useEscalationMatrix';
 import { useStakeholders } from '@/hooks/useStakeholders';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
 
 const StakeholderEscalationMatrix: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -17,6 +19,10 @@ const StakeholderEscalationMatrix: React.FC = () => {
   const { currentWorkspace } = useWorkspace();
   const { escalationMatrix, loading } = useEscalationMatrix(selectedProjectId);
   const { stakeholders } = useStakeholders(currentWorkspace?.id);
+  const { shouldShowDesktopRecommendation } = useMobileComplexity({
+    requiresInteractivity: true,
+    recommendDesktop: true
+  });
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
@@ -39,6 +45,10 @@ const StakeholderEscalationMatrix: React.FC = () => {
       return acc;
     }, {} as Record<string, number>)
   };
+
+  if (shouldShowDesktopRecommendation) {
+    return <StakeholderEscalationMatrixMobile />;
+  }
 
   return (
     <div className="space-y-6">

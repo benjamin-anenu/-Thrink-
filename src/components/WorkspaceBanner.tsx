@@ -19,16 +19,18 @@ const WorkspaceBanner = () => {
   
   return (
     <div className="fixed top-16 left-0 right-0 z-40 bg-muted/20 backdrop-blur-sm border-b border-border/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center py-2">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground font-medium">Workspace:</span>
-            <span className="font-semibold text-foreground">{currentWorkspace.name}</span>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div className="flex items-center justify-center py-1.5 md:py-2">
+          <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2 text-center md:text-left">
+            <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <span className="text-muted-foreground font-medium">Workspace:</span>
+              <span className="font-semibold text-foreground truncate max-w-[150px] md:max-w-none">{currentWorkspace.name}</span>
+            </div>
             {currentWorkspace.description && (
-              <>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-muted-foreground">{currentWorkspace.description}</span>
-              </>
+              <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                <span className="text-muted-foreground hidden md:inline">•</span>
+                <span className="text-muted-foreground truncate max-w-[200px] md:max-w-none">{currentWorkspace.description}</span>
+              </div>
             )}
           </div>
         </div>
