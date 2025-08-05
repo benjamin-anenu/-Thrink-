@@ -118,40 +118,53 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
 
   // Drag event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    console.log('Mouse down - starting drag');
     setIsDragging(true);
     setIsDragStarted(true);
-    const rect = e.currentTarget.getBoundingClientRect();
+    
+    // Calculate offset from mouse position to element position
     setDragStart({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
     });
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
     
-    const iconSize = 180;
-    const newX = Math.max(0, Math.min(window.innerWidth - iconSize, e.clientX - dragStart.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - iconSize, e.clientY - dragStart.y));
+    console.log('Mouse move - dragging');
+    const iconSize = 176; // Actual size for w-44 h-44 (176px)
+    const margin = 10; // Small margin from screen edges
+    const newX = Math.max(margin, Math.min(window.innerWidth - iconSize - margin, e.clientX - dragStart.x));
+    const newY = Math.max(margin, Math.min(window.innerHeight - iconSize - margin, e.clientY - dragStart.y));
     
     setPosition({ x: newX, y: newY });
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
-    // Reset drag started flag after a short delay
-    setTimeout(() => {
-      setIsDragStarted(false);
-    }, 100);
-    // Save position to localStorage for persistence
-    localStorage.setItem('chatIconPosition', JSON.stringify(position));
+    if (isDragging) {
+      console.log('Mouse up - ending drag');
+      setIsDragging(false);
+      
+      // Reset drag started flag after a short delay
+      setTimeout(() => {
+        setIsDragStarted(false);
+      }, 100);
+      
+      // Save position to localStorage for persistence
+      localStorage.setItem('chatIconPosition', JSON.stringify(position));
+    }
   };
 
   // Touch event handlers for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    console.log('Touch start - starting drag');
     const touch = e.touches[0];
     setIsDragging(true);
+    setIsDragStarted(true);
+    
+    // Calculate offset from touch position to element position
     setDragStart({
       x: touch.clientX - position.x,
       y: touch.clientY - position.y
@@ -160,18 +173,28 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
 
   const handleTouchMove = (e: TouchEvent) => {
     if (!isDragging) return;
+    e.preventDefault(); // Prevent scrolling during drag
     
+    console.log('Touch move - dragging');
     const touch = e.touches[0];
-    const iconSize = 180;
-    const newX = Math.max(0, Math.min(window.innerWidth - iconSize, touch.clientX - dragStart.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - iconSize, touch.clientY - dragStart.y));
+    const iconSize = 176; // Actual size for w-44 h-44 (176px)
+    const margin = 10; // Small margin from screen edges
+    const newX = Math.max(margin, Math.min(window.innerWidth - iconSize - margin, touch.clientX - dragStart.x));
+    const newY = Math.max(margin, Math.min(window.innerHeight - iconSize - margin, touch.clientY - dragStart.y));
     
     setPosition({ x: newX, y: newY });
   };
 
   const handleTouchEnd = () => {
     if (isDragging) {
+      console.log('Touch end - ending drag');
       setIsDragging(false);
+      
+      // Reset drag started flag after a short delay  
+      setTimeout(() => {
+        setIsDragStarted(false);
+      }, 100);
+      
       // Save position to localStorage for persistence
       localStorage.setItem('chatIconPosition', JSON.stringify(position));
     }
