@@ -26,7 +26,6 @@ import { TaskProvider } from "./contexts/TaskContext";
 import GlobalErrorHandler from "./components/GlobalErrorHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NetworkErrorHandler from "./components/NetworkErrorHandler";
-import { ZoomControl } from "./components/ui/zoom-control";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,7 +106,6 @@ const AppContent: React.FC = () => {
         } />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <ZoomControl />
       <Toaster />
     </BrowserRouter>
   );
