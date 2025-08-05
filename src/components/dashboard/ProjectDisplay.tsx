@@ -255,7 +255,7 @@ const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
                 )}
               </div>
 
-              {/* Timeline - Use computed dates for projects with phases */}
+              {/* Timeline - Use computed dates first, then manual dates */}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>

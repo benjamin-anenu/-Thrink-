@@ -53,7 +53,9 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getDaysRemaining = () => {
-    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : 
+    // Use computed project dates first, then phase-calculated dates, then manual dates
+    const endDate = project.computed_end_date ? new Date(project.computed_end_date) :
+                   projectDates.endDate ? new Date(projectDates.endDate) : 
                    (project.endDate ? new Date(project.endDate) : new Date());
     const today = new Date();
     const diffTime = endDate.getTime() - today.getTime();
@@ -62,9 +64,12 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getProjectDuration = () => {
-    const startDate = projectDates.startDate ? new Date(projectDates.startDate) : 
+    // Use computed project dates first, then phase-calculated dates, then manual dates
+    const startDate = project.computed_start_date ? new Date(project.computed_start_date) :
+                     projectDates.startDate ? new Date(projectDates.startDate) : 
                      (project.startDate ? new Date(project.startDate) : new Date());
-    const endDate = projectDates.endDate ? new Date(projectDates.endDate) : 
+    const endDate = project.computed_end_date ? new Date(project.computed_end_date) :
+                   projectDates.endDate ? new Date(projectDates.endDate) : 
                    (project.endDate ? new Date(project.endDate) : new Date());
     const diffTime = endDate.getTime() - startDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -156,9 +161,11 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <p className="text-sm text-muted-foreground">Timeline</p>
                 <p className="font-semibold">{getProjectDuration()} days</p>
                 <p className="text-xs text-muted-foreground">
-                  {projectDates.startDate ? new Date(projectDates.startDate).toLocaleDateString() : 
+                  {project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() :
+                   projectDates.startDate ? new Date(projectDates.startDate).toLocaleDateString() : 
                    (project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set')} - 
-                  {projectDates.endDate ? new Date(projectDates.endDate).toLocaleDateString() : 
+                  {project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() :
+                   projectDates.endDate ? new Date(projectDates.endDate).toLocaleDateString() : 
                    (project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set')}
                 </p>
               </div>
