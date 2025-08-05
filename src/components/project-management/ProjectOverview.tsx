@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import HealthIndicator from '@/components/HealthIndicator';
 import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
-import { calculateRealTimeProjectProgress, calculateProjectDatesFromPhases, calculateProjectHealth } from '@/utils/phaseCalculations';
+import { calculateRealTimeProjectProgress, calculateProjectHealth } from '@/utils/phaseCalculations';
 
 interface ProjectOverviewProps {
   project: ProjectData;
@@ -24,16 +24,19 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
       try {
         console.log(`[PROJECT OVERVIEW] Loading data for project: ${project.id}`);
         
-        const [progress, dates, health] = await Promise.all([
+        const [progress, health] = await Promise.all([
           calculateRealTimeProjectProgress(project.id),
-          calculateProjectDatesFromPhases(project.id),
           calculateProjectHealth(project.id)
         ]);
         
-        console.log(`[PROJECT OVERVIEW] Results:`, { progress, dates, health });
+        console.log(`[PROJECT OVERVIEW] Results:`, { progress, health });
         
         setRealTimeProgress(progress);
-        setProjectDates(dates);
+        // Use stored computed dates directly from project instead of recalculating
+        setProjectDates({
+          startDate: project.computed_start_date,
+          endDate: project.computed_end_date
+        });
         setHealthData(health);
       } catch (error) {
         console.error('[PROJECT OVERVIEW] Error loading real-time project data:', error);
@@ -53,9 +56,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getDaysRemaining = () => {
-    // Use computed project dates first, then phase-calculated dates, then manual dates
+    // Use computed project dates first, then manual dates as fallback
     const endDate = project.computed_end_date ? new Date(project.computed_end_date) :
-                   projectDates.endDate ? new Date(projectDates.endDate) : 
                    (project.endDate ? new Date(project.endDate) : new Date());
     const today = new Date();
     const diffTime = endDate.getTime() - today.getTime();
@@ -64,12 +66,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   };
 
   const getProjectDuration = () => {
-    // Use computed project dates first, then phase-calculated dates, then manual dates
+    // Use computed project dates first, then manual dates as fallback
     const startDate = project.computed_start_date ? new Date(project.computed_start_date) :
-                     projectDates.startDate ? new Date(projectDates.startDate) : 
                      (project.startDate ? new Date(project.startDate) : new Date());
     const endDate = project.computed_end_date ? new Date(project.computed_end_date) :
-                   projectDates.endDate ? new Date(projectDates.endDate) : 
                    (project.endDate ? new Date(project.endDate) : new Date());
     const diffTime = endDate.getTime() - startDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -162,10 +162,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <p className="font-semibold">{getProjectDuration()} days</p>
                 <p className="text-xs text-muted-foreground">
                   {project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() :
-                   projectDates.startDate ? new Date(projectDates.startDate).toLocaleDateString() : 
                    (project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set')} - 
                   {project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() :
-                   projectDates.endDate ? new Date(projectDates.endDate).toLocaleDateString() : 
                    (project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set')}
                 </p>
               </div>
