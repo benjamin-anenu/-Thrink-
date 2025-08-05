@@ -11,6 +11,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useIssueManagement } from '@/hooks/useIssueManagement';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
+import { DesktopRecommendation } from '@/components/ui/desktop-recommendation';
+import { MobileTaskList } from './MobileTaskList';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
 import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
@@ -29,6 +32,11 @@ interface ProjectGanttChartProps {
 
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwitchToIssueLog }) => {
   const { getProject } = useProject();
+  const { shouldShowDesktopRecommendation } = useMobileComplexity({
+    requiresInteractivity: true,
+    recommendDesktop: true
+  });
+  const [showMobileView, setShowMobileView] = useState(false);
   
   if (!projectId) {
     return <div>No project ID provided</div>;
@@ -405,6 +413,25 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
 
   if (loading) {
     return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
+  }
+
+  if (shouldShowDesktopRecommendation && !showMobileView) {
+    return (
+      <DesktopRecommendation
+        title="Project Plan - Better on Desktop"
+        description="The project plan table with all its features is optimized for desktop viewing. For a simplified mobile experience, you can view the task list below."
+        showSimplified={true}
+        onViewSimplified={() => setShowMobileView(true)}
+      >
+        <MobileTaskList 
+          tasks={filteredTasks} 
+          onTaskClick={(task) => {
+            // Handle task click - could open a modal or navigate
+            console.log('Task clicked:', task);
+          }}
+        />
+      </DesktopRecommendation>
+    );
   }
 
   return (
