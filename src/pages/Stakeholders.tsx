@@ -11,8 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus } from 'lucide-react';
 import type { Stakeholder } from '@/types/stakeholder';
+import { AppInitializationLoader } from '@/components/AppInitializationLoader';
+import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const Stakeholders: React.FC = () => {
+  const { isFullyLoaded } = useAppInitialization();
   const { stakeholders, updateStakeholder, deleteStakeholder } = useStakeholders();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'grid' | 'list'>('list');
@@ -39,61 +42,65 @@ const Stakeholders: React.FC = () => {
   };
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Stakeholder Management</h1>
-          <div className="flex items-center gap-4">
-            <ViewToggle
-              view={currentView}
-              onViewChange={setCurrentView}
-            />
-            <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Stakeholder
-            </Button>
-          </div>
-        </div>
+    <AppInitializationLoader>
+      {isFullyLoaded && (
+        <Layout>
+          <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-3xl font-bold text-foreground">Stakeholder Management</h1>
+              <div className="flex items-center gap-4">
+                <ViewToggle
+                  view={currentView}
+                  onViewChange={setCurrentView}
+                />
+                <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Stakeholder
+                </Button>
+              </div>
+            </div>
 
-        <Tabs defaultValue="stakeholders" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="stakeholders">Stakeholders</TabsTrigger>
-            <TabsTrigger value="escalation">Escalation Matrix</TabsTrigger>
-          </TabsList>
+            <Tabs defaultValue="stakeholders" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="stakeholders">Stakeholders</TabsTrigger>
+                <TabsTrigger value="escalation">Escalation Matrix</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="stakeholders" className="space-y-6">
-            {currentView === 'list' ? (
-              <StakeholderListView 
-                stakeholders={stakeholders}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onContact={handleContact}
-              />
-            ) : (
-              <StakeholderGridView
-                stakeholders={stakeholders}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onContact={handleContact}
-                onShowStakeholderForm={handleShowStakeholderForm}
+              <TabsContent value="stakeholders" className="space-y-6">
+                {currentView === 'list' ? (
+                  <StakeholderListView 
+                    stakeholders={stakeholders}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onContact={handleContact}
+                  />
+                ) : (
+                  <StakeholderGridView
+                    stakeholders={stakeholders}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onContact={handleContact}
+                    onShowStakeholderForm={handleShowStakeholderForm}
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="escalation" className="space-y-6">
+                <StakeholderEscalationMatrix />
+              </TabsContent>
+            </Tabs>
+
+            {isFormOpen && (
+              <StakeholderForm
+                open={isFormOpen}
+                onClose={() => setIsFormOpen(false)}
+                onSave={handleStakeholderSaved}
               />
             )}
-          </TabsContent>
-
-          <TabsContent value="escalation" className="space-y-6">
-            <StakeholderEscalationMatrix />
-          </TabsContent>
-        </Tabs>
-
-        {isFormOpen && (
-          <StakeholderForm
-            open={isFormOpen}
-            onClose={() => setIsFormOpen(false)}
-            onSave={handleStakeholderSaved}
-          />
-        )}
-      </div>
-    </Layout>
+          </div>
+        </Layout>
+      )}
+    </AppInitializationLoader>
   );
 };
 
