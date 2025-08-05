@@ -171,10 +171,26 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
                 <p className="text-sm text-muted-foreground">Timeline</p>
                 <p className="font-semibold">{getProjectDuration()} days</p>
                 <p className="text-xs text-muted-foreground">
-                  {project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() :
-                   (project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set')} - 
-                  {project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() :
-                   (project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set')}
+                  {(() => {
+                    const startDisplay = project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString() :
+                                        (project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set');
+                    const endDisplay = project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString() :
+                                      (project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set');
+                    
+                    console.log(`[ProjectOverview] ${project.name} date display logic:`, {
+                      computed_start_date: project.computed_start_date,
+                      computed_end_date: project.computed_end_date,
+                      computed_start_exists: !!project.computed_start_date,
+                      computed_end_exists: !!project.computed_end_date,
+                      manual_start: project.startDate,
+                      manual_end: project.endDate,
+                      displaying_start: startDisplay,
+                      displaying_end: endDisplay,
+                      showing_computed: !!project.computed_start_date && !!project.computed_end_date
+                    });
+                    
+                    return `${startDisplay} - ${endDisplay}`;
+                  })()}
                 </p>
               </div>
             </div>
