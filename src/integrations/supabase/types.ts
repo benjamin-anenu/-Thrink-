@@ -4193,6 +4193,14 @@ export type Database = {
         }
         Returns: string
       }
+      update_phase_computed_dates: {
+        Args: { phase_id_param: string }
+        Returns: undefined
+      }
+      update_project_computed_dates: {
+        Args: { project_id_param: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "manager" | "member" | "viewer"
