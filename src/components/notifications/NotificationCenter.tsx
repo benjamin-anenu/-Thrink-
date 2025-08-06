@@ -86,10 +86,10 @@ const NotificationCenter: React.FC = () => {
       <NotificationHeader unreadCount={unreadCount} />
 
       <Tabs defaultValue="notifications" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="notifications" className="text-xs md:text-sm">Notifications</TabsTrigger>
-          <TabsTrigger value="settings" className="text-xs md:text-sm">Settings</TabsTrigger>
-          <TabsTrigger value="blackout" className="text-xs md:text-sm">Blackout</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 no-scrollbar">
+          <TabsTrigger value="notifications" className="text-xs md:text-sm whitespace-nowrap">Notifications</TabsTrigger>
+          <TabsTrigger value="settings" className="text-xs md:text-sm whitespace-nowrap">Settings</TabsTrigger>
+          <TabsTrigger value="blackout" className="text-xs md:text-sm whitespace-nowrap">Blackout</TabsTrigger>
         </TabsList>
 
         <TabsContent value="notifications" className="space-y-6">

@@ -175,7 +175,7 @@ const DashboardMetrics = () => {
   return (
     <div className="space-y-6">
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {metrics.map((metric, index) => (
           <MetricCard
             key={index}
@@ -203,7 +203,7 @@ const DashboardMetrics = () => {
           </CardDescription>
         </DarkModeCardHeader>
         <DarkModeCardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {performanceIndicators.map((indicator, index) => (
               <div key={index} className="space-y-3">
                 <div className="flex items-center justify-between">

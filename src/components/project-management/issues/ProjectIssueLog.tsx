@@ -80,9 +80,9 @@ export const ProjectIssueLog = ({ projectId, taskFilter, onClearTaskFilter }: Pr
       {/* Main Content */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <CardTitle>Issue Log</CardTitle>
+              <CardTitle className="text-lg md:text-xl">Issue Log</CardTitle>
               {taskFilter && (
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">
@@ -99,9 +99,9 @@ export const ProjectIssueLog = ({ projectId, taskFilter, onClearTaskFilter }: Pr
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
               <Select value={tableDensity} onValueChange={(value: 'compact' | 'normal' | 'comfortable') => setTableDensity(value)}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-full md:w-32">
                   <LayoutGrid className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -111,29 +111,34 @@ export const ProjectIssueLog = ({ projectId, taskFilter, onClearTaskFilter }: Pr
                   <SelectItem value="comfortable">Comfortable</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCSV}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setShowCreateDialog(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Issue
-              </Button>
+              <div className="flex items-center gap-2 button-group">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex-1 md:flex-none"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filters
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCSV}
+                  className="flex-1 md:flex-none"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setShowCreateDialog(true)}
+                  className="flex-1 md:flex-none"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Issue
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>

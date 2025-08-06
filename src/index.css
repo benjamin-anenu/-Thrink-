@@ -680,5 +680,63 @@
     .mobile-table-container td {
       @apply text-xs px-2 py-2;
     }
+    
+    /* Prevent horizontal scrolling on mobile */
+    body {
+      overflow-x: hidden;
+      max-width: 100vw;
+    }
+    
+    /* Fix container overflow */
+    .container {
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+    
+    /* Fix tab navigation overflow */
+    .tabs-list {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex-wrap: nowrap;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    
+    .tabs-list::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Fix button groups */
+    .button-group {
+      @apply flex-wrap gap-2;
+    }
+    
+    /* Ensure all content stays within viewport */
+    * {
+      max-width: 100vw;
+      box-sizing: border-box;
+    }
+    
+    /* Fix card content overflow */
+    .card {
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    /* Fix issue log and notification center specific elements */
+    .issue-metrics-grid,
+    .notification-grid {
+      @apply grid-cols-2 gap-3;
+    }
+    
+    /* Mobile-specific text sizing */
+    .mobile-text-xs { @apply text-xs; }
+    .mobile-text-sm { @apply text-sm; }
+    .mobile-text-base { @apply text-sm; }
+    .mobile-text-lg { @apply text-base; }
+    .mobile-text-xl { @apply text-lg; }
+    .mobile-text-2xl { @apply text-xl; }
+    .mobile-text-3xl { @apply text-2xl; }
   }
 }
