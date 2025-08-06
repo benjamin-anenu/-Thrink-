@@ -13,7 +13,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <>
       <Header />
       <WorkspaceBanner />
-      <main className="pt-28 md:pt-32 mobile-container"> {/* Updated spacing for header + workspace banner */}
+      <main className="pt-20 md:pt-24 mobile-container"> {/* Mobile-optimized spacing */}
         {children}
       </main>
       <TinkAssistant />
