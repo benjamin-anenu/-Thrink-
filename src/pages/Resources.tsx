@@ -76,7 +76,8 @@ const Resources: React.FC = () => {
     <AppInitializationLoader>
       {isFullyLoaded && (
         <Layout>
-          <div className="p-6 space-y-6">
+          <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">Resource Management</h1>
@@ -166,6 +167,7 @@ const Resources: React.FC = () => {
                 onResourceUpdated={handleResourceUpdated}
               />
             )}
+            </div>
           </div>
         </Layout>
       )}
