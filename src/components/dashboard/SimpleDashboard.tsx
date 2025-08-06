@@ -14,9 +14,12 @@ import {
 } from 'lucide-react';
 import { useRealTimeDashboardData } from '@/hooks/useRealTimeDashboardData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MobileEnhancedCard } from '@/components/mobile/MobileEnhancedCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const SimpleDashboard: React.FC = () => {
   const { stats, loading } = useRealTimeDashboardData();
+  const isMobile = useIsMobile();
 
   const quickStats = [
     {
@@ -94,19 +97,25 @@ const SimpleDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Quick Stats - 2x2 Grid on Mobile */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mx-2 md:mx-0">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mobile-grid-spacing">
         {quickStats.map((stat, index) => {
           const IconComponent = stat.icon;
+          const CardComponent = isMobile ? MobileEnhancedCard : Card;
           return (
-            <Card key={index} className="min-h-[100px] md:min-h-[80px] animate-fade-in">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6">
-                <CardTitle className="text-xs md:text-sm font-medium leading-tight">{stat.title}</CardTitle>
-                <IconComponent className={`h-4 w-4 md:h-5 md:w-5 ${stat.color} flex-shrink-0`} />
+            <CardComponent 
+              key={index} 
+              className="mobile-stat-card mobile-entrance-animation"
+              elevation={isMobile ? 2 : undefined}
+              style={{ animationDelay: `${index * 100}ms` }}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 mobile-card-header">
+                <CardTitle className="mobile-stat-title">{stat.title}</CardTitle>
+                <IconComponent className={`mobile-stat-icon ${stat.color}`} />
               </CardHeader>
-              <CardContent className="p-3 md:p-6 pt-0">
-                <div className="text-lg md:text-2xl font-bold">{stat.value}</div>
+              <CardContent className="mobile-card-content">
+                <div className="mobile-stat-value">{stat.value}</div>
               </CardContent>
-            </Card>
+            </CardComponent>
           );
         })}
       </div>
