@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Calendar } from '@/components/ui/calendar';
+import { DesktopRecommendation } from '@/components/ui/desktop-recommendation';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   Clock, Users, Target, Filter
@@ -38,6 +40,10 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
+  const { shouldShowDesktopRecommendation } = useMobileComplexity({
+    requiresInteractivity: true,
+    recommendDesktop: true
+  });
 
   // Sample events data if none provided
   const defaultEvents: CalendarEvent[] = [
@@ -113,6 +119,16 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({
       event.date.toDateString() === date.toDateString()
     );
   };
+
+  if (shouldShowDesktopRecommendation) {
+    return (
+      <DesktopRecommendation
+        title="Project Calendar - Desktop Required"
+        description="The interactive calendar with event management requires a desktop interface for optimal functionality. Please use a desktop or laptop to access the full calendar features."
+        showSimplified={false}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

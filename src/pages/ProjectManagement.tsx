@@ -23,12 +23,14 @@ import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useProject } from '@/contexts/ProjectContext';
 import ProjectCalendarModal from '@/components/project-management/ProjectCalendarModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
+import ProjectManagementMobile from '@/components/project-management/ProjectManagementMobile';
 import { useTasks } from '@/hooks/useTasks';
 import { useResources } from '@/hooks/useResources';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { ProjectTask } from '@/types/project';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +47,7 @@ const ProjectManagement: React.FC = () => {
   const { tasks } = useTasks(id || '');
   const { resources } = useResources();
   const { updateTask } = useTaskManagement(id || '');
+  const { isMobile } = useMobileComplexity();
 
   return (
     <AppInitializationLoader>
@@ -68,6 +71,7 @@ const ProjectManagement: React.FC = () => {
         tasks={tasks}
         resources={resources}
         updateTask={updateTask}
+        isMobile={isMobile}
       />
     </AppInitializationLoader>
   );
@@ -93,11 +97,12 @@ const ProjectManagementContent: React.FC<{
   tasks: any[];
   resources: any[];
   updateTask: any;
+  isMobile: boolean;
 }> = ({ 
   id, projects, loading, isFullyLoaded, viewMode, setViewMode, 
   issueTaskFilter, setIssueTaskFilter, isCalendarModalOpen, setIsCalendarModalOpen,
   selectedTask, setSelectedTask, isTaskModalOpen, setIsTaskModalOpen,
-  events, createEvent, tasks, resources, updateTask 
+  events, createEvent, tasks, resources, updateTask, isMobile 
 }) => {
   
   const project = projects.find(p => p.id === id);
@@ -193,119 +198,110 @@ const ProjectManagementContent: React.FC<{
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Project Header */}
-        <div className="border-b pb-6">
-          {/* Mobile-optimized header layout */}
-          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-4">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold">{project.name}</h1>
-              <p className="text-muted-foreground mt-1 text-sm md:text-base">{project.description}</p>
-              <div className="mt-2 md:hidden">
-                <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
-                  {project.status}
-                </Badge>
+        <div className="border-b pb-4 md:pb-6">
+          {isMobile ? (
+            <ProjectManagementMobile
+              project={project}
+              teamSize={teamSize}
+              totalTasks={totalTasks}
+              formatDate={formatDate}
+              onCalendarClick={() => setIsCalendarModalOpen(true)}
+              onSettingsClick={() => {}}
+            />
+          ) : (
+            <>
+              {/* Desktop header layout */}
+              <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-4">
+                <div className="flex-1">
+                  <h1 className="text-2xl md:text-3xl font-bold">{project.name}</h1>
+                  <p className="text-muted-foreground mt-1 text-sm md:text-base">{project.description}</p>
+                </div>
+                
+                {/* Desktop badge and actions */}
+                <div className="flex items-center gap-2">
+                  <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
+                    {project.status}
+                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsCalendarModalOpen(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Calendar View
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </div>
               </div>
-            </div>
-            
-            {/* Desktop badge and actions */}
-            <div className="hidden md:flex items-center gap-2">
-              <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
-                {project.status}
-              </Badge>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsCalendarModalOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Calendar View
-              </Button>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </div>
-            
-            {/* Mobile actions - full width buttons */}
-            <div className="flex flex-col gap-2 md:hidden">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsCalendarModalOpen(true)}
-                className="w-full h-11 flex items-center justify-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Calendar View
-              </Button>
-              <Button variant="outline" size="sm" className="w-full h-11">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </div>
-          </div>
 
-          {/* Project Quick Stats - 2x2 grid on mobile */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <Card className="h-20 md:h-auto">
-              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
-                <div className="flex items-center">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="ml-2 min-w-0">
-                    <p className="text-xs md:text-sm font-medium truncate">Start Date</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {(() => {
-                        const displayDate = project.computed_start_date || project.startDate;
-                        return formatDate(displayDate);
-                      })()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Project Quick Stats - Desktop grid */}
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">Start Date</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {(() => {
+                            const displayDate = project.computed_start_date || project.startDate;
+                            return formatDate(displayDate);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card className="h-20 md:h-auto">
-              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
-                <div className="flex items-center">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="ml-2 min-w-0">
-                    <p className="text-xs md:text-sm font-medium truncate">End Date</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {(() => {
-                        const displayDate = project.computed_end_date || project.endDate;
-                        return formatDate(displayDate);
-                      })()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">End Date</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {(() => {
+                            const displayDate = project.computed_end_date || project.endDate;
+                            return formatDate(displayDate);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card className="h-20 md:h-auto">
-              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="ml-2 min-w-0">
-                    <p className="text-xs md:text-sm font-medium truncate">Team Size</p>
-                    <p className="text-xs text-muted-foreground truncate">{teamSize} members</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">Team Size</p>
+                        <p className="text-xs text-muted-foreground truncate">{teamSize} members</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card className="h-20 md:h-auto">
-              <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
-                <div className="flex items-center">
-                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="ml-2 min-w-0">
-                    <p className="text-xs md:text-sm font-medium truncate">Tasks</p>
-                    <p className="text-xs text-muted-foreground truncate">{totalTasks} tasks</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">Tasks</p>
+                        <p className="text-xs text-muted-foreground truncate">{totalTasks} tasks</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Task Statistics */}
@@ -328,17 +324,17 @@ const ProjectManagementContent: React.FC<{
             </TabsList>
             
             {/* Mobile scrollable tabs */}
-            <div className="md:hidden">
-              <TabsList className="flex w-full overflow-x-auto snap-x snap-mandatory no-scrollbar p-1">
-                <TabsTrigger value="overview" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Overview</TabsTrigger>
-                <TabsTrigger value="phases" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Phases</TabsTrigger>
-                <TabsTrigger value="plan" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Plan</TabsTrigger>
-                <TabsTrigger value="resources" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Resources</TabsTrigger>
-                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Issues</TabsTrigger>
-                <TabsTrigger value="timeline" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Timeline</TabsTrigger>
-                <TabsTrigger value="reports" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Reports</TabsTrigger>
-                <TabsTrigger value="documents" className="flex-shrink-0 snap-start h-11 px-4 text-sm">Docs</TabsTrigger>
-                <TabsTrigger value="rebaseline" className="flex-shrink-0 snap-start h-11 px-4 text-sm">History</TabsTrigger>
+            <div className="md:hidden overflow-x-auto">
+              <TabsList className="flex w-max min-w-full no-scrollbar p-1">
+                <TabsTrigger value="overview" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Overview</TabsTrigger>
+                <TabsTrigger value="phases" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Phases</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Plan</TabsTrigger>
+                <TabsTrigger value="resources" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Resources</TabsTrigger>
+                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Issues</TabsTrigger>
+                <TabsTrigger value="timeline" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Timeline</TabsTrigger>
+                <TabsTrigger value="reports" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Reports</TabsTrigger>
+                <TabsTrigger value="documents" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Docs</TabsTrigger>
+                <TabsTrigger value="rebaseline" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">History</TabsTrigger>
               </TabsList>
             </div>
           </div>

@@ -181,25 +181,27 @@ const ProjectDocumentation = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h2 className="text-2xl font-bold">Documentation</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl md:text-2xl font-bold">Documentation</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             Manage project files and folders
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            className="h-11 md:h-9 md:w-auto"
           >
             {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
+            <span className="ml-2 md:hidden">{viewMode === 'grid' ? 'List View' : 'Grid View'}</span>
           </Button>
-          <Button onClick={() => setShowCreateFolder(true)}>
+          <Button onClick={() => setShowCreateFolder(true)} className="h-11 md:h-9">
             <Plus className="h-4 w-4 mr-2" />
             New Folder
           </Button>
@@ -207,14 +209,14 @@ const ProjectDocumentation = () => {
       </div>
 
       {/* Search and Navigation */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-y-0 gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search files and folders..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-11 md:h-9"
           />
         </div>
       </div>

@@ -65,57 +65,58 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
   }
 
   return (
-    <div className="border rounded-lg">
-      <Table>
+    <div className="border rounded-lg mobile-table-container">
+      <Table className="min-w-full">
         <TableHeader>
           <TableRow>
-            <TableHead>Stakeholder</TableHead>
-            <TableHead>Role & Department</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Influence</TableHead>
-            <TableHead>Communication</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-xs md:text-sm">Stakeholder</TableHead>
+            <TableHead className="text-xs md:text-sm hidden md:table-cell">Role & Department</TableHead>
+            <TableHead className="text-xs md:text-sm">Status</TableHead>
+            <TableHead className="text-xs md:text-sm hidden sm:table-cell">Influence</TableHead>
+            <TableHead className="text-xs md:text-sm hidden lg:table-cell">Communication</TableHead>
+            <TableHead className="text-xs md:text-sm hidden lg:table-cell">Contact</TableHead>
+            <TableHead className="text-right text-xs md:text-sm">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {stakeholders.map((stakeholder) => (
             <TableRow key={stakeholder.id} className="hover:bg-muted/50">
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
+              <TableCell className="p-2 md:p-4">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <Avatar className="h-6 w-6 md:h-8 md:w-8">
                     <AvatarFallback className="text-xs">
                       {getInitials(stakeholder.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-medium">{stakeholder.name}</p>
-                    <p className="text-sm text-muted-foreground">{stakeholder.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-xs md:text-sm truncate">{stakeholder.name}</p>
+                    <p className="text-xs text-muted-foreground truncate md:hidden">{stakeholder.role}</p>
+                    <p className="text-xs text-muted-foreground truncate hidden md:block">{stakeholder.email}</p>
                   </div>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell p-2 md:p-4">
                 <div>
-                  <p className="font-medium">{stakeholder.role}</p>
-                  <p className="text-sm text-muted-foreground">{stakeholder.department}</p>
+                  <p className="font-medium text-xs md:text-sm">{stakeholder.role}</p>
+                  <p className="text-xs text-muted-foreground">{stakeholder.department}</p>
                 </div>
               </TableCell>
-              <TableCell>
-                <Badge variant="secondary" className={getStatusColor(stakeholder.status)}>
+              <TableCell className="p-2 md:p-4">
+                <Badge variant="secondary" className={`text-xs ${getStatusColor(stakeholder.status)}`}>
                   {stakeholder.status || 'Active'}
                 </Badge>
               </TableCell>
-              <TableCell>
-                <Badge variant="secondary" className={getInfluenceColor(stakeholder.influence)}>
+              <TableCell className="hidden sm:table-cell p-2 md:p-4">
+                <Badge variant="secondary" className={`text-xs ${getInfluenceColor(stakeholder.influence)}`}>
                   {stakeholder.influence || 'Medium'}
                 </Badge>
               </TableCell>
-              <TableCell>
-                <Badge variant="outline">
+              <TableCell className="hidden lg:table-cell p-2 md:p-4">
+                <Badge variant="outline" className="text-xs">
                   {stakeholder.communicationPreference || 'Email'}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell p-2 md:p-4">
                 <div className="flex items-center gap-2">
                   {stakeholder.email && (
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -129,31 +130,36 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
                   )}
                 </div>
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
+              <TableCell className="text-right p-2 md:p-4">
+                <div className="flex items-center justify-end gap-1 md:gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onContact(stakeholder)}
+                    className="h-8 w-8 p-0 lg:h-9 lg:w-auto lg:px-3"
                   >
-                    <MessageSquare className="h-4 w-4" />
+                    <MessageSquare className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden lg:inline ml-2">Contact</span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onEdit(stakeholder)}
+                    className="h-8 w-8 p-0 lg:h-9 lg:w-auto lg:px-3"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden lg:inline ml-2">Edit</span>
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 h-8 w-8 p-0 lg:h-9 lg:w-auto lg:px-3"
                         disabled={deletingId === stakeholder.id}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden lg:inline ml-2">Delete</span>
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

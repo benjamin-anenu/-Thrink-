@@ -87,9 +87,9 @@ const NotificationCenter: React.FC = () => {
 
       <Tabs defaultValue="notifications" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="blackout">Blackout Periods</TabsTrigger>
+          <TabsTrigger value="notifications" className="text-xs md:text-sm">Notifications</TabsTrigger>
+          <TabsTrigger value="settings" className="text-xs md:text-sm">Settings</TabsTrigger>
+          <TabsTrigger value="blackout" className="text-xs md:text-sm">Blackout</TabsTrigger>
         </TabsList>
 
         <TabsContent value="notifications" className="space-y-6">

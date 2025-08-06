@@ -45,15 +45,15 @@ const Stakeholders: React.FC = () => {
     <AppInitializationLoader>
       {isFullyLoaded && (
         <Layout>
-          <div className="container mx-auto px-4 py-8 max-w-7xl">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold text-foreground">Stakeholder Management</h1>
-              <div className="flex items-center gap-4">
+          <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-7xl">
+            <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center mb-6">
+              <h1 className="text-xl md:text-3xl font-bold text-foreground">Stakeholder Management</h1>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4">
                 <ViewToggle
                   view={currentView}
                   onViewChange={setCurrentView}
                 />
-                <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
+                <Button onClick={() => setIsFormOpen(true)} className="flex items-center justify-center gap-2 h-11 md:h-9">
                   <Plus className="h-4 w-4" />
                   Add Stakeholder
                 </Button>
@@ -61,9 +61,9 @@ const Stakeholders: React.FC = () => {
             </div>
 
             <Tabs defaultValue="stakeholders" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="stakeholders">Stakeholders</TabsTrigger>
-                <TabsTrigger value="escalation">Escalation Matrix</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="stakeholders" className="text-sm md:text-base">Stakeholders</TabsTrigger>
+                <TabsTrigger value="escalation" className="text-sm md:text-base">Escalation Matrix</TabsTrigger>
               </TabsList>
 
               <TabsContent value="stakeholders" className="space-y-6">
