@@ -324,17 +324,17 @@ const ProjectManagementContent: React.FC<{
             </TabsList>
             
             {/* Mobile scrollable tabs */}
-            <div className="md:hidden overflow-x-auto scrollbar-none">
-              <TabsList className="flex w-max min-w-full p-1 gap-1">
-                <TabsTrigger value="overview" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[80px]">Overview</TabsTrigger>
-                <TabsTrigger value="phases" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">Phases</TabsTrigger>
-                <TabsTrigger value="plan" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[60px]">Plan</TabsTrigger>
-                <TabsTrigger value="resources" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[80px]">Resources</TabsTrigger>
-                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[60px]">Issues</TabsTrigger>
-                <TabsTrigger value="timeline" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">Timeline</TabsTrigger>
-                <TabsTrigger value="reports" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">Reports</TabsTrigger>
-                <TabsTrigger value="documents" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[60px]">Docs</TabsTrigger>
-                <TabsTrigger value="rebaseline" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">History</TabsTrigger>
+            <div className="md:hidden overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <TabsList className="flex w-max min-w-full p-1 gap-1 bg-muted/50">
+                <TabsTrigger value="overview" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[76px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
+                <TabsTrigger value="phases" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[68px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Phases</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[52px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Plan</TabsTrigger>
+                <TabsTrigger value="resources" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[76px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Resources</TabsTrigger>
+                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[56px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Issues</TabsTrigger>
+                <TabsTrigger value="timeline" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[68px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Timeline</TabsTrigger>
+                <TabsTrigger value="reports" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[68px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
+                <TabsTrigger value="documents" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[56px] data-[state=active]:bg-background data-[state=active]:shadow-sm">Docs</TabsTrigger>
+                <TabsTrigger value="rebaseline" className="flex-shrink-0 h-10 px-3 text-xs whitespace-nowrap min-w-[64px] data-[state=active]:bg-background data-[state=active]:shadow-sm">History</TabsTrigger>
               </TabsList>
             </div>
           </div>

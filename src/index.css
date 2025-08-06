@@ -192,6 +192,19 @@
     * {
       -ms-overflow-style: none;
       scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Prevent horizontal scrolling on mobile */
+    body {
+      overflow-x: hidden;
+    }
+    
+    /* Ensure tabs scroll smoothly */
+    .no-scrollbar {
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
     }
   }
 
@@ -475,14 +488,28 @@
     @apply grid grid-cols-2 gap-2 md:gap-4;
   }
   
-  /* Hide horizontal scrollbar on mobile */
+  /* Enhanced mobile touch and scroll experience */
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
   
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Mobile content spacing */
+  .mobile-content-spacing {
+    @apply space-y-3 md:space-y-6;
+  }
+  
+  /* Mobile tab styling */
+  .mobile-tab-container {
+    @apply overflow-x-auto no-scrollbar;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Utility Classes */
