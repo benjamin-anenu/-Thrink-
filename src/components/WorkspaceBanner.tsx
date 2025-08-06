@@ -18,7 +18,7 @@ const WorkspaceBanner = () => {
   }
   
   return (
-    <div className="fixed top-14 md:top-16 left-0 right-0 z-40 bg-muted/20 backdrop-blur-sm border-b border-border/20">
+    <div className="fixed top-16 left-0 right-0 z-40 bg-muted/20 backdrop-blur-sm border-b border-border/20">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex items-center justify-center py-1.5 md:py-2">
           <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2 text-center md:text-left">
