@@ -324,17 +324,17 @@ const ProjectManagementContent: React.FC<{
             </TabsList>
             
             {/* Mobile scrollable tabs */}
-            <div className="md:hidden overflow-x-auto">
-              <TabsList className="flex w-max min-w-full no-scrollbar p-1">
-                <TabsTrigger value="overview" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Overview</TabsTrigger>
-                <TabsTrigger value="phases" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Phases</TabsTrigger>
-                <TabsTrigger value="plan" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Plan</TabsTrigger>
-                <TabsTrigger value="resources" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Resources</TabsTrigger>
-                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Issues</TabsTrigger>
-                <TabsTrigger value="timeline" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Timeline</TabsTrigger>
-                <TabsTrigger value="reports" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Reports</TabsTrigger>
-                <TabsTrigger value="documents" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Docs</TabsTrigger>
-                <TabsTrigger value="rebaseline" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">History</TabsTrigger>
+            <div className="md:hidden overflow-x-auto scrollbar-none">
+              <TabsList className="flex w-max min-w-full p-1 gap-1">
+                <TabsTrigger value="overview" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[80px]">Overview</TabsTrigger>
+                <TabsTrigger value="phases" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">Phases</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[60px]">Plan</TabsTrigger>
+                <TabsTrigger value="resources" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[80px]">Resources</TabsTrigger>
+                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[60px]">Issues</TabsTrigger>
+                <TabsTrigger value="timeline" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">Timeline</TabsTrigger>
+                <TabsTrigger value="reports" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">Reports</TabsTrigger>
+                <TabsTrigger value="documents" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[60px]">Docs</TabsTrigger>
+                <TabsTrigger value="rebaseline" className="flex-shrink-0 h-9 px-4 text-xs whitespace-nowrap min-w-[70px]">History</TabsTrigger>
               </TabsList>
             </div>
           </div>
