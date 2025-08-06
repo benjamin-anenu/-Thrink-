@@ -137,40 +137,40 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   return (
     <div className="space-y-6">
       {/* Project Overview Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <Card className="mobile-card">
-          <CardContent className="p-3 md:p-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3">
-              <Target className="h-5 w-5 md:h-8 md:w-8 text-blue-500 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs md:text-sm text-muted-foreground truncate">Overall Progress</p>
-                <p className="font-semibold text-sm md:text-base">{overallProgress}%</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Target className="h-8 w-8 text-blue-500" />
+              <div>
+                <p className="text-sm text-muted-foreground">Overall Progress</p>
+                <p className="font-semibold">{overallProgress}%</p>
                 <Progress value={overallProgress} className="mt-1 h-1" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="mobile-card">
-          <CardContent className="p-3 md:p-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3">
-              <CheckCircle2 className="h-5 w-5 md:h-8 md:w-8 text-green-500 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs md:text-sm text-muted-foreground truncate">Tasks Completed</p>
-                <p className="font-semibold text-sm md:text-base">{completedTasks}/{totalTasks}</p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+              <div>
+                <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                <p className="font-semibold">{completedTasks}/{totalTasks}</p>
                 <p className="text-xs text-muted-foreground">{totalTasks - completedTasks} remaining</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="mobile-card">
-          <CardContent className="p-3 md:p-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3">
-              <AlertTriangle className={`h-5 w-5 md:h-8 md:w-8 flex-shrink-0 ${(overdueTasks.length + overdueMilestones.length) > 0 ? 'text-red-500' : 'text-green-500'}`} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs md:text-sm text-muted-foreground truncate">Overdue Items</p>
-                <p className="font-semibold text-sm md:text-base">{overdueTasks.length + overdueMilestones.length}</p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className={`h-8 w-8 ${(overdueTasks.length + overdueMilestones.length) > 0 ? 'text-red-500' : 'text-green-500'}`} />
+              <div>
+                <p className="text-sm text-muted-foreground">Overdue Items</p>
+                <p className="font-semibold">{overdueTasks.length + overdueMilestones.length}</p>
                 <p className="text-xs text-muted-foreground">
                   {overdueTasks.length} tasks, {overdueMilestones.length} milestones
                 </p>
@@ -179,19 +179,19 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
           </CardContent>
         </Card>
 
-        <Card className="mobile-card">
-          <CardContent className="p-3 md:p-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3">
-              <TrendingUp className={`h-5 w-5 md:h-8 md:w-8 flex-shrink-0 ${
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <TrendingUp className={`h-8 w-8 ${
                 healthStatus === 'red' ? 'text-red-500' : 
                 healthStatus === 'yellow' ? 'text-yellow-500' : 'text-green-500'
               }`} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs md:text-sm text-muted-foreground truncate">Project Health</p>
+              <div>
+                <p className="text-sm text-muted-foreground">Project Health</p>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <p className="font-semibold cursor-help text-sm md:text-base">{healthScore}/100</p>
+                      <p className="font-semibold cursor-help">{healthScore}/100</p>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
                       <p className="text-sm">Health score calculation:</p>
@@ -204,7 +204,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <Badge variant={healthStatus === 'red' ? 'destructive' : healthStatus === 'yellow' ? 'secondary' : 'default'} className="text-xs mt-1">
+                <Badge variant={healthStatus === 'red' ? 'destructive' : healthStatus === 'yellow' ? 'secondary' : 'default'}>
                   {healthStatus === 'red' ? 'At Risk' : healthStatus === 'yellow' ? 'Caution' : 'Healthy'}
                 </Badge>
               </div>
@@ -252,7 +252,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Milestones Completed</span>
@@ -326,7 +326,7 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
           <CardTitle>Task Status Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { status: 'Not Started', count: tasks.filter(t => t.status === 'Not Started').length, color: 'bg-gray-500' },
               { status: 'In Progress', count: tasks.filter(t => t.status === 'In Progress').length, color: 'bg-blue-500' },
