@@ -308,13 +308,13 @@ interface ProjectDisplayProps {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 md:gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    (projectHealth[project.id]?.status || project.health?.status) === 'green' ? 'bg-green-500' :
-                    (projectHealth[project.id]?.status || project.health?.status) === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                    (projectHealth[project.id]?.status ?? project.health?.status) === 'green' ? 'bg-green-500' :
+                    (projectHealth[project.id]?.status ?? project.health?.status) === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
                   <span className="text-xs md:text-sm text-muted-foreground">
-                    Health: {projectHealth[project.id]?.score || project.health?.score || 50}% ({
-                      (projectHealth[project.id]?.status || project.health?.status) === 'green' ? 'On Track' :
-                      (projectHealth[project.id]?.status || project.health?.status) === 'yellow' ? 'Caution' : 'At Risk'
+                    Health: {(projectHealth[project.id]?.score ?? project.health?.score ?? 50)}% ({
+                      (projectHealth[project.id]?.status ?? project.health?.status) === 'green' ? 'On Track' :
+                      (projectHealth[project.id]?.status ?? project.health?.status) === 'yellow' ? 'Caution' : 'At Risk'
                     })
                   </span>
                 </div>
