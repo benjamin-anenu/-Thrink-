@@ -38,6 +38,7 @@ const ProjectManagement: React.FC = () => {
   const { isFullyLoaded } = useAppInitialization();
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState('overview');
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -58,6 +59,8 @@ const ProjectManagement: React.FC = () => {
         isFullyLoaded={isFullyLoaded}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         issueTaskFilter={issueTaskFilter}
         setIssueTaskFilter={setIssueTaskFilter}
         isCalendarModalOpen={isCalendarModalOpen}
@@ -84,6 +87,8 @@ const ProjectManagementContent: React.FC<{
   isFullyLoaded: boolean;
   viewMode: 'gantt' | 'kanban';
   setViewMode: (mode: 'gantt' | 'kanban') => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
   issueTaskFilter: string | undefined;
   setIssueTaskFilter: (filter: string | undefined) => void;
   isCalendarModalOpen: boolean;
@@ -100,7 +105,7 @@ const ProjectManagementContent: React.FC<{
   isMobile: boolean;
 }> = ({ 
   id, projects, loading, isFullyLoaded, viewMode, setViewMode, 
-  issueTaskFilter, setIssueTaskFilter, isCalendarModalOpen, setIsCalendarModalOpen,
+  activeTab, setActiveTab, issueTaskFilter, setIssueTaskFilter, isCalendarModalOpen, setIsCalendarModalOpen,
   selectedTask, setSelectedTask, isTaskModalOpen, setIsTaskModalOpen,
   events, createEvent, tasks, resources, updateTask, isMobile 
 }) => {
@@ -152,18 +157,8 @@ const ProjectManagementContent: React.FC<{
   const handleSwitchToIssueLog = (taskId?: string) => {
     console.log('handleSwitchToIssueLog called with taskId:', taskId);
     setIssueTaskFilter(taskId);
-    
-    // Switch to the issues tab
-    setTimeout(() => {
-      const tabsTrigger = document.querySelector('[data-value="issues"]') as HTMLElement;
-      console.log('Found issues tab trigger:', tabsTrigger);
-      if (tabsTrigger) {
-        tabsTrigger.click();
-        console.log('Clicked issues tab');
-      } else {
-        console.error('Issues tab trigger not found');
-      }
-    }, 100);
+    setActiveTab('issues');
+    console.log('Switched to issues tab');
   };
 
   const handleClearTaskFilter = () => {
@@ -316,7 +311,7 @@ const ProjectManagementContent: React.FC<{
         <TaskStatistics />
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           {/* Mobile-optimized horizontally scrollable tabs */}
           <div className="relative">
             <TabsList className="hidden md:grid w-full grid-cols-9">
