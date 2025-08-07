@@ -205,6 +205,7 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({
               milestones={phase.milestones || []}
               phaseId={phase.id}
               onAddMilestone={onAddMilestone}
+              onAssignExisting={onAssignMilestones}
             />
           </div>
         </CardContent>
