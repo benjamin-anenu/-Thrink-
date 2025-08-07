@@ -36,7 +36,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
         
         const [progress, health] = await Promise.all([
           calculateRealTimeProjectProgress(project.id),
-          calculateProjectHealth(project.id)
+          ProjectHealthService.calculateRealTimeProjectHealth(project.id)
         ]);
         
         console.log(`[PROJECT OVERVIEW] Results:`, { progress, health });
@@ -47,7 +47,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
           startDate: project.computed_start_date,
           endDate: project.computed_end_date
         });
-        setHealthData(health);
+        setHealthData({ status: health.healthStatus, score: health.healthScore });
       } catch (error) {
         console.error('[PROJECT OVERVIEW] Error loading real-time project data:', error);
       }
