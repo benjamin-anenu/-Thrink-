@@ -102,7 +102,27 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Map form data to match database schema
+    const stakeholderData = {
+      id: stakeholder?.id,
+      workspace_id: currentWorkspace?.id || '',
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+      department: formData.department,
+      phone: formData.phone,
+      communicationPreference: formData.communicationPreference,
+      projects: formData.projects,
+      influence: formData.influence.toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
+      interest: formData.interest.toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
+      status: formData.status.toLowerCase() as 'active' | 'inactive' | 'pending',
+      notes: '',
+      created_at: stakeholder?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    onSave(stakeholderData);
     onClose();
   };
 

@@ -9,6 +9,7 @@ import { useEscalationLevels } from '@/hooks/useEscalationLevels';
 import { useEscalationAssignments } from '@/hooks/useEscalationAssignments';
 import { useEscalationTriggers } from '@/hooks/useEscalationTriggers';
 import { useStakeholders } from '@/hooks/useStakeholders';
+import WorkspaceEscalationOverview from './WorkspaceEscalationOverview';
 
 interface EscalationOverviewProps {
   projectId?: string;
@@ -17,9 +18,14 @@ interface EscalationOverviewProps {
 
 const EscalationOverview: React.FC<EscalationOverviewProps> = ({ projectId, projects = [] }) => {
   const { levels } = useEscalationLevels();
-  const { assignments } = useEscalationAssignments();
+  const { assignments } = useEscalationAssignments(projectId);
   const { triggers } = useEscalationTriggers();
   const { stakeholders } = useStakeholders();
+
+  // If no project is selected, show workspace overview
+  if (!projectId) {
+    return <WorkspaceEscalationOverview />;
+  }
 
   const stats = {
     totalLevels: levels.length,
