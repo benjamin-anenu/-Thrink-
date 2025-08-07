@@ -2,6 +2,7 @@
 import { ProjectTask, ProjectData } from '@/types/project';
 import { differenceInDays, isAfter } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { BudgetStatusEngine } from './BudgetStatusEngine';
 
 export interface ProjectHealthData {
   healthScore: number;
@@ -113,10 +114,9 @@ export class ProjectHealthService {
 
       const SH = clamp(1 - (AD - PD) / PD);
 
-      // Budget
-      const totalBudget = budgets.reduce((sum, b) => sum + Number(b.allocated_amount || 0), 0);
-      const totalCost = budgets.reduce((sum, b) => sum + Number(b.spent_amount || 0), 0);
-      const BH = totalBudget > 0 ? clamp(1 - (totalCost - totalBudget) / totalBudget) : 1;
+      // Budget - Use Budget Status Engine for consistency
+      const budgetStatus = await BudgetStatusEngine.calculateProjectBudgetStatus(projectId);
+      const BH = budgetStatus.budget_health;
 
       // Tasks (weighted completion)
       const priorityWeight = (p?: string) => {

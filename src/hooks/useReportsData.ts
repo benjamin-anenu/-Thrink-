@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskManagement } from './useTaskManagement';
 import { useMilestones } from './useMilestones';
+import { BudgetStatusEngine } from '@/services/BudgetStatusEngine';
 
 export interface ReportsData {
   overallProgress: number;
@@ -51,26 +52,30 @@ export const useReportsData = (projectId?: string) => {
   const { tasks, milestones: taskMilestones, loading: tasksLoading } = useTaskManagement(projectId || '');
   const { milestones: milestonesData, loading: milestonesLoading } = useMilestones(projectId);
   const [budgetData, setBudgetData] = useState<any[]>([]);
+  const [budgetStatus, setBudgetStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Use milestones from useTaskManagement since it's already loaded
   const milestones = taskMilestones;
 
-  // Load budget data
+  // Load budget data and status
   useEffect(() => {
     const loadBudgetData = async () => {
       if (!projectId) return;
       
       try {
-        const { data, error } = await supabase
-          .from('project_budgets')
-          .select('*')
-          .eq('project_id', projectId);
+        const [budgetResponse, budgetStatusData] = await Promise.all([
+          supabase.from('project_budgets').select('*').eq('project_id', projectId),
+          BudgetStatusEngine.calculateProjectBudgetStatus(projectId)
+        ]);
 
-        if (error) throw error;
-        setBudgetData(data || []);
+        if (budgetResponse.error) throw budgetResponse.error;
+        setBudgetData(budgetResponse.data || []);
+        setBudgetStatus(budgetStatusData);
       } catch (error) {
         console.error('Error loading budget data:', error);
+        setBudgetData([]);
+        setBudgetStatus(null);
       }
     };
 
@@ -135,10 +140,8 @@ export const useReportsData = (projectId?: string) => {
       ? Math.round(tasks.reduce((sum, task) => sum + task.duration, 0) / tasks.length)
       : 0;
 
-    // Calculate budget utilization
-    const totalBudget = budgetData.reduce((sum, item) => sum + Number(item.allocated_amount), 0);
-    const totalSpent = budgetData.reduce((sum, item) => sum + Number(item.spent_amount), 0);
-    const budgetUsed = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+    // Get budget utilization from Budget Status Engine
+    const budgetUsed = budgetStatus ? Math.round(budgetStatus.budget_ratio * 100) : 0;
 
     // Calculate team efficiency (based on completed vs planned tasks)
     const teamEfficiency = Math.min(100, Math.round(overallProgress * 1.2)); // Simplified calculation
