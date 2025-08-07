@@ -598,6 +598,7 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                             densityClass={getDensityClass()}
                             issueCount={taskIssueMap[task.id] || 0}
                             onIssueWarningClick={handleIssueWarningClick}
+                            projectId={projectId}
                           />
                         ))}
                       </>

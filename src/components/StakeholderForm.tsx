@@ -13,7 +13,7 @@ import { useDepartments } from '@/hooks/useDepartments';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
-interface Stakeholder {
+interface StakeholderFormData {
   id?: string;
   name: string;
   role: string;
@@ -32,12 +32,12 @@ interface Stakeholder {
 interface StakeholderFormProps {
   open: boolean;
   onClose: () => void;
-  stakeholder?: Stakeholder;
-  onSave: (stakeholder: Stakeholder) => void;
+  stakeholder?: any;
+  onSave: (stakeholder: any) => void;
 }
 
 const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderFormProps) => {
-  const [formData, setFormData] = useState<Stakeholder>({
+  const [formData, setFormData] = useState<StakeholderFormData>({
     name: '',
     role: '',
     department: '',

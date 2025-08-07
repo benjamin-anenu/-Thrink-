@@ -19,6 +19,8 @@ interface TaskHierarchyRendererProps {
   onDemoteTask: (taskId: string) => void;
   onAddSubtask: (taskId: string) => void;
   onIssueWarningClick?: (taskId: string) => void;
+  taskIssueMap?: Record<string, number>;
+  projectId?: string;
 }
 
 const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
@@ -36,7 +38,9 @@ const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
   onPromoteTask,
   onDemoteTask,
   onAddSubtask,
-  onIssueWarningClick
+  onIssueWarningClick,
+  taskIssueMap = {},
+  projectId
 }) => {
   // Filter and sort tasks by hierarchy
   const rootTasks = tasks.filter(task => !task.parentTaskId);
@@ -61,6 +65,8 @@ const TaskHierarchyRenderer: React.FC<TaskHierarchyRendererProps> = ({
           onRebaselineTask={onRebaselineTask}
           densityClass={densityClass}
           onIssueWarningClick={onIssueWarningClick}
+          issueCount={taskIssueMap[task.id] || 0}
+          projectId={projectId}
         />
         {hasSubtasks && isExpanded && (
           <>
