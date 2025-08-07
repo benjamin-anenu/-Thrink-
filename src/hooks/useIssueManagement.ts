@@ -211,14 +211,21 @@ export const useIssueManagement = (projectId: string) => {
   // Update issue
   const updateIssue = async (issueId: string, updates: Partial<ProjectIssue>) => {
     try {
+      // Filter out computed fields that don't exist in the database
+      const filteredUpdates = { ...updates };
+      delete filteredUpdates.milestone_name;
+      delete filteredUpdates.task_name;
+      delete filteredUpdates.schedule_variance_days;
+      delete filteredUpdates.time_to_resolve_days;
+      
       // Set resolved_at when status changes to Resolved or Closed
-      if (updates.status && ['Resolved', 'Closed'].includes(updates.status)) {
-        updates.resolved_at = new Date().toISOString();
+      if (filteredUpdates.status && ['Resolved', 'Closed'].includes(filteredUpdates.status)) {
+        filteredUpdates.resolved_at = new Date().toISOString();
       }
       
       const { data, error } = await supabase
         .from('project_issues')
-        .update(updates)
+        .update(filteredUpdates)
         .eq('id', issueId)
         .select()
         .single();
