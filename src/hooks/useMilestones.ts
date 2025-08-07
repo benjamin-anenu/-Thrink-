@@ -40,12 +40,24 @@ export const useMilestones = (projectId?: string) => {
 
   const createMilestone = async (milestone: Omit<Milestone, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Sanitize payload and map to DB columns only
+      const due = milestone.date && milestone.date.trim() !== '' ? milestone.date : null;
+      const baseline = milestone.baseline_date && milestone.baseline_date.trim() !== '' ? milestone.baseline_date : due;
+      const description = milestone.description && milestone.description.trim() !== '' ? milestone.description : null;
+      const status = milestone.status || 'upcoming';
+
+      const insertData = {
+        project_id: milestone.project_id,
+        name: milestone.name,
+        description,
+        due_date: due,
+        baseline_date: baseline,
+        status
+      } as const;
+
       const { data, error } = await supabase
         .from('milestones')
-        .insert([{ 
-          ...milestone,
-          due_date: milestone.date, // Map date to due_date for database
-        }])
+        .insert([insertData])
         .select();
       if (error) throw error;
       toast.success('Milestone created');
@@ -55,8 +67,8 @@ export const useMilestones = (projectId?: string) => {
       const mappedResult = data?.[0] ? {
         ...data[0],
         date: data[0].due_date || '',
-        status: (['upcoming', 'in-progress', 'completed', 'overdue'].includes(data[0].status || '')) 
-          ? data[0].status as 'upcoming' | 'in-progress' | 'completed' | 'overdue'
+        status: (['upcoming', 'in-progress', 'completed', 'overdue'].includes((data[0].status || '').toLowerCase())) 
+          ? (data[0].status as 'upcoming' | 'in-progress' | 'completed' | 'overdue')
           : 'upcoming' as const,
       } : null;
       
