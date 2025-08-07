@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import HealthIndicator from '@/components/HealthIndicator';
 import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
-import { calculateRealTimeProjectProgress, calculateProjectHealth } from '@/utils/phaseCalculations';
+import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
+import { ProjectHealthService } from '@/services/ProjectHealthService';
 
 interface ProjectOverviewProps {
   project: ProjectData;
