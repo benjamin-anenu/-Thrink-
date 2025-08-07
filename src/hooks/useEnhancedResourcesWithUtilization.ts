@@ -82,7 +82,7 @@ export const useEnhancedResourcesWithUtilization = () => {
       });
       
       setResources(mappedData);
-    } else if (baseResources.length === 0 && initialLoadComplete) {
+    } else if (baseResources.length === 0 && initialLoadComplete && !utilizationLoading) {
       // Handle empty state after load is complete
       setResources([]);
     }
@@ -111,14 +111,18 @@ export const useEnhancedResourcesWithUtilization = () => {
   };
 
   const refreshResources = async () => {
-    await loadBaseResources();
-    await refreshUtilizationData();
+    if (initialLoadComplete) {
+      await loadBaseResources();
+      await refreshUtilizationData();
+    }
   };
 
   useEffect(() => {
+    if (!currentWorkspace) return;
+    
     loadBaseResources();
     
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions - but don't reload if already loaded
     const resourceSubscription = supabase
       .channel('resources_changes')
       .on(
@@ -129,8 +133,11 @@ export const useEnhancedResourcesWithUtilization = () => {
           table: 'resources',
           filter: `workspace_id=eq.${currentWorkspace?.id}`
         },
-        () => {
-          loadBaseResources();
+        (payload) => {
+          // Only reload if we've already completed initial load
+          if (initialLoadComplete) {
+            loadBaseResources();
+          }
         }
       )
       .subscribe();
@@ -138,7 +145,7 @@ export const useEnhancedResourcesWithUtilization = () => {
     return () => {
       supabase.removeChannel(resourceSubscription);
     };
-  }, [currentWorkspace]);
+  }, [currentWorkspace?.id]); // Only depend on workspace ID to prevent unnecessary reloads
 
   return {
     resources,
