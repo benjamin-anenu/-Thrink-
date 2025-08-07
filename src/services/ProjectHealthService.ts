@@ -198,7 +198,8 @@ export class ProjectHealthService {
       // Weighted sum
       const raw = WEIGHTS.schedule * SH + WEIGHTS.budget * BH + WEIGHTS.tasks * TH + WEIGHTS.issues * IH + WEIGHTS.resources * RU + WEIGHTS.escalations * EH;
       const percent = Math.round(raw * 100);
-      const state: 'green' | 'yellow' = percent >= 50 ? 'green' : 'yellow';
+      const state: 'green' | 'yellow' | 'red' =
+        percent >= 70 ? 'green' : percent >= 30 ? 'yellow' : 'red';
 
       const breakdown = this.mapBreakdown(SH, BH, RU, TH, IH);
       const counts = this.computeCounts(tasks, milestones);

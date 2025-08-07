@@ -187,10 +187,10 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
               <TableCell>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    (projectHealth[project.id]?.healthStatus || project.health?.status) === 'green' ? 'bg-green-500' :
-                    (projectHealth[project.id]?.healthStatus || project.health?.status) === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                    ((projectHealth[project.id] ? projectHealth[project.id].healthStatus : project.health?.status) === 'green') ? 'bg-green-500' :
+                    ((projectHealth[project.id] ? projectHealth[project.id].healthStatus : project.health?.status) === 'yellow') ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
-                  <span className="text-sm">{projectHealth[project.id]?.healthScore || project.health?.score || 50}%</span>
+                  <span className="text-sm">{projectHealth[project.id] ? projectHealth[project.id].healthScore : (project.health?.score ?? 50)}%</span>
                 </div>
               </TableCell>
               <TableCell className="text-right">
