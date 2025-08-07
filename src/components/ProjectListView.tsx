@@ -9,6 +9,8 @@ import { Eye, Edit, Trash2, Users, Calendar } from 'lucide-react';
 import { ProjectData, determineProjectStatus } from '@/types/project';
 import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
 import { ListRowSkeleton } from '@/components/ui/list-row-skeleton';
+import { ProjectDateService } from '@/services/ProjectDateService';
+import { ProjectHealthService } from '@/services/ProjectHealthService';
 
 interface ProjectListViewProps {
   projects: ProjectData[];
@@ -28,6 +30,7 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
   loading = false
 }) => {
   const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
+  const [projectHealth, setProjectHealth] = useState<Record<string, any>>({});
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
       case 'Completed': return 'default';
@@ -47,26 +50,33 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
     }
   };
 
-  // Load progress for all projects
+  // Load progress and health for all projects
   useEffect(() => {
-    const loadProjectProgress = async () => {
+    const loadProjectData = async () => {
       const progressData: Record<string, number> = {};
+      const healthData: Record<string, any> = {};
       
       for (const project of projects) {
         try {
-          const progress = await calculateRealTimeProjectProgress(project.id);
+          const [progress, health] = await Promise.all([
+            calculateRealTimeProjectProgress(project.id),
+            ProjectHealthService.calculateRealTimeProjectHealth(project.id)
+          ]);
           progressData[project.id] = progress;
+          healthData[project.id] = health;
         } catch (error) {
-          console.error(`Error calculating progress for project ${project.id}:`, error);
+          console.error(`Error calculating data for project ${project.id}:`, error);
           progressData[project.id] = 0;
+          healthData[project.id] = { healthStatus: 'yellow', healthScore: 50 };
         }
       }
       
       setProjectProgress(progressData);
+      setProjectHealth(healthData);
     };
 
     if (projects.length > 0) {
-      loadProjectProgress();
+      loadProjectData();
     }
   }, [projects]);
 
@@ -167,20 +177,20 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
               <TableCell>
                 <div className="text-sm text-muted-foreground">
                   <div>
-                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'}
+                    {ProjectDateService.getProjectFullDates(project).startDateFull}
                   </div>
                   <div>
-                    {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                    {ProjectDateService.getProjectFullDates(project).endDateFull}
                   </div>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    project.health?.status === 'green' ? 'bg-green-500' :
-                    project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                    (projectHealth[project.id]?.healthStatus || project.health?.status) === 'green' ? 'bg-green-500' :
+                    (projectHealth[project.id]?.healthStatus || project.health?.status) === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
-                  <span className="text-sm">{project.health?.score || 100}%</span>
+                  <span className="text-sm">{projectHealth[project.id]?.healthScore || project.health?.score || 50}%</span>
                 </div>
               </TableCell>
               <TableCell className="text-right">

@@ -13,6 +13,8 @@ import {
 import { ProjectDetailsModalData } from '@/types/project-modal';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
+import { ProjectDateService } from '@/services/ProjectDateService';
+import { ProjectHealthService } from '@/services/ProjectHealthService';
 
 interface ProjectDetailsModalProps {
   project: ProjectDetailsModalData | null;
@@ -76,10 +78,13 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         .select('*')
         .eq('project_id', baseProject.id);
 
-      // Calculate real-time progress using centralized function
+      // Calculate real-time progress and health using centralized services
       const tasks = tasksData || [];
       const completedTasks = tasks.filter(task => task.status === 'Completed');
-      const realTimeProgress = await calculateRealTimeProjectProgress(baseProject.id);
+      const [realTimeProgress, healthData] = await Promise.all([
+        calculateRealTimeProjectProgress(baseProject.id),
+        ProjectHealthService.calculateRealTimeProjectHealth(baseProject.id)
+      ]);
 
       // Calculate budget from project_budgets table
       const totalBudget = budgetData?.reduce((sum, budget) => sum + Number(budget.allocated_amount || 0), 0) || 0;
@@ -146,7 +151,13 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         risks,
         startDate: projectData?.start_date || baseProject.startDate,
         endDate: projectData?.end_date || baseProject.endDate,
-        health: baseProject.health
+        health: {
+          overall: healthData.healthStatus,
+          schedule: healthData.healthBreakdown?.timeline || 'green',
+          budget: healthData.healthBreakdown?.budget || 'green',
+          scope: 'green',
+          quality: healthData.healthBreakdown?.quality || 'green'
+        }
       };
 
       setExtendedProject(updatedProject);

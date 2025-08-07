@@ -141,6 +141,9 @@ export { initializePerformanceTracking } from './PerformanceTracker';
 export { startEmailReminderService } from './EmailReminderService';
 export { aiInsightsService } from './AIInsightsService';
 export { systemValidationService } from './SystemValidationService';
+export { ProjectHealthService } from './ProjectHealthService';
+export { ProjectDateService } from './ProjectDateService';
+export { ProjectDataService } from './ProjectDataService';
 
 // Export service status checker
 export const getSystemStatus = () => {

@@ -15,6 +15,8 @@ import { ProjectData, determineProjectStatus, ProjectStatusType } from '@/types/
 import { useProjectStatus } from '@/hooks/useProjectStatus';
 import { calculateRealTimeProjectProgress, getProjectPhaseDetails } from '@/utils/phaseCalculations';
 import { ProjectCardSkeleton } from '@/components/ui/project-card-skeleton';
+import { ProjectDateService } from '@/services/ProjectDateService';
+import { ProjectHealthService } from '@/services/ProjectHealthService';
 
 interface Task {
   id: string;
@@ -281,27 +283,11 @@ interface ProjectDisplayProps {
                 )}
               </div>
 
-              {/* Timeline - Use computed dates first, then manual dates */}
+              {/* Timeline - Use centralized date service */}
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-muted-foreground">
                 <Calendar className="h-3 w-3 md:h-4 md:w-4" />
                 <span className="truncate">
-                  {(() => {
-                    const startDisplay = project.computed_start_date ? new Date(project.computed_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 
-                                        project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Not set';
-                    const endDisplay = project.computed_end_date ? new Date(project.computed_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 
-                                      project.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Not set';
-                    
-                    console.log(`[ProjectDisplay] ${project.name} date calculation:`, {
-                      computed_start_date: project.computed_start_date,
-                      computed_end_date: project.computed_end_date,
-                      startDate: project.startDate,
-                      endDate: project.endDate,
-                      displayStart: startDisplay,
-                      displayEnd: endDisplay
-                    });
-                    
-                    return `${startDisplay} - ${endDisplay}`;
-                  })()}
+                  {ProjectDateService.formatTimelineRange(project)}
                 </span>
               </div>
 
