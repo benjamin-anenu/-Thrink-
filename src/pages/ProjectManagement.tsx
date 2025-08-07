@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar, Layers, AlertTriangle, History } from 'lucide-react';
+import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar, Layers, AlertTriangle, History, Download, Upload } from 'lucide-react';
 import Layout from '@/components/Layout';
 import ProjectOverview from '@/components/project-management/ProjectOverview';
 import TaskStatistics from '@/components/project-management/TaskStatistics';

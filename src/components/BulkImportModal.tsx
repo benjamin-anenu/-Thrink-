@@ -10,6 +10,8 @@ import {
   Upload, Download, FileSpreadsheet, FileText, 
   CheckCircle, AlertCircle, Loader2, FileCheck
 } from 'lucide-react';
+import { BulkTaskImportService, ParsedRow } from '@/services/BulkTaskImportService';
+import { generateTaskImportTemplate } from '@/utils/generateTaskTemplate';
 
 interface BulkImportModalProps {
   isOpen: boolean;
@@ -18,28 +20,27 @@ interface BulkImportModalProps {
 }
 
 const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onImport }) => {
-  const [currentStep, setCurrentStep] = useState<'upload' | 'mapping' | 'preview' | 'importing'>('upload');
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [currentStep, setCurrentStep] = useState<'upload' | 'mapping' | 'preview' | 'importing'>('upload');
+const [uploadProgress, setUploadProgress] = useState(0);
+const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [rows, setRows] = useState<ParsedRow[]>([]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      // Simulate upload progress
+const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (file) {
+    setSelectedFile(file);
+    setUploadProgress(25);
+    try {
+      const parsed = await BulkTaskImportService.parseFile(file);
+      setRows(parsed);
+      setUploadProgress(100);
+      setCurrentStep('mapping');
+    } catch (e) {
+      console.error('Failed to parse file', e);
       setUploadProgress(0);
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setCurrentStep('mapping');
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 200);
     }
-  };
+  }
+};
 
   const templateFiles = [
     {
@@ -65,21 +66,17 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
     }
   ];
 
-  const mockPreviewData = [
-    { id: 1, taskName: 'UI Design Phase', assignee: 'Sarah Chen', dueDate: '2024-01-15', priority: 'High', status: 'Valid' },
-    { id: 2, taskName: 'Backend API Development', assignee: 'Mike Johnson', dueDate: '2024-01-20', priority: 'High', status: 'Valid' },
-    { id: 3, taskName: 'Database Schema', assignee: '', dueDate: '2024-01-10', priority: 'Medium', status: 'Missing Assignee' },
-    { id: 4, taskName: 'User Testing', assignee: 'Alex Kim', dueDate: 'Invalid Date', priority: 'Low', status: 'Invalid Date' }
-  ];
-
-  const fieldMapping = [
-    { source: 'Task_Name', target: 'taskName', mapped: true },
-    { source: 'Due_Date', target: 'dueDate', mapped: true },
-    { source: 'Assigned_To', target: 'assignee', mapped: true },
-    { source: 'Priority_Level', target: 'priority', mapped: true },
-    { source: 'Description', target: 'description', mapped: false },
-    { source: 'Estimated_Hours', target: 'estimatedHours', mapped: false }
-  ];
+const expectedFields = [
+  'External_Key','Name','Description','Status','Priority','Start_Date','End_Date',
+  'Baseline_Start_Date','Baseline_End_Date','Duration','Milestone_Name','Parent_External_Key',
+  'Dependencies','Sort_Order','Progress'
+];
+const requiredFields = ['External_Key','Name'];
+const fieldMapping = expectedFields.map((field) => ({
+  source: field,
+  mapped: rows.length ? Object.prototype.hasOwnProperty.call(rows[0], field) : false,
+  required: requiredFields.includes(field)
+}));
 
   const renderUploadStep = () => (
     <div className="space-y-6">
@@ -138,7 +135,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => generateTaskImportTemplate()}>
                     <Download className="h-4 w-4 mr-1" />
                     Download
                   </Button>
@@ -173,8 +170,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
                     {field.mapped && <CheckCircle className="h-3 w-3 text-white" />}
                   </div>
                   <div>
-                    <p className="font-medium">{field.source}</p>
-                    <p className="text-sm text-muted-foreground">Maps to: {field.target}</p>
+                    <p className="font-medium">{field.source} {field.required && <Badge variant="secondary" className="ml-2">Required</Badge>}</p>
                   </div>
                 </div>
                 <Badge variant={field.mapped ? "default" : "secondary"}>
@@ -215,36 +211,41 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
+                  <th className="text-left p-2">Key</th>
                   <th className="text-left p-2">Task Name</th>
-                  <th className="text-left p-2">Assignee</th>
-                  <th className="text-left p-2">Due Date</th>
+                  <th className="text-left p-2">Start</th>
+                  <th className="text-left p-2">End</th>
                   <th className="text-left p-2">Priority</th>
                   <th className="text-left p-2">Status</th>
+                  <th className="text-left p-2">Validation</th>
                 </tr>
               </thead>
               <tbody>
-                {mockPreviewData.map((row) => (
-                  <tr key={row.id} className="border-b">
-                    <td className="p-2">{row.taskName}</td>
-                    <td className="p-2">{row.assignee || '-'}</td>
-                    <td className="p-2">{row.dueDate}</td>
-                    <td className="p-2">
-                      <Badge variant="outline">{row.priority}</Badge>
-                    </td>
-                    <td className="p-2">
-                      <div className="flex items-center gap-2">
-                        {row.status === 'Valid' ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4 text-yellow-500" />
-                        )}
-                        <span className={row.status === 'Valid' ? 'text-green-600' : 'text-yellow-600'}>
-                          {row.status}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {rows.slice(0, 10).map((row, idx) => {
+                  const valid = !!row.External_Key && !!row.Name;
+                  return (
+                    <tr key={row.External_Key || idx} className="border-b">
+                      <td className="p-2">{row.External_Key}</td>
+                      <td className="p-2">{row.Name}</td>
+                      <td className="p-2">{row.Start_Date || '-'}</td>
+                      <td className="p-2">{row.End_Date || '-'}</td>
+                      <td className="p-2"><Badge variant="outline">{row.Priority || '-'}</Badge></td>
+                      <td className="p-2">{row.Status || '-'}</td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          {valid ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-yellow-500" />
+                          )}
+                          <span className={valid ? 'text-green-600' : 'text-yellow-600'}>
+                            {valid ? 'Valid' : 'Missing required fields'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -255,7 +256,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
         <Button variant="outline" onClick={() => setCurrentStep('mapping')}>
           Back
         </Button>
-        <Button onClick={() => setCurrentStep('importing')}>
+        <Button onClick={async () => { setCurrentStep('importing'); await onImport(rows); onClose(); }}>
           Import Data
         </Button>
       </div>
