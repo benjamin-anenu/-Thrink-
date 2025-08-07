@@ -503,10 +503,10 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Issue icon clicked for task:', task.id, 'with issue count:', issueCount);
-                if (projectId) {
-                  window.location.href = `/project/${projectId}?tab=issues&taskFilter=${task.id}`;
+                if (onIssueWarningClick) {
+                  onIssueWarningClick(task.id);
                 } else {
-                  console.error('projectId not available for navigation');
+                  console.error('onIssueWarningClick not provided');
                 }
               }}
               className="h-8 w-8 p-0 text-warning hover:text-warning/80 hover:bg-warning/10 relative cursor-pointer"
