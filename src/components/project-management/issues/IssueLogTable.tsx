@@ -268,14 +268,14 @@ export const IssueLogTable = ({
               <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
                   <Select
-                    value={editForm.assignee_id || ''}
-                    onValueChange={(value) => updateEditForm('assignee_id', value || null)}
+                    value={editForm.assignee_id || 'unassigned'}
+                    onValueChange={(value) => updateEditForm('assignee_id', value === 'unassigned' ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select responsible" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {projectResources.map(resource => (
                         <SelectItem key={resource.id} value={resource.id}>
                           {resource.name}
