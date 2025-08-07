@@ -68,13 +68,15 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
     <div className="rounded-lg border bg-card">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-border/40">
-            <TableHead className="font-semibold text-foreground">Stakeholder</TableHead>
-            <TableHead className="font-semibold text-foreground hidden md:table-cell">Role & Department</TableHead>
+          <TableRow className="border-b border-border/40 bg-muted/30">
+            <TableHead className="font-semibold text-foreground py-4">Stakeholder</TableHead>
+            <TableHead className="font-semibold text-foreground hidden md:table-cell">Role</TableHead>
+            <TableHead className="font-semibold text-foreground hidden md:table-cell">Department</TableHead>
+            <TableHead className="font-semibold text-foreground hidden lg:table-cell">Projects</TableHead>
             <TableHead className="font-semibold text-foreground">Status</TableHead>
             <TableHead className="font-semibold text-foreground hidden sm:table-cell">Influence</TableHead>
             <TableHead className="font-semibold text-foreground hidden lg:table-cell">Communication</TableHead>
-            <TableHead className="font-semibold text-foreground hidden lg:table-cell">Quick Contact</TableHead>
+            <TableHead className="font-semibold text-foreground hidden xl:table-cell">Quick Contact</TableHead>
             <TableHead className="text-right font-semibold text-foreground">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -90,15 +92,22 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
                   </Avatar>
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="font-semibold text-sm text-foreground">{stakeholder.name}</p>
-                    <p className="text-xs text-muted-foreground md:hidden">{stakeholder.role}</p>
+                    <p className="text-xs text-muted-foreground md:hidden">{stakeholder.role} • {stakeholder.department}</p>
                     <p className="text-xs text-muted-foreground hidden md:block">{stakeholder.email}</p>
                   </div>
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell py-4">
-                <div className="space-y-1">
-                  <p className="font-medium text-sm text-foreground">{stakeholder.role}</p>
-                  <p className="text-xs text-muted-foreground">{stakeholder.department}</p>
+                <p className="font-medium text-sm text-foreground">{stakeholder.role}</p>
+              </TableCell>
+              <TableCell className="hidden md:table-cell py-4">
+                <p className="text-sm text-muted-foreground">{stakeholder.department}</p>
+              </TableCell>
+              <TableCell className="hidden lg:table-cell py-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
+                    {stakeholder.projects?.length || 0} {stakeholder.projects?.length === 1 ? 'Project' : 'Projects'}
+                  </Badge>
                 </div>
               </TableCell>
               <TableCell className="py-4">
@@ -116,7 +125,7 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
                   {stakeholder.communicationPreference || 'Email'}
                 </Badge>
               </TableCell>
-              <TableCell className="hidden lg:table-cell py-4">
+              <TableCell className="hidden xl:table-cell py-4">
                 <div className="flex items-center gap-1">
                   {stakeholder.email && (
                     <Button 
