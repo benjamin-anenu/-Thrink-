@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, AlertTriangle, Users, Link } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Edit, Trash2, AlertTriangle, Users, Link, Globe, Folder } from 'lucide-react';
 import { useEscalationTriggers } from '@/hooks/useEscalationTriggers';
 import { useEscalationLevels } from '@/hooks/useEscalationLevels';
 import { useEscalationAssignments } from '@/hooks/useEscalationAssignments';
@@ -25,10 +26,15 @@ const TriggerAssignmentInterface: React.FC<TriggerAssignmentInterfaceProps> = ({
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>('');
 
   const { currentWorkspace } = useWorkspace();
-  const { triggers } = useEscalationTriggers(projectId);
+  const { triggers: allTriggers } = useEscalationTriggers(projectId);
+  const { triggers: workspaceTriggers } = useEscalationTriggers(); // Workspace-level only
   const { levels } = useEscalationLevels(projectId);
   const { assignments, createAssignment, deleteAssignment, getAssignmentsByLevel } = useEscalationAssignments(projectId);
   const { stakeholders } = useStakeholders();
+
+  // Separate workspace and project triggers
+  const projectSpecificTriggers = allTriggers.filter(t => t.project_id === projectId);
+  const inheritedTriggers = allTriggers.filter(t => !t.project_id);
 
   const handleCreateAssignment = async () => {
     if (!selectedLevel || !selectedTrigger || !selectedStakeholder) return;
@@ -60,7 +66,7 @@ const TriggerAssignmentInterface: React.FC<TriggerAssignmentInterfaceProps> = ({
 
   const getUnassignedTriggers = () => {
     const assignedTriggerIds = assignments.map(a => a.trigger_id);
-    return triggers.filter(trigger => !assignedTriggerIds.includes(trigger.id));
+    return allTriggers.filter(trigger => !assignedTriggerIds.includes(trigger.id));
   };
 
   if (!currentWorkspace) {
@@ -92,6 +98,83 @@ const TriggerAssignmentInterface: React.FC<TriggerAssignmentInterfaceProps> = ({
         </Button>
       </div>
 
+      {/* Inherited Workspace Triggers Section */}
+      {inheritedTriggers.length > 0 && (
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm">
+                <Globe className="h-3 w-3" />
+              </div>
+              Inherited Workspace Triggers
+              <Badge variant="outline" className="text-blue-600 border-blue-200">
+                {inheritedTriggers.length} triggers
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {inheritedTriggers.map((trigger) => (
+                <div key={trigger.id} className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium text-sm">{trigger.name}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                      {trigger.threshold_value} {trigger.threshold_unit}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{trigger.description}</p>
+                </div>
+              ))}
+            </div>
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                These triggers are inherited from your workspace settings and apply to all projects. 
+                Assign them below to specific escalation levels.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Project-Specific Triggers Section */}
+      {projectSpecificTriggers.length > 0 && (
+        <Card className="border-green-200 dark:border-green-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-sm">
+                <Folder className="h-3 w-3" />
+              </div>
+              Project-Specific Triggers
+              <Badge variant="outline" className="text-green-600 border-green-200">
+                {projectSpecificTriggers.length} triggers
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {projectSpecificTriggers.map((trigger) => (
+                <div key={trigger.id} className="p-3 border rounded-lg bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-green-500" />
+                      <span className="font-medium text-sm">{trigger.name}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                      {trigger.threshold_value} {trigger.threshold_unit}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{trigger.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Trigger Assignment Visual Map */}
       <div className="grid gap-4">
         {levels.sort((a, b) => a.level_order - b.level_order).map((level) => {
@@ -118,36 +201,50 @@ const TriggerAssignmentInterface: React.FC<TriggerAssignmentInterfaceProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {levelAssignments.map((assignment) => (
-                      <div key={assignment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                        <div className="flex items-center gap-3">
+                    {levelAssignments.map((assignment) => {
+                      const isInherited = !assignment.trigger.project_id;
+                      return (
+                        <div key={assignment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-orange-500" />
+                              <span className="font-medium">{assignment.trigger.name}</span>
+                              {isInherited ? (
+                                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                                  <Globe className="h-3 w-3 mr-1" />
+                                  Workspace
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                                  <Folder className="h-3 w-3 mr-1" />
+                                  Project
+                                </Badge>
+                              )}
+                            </div>
+                            <Badge 
+                              variant="secondary" 
+                              className={getTriggerColor(assignment.trigger.condition_type)}
+                            >
+                              {assignment.trigger.threshold_value} {assignment.trigger.threshold_unit}
+                            </Badge>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
-                            <span className="font-medium">{assignment.trigger.name}</span>
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              <span className="text-sm">{assignment.stakeholder.name}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteAssignment(assignment.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 size={14} />
+                            </Button>
                           </div>
-                          <Badge 
-                            variant="secondary" 
-                            className={getTriggerColor(assignment.trigger.condition_type)}
-                          >
-                            {assignment.trigger.threshold_value} {assignment.trigger.threshold_unit}
-                          </Badge>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            <span className="text-sm">{assignment.stakeholder.name}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteAssignment(assignment.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

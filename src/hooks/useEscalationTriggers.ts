@@ -33,24 +33,18 @@ export const useEscalationTriggers = (projectId?: string) => {
         .eq('is_active', true);
 
       if (projectId) {
-        // Get global, workspace-level, and project-specific triggers
-        query = query.or(`workspace_id.is.null,and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.is.null),and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.eq.${projectId})`);
+        // Get workspace-level and project-specific triggers
+        query = query.or(`and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.is.null),and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.eq.${projectId})`);
       } else {
-        // Get global and workspace-level triggers only
-        query = query.or(`workspace_id.is.null,and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.is.null)`);
+        // Get workspace-level triggers only (project_id is null)
+        query = query.eq('workspace_id', currentWorkspace?.id || 'null').is('project_id', null);
       }
 
       const { data, error } = await query.order('name');
 
       if (error) throw error;
       
-      // If we have a workspace, assign workspace_id to global triggers for local management
-      const processedTriggers = data?.map(trigger => ({
-        ...trigger,
-        workspace_id: trigger.workspace_id || currentWorkspace?.id || ''
-      })) || [];
-      
-      setTriggers(processedTriggers);
+      setTriggers(data || []);
     } catch (error) {
       console.error('Error loading escalation triggers:', error);
       toast.error('Failed to load escalation triggers');
