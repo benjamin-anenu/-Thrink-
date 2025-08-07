@@ -204,8 +204,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
   }, [filteredTasks, milestones]);
 
   const handleIssueWarningClick = (taskId: string) => {
+    console.log('Issue warning clicked for task:', taskId);
+    console.log('onSwitchToIssueLog function:', onSwitchToIssueLog);
     if (onSwitchToIssueLog) {
       onSwitchToIssueLog(taskId);
+    } else {
+      console.error('onSwitchToIssueLog prop not provided');
     }
   };
 

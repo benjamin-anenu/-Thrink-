@@ -499,7 +499,7 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => onIssueWarningClick?.(task.id)}
-              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              className="h-8 w-8 p-0 text-warning hover:text-warning/80 hover:bg-warning/10"
             >
               <AlertTriangle className="h-4 w-4" />
               <span className="sr-only">{issueCount} issue{issueCount > 1 ? 's' : ''}</span>
