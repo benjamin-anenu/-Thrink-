@@ -492,12 +492,46 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
           </div>
         </TableCell>
 
+        {/* Issues */}
+        <TableCell className={densityClass}>
+          {issueCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Issue icon clicked for task:', task.id, 'with issue count:', issueCount);
+                if (onIssueWarningClick) {
+                  onIssueWarningClick(task.id);
+                } else {
+                  console.error('onIssueWarningClick handler not provided');
+                }
+              }}
+              className="h-8 w-8 p-0 text-warning hover:text-warning/80 hover:bg-warning/10 relative cursor-pointer"
+              title={`View ${issueCount} issue${issueCount > 1 ? 's' : ''} for this task`}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-4 w-4 p-0 text-[10px] font-bold flex items-center justify-center pointer-events-none"
+              >
+                {issueCount}
+              </Badge>
+              <span className="sr-only">{issueCount} issue{issueCount > 1 ? 's' : ''}</span>
+            </Button>
+          ) : (
+            <div className="h-8 w-8 flex items-center justify-center">
+              <span className="text-muted-foreground text-xs">-</span>
+            </div>
+          )}
+        </TableCell>
+
         {/* Actions */}
         <TableCell className={densityClass}>
           <TaskActionsCell
             task={task}
-            projectId={projectId}
-            issueCount={issueCount}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
             onRebaseline={onRebaselineTask}
