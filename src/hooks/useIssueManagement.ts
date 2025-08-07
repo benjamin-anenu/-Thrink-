@@ -51,13 +51,32 @@ export const useIssueManagement = (projectId: string) => {
       if (error) throw error;
       
       const mappedIssues: ProjectIssue[] = (data || []).map(issue => {
-        const scheduleVariance = issue.resolved_at && issue.due_date
-          ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24))
-          : undefined;
+        const currentDate = new Date();
+        const resolvedDate = issue.resolved_at ? new Date(issue.resolved_at) : null;
+        const dueDate = issue.due_date ? new Date(issue.due_date) : null;
+        const identifiedDate = new Date(issue.date_identified);
 
-        const timeToResolve = issue.resolved_at && issue.date_identified
-          ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.date_identified).getTime()) / (1000 * 60 * 60 * 24))
-          : undefined;
+        // Calculate schedule variance
+        let scheduleVariance: number | undefined;
+        if (dueDate) {
+          if (resolvedDate) {
+            // For resolved issues: days difference between resolved date and due date
+            scheduleVariance = Math.ceil((resolvedDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+          } else {
+            // For open issues: days difference between current date and due date (negative = overdue)
+            scheduleVariance = Math.ceil((currentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+          }
+        }
+
+        // Calculate time to resolve
+        let timeToResolve: number | undefined;
+        if (resolvedDate) {
+          // For resolved issues: days from identification to resolution
+          timeToResolve = Math.ceil((resolvedDate.getTime() - identifiedDate.getTime()) / (1000 * 60 * 60 * 24));
+        } else {
+          // For open issues: days from identification to current date
+          timeToResolve = Math.ceil((currentDate.getTime() - identifiedDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
 
         return {
           ...issue,
