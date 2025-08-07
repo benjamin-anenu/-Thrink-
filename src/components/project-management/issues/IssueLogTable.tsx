@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { AlertTriangle, Edit2, Trash2, Save, X, ExternalLink } from 'lucide-reac
 import { ProjectIssue } from '@/types/issue';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import type { Resource } from '@/types/resource';
 
 interface IssueLogTableProps {
   issues: ProjectIssue[];
@@ -30,6 +32,50 @@ export const IssueLogTable = ({
 }: IssueLogTableProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProjectIssue>>({});
+  const [projectResources, setProjectResources] = useState<Resource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(true);
+
+  // Fetch project resources
+  useEffect(() => {
+    const fetchProjectResources = async () => {
+      try {
+        setLoadingResources(true);
+        const { data, error } = await supabase
+          .from('resources')
+          .select('*')
+          .eq('workspace_id', (await supabase
+            .from('projects')
+            .select('workspace_id')
+            .eq('id', projectId)
+            .single()
+          ).data?.workspace_id)
+          .order('name');
+
+        if (error) throw error;
+        
+        // Map database fields to Resource interface
+        const mappedResources = (data || []).map(item => ({
+          ...item,
+          type: 'human' as 'human' | 'ai' | 'external',
+          status: 'active' as 'active' | 'inactive' | 'pending',
+          skills: [] as string[],
+          availability: item.availability ? `${item.availability}%` : '100%',
+          cost: 0,
+          utilization: 0,
+        }));
+        
+        setProjectResources(mappedResources);
+      } catch (error) {
+        console.error('Error fetching project resources:', error);
+      } finally {
+        setLoadingResources(false);
+      }
+    };
+
+    if (projectId) {
+      fetchProjectResources();
+    }
+  }, [projectId]);
 
   const startEdit = (issue: ProjectIssue) => {
     setEditingId(issue.id);
@@ -114,6 +160,7 @@ export const IssueLogTable = ({
             <TableHead className={getDensityClasses()}>Severity</TableHead>
             <TableHead className={getDensityClasses()}>Priority</TableHead>
             <TableHead className={getDensityClasses()}>Status</TableHead>
+            <TableHead className={getDensityClasses()}>Responsible</TableHead>
             <TableHead className={getDensityClasses()}>Date Identified</TableHead>
             <TableHead className={getDensityClasses()}>Due Date</TableHead>
             <TableHead className={getDensityClasses()}>Date Resolved</TableHead>
@@ -220,6 +267,34 @@ export const IssueLogTable = ({
 
               <TableCell className={getDensityClasses()}>
                 {editingId === issue.id ? (
+                  <Select
+                    value={editForm.assignee_id || ''}
+                    onValueChange={(value) => updateEditForm('assignee_id', value || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select responsible" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Unassigned</SelectItem>
+                      {projectResources.map(resource => (
+                        <SelectItem key={resource.id} value={resource.id}>
+                          {resource.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-sm">
+                    {issue.assignee_id 
+                      ? projectResources.find(r => r.id === issue.assignee_id)?.name || 'Unknown'
+                      : 'Unassigned'
+                    }
+                  </span>
+                )}
+              </TableCell>
+
+              <TableCell className={getDensityClasses()}>
+                {editingId === issue.id ? (
                   <Input
                     type="date"
                     value={editForm.date_identified || ''}
@@ -282,7 +357,11 @@ export const IssueLogTable = ({
                 <div className="flex items-center gap-1">
                   {editingId === issue.id ? (
                     <>
-                      <Button size="sm" onClick={saveEdit}>
+                      <Button 
+                        size="sm" 
+                        onClick={saveEdit}
+                        disabled={!editForm.title?.trim()}
+                      >
                         <Save className="h-3 w-3" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={cancelEdit}>
