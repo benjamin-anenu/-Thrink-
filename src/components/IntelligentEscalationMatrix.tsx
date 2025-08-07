@@ -1,15 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Users, Shield, Settings, BarChart3, Link2, Activity, Bell } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useEscalationLevels } from '@/hooks/useEscalationLevels';
+import { useEscalationTriggers } from '@/hooks/useEscalationTriggers';
+import { useEscalationAssignments } from '@/hooks/useEscalationAssignments';
 import EscalationOverview from '@/components/escalation/EscalationOverview';
 import EscalationLevelManager from '@/components/escalation/EscalationLevelManager';
 import TriggerAssignmentInterface from '@/components/escalation/TriggerAssignmentInterface';
 import EscalationMonitoringDashboard from '@/components/escalation/EscalationMonitoringDashboard';
 import EscalationNotificationService from '@/components/escalation/EscalationNotificationService';
+import EscalationSkeleton from '@/components/escalation/EscalationSkeleton';
 
 interface IntelligentEscalationMatrixProps {
   projectId?: string;
@@ -18,7 +22,32 @@ interface IntelligentEscalationMatrixProps {
 
 const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = ({ projectId, projects }) => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const { currentWorkspace } = useWorkspace();
+  
+  // Get loading states from hooks
+  const { loading: levelsLoading } = useEscalationLevels(projectId);
+  const { loading: triggersLoading } = useEscalationTriggers(projectId);
+  const { loading: assignmentsLoading } = useEscalationAssignments(projectId);
+  
+  // Combined loading state
+  const dataLoading = levelsLoading || triggersLoading || assignmentsLoading;
+
+  // Handle project change with loading state
+  useEffect(() => {
+    if (projectId) {
+      setIsLoading(true);
+      // Show loading for a minimum duration to provide visual feedback
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setIsLoading(false);
+    }
+  }, [projectId]);
 
   const handleDataChange = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -38,7 +67,7 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
   return (
     <div className="space-y-6">
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -75,7 +104,13 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EscalationOverview key={refreshTrigger} projectId={projectId} projects={projects} />
+              <div className="min-h-[400px]">
+                {(isLoading || dataLoading) ? (
+                  <EscalationSkeleton variant="overview" />
+                ) : (
+                  <EscalationOverview key={refreshTrigger} projectId={projectId} projects={projects} />
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -89,11 +124,17 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EscalationLevelManager 
-                key={refreshTrigger} 
-                projectId={projectId}
-                onLevelChange={handleDataChange}
-              />
+              <div className="min-h-[300px]">
+                {(isLoading || levelsLoading) ? (
+                  <EscalationSkeleton variant="levels" />
+                ) : (
+                  <EscalationLevelManager 
+                    key={refreshTrigger} 
+                    projectId={projectId}
+                    onLevelChange={handleDataChange}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -107,11 +148,17 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TriggerAssignmentInterface 
-                key={refreshTrigger} 
-                projectId={projectId}
-                onAssignmentChange={handleDataChange}
-              />
+              <div className="min-h-[400px]">
+                {(isLoading || triggersLoading || assignmentsLoading) ? (
+                  <EscalationSkeleton variant="assignments" />
+                ) : (
+                  <TriggerAssignmentInterface 
+                    key={refreshTrigger} 
+                    projectId={projectId}
+                    onAssignmentChange={handleDataChange}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -125,7 +172,13 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EscalationMonitoringDashboard />
+              <div className="min-h-[300px]">
+                {isLoading ? (
+                  <EscalationSkeleton variant="monitoring" />
+                ) : (
+                  <EscalationMonitoringDashboard />
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -139,7 +192,13 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EscalationNotificationService />
+              <div className="min-h-[300px]">
+                {isLoading ? (
+                  <EscalationSkeleton variant="notifications" />
+                ) : (
+                  <EscalationNotificationService />
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
