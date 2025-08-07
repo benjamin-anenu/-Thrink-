@@ -280,23 +280,27 @@ interface ProjectDisplayProps {
                   </Tooltip>
                 </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-2 md:gap-4 text-xs md:text-sm">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-500" />
-                  <span>{stats.completedTasks}/{stats.totalTasks} Tasks</span>
-                </div>
-                <div className="flex items-center gap-1 md:gap-2">
-                  <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-500" />
-                  <span>{stats.actualTeamSize} Members</span>
-                </div>
-                {stats.overdueTasks > 0 && (
-                  <div className="flex items-center gap-1 md:gap-2 col-span-2">
-                    <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-500" />
-                    <span className="text-red-500">{stats.overdueTasks} Overdue</span>
-                  </div>
-                )}
-              </div>
+               {/* Stats */}
+               <div className="grid grid-cols-2 gap-2 md:gap-4 text-xs md:text-sm">
+                 <div className="flex items-center gap-1 md:gap-2">
+                   <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-500" />
+                   <span>{stats.completedTasks}/{stats.totalTasks} Tasks</span>
+                 </div>
+                 <div className="flex items-center gap-1 md:gap-2">
+                   <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-500" />
+                   <span>{stats.actualTeamSize} Members</span>
+                 </div>
+                 <div className="flex items-center gap-1 md:gap-2 col-span-2 min-h-[20px] md:min-h-[24px]">
+                   {stats.overdueTasks > 0 ? (
+                     <>
+                       <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-500" />
+                       <span className="text-red-500">{stats.overdueTasks} Overdue</span>
+                     </>
+                   ) : (
+                     <span className="sr-only">No alerts</span>
+                   )}
+                 </div>
+               </div>
 
               {/* Timeline - Use centralized date service */}
               <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-muted-foreground">
