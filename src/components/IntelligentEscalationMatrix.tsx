@@ -13,9 +13,10 @@ import EscalationNotificationService from '@/components/escalation/EscalationNot
 
 interface IntelligentEscalationMatrixProps {
   projectId?: string;
+  projects?: Array<{ id: string; name: string; status: string; }>;
 }
 
-const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = ({ projectId }) => {
+const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = ({ projectId, projects }) => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { currentWorkspace } = useWorkspace();
 
@@ -74,7 +75,7 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EscalationOverview key={refreshTrigger} />
+              <EscalationOverview key={refreshTrigger} projectId={projectId} projects={projects} />
             </CardContent>
           </Card>
         </TabsContent>

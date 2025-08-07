@@ -3,13 +3,19 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { AlertTriangle, Users, Link, Activity } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, Users, Link, Activity, Folder } from 'lucide-react';
 import { useEscalationLevels } from '@/hooks/useEscalationLevels';
 import { useEscalationAssignments } from '@/hooks/useEscalationAssignments';
 import { useEscalationTriggers } from '@/hooks/useEscalationTriggers';
 import { useStakeholders } from '@/hooks/useStakeholders';
 
-const EscalationOverview: React.FC = () => {
+interface EscalationOverviewProps {
+  projectId?: string;
+  projects?: Array<{ id: string; name: string; status: string; }>;
+}
+
+const EscalationOverview: React.FC<EscalationOverviewProps> = ({ projectId, projects = [] }) => {
   const { levels } = useEscalationLevels();
   const { assignments } = useEscalationAssignments();
   const { triggers } = useEscalationTriggers();
@@ -31,8 +37,45 @@ const EscalationOverview: React.FC = () => {
     return assignments.filter(a => a.level_id === levelId);
   };
 
+  const selectedProject = projects.find(p => p.id === projectId);
+
   return (
     <div className="space-y-6">
+      {/* Project Context Header */}
+      {projects.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Folder className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Project Context</CardTitle>
+              </div>
+              {selectedProject && (
+                <Badge variant="outline" className="text-sm">
+                  {selectedProject.status}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-sm text-muted-foreground mb-2">
+              {selectedProject ? (
+                <span>
+                  Viewing escalation data for: <span className="font-medium text-foreground">{selectedProject.name}</span>
+                </span>
+              ) : (
+                <span>Select a project to view project-specific escalation data</span>
+              )}
+            </div>
+            {!selectedProject && (
+              <p className="text-xs text-muted-foreground">
+                Current view shows workspace-wide escalation configuration
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
