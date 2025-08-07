@@ -47,7 +47,8 @@ export const useEnhancedResourcesWithUtilization = () => {
 
   // Update resources when utilization metrics change or base resources change
   useEffect(() => {
-    if (baseResources.length > 0) {
+    // Only update resources when both base resources and utilization are ready
+    if (baseResources.length > 0 && !utilizationLoading && initialLoadComplete) {
       const mappedData = baseResources.map(item => {
         const utilizationData = utilizationMetrics[item.id] || {
           utilization_percentage: 0,
@@ -62,7 +63,7 @@ export const useEnhancedResourcesWithUtilization = () => {
           skills: [] as string[],
           availability: item.availability ? `${item.availability}%` : '100%',
           cost: 0,
-          utilization: utilizationData.utilization_percentage, // Use calculated utilization
+          utilization: utilizationData.utilization_percentage,
           workspace_id: item.workspace_id || '',
           name: item.name || '',
           email: item.email || '',
@@ -81,8 +82,11 @@ export const useEnhancedResourcesWithUtilization = () => {
       });
       
       setResources(mappedData);
+    } else if (baseResources.length === 0 && initialLoadComplete) {
+      // Handle empty state after load is complete
+      setResources([]);
     }
-  }, [baseResources, utilizationMetrics]);
+  }, [baseResources, utilizationMetrics, utilizationLoading, initialLoadComplete]);
 
   const deleteResource = async (resourceId: string) => {
     if (!currentWorkspace) return false;
@@ -138,7 +142,7 @@ export const useEnhancedResourcesWithUtilization = () => {
 
   return {
     resources,
-    loading: !initialLoadComplete || (loading && !initialLoadComplete) || (utilizationLoading && baseResources.length === 0),
+    loading: !initialLoadComplete || utilizationLoading || baseResources.length === 0,
     refreshResources,
     deleteResource,
     utilizationMetrics,
