@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import CompactResourceCard from '@/components/CompactResourceCard';
 import { Resource } from '@/types/resource';
 import { TaskUtilizationMetrics } from '@/types/enhanced-resource';
+import { ResourceCardSkeleton } from '@/components/ui/resource-card-skeleton';
 
 interface EnhancedResourceGridProps {
   resources: Resource[];
@@ -14,6 +15,7 @@ interface EnhancedResourceGridProps {
   showCompareMode?: boolean;
   selectedForComparison?: Set<string>;
   onCompareToggle?: (resourceId: string, selected: boolean) => void;
+  loading?: boolean;
 }
 
 const EnhancedResourceGrid = ({ 
@@ -24,8 +26,12 @@ const EnhancedResourceGrid = ({
   onShowResourceForm,
   showCompareMode = false,
   selectedForComparison = new Set(),
-  onCompareToggle
+  onCompareToggle,
+  loading = false
 }: EnhancedResourceGridProps) => {
+  if (loading) {
+    return <ResourceCardSkeleton count={8} />;
+  }
   if (resources.length === 0) {
     return (
       <div className="text-center py-12">

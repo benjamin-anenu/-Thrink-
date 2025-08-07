@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProjectData, determineProjectStatus, ProjectStatusType } from '@/types/project';
 import { useProjectStatus } from '@/hooks/useProjectStatus';
 import { calculateRealTimeProjectProgress, getProjectPhaseDetails } from '@/utils/phaseCalculations';
+import { ProjectCardSkeleton } from '@/components/ui/project-card-skeleton';
 
 interface Task {
   id: string;
@@ -32,6 +33,7 @@ interface ProjectDisplayProps {
   onManageProject: (project: ProjectData) => void;
   onDeleteProject: (project: ProjectData) => void;
   deletingProject: string | null;
+  loading?: boolean;
 }
 
   const ProjectDisplay: React.FC<ProjectDisplayProps> = ({
@@ -39,7 +41,8 @@ interface ProjectDisplayProps {
     onViewDetails,
     onManageProject,
     onDeleteProject,
-    deletingProject
+    deletingProject,
+    loading = false
   }) => {
     // Debug logging to see what data we're receiving
     useEffect(() => {
@@ -54,11 +57,18 @@ interface ProjectDisplayProps {
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
   const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
   const [phaseDetails, setPhaseDetails] = useState<Record<string, any[]>>({});
+  const [progressLoading, setProgressLoading] = useState(true);
   const { updateProjectStatus } = useProjectStatus();
 
   // Load project progress and phase details
   useEffect(() => {
     const loadProjectData = async () => {
+      if (projects.length === 0) {
+        setProgressLoading(false);
+        return;
+      }
+
+      setProgressLoading(true);
       const progressData: Record<string, number> = {};
       const phaseData: Record<string, any[]> = {};
       
@@ -80,11 +90,12 @@ interface ProjectDisplayProps {
       
       setProjectProgress(progressData);
       setPhaseDetails(phaseData);
+      
+      // Minimum loading time for smooth UX
+      setTimeout(() => setProgressLoading(false), 500);
     };
 
-    if (projects.length > 0) {
-      loadProjectData();
-    }
+    loadProjectData();
   }, [projects]);
 
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
@@ -187,6 +198,11 @@ interface ProjectDisplayProps {
       </div>
     );
   };
+
+  // Show loading skeleton while data is being fetched
+  if (loading || progressLoading) {
+    return <ProjectCardSkeleton count={6} />;
+  }
 
   // Don't show "No Projects Found" if still loading
   if (projects.length === 0) {

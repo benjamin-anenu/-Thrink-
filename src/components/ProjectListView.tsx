@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Eye, Edit, Trash2, Users, Calendar } from 'lucide-react';
 import { ProjectData, determineProjectStatus } from '@/types/project';
 import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
+import { ListRowSkeleton } from '@/components/ui/list-row-skeleton';
 
 interface ProjectListViewProps {
   projects: ProjectData[];
@@ -15,6 +16,7 @@ interface ProjectListViewProps {
   onManageProject: (project: ProjectData) => void;
   onDeleteProject: (project: ProjectData) => void;
   deletingProject: string | null;
+  loading?: boolean;
 }
 
 const ProjectListView: React.FC<ProjectListViewProps> = ({
@@ -22,7 +24,8 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
   onViewDetails,
   onManageProject,
   onDeleteProject,
-  deletingProject
+  deletingProject,
+  loading = false
 }) => {
   const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
@@ -66,6 +69,10 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
       loadProjectProgress();
     }
   }, [projects]);
+
+  if (loading) {
+    return <ListRowSkeleton count={5} showActions={true} />;
+  }
 
   const calculateProjectStats = (project: ProjectData) => {
     const tasks = project.tasks || [];

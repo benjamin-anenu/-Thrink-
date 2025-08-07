@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Resource } from '@/types/resource';
+import { StatsCardSkeleton } from '@/components/ui/stats-card-skeleton';
 
 interface ResourceStatsProps {
   resources: Resource[];
@@ -24,18 +25,7 @@ const ResourceStats = ({ resources, loading }: ResourceStatsProps) => {
   const billableResources = resources.filter(r => r.hourly_rate && r.hourly_rate > 0).length;
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Card key={index}>
-            <CardContent className="pt-6">
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsCardSkeleton count={4} variant="default" />;
   }
 
   return (

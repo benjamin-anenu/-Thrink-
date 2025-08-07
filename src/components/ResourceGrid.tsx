@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import ResourceCard from '@/components/ResourceCard';
 import { Resource } from '@/types/resource';
+import { ResourceCardSkeleton } from '@/components/ui/resource-card-skeleton';
 
 interface ResourceGridProps {
   resources: Resource[];
@@ -11,6 +12,7 @@ interface ResourceGridProps {
   showCompareMode?: boolean;
   selectedForComparison?: Set<string>;
   onCompareToggle?: (resourceId: string, selected: boolean) => void;
+  loading?: boolean;
 }
 
 const ResourceGrid = ({ 
@@ -19,8 +21,12 @@ const ResourceGrid = ({
   onShowResourceForm,
   showCompareMode = false,
   selectedForComparison = new Set(),
-  onCompareToggle
+  onCompareToggle,
+  loading = false
 }: ResourceGridProps) => {
+  if (loading) {
+    return <ResourceCardSkeleton count={6} />;
+  }
   if (resources.length === 0) {
     return (
       <div className="text-center py-12">

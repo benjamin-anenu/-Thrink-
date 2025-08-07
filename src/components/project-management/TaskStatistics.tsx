@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Clock, AlertCircle, FileText } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useTasks } from '@/hooks/useTasks';
+import { StatsCardSkeleton } from '@/components/ui/stats-card-skeleton';
 
 const TaskStatistics: React.FC = () => {
   const { id: projectId } = useParams<{ id: string }>();
@@ -46,18 +47,7 @@ const TaskStatistics: React.FC = () => {
   ];
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse h-24 md:h-auto">
-            <CardContent className="pt-3 md:pt-6 p-3 md:p-6">
-              <div className="h-4 md:h-8 bg-muted rounded w-12 md:w-16 mb-2"></div>
-              <div className="h-3 md:h-4 bg-muted rounded w-20 md:w-32"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsCardSkeleton count={4} variant="compact" />;
   }
 
   return (

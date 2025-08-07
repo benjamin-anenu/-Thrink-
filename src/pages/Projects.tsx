@@ -278,23 +278,17 @@ const ProjectsContent: React.FC = () => {
         )}
 
         <div className="space-y-6">
-          {(loading || !isFullyLoaded) && filteredProjects.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <div className="text-muted-foreground">Loading projects...</div>
-            </div>
-          ) : (
-            // Always use grid view on mobile (single column), respect view toggle on desktop
-            <div className="md:hidden">
-              <ProjectDisplay
-                projects={filteredProjects}
-                onViewDetails={handleViewDetails}
-                onManageProject={handleManageProject}
-                onDeleteProject={handleDeleteProject}
-                deletingProject={deletingProject}
-              />
-            </div>
-          )}
+          {/* Mobile view - Always use grid layout */}
+          <div className="md:hidden">
+            <ProjectDisplay
+              projects={filteredProjects}
+              onViewDetails={handleViewDetails}
+              onManageProject={handleManageProject}
+              onDeleteProject={handleDeleteProject}
+              deletingProject={deletingProject}
+              loading={loading || !isFullyLoaded}
+            />
+          </div>
           
           {/* Desktop view toggle */}
           <div className="hidden md:block">
@@ -305,6 +299,7 @@ const ProjectsContent: React.FC = () => {
                 onManageProject={handleManageProject}
                 onDeleteProject={handleDeleteProject}
                 deletingProject={deletingProject}
+                loading={loading || !isFullyLoaded}
               />
             ) : (
               <ProjectListView
@@ -313,6 +308,7 @@ const ProjectsContent: React.FC = () => {
                 onManageProject={handleManageProject}
                 onDeleteProject={handleDeleteProject}
                 deletingProject={deletingProject}
+                loading={loading || !isFullyLoaded}
               />
             )}
           </div>

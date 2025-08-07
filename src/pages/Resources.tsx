@@ -140,6 +140,7 @@ const Resources: React.FC = () => {
                     onViewDetails={handleViewDetails}
                     onEditResource={handleEditResource}
                     onShowResourceForm={handleShowResourceForm}
+                    loading={loading || !isFullyLoaded}
                   />
                 )}
               </TabsContent>
