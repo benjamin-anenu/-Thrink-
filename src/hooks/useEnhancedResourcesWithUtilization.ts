@@ -9,6 +9,7 @@ export const useEnhancedResourcesWithUtilization = () => {
   const [baseResources, setBaseResources] = useState<any[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const { currentWorkspace } = useWorkspace();
 
   const loadBaseResources = async () => {
@@ -30,9 +31,11 @@ export const useEnhancedResourcesWithUtilization = () => {
       if (error) throw error;
       
       setBaseResources(data || []);
+      setInitialLoadComplete(true);
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');
+      setInitialLoadComplete(true);
     } finally {
       setLoading(false);
     }
@@ -135,7 +138,7 @@ export const useEnhancedResourcesWithUtilization = () => {
 
   return {
     resources,
-    loading: loading || utilizationLoading,
+    loading: !initialLoadComplete || (loading && !initialLoadComplete) || (utilizationLoading && baseResources.length === 0),
     refreshResources,
     deleteResource,
     utilizationMetrics,
