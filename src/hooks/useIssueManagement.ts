@@ -217,6 +217,8 @@ export const useIssueManagement = (projectId: string) => {
       delete filteredUpdates.task_name;
       delete filteredUpdates.schedule_variance_days;
       delete filteredUpdates.time_to_resolve_days;
+      delete (filteredUpdates as any).milestones;
+      delete (filteredUpdates as any).project_tasks;
       
       // Set resolved_at when status changes to Resolved or Closed
       if (filteredUpdates.status && ['Resolved', 'Closed'].includes(filteredUpdates.status)) {
