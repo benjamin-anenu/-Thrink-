@@ -87,24 +87,6 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
               <AlertTriangle className="h-4 w-4" />
             </Button>
           )}
-          {/* Issues Button */}
-          {issueCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewTaskIssues}
-              className="h-8 w-8 p-0 relative"
-              title={`View ${issueCount} issue(s) for this task`}
-            >
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs flex items-center justify-center min-w-4"
-              >
-                {issueCount}
-              </Badge>
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="sm"
