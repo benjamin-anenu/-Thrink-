@@ -113,6 +113,32 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
     actualTeamSize
   };
 
+  // Derive mutually exclusive distribution for accurate stacked bar
+  const totalTasksSafe = Math.max(projectStats.totalTasks, 1);
+  const delayedSet = new Set(
+    tasks
+      .filter((t: any) => {
+        const end = t.endDate ? new Date(t.endDate) : null;
+        const baseline = t.baselineEndDate ? new Date(t.baselineEndDate) : null;
+        return end && baseline && end > baseline;
+      })
+      .map((t: any) => t.id)
+  );
+  const remainingAfterDelayed = tasks.filter((t: any) => !delayedSet.has(t.id));
+  const onTrackCount = remainingAfterDelayed.filter((t: any) => t.status === 'Completed').length;
+  const remainingAfterCompleted = remainingAfterDelayed.filter((t: any) => t.status !== 'Completed');
+  const inProgressCount = remainingAfterCompleted.filter((t: any) => t.status === 'In Progress').length;
+  const delayedCount = delayedSet.size;
+
+  // Percentages (display and bar widths)
+  const onTrackPct = Math.round((onTrackCount / totalTasksSafe) * 100);
+  const inProgressPct = Math.round((inProgressCount / totalTasksSafe) * 100);
+  const delayedPct = Math.round((delayedCount / totalTasksSafe) * 100);
+
+  const onTrackPctRaw = (onTrackCount / totalTasksSafe) * 100;
+  const inProgressPctRaw = (inProgressCount / totalTasksSafe) * 100;
+  const delayedPctRaw = (delayedCount / totalTasksSafe) * 100;
+
   return (
     <div className="space-y-6">
       {/* Project Summary */}
@@ -305,29 +331,36 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
               <span className="text-sm">Overall Health Score</span>
               <span className="font-semibold">{healthData.score}/100</span>
             </div>
-            <Progress value={healthData.score} className="h-2" />
+            {/* Stacked distribution bar (green/yellow/red) */}
+            <div className="relative h-2 w-full rounded bg-muted overflow-hidden">
+              <div className="absolute inset-0 flex">
+                <div className="bg-green-500" style={{ width: `${onTrackPctRaw}%` }} />
+                <div className="bg-yellow-500" style={{ width: `${inProgressPctRaw}%` }} />
+                <div className="bg-red-500" style={{ width: `${delayedPctRaw}%` }} />
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div className="text-center p-3 border rounded-lg">
-                <div className="h-3 bg-green-500 rounded mb-2"></div>
-                <p className="text-sm font-medium">On Track</p>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round((projectStats.completedTasks / Math.max(projectStats.totalTasks, 1)) * 100)}% of Tasks
-                </p>
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <span className="h-3 w-3 rounded-full bg-green-500" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-medium">On Track</p>
+                  <p className="text-xs text-muted-foreground">{onTrackPct}% of Tasks</p>
+                </div>
               </div>
-              <div className="text-center p-3 border rounded-lg">
-                <div className="h-3 bg-yellow-500 rounded mb-2"></div>
-                <p className="text-sm font-medium">In Progress</p>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round((projectStats.inProgressTasks / Math.max(projectStats.totalTasks, 1)) * 100)}% of Tasks
-                </p>
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <span className="h-3 w-3 rounded-full bg-yellow-500" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-medium">In Progress</p>
+                  <p className="text-xs text-muted-foreground">{inProgressPct}% of Tasks</p>
+                </div>
               </div>
-              <div className="text-center p-3 border rounded-lg">
-                <div className="h-3 bg-red-500 rounded mb-2"></div>
-                <p className="text-sm font-medium">Delayed</p>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round((projectStats.delayedTasks / Math.max(projectStats.totalTasks, 1)) * 100)}% of Tasks
-                </p>
+              <div className="flex items-center gap-3 p-3 border rounded-lg">
+                <span className="h-3 w-3 rounded-full bg-red-500" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-medium">Delayed</p>
+                  <p className="text-xs text-muted-foreground">{delayedPct}% of Tasks</p>
+                </div>
               </div>
             </div>
           </div>
