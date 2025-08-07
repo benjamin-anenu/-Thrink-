@@ -31,6 +31,10 @@ import { ProjectTask } from '@/types/project';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 import { useMobileComplexity } from '@/hooks/useMobileComplexity';
+import BulkImportModal from '@/components/BulkImportModal';
+import { toast } from 'sonner';
+import { generateTaskImportTemplate } from '@/utils/generateTaskTemplate';
+import { BulkTaskImportService, ParsedRow } from '@/services/BulkTaskImportService';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -199,6 +203,16 @@ const ProjectManagementContent: React.FC<{
     }
   };
 
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const handleBulkImport = async (data: ParsedRow[]) => {
+    try {
+      const res = await BulkTaskImportService.importTasks(project.id, data);
+      toast.success(`Imported ${res.inserted} tasks, updated ${res.updated}.`);
+    } catch (err: any) {
+      console.error('[Bulk Import] Failed', err);
+      toast.error(err?.message || 'Import failed');
+    }
+  };
   return (
     <Layout>
       <div className="container mx-auto px-3 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
@@ -357,6 +371,24 @@ const ProjectManagementContent: React.FC<{
               {/* Mobile-optimized view toggle buttons */}
               <div className="flex flex-col gap-2 md:flex-row md:gap-2">
                 <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateTaskImportTemplate()}
+                  className="w-full md:w-auto h-11 md:h-9"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Template
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsBulkImportOpen(true)}
+                  className="w-full md:w-auto h-11 md:h-9"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Tasks
+                </Button>
+                <Button
                   variant={viewMode === 'gantt' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('gantt')}
@@ -450,6 +482,13 @@ const ProjectManagementContent: React.FC<{
             setSelectedTask(null);
           }}
           onUpdate={updateTask}
+        />
+
+        {/* Bulk Import Modal */}
+        <BulkImportModal
+          isOpen={isBulkImportOpen}
+          onClose={() => setIsBulkImportOpen(false)}
+          onImport={handleBulkImport}
         />
       </div>
     </Layout>
