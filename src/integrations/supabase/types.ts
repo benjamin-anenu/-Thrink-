@@ -711,6 +711,7 @@ export type Database = {
           created_at: string
           id: string
           level_id: string
+          project_id: string | null
           stakeholder_id: string
           trigger_id: string
           updated_at: string
@@ -720,6 +721,7 @@ export type Database = {
           created_at?: string
           id?: string
           level_id: string
+          project_id?: string | null
           stakeholder_id: string
           trigger_id: string
           updated_at?: string
@@ -729,6 +731,7 @@ export type Database = {
           created_at?: string
           id?: string
           level_id?: string
+          project_id?: string | null
           stakeholder_id?: string
           trigger_id?: string
           updated_at?: string
@@ -740,6 +743,13 @@ export type Database = {
             columns: ["level_id"]
             isOneToOne: false
             referencedRelation: "escalation_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -838,6 +848,7 @@ export type Database = {
           id: string
           level_order: number
           name: string
+          project_id: string | null
           updated_at: string
           workspace_id: string
         }
@@ -846,6 +857,7 @@ export type Database = {
           id?: string
           level_order: number
           name: string
+          project_id?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -854,10 +866,19 @@ export type Database = {
           id?: string
           level_order?: number
           name?: string
+          project_id?: string | null
           updated_at?: string
           workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "escalation_levels_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       escalation_triggers: {
         Row: {
@@ -868,6 +889,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          project_id: string | null
           threshold_unit: string | null
           threshold_value: number | null
           updated_at: string
@@ -881,6 +903,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          project_id?: string | null
           threshold_unit?: string | null
           threshold_value?: number | null
           updated_at?: string
@@ -894,12 +917,20 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          project_id?: string | null
           threshold_unit?: string | null
           threshold_value?: number | null
           updated_at?: string
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "escalation_triggers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "escalation_triggers_workspace_id_fkey"
             columns: ["workspace_id"]

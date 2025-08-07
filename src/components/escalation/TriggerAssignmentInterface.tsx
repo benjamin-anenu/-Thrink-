@@ -14,19 +14,20 @@ import { useStakeholders } from '@/hooks/useStakeholders';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface TriggerAssignmentInterfaceProps {
+  projectId?: string;
   onAssignmentChange?: () => void;
 }
 
-const TriggerAssignmentInterface: React.FC<TriggerAssignmentInterfaceProps> = ({ onAssignmentChange }) => {
+const TriggerAssignmentInterface: React.FC<TriggerAssignmentInterfaceProps> = ({ projectId, onAssignmentChange }) => {
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedTrigger, setSelectedTrigger] = useState<string>('');
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>('');
 
   const { currentWorkspace } = useWorkspace();
-  const { triggers } = useEscalationTriggers();
-  const { levels } = useEscalationLevels();
-  const { assignments, createAssignment, deleteAssignment, getAssignmentsByLevel } = useEscalationAssignments();
+  const { triggers } = useEscalationTriggers(projectId);
+  const { levels } = useEscalationLevels(projectId);
+  const { assignments, createAssignment, deleteAssignment, getAssignmentsByLevel } = useEscalationAssignments(projectId);
   const { stakeholders } = useStakeholders();
 
   const handleCreateAssignment = async () => {

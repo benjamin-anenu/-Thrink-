@@ -91,6 +91,7 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
             <CardContent>
               <EscalationLevelManager 
                 key={refreshTrigger} 
+                projectId={projectId}
                 onLevelChange={handleDataChange}
               />
             </CardContent>
@@ -108,6 +109,7 @@ const IntelligentEscalationMatrix: React.FC<IntelligentEscalationMatrixProps> = 
             <CardContent>
               <TriggerAssignmentInterface 
                 key={refreshTrigger} 
+                projectId={projectId}
                 onAssignmentChange={handleDataChange}
               />
             </CardContent>

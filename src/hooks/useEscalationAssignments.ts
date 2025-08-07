@@ -10,6 +10,7 @@ export interface EscalationAssignment {
   stakeholder_id: string;
   trigger_id: string;
   workspace_id: string;
+  project_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +19,7 @@ export interface EscalationAssignmentWithDetails extends EscalationAssignment {
   level: {
     name: string;
     level_order: number;
+    project_id?: string;
   };
   stakeholder: {
     name: string;
@@ -30,10 +32,11 @@ export interface EscalationAssignmentWithDetails extends EscalationAssignment {
     condition_type: string;
     threshold_value: number;
     threshold_unit: string;
+    project_id?: string;
   };
 }
 
-export const useEscalationAssignments = () => {
+export const useEscalationAssignments = (projectId?: string) => {
   const [assignments, setAssignments] = useState<EscalationAssignmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
@@ -43,16 +46,25 @@ export const useEscalationAssignments = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('escalation_assignments')
         .select(`
           *,
-          level:escalation_levels(name, level_order),
+          level:escalation_levels(name, level_order, project_id),
           stakeholder:stakeholders(name, email, role),
-          trigger:escalation_triggers(name, description, condition_type, threshold_value, threshold_unit)
+          trigger:escalation_triggers(name, description, condition_type, threshold_value, threshold_unit, project_id)
         `)
-        .eq('workspace_id', currentWorkspace.id)
-        .order('created_at');
+        .eq('workspace_id', currentWorkspace.id);
+
+      if (projectId) {
+        // Get both workspace-level and project-specific assignments
+        query = query.or(`project_id.is.null,project_id.eq.${projectId}`);
+      } else {
+        // Only workspace-level assignments
+        query = query.is('project_id', null);
+      }
+
+      const { data, error } = await query.order('created_at');
 
       if (error) throw error;
       setAssignments(data || []);
@@ -67,7 +79,8 @@ export const useEscalationAssignments = () => {
   const createAssignment = async (
     level_id: string,
     stakeholder_id: string,
-    trigger_id: string
+    trigger_id: string,
+    isProjectSpecific: boolean = false
   ) => {
     if (!currentWorkspace?.id) return null;
 
@@ -78,7 +91,8 @@ export const useEscalationAssignments = () => {
           level_id,
           stakeholder_id,
           trigger_id,
-          workspace_id: currentWorkspace.id
+          workspace_id: currentWorkspace.id,
+          project_id: isProjectSpecific && projectId ? projectId : null
         }])
         .select()
         .single();
