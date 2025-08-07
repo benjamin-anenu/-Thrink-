@@ -58,6 +58,7 @@ interface ProjectDisplayProps {
     }, [projects]);
   const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
   const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
+  const [projectHealth, setProjectHealth] = useState<Record<string, { status: string; score: number }>>({});
   const [phaseDetails, setPhaseDetails] = useState<Record<string, any[]>>({});
   const [progressLoading, setProgressLoading] = useState(true);
   const { updateProjectStatus } = useProjectStatus();
@@ -72,25 +73,37 @@ interface ProjectDisplayProps {
 
       setProgressLoading(true);
       const progressData: Record<string, number> = {};
+      const healthData: Record<string, { status: string; score: number }> = {};
       const phaseData: Record<string, any[]> = {};
       
       for (const project of projects) {
         try {
-          // Calculate real-time progress
-          const progress = await calculateRealTimeProjectProgress(project.id);
-          progressData[project.id] = progress;
+          // Calculate real-time progress and health in parallel
+          const [progress, health, phases] = await Promise.all([
+            calculateRealTimeProjectProgress(project.id),
+            ProjectHealthService.calculateRealTimeProjectHealth(project.id),
+            getProjectPhaseDetails(project.id)
+          ]);
           
-          // Get phase details for tooltip
-          const phases = await getProjectPhaseDetails(project.id);
+          progressData[project.id] = progress;
+          healthData[project.id] = {
+            status: health.healthStatus,
+            score: health.healthScore
+          };
           phaseData[project.id] = phases;
         } catch (error) {
           console.error(`Error loading data for project ${project.id}:`, error);
           progressData[project.id] = project.progress || 0;
+          healthData[project.id] = {
+            status: project.health?.status || 'yellow',
+            score: project.health?.score || 50
+          };
           phaseData[project.id] = [];
         }
       }
       
       setProjectProgress(progressData);
+      setProjectHealth(healthData);
       setPhaseDetails(phaseData);
       
       // Minimum loading time for smooth UX
@@ -291,17 +304,17 @@ interface ProjectDisplayProps {
                 </span>
               </div>
 
-              {/* Health Indicator - Fixed logic */}
+              {/* Health Indicator - Real-time data */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 md:gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    project.health?.status === 'green' ? 'bg-green-500' :
-                    project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                    (projectHealth[project.id]?.status || project.health?.status) === 'green' ? 'bg-green-500' :
+                    (projectHealth[project.id]?.status || project.health?.status) === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
                   <span className="text-xs md:text-sm text-muted-foreground">
-                    Health: {project.health?.score || 50}% ({
-                      project.health?.status === 'green' ? 'On Track' :
-                      project.health?.status === 'yellow' ? 'Caution' : 'At Risk'
+                    Health: {projectHealth[project.id]?.score || project.health?.score || 50}% ({
+                      (projectHealth[project.id]?.status || project.health?.status) === 'green' ? 'On Track' :
+                      (projectHealth[project.id]?.status || project.health?.status) === 'yellow' ? 'Caution' : 'At Risk'
                     })
                   </span>
                 </div>
