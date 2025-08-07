@@ -145,18 +145,28 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
               <TableCell className="text-right py-4">
                 <div className="flex items-center justify-end gap-1">
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => onContact(stakeholder)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onContact(stakeholder);
+                    }}
                     className="h-9 px-3 text-xs font-medium hover:bg-accent/50"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
                     <span className="hidden lg:inline">Contact</span>
                   </Button>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => onEdit(stakeholder)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onEdit(stakeholder);
+                    }}
                     className="h-9 px-3 text-xs font-medium hover:bg-accent/50"
                   >
                     <Edit className="h-4 w-4 mr-1" />

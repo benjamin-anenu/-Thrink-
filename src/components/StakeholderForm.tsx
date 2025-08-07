@@ -61,7 +61,11 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
 
   useEffect(() => {
     if (stakeholder) {
-      setFormData(stakeholder);
+      setFormData({
+        ...stakeholder,
+        projects: stakeholder.projects || [],
+        lastContact: stakeholder.lastContact || new Date().toISOString().split('T')[0]
+      });
     } else {
       setFormData({
         name: '',
@@ -80,10 +84,10 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
   }, [stakeholder, open]);
 
   const addProject = () => {
-    if (newProject.trim() && !formData.projects.includes(newProject.trim())) {
+    if (newProject.trim() && !(formData.projects || []).includes(newProject.trim())) {
       setFormData({
         ...formData,
-        projects: [...formData.projects, newProject.trim()]
+        projects: [...(formData.projects || []), newProject.trim()]
       });
       setNewProject('');
     }
@@ -92,7 +96,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
   const removeProject = (project: string) => {
     setFormData({
       ...formData,
-      projects: formData.projects.filter(p => p !== project)
+      projects: (formData.projects || []).filter(p => p !== project)
     });
   };
 
@@ -252,8 +256,8 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
                     variant="outline"
                     className="w-full h-10 px-3 py-2 text-base rounded-md border border-input bg-background text-foreground justify-between font-normal"
                   >
-                    {formData.projects.length > 0
-                      ? `${formData.projects.length} project(s) selected`
+                    {(formData.projects || []).length > 0
+                      ? `${(formData.projects || []).length} project(s) selected`
                       : 'Select projects'}
                   </Button>
                 </DropdownMenuTrigger>
@@ -269,19 +273,19 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
                     Array.from(new Set(projects.map(p => p.name))).map((projectName, idx) => (
                       <DropdownMenuCheckboxItem
                         key={projectName + idx}
-                        checked={formData.projects.includes(projectName)}
+                        checked={(formData.projects || []).includes(projectName)}
                         onCheckedChange={checked => {
                           if (checked) {
-                            if (!formData.projects.includes(projectName)) {
+                            if (!(formData.projects || []).includes(projectName)) {
                               setFormData({
                                 ...formData,
-                                projects: [...formData.projects, projectName]
+                                projects: [...(formData.projects || []), projectName]
                               });
                             }
                           } else {
                             setFormData({
                               ...formData,
-                              projects: formData.projects.filter(p => p !== projectName)
+                              projects: (formData.projects || []).filter(p => p !== projectName)
                             });
                           }
                         }}

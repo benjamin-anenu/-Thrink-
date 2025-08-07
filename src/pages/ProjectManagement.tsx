@@ -150,12 +150,20 @@ const ProjectManagementContent: React.FC<{
   }
 
   const handleSwitchToIssueLog = (taskId?: string) => {
+    console.log('handleSwitchToIssueLog called with taskId:', taskId);
     setIssueTaskFilter(taskId);
-    // We'll need to programmatically switch to the issues tab
-    const tabsTrigger = document.querySelector('[data-value="issues"]') as HTMLElement;
-    if (tabsTrigger) {
-      tabsTrigger.click();
-    }
+    
+    // Switch to the issues tab
+    setTimeout(() => {
+      const tabsTrigger = document.querySelector('[data-value="issues"]') as HTMLElement;
+      console.log('Found issues tab trigger:', tabsTrigger);
+      if (tabsTrigger) {
+        tabsTrigger.click();
+        console.log('Clicked issues tab');
+      } else {
+        console.error('Issues tab trigger not found');
+      }
+    }, 100);
   };
 
   const handleClearTaskFilter = () => {
