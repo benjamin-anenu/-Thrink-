@@ -97,6 +97,13 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
           <Plus className="h-4 w-4 mr-2" />
           Create First Phase
         </Button>
+
+        <PhaseCreateModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreatePhase={handleCreatePhase}
+          projectId={projectId}
+        />
       </div>
     );
   }
