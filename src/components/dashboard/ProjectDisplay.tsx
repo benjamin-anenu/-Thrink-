@@ -254,9 +254,11 @@ interface ProjectDisplayProps {
                     </div>
                   </div>
                 </div>
-                <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mt-2">
-                  {project.description}
-                </p>
+                <div className="mt-2">
+                  <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 min-h-[36px] md:min-h-[44px]">
+                    {project.description || ''}
+                  </p>
+                </div>
               </CardHeader>
 
               <CardContent className="p-4 md:p-6 pt-0 space-y-3 md:space-y-4">
