@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Edit, Trash2, Users, Calendar } from 'lucide-react';
 import { ProjectData, determineProjectStatus } from '@/types/project';
+import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
 
 interface ProjectListViewProps {
   projects: ProjectData[];
@@ -23,6 +24,7 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
   onDeleteProject,
   deletingProject
 }) => {
+  const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
       case 'Completed': return 'default';
@@ -42,13 +44,36 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
     }
   };
 
+  // Load progress for all projects
+  useEffect(() => {
+    const loadProjectProgress = async () => {
+      const progressData: Record<string, number> = {};
+      
+      for (const project of projects) {
+        try {
+          const progress = await calculateRealTimeProjectProgress(project.id);
+          progressData[project.id] = progress;
+        } catch (error) {
+          console.error(`Error calculating progress for project ${project.id}:`, error);
+          progressData[project.id] = 0;
+        }
+      }
+      
+      setProjectProgress(progressData);
+    };
+
+    if (projects.length > 0) {
+      loadProjectProgress();
+    }
+  }, [projects]);
+
   const calculateProjectStats = (project: ProjectData) => {
     const tasks = project.tasks || [];
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     const totalTasks = tasks.length;
     
-    // Calculate real-time progress and status
-    const actualProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    // Use centralized progress calculation
+    const actualProgress = projectProgress[project.id] ?? 0;
     const actualStatus = totalTasks === 0 ? project.status :
                         completedTasks === totalTasks ? 'Closure' as const :
                         completedTasks > 0 ? 'Execution' as const :

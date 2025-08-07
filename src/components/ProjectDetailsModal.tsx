@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ProjectDetailsModalData } from '@/types/project-modal';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
 
 interface ProjectDetailsModalProps {
   project: ProjectDetailsModalData | null;
@@ -75,10 +76,10 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
         .select('*')
         .eq('project_id', baseProject.id);
 
-      // Calculate real-time progress from tasks
+      // Calculate real-time progress using centralized function
       const tasks = tasksData || [];
       const completedTasks = tasks.filter(task => task.status === 'Completed');
-      const realTimeProgress = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
+      const realTimeProgress = await calculateRealTimeProjectProgress(baseProject.id);
 
       // Calculate budget from project_budgets table
       const totalBudget = budgetData?.reduce((sum, budget) => sum + Number(budget.allocated_amount || 0), 0) || 0;
