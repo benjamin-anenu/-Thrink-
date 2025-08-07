@@ -33,7 +33,7 @@ interface StakeholderFormProps {
   open: boolean;
   onClose: () => void;
   stakeholder?: any;
-  onSave: (stakeholder: any) => void;
+  onSave: (stakeholder: any) => Promise<void>;
 }
 
 const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderFormProps) => {
@@ -100,7 +100,7 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Map form data to match database schema
@@ -122,8 +122,11 @@ const StakeholderForm = ({ open, onClose, stakeholder, onSave }: StakeholderForm
       updated_at: new Date().toISOString()
     };
     
-    onSave(stakeholderData);
-    onClose();
+    try {
+      await onSave(stakeholderData);
+    } catch (error) {
+      console.error('Failed to save stakeholder:', error);
+    }
   };
 
   return (

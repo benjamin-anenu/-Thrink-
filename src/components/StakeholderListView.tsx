@@ -65,132 +65,120 @@ const StakeholderListView: React.FC<StakeholderListViewProps> = ({
   }
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-border/40 bg-muted/30">
-            <TableHead className="font-semibold text-foreground py-4">Stakeholder</TableHead>
-            <TableHead className="font-semibold text-foreground hidden md:table-cell">Role</TableHead>
-            <TableHead className="font-semibold text-foreground hidden md:table-cell">Department</TableHead>
-            <TableHead className="font-semibold text-foreground hidden lg:table-cell">Projects</TableHead>
-            <TableHead className="font-semibold text-foreground">Status</TableHead>
-            <TableHead className="font-semibold text-foreground hidden sm:table-cell">Influence</TableHead>
-            <TableHead className="font-semibold text-foreground hidden lg:table-cell">Communication</TableHead>
-            <TableHead className="font-semibold text-foreground hidden xl:table-cell">Quick Contact</TableHead>
-            <TableHead className="text-right font-semibold text-foreground">Actions</TableHead>
+          <TableRow>
+            <TableHead className="text-sm py-2 px-3">Stakeholder</TableHead>
+            <TableHead className="text-sm py-2 px-3 hidden md:table-cell">Role</TableHead>
+            <TableHead className="text-sm py-2 px-3 hidden md:table-cell">Department</TableHead>
+            <TableHead className="text-sm py-2 px-3 hidden lg:table-cell">Projects</TableHead>
+            <TableHead className="text-sm py-2 px-3">Status</TableHead>
+            <TableHead className="text-sm py-2 px-3 hidden sm:table-cell">Influence</TableHead>
+            <TableHead className="text-sm py-2 px-3 hidden lg:table-cell">Communication</TableHead>
+            <TableHead className="text-sm py-2 px-3 hidden xl:table-cell">Quick Contact</TableHead>
+            <TableHead className="text-sm py-2 px-3">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {stakeholders.map((stakeholder) => (
-            <TableRow key={stakeholder.id} className="border-b border-border/20 hover:bg-muted/30 transition-colors">
-              <TableCell className="py-4">
+            <TableRow key={stakeholder.id}>
+              <TableCell className="text-sm py-2 px-3">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 ring-2 ring-border/20">
-                    <AvatarFallback className="text-sm font-medium bg-primary/10 text-primary">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs font-medium">
                       {getInitials(stakeholder.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="font-semibold text-sm text-foreground">{stakeholder.name}</p>
-                    <p className="text-xs text-muted-foreground md:hidden">{stakeholder.role} • {stakeholder.department}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm">{stakeholder.name}</p>
+                    <p className="text-xs text-muted-foreground md:hidden">{stakeholder.role}</p>
                     <p className="text-xs text-muted-foreground hidden md:block">{stakeholder.email}</p>
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="hidden md:table-cell py-4">
-                <p className="font-medium text-sm text-foreground">{stakeholder.role}</p>
+              <TableCell className="text-sm py-2 px-3 hidden md:table-cell">
+                <span className="font-medium">{stakeholder.role}</span>
               </TableCell>
-              <TableCell className="hidden md:table-cell py-4">
-                <p className="text-sm text-muted-foreground">{stakeholder.department}</p>
+              <TableCell className="text-sm py-2 px-3 hidden md:table-cell">
+                <span className="text-muted-foreground">{stakeholder.department}</span>
               </TableCell>
-              <TableCell className="hidden lg:table-cell py-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
-                    {stakeholder.projects?.length || 0} {stakeholder.projects?.length === 1 ? 'Project' : 'Projects'}
-                  </Badge>
-                </div>
+              <TableCell className="text-sm py-2 px-3 hidden lg:table-cell">
+                <Badge variant="outline" className="text-xs">
+                  {stakeholder.projects?.length || 0} {stakeholder.projects?.length === 1 ? 'Project' : 'Projects'}
+                </Badge>
               </TableCell>
-              <TableCell className="py-4">
-                <Badge variant="outline" className={`text-xs font-medium ${getStatusColor(stakeholder.status)}`}>
+              <TableCell className="text-sm py-2 px-3">
+                <Badge variant="outline" className={`text-xs ${getStatusColor(stakeholder.status)}`}>
                   {stakeholder.status || 'Active'}
                 </Badge>
               </TableCell>
-              <TableCell className="hidden sm:table-cell py-4">
-                <Badge variant="outline" className={`text-xs font-medium ${getInfluenceColor(stakeholder.influence)}`}>
+              <TableCell className="text-sm py-2 px-3 hidden sm:table-cell">
+                <Badge variant="outline" className={`text-xs ${getInfluenceColor(stakeholder.influence)}`}>
                   {stakeholder.influence || 'Medium'}
                 </Badge>
               </TableCell>
-              <TableCell className="hidden lg:table-cell py-4">
-                <Badge variant="outline" className="text-xs bg-accent/10 text-accent-foreground border-accent/20">
+              <TableCell className="text-sm py-2 px-3 hidden lg:table-cell">
+                <Badge variant="outline" className="text-xs">
                   {stakeholder.communicationPreference || 'Email'}
                 </Badge>
               </TableCell>
-              <TableCell className="hidden xl:table-cell py-4">
+              <TableCell className="text-sm py-2 px-3 hidden xl:table-cell">
                 <div className="flex items-center gap-1">
                   {stakeholder.email && (
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 w-8 p-0 hover:bg-accent/50"
+                      className="h-6 w-6 p-0"
                       onClick={() => window.open(`mailto:${stakeholder.email}`)}
                       title={`Email ${stakeholder.name}`}
                     >
-                      <Mail className="h-4 w-4" />
+                      <Mail className="h-3 w-3" />
                     </Button>
                   )}
                   {stakeholder.phone && (
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 w-8 p-0 hover:bg-accent/50"
+                      className="h-6 w-6 p-0"
                       onClick={() => window.open(`tel:${stakeholder.phone}`)}
                       title={`Call ${stakeholder.name}`}
                     >
-                      <Phone className="h-4 w-4" />
+                      <Phone className="h-3 w-3" />
                     </Button>
                   )}
                 </div>
               </TableCell>
-              <TableCell className="text-right py-4">
-                <div className="flex items-center justify-end gap-1">
+              <TableCell className="text-sm py-2 px-3">
+                <div className="flex items-center gap-1">
                   <Button
-                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onContact(stakeholder);
-                    }}
-                    className="h-9 px-3 text-xs font-medium hover:bg-accent/50"
+                    onClick={() => onContact(stakeholder)}
+                    className="h-6 w-6 p-0"
+                    title="Contact"
                   >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    <span className="hidden lg:inline">Contact</span>
+                    <MessageSquare className="h-3 w-3" />
                   </Button>
                   <Button
-                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onEdit(stakeholder);
-                    }}
-                    className="h-9 px-3 text-xs font-medium hover:bg-accent/50"
+                    onClick={() => onEdit(stakeholder)}
+                    className="h-6 w-6 p-0"
+                    title="Edit"
                   >
-                    <Edit className="h-4 w-4 mr-1" />
-                    <span className="hidden lg:inline">Edit</span>
+                    <Edit className="h-3 w-3" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-9 px-3 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="h-6 w-6 p-0"
                         disabled={deletingId === stakeholder.id}
+                        title="Delete"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        <span className="hidden lg:inline">Delete</span>
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

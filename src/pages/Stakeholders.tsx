@@ -19,7 +19,7 @@ import { DesktopRecommendation } from '@/components/ui/desktop-recommendation';
 
 const Stakeholders: React.FC = () => {
   const { isFullyLoaded } = useAppInitialization();
-  const { stakeholders, updateStakeholder, deleteStakeholder } = useStakeholders();
+  const { stakeholders, createStakeholder, updateStakeholder, deleteStakeholder } = useStakeholders();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState<Stakeholder | null>(null);
   const [currentView, setCurrentView] = useState<'grid' | 'list'>('list');
@@ -29,9 +29,13 @@ const Stakeholders: React.FC = () => {
   
   const { isMobile } = useMobileComplexity();
 
-  const handleStakeholderSaved = () => {
-    setIsFormOpen(false);
-    setEditingStakeholder(null);
+  const handleStakeholderSaved = async (stakeholderData: any) => {
+    try {
+      setIsFormOpen(false);
+      setEditingStakeholder(null);
+    } catch (error) {
+      console.error('Failed to save stakeholder:', error);
+    }
   };
 
   const handleEdit = (stakeholder: Stakeholder) => {
@@ -139,7 +143,14 @@ const Stakeholders: React.FC = () => {
                   open={isFormOpen}
                   onClose={() => setIsFormOpen(false)}
                   stakeholder={editingStakeholder}
-                  onSave={handleStakeholderSaved}
+                  onSave={async (stakeholderData) => {
+                    if (editingStakeholder) {
+                      await updateStakeholder(editingStakeholder.id, stakeholderData);
+                    } else {
+                      await createStakeholder(stakeholderData);
+                    }
+                    handleStakeholderSaved(stakeholderData);
+                  }}
                 />
               )}
 
