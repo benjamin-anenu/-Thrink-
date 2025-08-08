@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar, Layers, AlertTriangle, History, Download, Upload } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Layout from '@/components/Layout';
 import ProjectOverview from '@/components/project-management/ProjectOverview';
 import TaskStatistics from '@/components/project-management/TaskStatistics';
@@ -366,28 +367,28 @@ const ProjectManagementContent: React.FC<{
 
           <TabsContent value="plan" className="space-y-4">
             <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-              <h2 className="text-xl md:text-2xl font-semibold">Project Plan</h2>
+              {/* Left: Import actions (replace Project Plan heading) */}
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm" className="h-11 md:h-9">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import & Templates
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => setIsBulkImportOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" /> Upload Tasks
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => generateTaskImportTemplate()}>
+                      <Download className="h-4 w-4 mr-2" /> Download Template
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               
-              {/* Mobile-optimized view toggle buttons */}
+              {/* Right: View toggles */}
               <div className="flex flex-col gap-2 md:flex-row md:gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => generateTaskImportTemplate()}
-                  className="w-full md:w-auto h-11 md:h-9 rounded-full border-2 border-dashed"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Template
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setIsBulkImportOpen(true)}
-                  className="w-full md:w-auto h-11 md:h-9 rounded-full shadow-lg shadow-primary/20"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Tasks
-                </Button>
                 <Button
                   variant={viewMode === 'gantt' ? 'default' : 'outline'}
                   size="sm"
