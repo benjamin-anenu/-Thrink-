@@ -108,10 +108,12 @@ export const useResourceDashboardData = () => {
       let resourcesAtRiskCount = 0;
 
       resources.forEach(resource => {
-        const utilization = utilizationMetrics[resource.id]?.utilization_percentage || 0;
+        const metrics = utilizationMetrics[resource.id];
+        const utilization = metrics?.utilization_percentage || 0;
+        const status = metrics?.status || '';
         const isAssigned = assignedResourceIds.has(resource.id);
         
-        if (utilization > 100) {
+        if (utilization >= 100 || (typeof status === 'string' && status.includes('Overloaded'))) {
           overloadedCount++;
           resourcesAtRiskCount++;
         } else if (utilization < 70 || !isAssigned) {
@@ -119,7 +121,7 @@ export const useResourceDashboardData = () => {
         }
 
         // Additional risk factors from utilization metrics
-        const bottleneckRisk = utilizationMetrics[resource.id]?.bottleneck_risk || 0;
+        const bottleneckRisk = metrics?.bottleneck_risk || 0;
         if (bottleneckRisk > 7) {
           resourcesAtRiskCount++;
         }

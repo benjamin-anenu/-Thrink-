@@ -58,7 +58,18 @@ const CompactResourceCard: React.FC<CompactResourceCardProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold truncate">{resource.name || 'Unknown'}</CardTitle>
-          <StatusBadge status={getStatusValue(currentStatus)} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={getStatusValue(currentStatus)} />
+            {(currentUtilization >= 100 || (utilizationMetrics?.status?.includes('Overloaded'))) && (
+              <Badge 
+                variant="destructive" 
+                className="cursor-pointer"
+                onClick={() => onViewDetails(resource)}
+              >
+                Overloaded
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -96,9 +107,9 @@ const CompactResourceCard: React.FC<CompactResourceCardProps> = ({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-xs font-medium">Availability</span>
-            <span className="text-xs text-muted-foreground">{resource.availability}%</span>
+            <span className="text-xs text-muted-foreground">{Math.max(0, 100 - currentUtilization)}%</span>
           </div>
-          <Progress value={parseInt(resource.availability?.replace('%', '') || '100')} className="h-2" />
+          <Progress value={Math.max(0, 100 - currentUtilization)} className="h-2" />
         </div>
 
         <div className="space-y-2">

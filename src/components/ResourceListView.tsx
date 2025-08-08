@@ -89,9 +89,20 @@ const ResourceListView: React.FC<ResourceListViewProps> = ({
                 <p className="text-sm">{resource.department}</p>
               </TableCell>
               <TableCell>
-                <Badge variant="secondary" className={getStatusColor(resource.status)}>
-                  {resource.status || 'Available'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className={getStatusColor(resource.status)}>
+                    {resource.status || 'Available'}
+                  </Badge>
+                  {(resource.utilization || 0) >= 100 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="cursor-pointer"
+                      onClick={() => onViewDetails(resource)}
+                    >
+                      Overloaded
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
