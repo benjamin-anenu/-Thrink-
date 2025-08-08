@@ -371,10 +371,10 @@ const ProjectManagementContent: React.FC<{
               {/* Mobile-optimized view toggle buttons */}
               <div className="flex flex-col gap-2 md:flex-row md:gap-2">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => generateTaskImportTemplate()}
-                  className="w-full md:w-auto h-11 md:h-9"
+                  className="w-full md:w-auto h-11 md:h-9 rounded-full border-2 border-dashed"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download Template
@@ -383,7 +383,7 @@ const ProjectManagementContent: React.FC<{
                   variant="default"
                   size="sm"
                   onClick={() => setIsBulkImportOpen(true)}
-                  className="w-full md:w-auto h-11 md:h-9"
+                  className="w-full md:w-auto h-11 md:h-9 rounded-full shadow-lg shadow-primary/20"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Upload Tasks
