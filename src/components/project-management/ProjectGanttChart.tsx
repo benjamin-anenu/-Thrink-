@@ -563,6 +563,20 @@ const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
             <Table className="min-w-full">
               <TableHeader>
                 <TableRow>
+                  <TableHead className={cn(`w-10`, getDensityClass())}>
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(checked) => {
+                        const isChecked = typeof checked === 'boolean' ? checked : !!checked;
+                        if (isChecked) {
+                          setSelectedTaskIds(new Set(visibleIds));
+                        } else {
+                          clearSelection();
+                        }
+                      }}
+                      aria-label="Select all visible tasks"
+                    />
+                  </TableHead>
                   <TableHead className={cn(`w-80 min-w-[320px]`, getDensityClass())}>Task Name</TableHead>
                   <TableHead className={cn(`w-40 min-w-[160px]`, getDensityClass())}>Status</TableHead>
                   <TableHead className={cn(`w-32`, getDensityClass())}>Priority</TableHead>
@@ -602,7 +616,7 @@ const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
                   if (group.milestone) {
                     rows.push(
                       <TableRow key={`ms-${groupKey}`}>
-                        <TableCell colSpan={13} className="p-0 border-b">
+                        <TableCell colSpan={14} className="p-0 border-b">
                           <Collapsible
                             open={expandedMilestones.has(group.milestone.id)}
                             onOpenChange={() => toggleMilestone(group.milestone.id)}
@@ -657,6 +671,9 @@ const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
                           issueCount={taskIssueMap[task.id] || 0}
                           onIssueWarningClick={handleIssueWarningClick}
                           projectId={projectId}
+                          selectable
+                          selected={selectedTaskIds.has(task.id)}
+                          onToggleSelect={toggleTaskSelect}
                         />
                       ))
                     );
