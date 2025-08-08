@@ -14,6 +14,7 @@ import InlineMultiSelectEdit from './InlineMultiSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineDependencyEdit from './InlineDependencyEdit';
 import { DependencyCalculationService } from '@/services/DependencyCalculationService';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface TaskTableRowProps {
   task: ProjectTask;
@@ -29,6 +30,9 @@ interface TaskTableRowProps {
   issueCount?: number;
   onIssueWarningClick?: (taskId: string) => void;
   projectId?: string;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (taskId: string, selected: boolean) => void;
 }
 
 const TaskTableRow: React.FC<TaskTableRowProps> = ({
@@ -44,7 +48,10 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   densityClass,
   issueCount = 0,
   onIssueWarningClick,
-  projectId
+  projectId,
+  selectable,
+  selected,
+  onToggleSelect
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [cascadeUpdates, setCascadeUpdates] = useState<Array<{
@@ -339,6 +346,22 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
             </div>
           </div>
         )}
+
+        {/* Select */}
+        <TableCell className={densityClass}>
+          {typeof selected !== 'undefined' ? (
+            <Checkbox
+              checked={!!selected}
+              onCheckedChange={(checked) => {
+                // Radix can pass boolean or 'indeterminate'
+                const isChecked = typeof checked === 'boolean' ? checked : !!checked;
+                onToggleSelect?.(task.id, isChecked);
+              }}
+              disabled={isUpdating}
+              aria-label="Select task"
+            />
+          ) : null}
+        </TableCell>
 
         {/* Task Name */}
         <TableCell className={cn("font-medium", densityClass)}>

@@ -22,9 +22,11 @@ import TableControls from './table/TableControls';
 import InlineTaskEditor from './table/InlineTaskEditor';
 import InlineMilestoneEditor from './table/InlineMilestoneEditor';
 import MilestoneActionsCell from './table/MilestoneActionsCell';
+import BulkActionsBar from './table/BulkActionsBar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { BulkTaskImportService } from '@/services/BulkTaskImportService';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -73,9 +75,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact');
 
-  // New state for inline editing
-  const [showInlineTaskEditor, setShowInlineTaskEditor] = useState(false);
-  const [showInlineMilestoneEditor, setShowInlineMilestoneEditor] = useState(false);
+// New state for inline editing
+const [showInlineTaskEditor, setShowInlineTaskEditor] = useState(false);
+const [showInlineMilestoneEditor, setShowInlineMilestoneEditor] = useState(false);
+
+// Bulk selection state
+const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
   // Load resources and stakeholders
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
@@ -455,11 +460,45 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+  // Bulk helpers
+  const visibleIds = filteredTasks.map(t => t.id);
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedTaskIds.has(id));
+
+  const toggleTaskSelect = (taskId: string, isSelected: boolean) => {
+    const next = new Set(selectedTaskIds);
+    if (isSelected) next.add(taskId); else next.delete(taskId);
+    setSelectedTaskIds(next);
+  };
+
+  const clearSelection = () => setSelectedTaskIds(new Set());
+
+  const applyBulk = async ({ resourceId, status, priority, milestoneId }: { resourceId?: string; status?: string; priority?: string; milestoneId?: string; }) => {
+    const updates: Partial<ProjectTask> = {};
+    if (typeof resourceId !== 'undefined') {
+      updates.assignedResources = resourceId === 'none' ? [] : [resourceId];
+    }
+    if (status) updates.status = status as any;
+    if (priority) updates.priority = priority as any;
+    if (typeof milestoneId !== 'undefined') updates.milestoneId = milestoneId === 'none' ? undefined : milestoneId;
+
+    await Promise.all([...selectedTaskIds].map(id => handleUpdateTask(id, updates)));
+    toast.success(`Applied to ${selectedTaskIds.size} task${selectedTaskIds.size !== 1 ? 's' : ''}`);
+    clearSelection();
+  };
+      return (
+        <div className="space-y-6">
+          {selectedTaskIds.size > 0 && (
+            <BulkActionsBar
+              selectedCount={selectedTaskIds.size}
+              resources={availableResources.map(r => ({ id: r.id, name: r.name }))}
+              milestones={milestones.map(m => ({ id: m.id, name: m.name }))}
+              onApply={applyBulk}
+              onClearSelection={clearSelection}
+            />
+          )}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Project Task Management
               {tasks.some(task => task.dependencies.length > 0) && (
