@@ -47,12 +47,57 @@ function normalizePriority(p?: string) {
 }
 
 function toISODate(d?: string) {
-  if (!d) return undefined;
-  const t = d.trim();
+  if (d === undefined || d === null) return undefined;
+  const t = String(d).trim();
   if (!t) return undefined;
-  // Accept already ISO or Excel date numbers
+  // Already ISO YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  // Try Date parsing
+
+  // Excel serial day number (since 1899-12-30)
+  if (/^\d{5,6}$/.test(t)) {
+    const serial = Number(t);
+    if (!isNaN(serial) && serial >= 25569 && serial < 700000) {
+      const ms = Math.round((serial - 25569) * 86400 * 1000);
+      const date = new Date(ms);
+      return date.toISOString().slice(0, 10);
+    }
+  }
+
+  // Handle common delimited formats (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
+  if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(t)) {
+    const sep = t.includes('/') ? '/' : '-';
+    const parts = t.split(sep).map(p => p.trim());
+
+    // If last part has 4 digits, we assume it's the year
+    if (/^\d{4}$/.test(parts[2])) {
+      const p0 = parseInt(parts[0], 10);
+      const p1 = parseInt(parts[1], 10);
+      const y = parseInt(parts[2], 10);
+      // If first part > 12, treat as DD/MM/YYYY, else MM/DD/YYYY
+      const m = p0 > 12 ? p1 : p0;
+      const dnum = p0 > 12 ? p0 : p1;
+      const date = new Date(Date.UTC(y, m - 1, dnum));
+      if (!isNaN(date.getTime())) return date.toISOString().slice(0, 10);
+    } else if (/^\d{4}$/.test(parts[0])) {
+      // YYYY-M-D
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const dnum = parseInt(parts[2], 10);
+      const date = new Date(Date.UTC(y, m - 1, dnum));
+      if (!isNaN(date.getTime())) return date.toISOString().slice(0, 10);
+    }
+  }
+
+  // YYYYMMDD
+  if (/^\d{8}$/.test(t)) {
+    const y = Number(t.slice(0, 4));
+    const m = Number(t.slice(4, 6));
+    const dnum = Number(t.slice(6, 8));
+    const date = new Date(Date.UTC(y, m - 1, dnum));
+    if (!isNaN(date.getTime())) return date.toISOString().slice(0, 10);
+  }
+
+  // Fallback: native Date parse
   const dt = new Date(t);
   if (!isNaN(dt.getTime())) {
     return dt.toISOString().slice(0, 10);
