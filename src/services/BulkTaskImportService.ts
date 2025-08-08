@@ -173,11 +173,40 @@ export class BulkTaskImportService {
 
     // Build insert payload (pass 1)
     const insertPayload = rows.map(r => {
-      const start = toISODate(r.Start_Date);
-      const end = toISODate(r.End_Date);
+      let start = toISODate(r.Start_Date);
+      let end = toISODate(r.End_Date);
       const baselineStart = toISODate(r.Baseline_Start_Date);
       const baselineEnd = toISODate(r.Baseline_End_Date);
-      const duration = r.Duration || (start && end ? Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / (1000*60*60*24)) + 1) : 1);
+
+      // Normalize duration
+      let duration = r.Duration !== undefined && r.Duration !== null
+        ? Number(r.Duration)
+        : undefined;
+
+      // Derive missing dates from available info
+      if (!duration && start && end) {
+        const d0 = new Date(start);
+        const d1 = new Date(end);
+        const days = Math.floor((d1.getTime() - d0.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        duration = Math.max(1, days);
+      } else if (duration && start && !end) {
+        const d0 = new Date(start + 'T00:00:00Z');
+        const d1 = new Date(d0.getTime() + (duration - 1) * 86400000);
+        end = d1.toISOString().slice(0, 10);
+      } else if (duration && !start && end) {
+        const d1 = new Date(end + 'T00:00:00Z');
+        const d0 = new Date(d1.getTime() - (duration - 1) * 86400000);
+        start = d0.toISOString().slice(0, 10);
+      } else if (!duration && (start || end)) {
+        // Only one date provided and no duration -> single-day task
+        duration = 1;
+        if (start && !end) end = start;
+        if (!start && end) start = end;
+      }
+
+      // Final defaults
+      if (!duration) duration = 1;
+
       const status = normalizeStatus(r.Status) || 'Not Started';
       const priority = normalizePriority(r.Priority) || 'Medium';
       const progress = Math.max(0, Math.min(100, r.Progress ?? (status === 'Completed' ? 100 : 0)));
