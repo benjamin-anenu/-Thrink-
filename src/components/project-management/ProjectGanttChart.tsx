@@ -24,6 +24,7 @@ import InlineMilestoneEditor from './table/InlineMilestoneEditor';
 import MilestoneActionsCell from './table/MilestoneActionsCell';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { BulkTaskImportService } from '@/services/BulkTaskImportService';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -131,6 +132,22 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
       loadResourcesAndStakeholders();
     }
   }, [project?.workspaceId]);
+
+  // One-time patch: fill missing dates for existing tasks, then refresh
+  React.useEffect(() => {
+    let ran = false;
+    if (!ran && projectId) {
+      ran = true;
+      BulkTaskImportService.patchMissingDates(projectId)
+        .then(({ updated }) => {
+          if (updated > 0) {
+            toast.success(`Patched ${updated} task${updated > 1 ? 's' : ''} with dates`);
+            refreshData();
+          }
+        })
+        .catch((e) => console.warn('[PatchMissingDates] skipped', e));
+    }
+  }, [projectId]);
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -541,10 +558,11 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                 )}
 
                 {/* Existing grouped tasks */}
-                {Object.entries(groupedTasks).map(([groupKey, group]) => (
-                  <React.Fragment key={groupKey}>
-                    {group.milestone && (
-                      <TableRow>
+                {Object.entries(groupedTasks).flatMap(([groupKey, group]) => {
+                  const rows: React.ReactNode[] = [];
+                  if (group.milestone) {
+                    rows.push(
+                      <TableRow key={`ms-${groupKey}`}>
                         <TableCell colSpan={13} className="p-0 border-b">
                           <Collapsible
                             open={expandedMilestones.has(group.milestone.id)}
@@ -576,35 +594,37 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                           </Collapsible>
                         </TableCell>
                       </TableRow>
-                    )}
-                    
-                    {(groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) && (
-                      <>
-                        {group.tasks.map((task) => (
-                          <TaskTableRow
-                            key={task.id}
-                            task={task}
-                            milestones={milestones}
-                            availableResources={availableResources}
-                            availableStakeholders={availableStakeholders}
-                            allTasks={tasks}
-                            onUpdateTask={handleUpdateTask}
-                            onDeleteTask={handleDeleteTask}
-                            onEditTask={(task) => {
-                              setEditingTask(task);
-                              setShowTaskDialog(true);
-                            }}
-                            onRebaselineTask={handleRebaselineTask}
-                            densityClass={getDensityClass()}
-                            issueCount={taskIssueMap[task.id] || 0}
-                            onIssueWarningClick={handleIssueWarningClick}
-                            projectId={projectId}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
+                    );
+                  }
+
+                  if (groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) {
+                    rows.push(
+                      ...group.tasks.map((task) => (
+                        <TaskTableRow
+                          key={task.id}
+                          task={task}
+                          milestones={milestones}
+                          availableResources={availableResources}
+                          availableStakeholders={availableStakeholders}
+                          allTasks={tasks}
+                          onUpdateTask={handleUpdateTask}
+                          onDeleteTask={handleDeleteTask}
+                          onEditTask={(task) => {
+                            setEditingTask(task);
+                            setShowTaskDialog(true);
+                          }}
+                          onRebaselineTask={handleRebaselineTask}
+                          densityClass={getDensityClass()}
+                          issueCount={taskIssueMap[task.id] || 0}
+                          onIssueWarningClick={handleIssueWarningClick}
+                          projectId={projectId}
+                        />
+                      ))
+                    );
+                  }
+                  return rows;
+                })}
+
               </TableBody>
             </Table>
           </div>

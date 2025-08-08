@@ -298,4 +298,60 @@ export class BulkTaskImportService {
 
     return { inserted: inserted?.length || 0, updated: updates.length, warnings: [] as string[] };
   }
+
+  static async patchMissingDates(projectId: string) {
+    if (!projectId) throw new Error('Missing project id');
+
+    const { data: tasks, error } = await supabase
+      .from('project_tasks')
+      .select('id,start_date,end_date,duration')
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    if (!tasks || !tasks.length) return { updated: 0 };
+
+    let updated = 0;
+    for (const t of tasks) {
+      let start = t.start_date as string | null;
+      let end = t.end_date as string | null;
+      let duration = (t.duration as number | null) ?? null;
+
+      const hasMissing = !start || !end || !duration || duration <= 0;
+      if (!hasMissing) continue;
+
+      if (!duration && start && end) {
+        const d0 = new Date(start + 'T00:00:00Z');
+        const d1 = new Date(end + 'T00:00:00Z');
+        duration = Math.max(1, Math.floor((d1.getTime() - d0.getTime()) / 86400000) + 1);
+      }
+
+      if (duration && start && !end) {
+        const d0 = new Date(start + 'T00:00:00Z');
+        const d1 = new Date(d0.getTime() + (duration - 1) * 86400000);
+        end = d1.toISOString().slice(0, 10);
+      } else if (duration && !start && end) {
+        const d1 = new Date(end + 'T00:00:00Z');
+        const d0 = new Date(d1.getTime() - (duration - 1) * 86400000);
+        start = d0.toISOString().slice(0, 10);
+      } else if (!start && !end) {
+        // default to today
+        const today = new Date();
+        const iso = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())).toISOString().slice(0, 10);
+        start = iso;
+        end = iso;
+        if (!duration || duration <= 0) duration = 1;
+      } else if (!duration) {
+        duration = 1;
+      }
+
+      const { error: upErr } = await supabase
+        .from('project_tasks')
+        .update({ start_date: start, end_date: end, duration })
+        .eq('id', t.id);
+      if (upErr) throw upErr;
+      updated++;
+    }
+
+    return { updated };
+  }
 }
