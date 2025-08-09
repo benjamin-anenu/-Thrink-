@@ -17,7 +17,7 @@ const Dashboard: React.FC = () => {
   // Only redirect system owners to their dedicated dashboard if they don't have a workspace selected
   // This allows system owners to still access individual workspaces when needed
   if (isSystemOwner && permissionsContext && !loading && !currentWorkspace) {
-    return <Navigate to="/system/portfolio" replace />;
+    return <Navigate to="/system/overview" replace />;
   }
 
   return (

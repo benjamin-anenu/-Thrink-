@@ -17,6 +17,7 @@ import Auth from "./pages/Auth";
 import Login from "./pages/Login";
 import Workspaces from "./pages/Workspaces";
 import NotFound from "./pages/NotFound";
+import SystemOverview from "./pages/SystemOverview";
 import SystemHealth from "./pages/SystemHealth";
 import SystemPerformance from "./pages/SystemPerformance";
 import SystemEscalations from "./pages/SystemEscalations";
@@ -97,6 +98,11 @@ const AppContent: React.FC = () => {
         <Route path="/ai-hub" element={
           <ErrorBoundary>
             <AIHub />
+          </ErrorBoundary>
+        } />
+        <Route path="/system/overview" element={
+          <ErrorBoundary>
+            <SystemOverview />
           </ErrorBoundary>
         } />
         <Route path="/system/portfolio" element={
