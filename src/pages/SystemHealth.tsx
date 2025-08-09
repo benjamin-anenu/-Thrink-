@@ -16,13 +16,13 @@ const SystemHealth: React.FC = () => {
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <ComingSoon 
                 title="System Health"
-                description="A single pane of glass for uptime, error rates, and performance across your environments."
+                description="Track the health status of cross-workspace projects with clear signals and trends."
                 icon={<Activity className="h-5 w-5" />}
                 features={[
-                  'Uptime and response time dashboards',
-                  'Real-time incident alerts',
-                  'Service dependency status',
-                  'Release impact insights'
+                  'Cross-workspace project health scores',
+                  'Key risk and stability indicators',
+                  'Environment status (dev/stage/prod)',
+                  'Historical trends and smart alerts'
                 ]}
               />
             </div>

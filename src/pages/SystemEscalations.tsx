@@ -16,13 +16,13 @@ const SystemEscalations: React.FC = () => {
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <ComingSoon 
                 title="Escalations"
-                description="Unified escalation monitoring to ensure issues are identified and acted on quickly across the enterprise."
+                description="Track projects with high numbers of escalations over time and see escalation activity across workspaces and projects."
                 icon={<AlertTriangle className="h-5 w-5" />}
                 features={[
-                  'Global escalation rules and policies',
-                  'Real-time triggers and notifications',
-                  'Assignment matrix and SLAs',
-                  'Audit trail and resolution metrics'
+                  'Projects with high escalation counts by period',
+                  'Cross-workspace escalation activity',
+                  'SLA breaches and response timelines',
+                  'Resolution metrics and audit trail'
                 ]}
               />
             </div>
