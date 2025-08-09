@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -64,9 +64,10 @@ export function useEnterpriseOwnerPersistence() {
       console.log('[EnterpriseOwner] Enterprise owner detected, checking navigation...');
       
       const prefs = getPreferences();
-      const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+      const isOnDashboard = location.pathname === '/dashboard';
+      const isOnAdmin = location.pathname === '/admin';
       
-      // For enterprise owners on dashboard route
+      // Handle route navigation for enterprise owners
       if (isOnDashboard) {
         // Ensure enterprise owners start with system view preference if no explicit preference
         if (prefs.timestamp === 0) {
@@ -74,49 +75,47 @@ export function useEnterpriseOwnerPersistence() {
           savePreferences({ preferSystemView: true });
         }
         
-        // If they prefer system view and currently have a workspace selected, clear it
-        if (prefs.preferSystemView && currentWorkspace) {
-          console.log('[EnterpriseOwner] Clearing workspace for system view preference');
-          setCurrentWorkspace(null);
-          savePreferences({ lastWorkspaceId: currentWorkspace.id });
-        }
-        
-        // If they don't prefer system view but no workspace is selected, restore last workspace
-        else if (!prefs.preferSystemView && !currentWorkspace && prefs.lastWorkspaceId) {
-          console.log('[EnterpriseOwner] Would restore workspace:', prefs.lastWorkspaceId);
-          // Note: We can't directly set workspace here as it needs to be found in workspace list
-          // This will be handled by WorkspaceContext when workspaces are loaded
+        // If they prefer system view, redirect to admin dashboard
+        if (prefs.preferSystemView) {
+          console.log('[EnterpriseOwner] Redirecting to admin dashboard');
+          navigate('/admin', { replace: true });
+          return;
         }
       }
+      
+      // Clear workspace for enterprise owners on admin route
+      if (isOnAdmin && currentWorkspace) {
+        console.log('[EnterpriseOwner] Clearing workspace for admin view');
+        setCurrentWorkspace(null);
+      }
     }
-  }, [user, isSystemOwner, role, loading, currentWorkspace, location.pathname]);
+  }, [user, isSystemOwner, role, loading, currentWorkspace, location.pathname, navigate, setCurrentWorkspace]);
 
   // Toggle between system view and workspace view
-  const toggleSystemView = () => {
+  const toggleSystemView = useCallback(() => {
     if (!user || !(isSystemOwner || role === 'owner' || role === 'admin')) return;
     
     const prefs = getPreferences();
     const newPreferSystemView = !prefs.preferSystemView;
     
-    console.log('[EnterpriseOwner] Toggling system view:', newPreferSystemView);
+    console.log('[EnterpriseOwner] Toggling system view to:', newPreferSystemView);
     
+    savePreferences({ 
+      preferSystemView: newPreferSystemView,
+      lastWorkspaceId: newPreferSystemView ? null : currentWorkspace?.id || null
+    });
+
     if (newPreferSystemView) {
-      // Switch to system view
-      if (currentWorkspace) {
-        savePreferences({ 
-          preferSystemView: true, 
-          lastWorkspaceId: currentWorkspace.id 
-        });
-        setCurrentWorkspace(null);
-      } else {
-        savePreferences({ preferSystemView: true });
-      }
+      // Switching to system view - navigate to admin and clear workspace
+      console.log('[EnterpriseOwner] Switching to system view, navigating to admin');
+      setCurrentWorkspace(null);
+      navigate('/admin');
     } else {
-      // Switch to workspace view
-      savePreferences({ preferSystemView: false });
-      // If we have a last workspace, it will be restored by the effect above
+      // Switching to workspace view - navigate to dashboard
+      console.log('[EnterpriseOwner] Switching to workspace view, navigating to dashboard');
+      navigate('/dashboard');
     }
-  };
+  }, [user, isSystemOwner, role, currentWorkspace, navigate, setCurrentWorkspace]);
 
   return {
     preferences: getPreferences(),

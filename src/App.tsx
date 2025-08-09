@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Projects from "./pages/Projects";
 import Resources from "./pages/Resources";
 import Stakeholders from "./pages/Stakeholders";
@@ -69,6 +70,15 @@ const AppContent: React.FC = () => {
             </div>
           }>
             <Dashboard />
+          </ErrorBoundary>
+        } />
+        <Route path="/admin" element={
+          <ErrorBoundary fallback={
+            <div className="p-8 text-center">
+              <p>Unable to load admin dashboard. Please try refreshing the page.</p>
+            </div>
+          }>
+            <AdminDashboard />
           </ErrorBoundary>
         } />
         <Route path="/projects" element={

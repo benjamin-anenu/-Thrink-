@@ -4,11 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Layout from '@/components/Layout';
 import SimpleDashboard from '@/components/dashboard/SimpleDashboard';
-import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
 import FirstUserOnboarding from '@/components/FirstUserOnboarding';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 import { useEnterpriseOwnerPersistence } from '@/hooks/useEnterpriseOwnerPersistence';
+import { Navigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const { user, isFirstUser, isSystemOwner, role, loading } = useAuth();
@@ -16,19 +16,10 @@ const Dashboard: React.FC = () => {
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
   const { isEnterpriseOwner, preferences } = useEnterpriseOwnerPersistence();
 
-  // Debug logging for enterprise owner recognition
-  useEffect(() => {
-    if (!loading && user) {
-      console.log('[Dashboard] Enterprise Owner Status Check:', {
-        isSystemOwner,
-        role,
-        isEnterpriseOwner,
-        currentWorkspace: !!currentWorkspace,
-        hasWorkspaces,
-        userEmail: user.email
-      });
-    }
-  }, [isSystemOwner, role, isEnterpriseOwner, currentWorkspace, hasWorkspaces, loading, user]);
+  // Redirect enterprise owners to admin dashboard if they prefer system view
+  if (!loading && isEnterpriseOwner && preferences.preferSystemView) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <AppInitializationLoader>
@@ -52,13 +43,8 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
-                {/* System Administrator Dashboard for enterprise owners (priority view) */}
-                {isFullyLoaded && isEnterpriseOwner && preferences.preferSystemView && (
-                  <SystemOwnerDashboard />
-                )}
-
-                {/* Workspace dashboard when a workspace is selected and not in system view */}
-                {isFullyLoaded && currentWorkspace && (!isEnterpriseOwner || !preferences.preferSystemView) && (
+                {/* Workspace dashboard */}
+                {isFullyLoaded && currentWorkspace && (
                   <SimpleDashboard />
                 )}
               </div>
