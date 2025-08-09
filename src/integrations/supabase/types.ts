@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_permissions: {
+        Row: {
+          created_at: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          permission_scope: string | null
+          permission_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission_scope?: string | null
+          permission_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission_scope?: string | null
+          permission_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_assignment_recommendations: {
         Row: {
           alternative_assignments: Json | null
@@ -705,6 +738,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      enterprises: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          settings: Json | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          settings?: Json | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          settings?: Json | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       escalation_assignments: {
         Row: {
@@ -3834,31 +3900,42 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          enterprise_id: string | null
           id: string
+          is_enterprise_owner: boolean | null
           is_system_owner: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
-          workspace_id: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          enterprise_id?: string | null
           id?: string
+          is_enterprise_owner?: boolean | null
           is_system_owner?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
-          workspace_id?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          enterprise_id?: string | null
           id?: string
+          is_enterprise_owner?: boolean | null
           is_system_owner?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_enterprise_id_fkey"
+            columns: ["enterprise_id"]
+            isOneToOne: false
+            referencedRelation: "enterprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_sessions: {
         Row: {
@@ -3921,6 +3998,7 @@ export type Database = {
           accepted_at: string | null
           created_at: string
           email: string
+          email_sent_at: string | null
           expires_at: string
           id: string
           invitation_token: string
@@ -3928,12 +4006,14 @@ export type Database = {
           metadata: Json | null
           role: string
           status: string | null
+          updated_at: string
           workspace_id: string
         }
         Insert: {
           accepted_at?: string | null
           created_at?: string
           email: string
+          email_sent_at?: string | null
           expires_at?: string
           id?: string
           invitation_token?: string
@@ -3941,12 +4021,14 @@ export type Database = {
           metadata?: Json | null
           role?: string
           status?: string | null
+          updated_at?: string
           workspace_id: string
         }
         Update: {
           accepted_at?: string | null
           created_at?: string
           email?: string
+          email_sent_at?: string | null
           expires_at?: string
           id?: string
           invitation_token?: string
@@ -3954,6 +4036,7 @@ export type Database = {
           metadata?: Json | null
           role?: string
           status?: string | null
+          updated_at?: string
           workspace_id?: string
         }
         Relationships: [
@@ -4017,6 +4100,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          enterprise_id: string | null
           id: string
           is_active: boolean | null
           max_members: number | null
@@ -4030,6 +4114,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          enterprise_id?: string | null
           id?: string
           is_active?: boolean | null
           max_members?: number | null
@@ -4043,6 +4128,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          enterprise_id?: string | null
           id?: string
           is_active?: boolean | null
           max_members?: number | null
@@ -4053,7 +4139,15 @@ export type Database = {
           subscription_tier?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspaces_enterprise_id_fkey"
+            columns: ["enterprise_id"]
+            isOneToOne: false
+            referencedRelation: "enterprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -4141,6 +4235,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      create_enterprise_with_owner: {
+        Args: {
+          enterprise_name: string
+          enterprise_description?: string
+          enterprise_slug?: string
+        }
+        Returns: string
+      }
       create_milestone: {
         Args: {
           p_project_id: string
@@ -4192,12 +4294,33 @@ export type Database = {
           path: string[]
         }[]
       }
+      get_user_enterprise: {
+        Args: { user_id_param?: string }
+        Returns: string
+      }
+      get_user_permissions_context: {
+        Args: { _user_id: string }
+        Returns: {
+          is_system_owner: boolean
+          system_role: Database["public"]["Enums"]["app_role"]
+          admin_permissions: Json
+          workspace_memberships: Json
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       hard_delete_project: {
         Args: { p_project_id: string; p_workspace_id: string }
+        Returns: boolean
+      }
+      has_admin_permission: {
+        Args: {
+          _user_id: string
+          _permission_type: string
+          _permission_scope?: string
+        }
         Returns: boolean
       }
       has_role: {
@@ -4247,7 +4370,17 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "admin" | "manager" | "member" | "viewer"
+      app_role:
+        | "owner"
+        | "admin"
+        | "manager"
+        | "member"
+        | "viewer"
+        | "workspace_admin"
+        | "workspace_member"
+        | "workspace_viewer"
+      invitation_status: "pending" | "accepted" | "revoked" | "expired"
+      invite_status: "pending" | "accepted" | "revoked" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4375,7 +4508,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "manager", "member", "viewer"],
+      app_role: [
+        "owner",
+        "admin",
+        "manager",
+        "member",
+        "viewer",
+        "workspace_admin",
+        "workspace_member",
+        "workspace_viewer",
+      ],
+      invitation_status: ["pending", "accepted", "revoked", "expired"],
+      invite_status: ["pending", "accepted", "revoked", "expired"],
     },
   },
 } as const

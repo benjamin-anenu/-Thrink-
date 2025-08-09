@@ -23,6 +23,7 @@ import SystemEscalations from "./pages/SystemEscalations";
 import SystemReports from "./pages/SystemReports";
 import SystemPortfolio from "./pages/SystemPortfolio";
 import { AuthProvider } from "./contexts/AuthContext";
+import { EnterpriseProvider } from "./contexts/EnterpriseContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { ResourceProvider } from "./contexts/ResourceContext";
 import { StakeholderProvider } from "./contexts/StakeholderContext";
@@ -150,17 +151,19 @@ function App() {
             <NetworkErrorHandler>
               <GlobalErrorHandler>
                 <AuthProvider>
-                  <WorkspaceProvider>
-                    <ProjectProvider>
-                      <TaskProvider>
-                        <ResourceProvider>
-                          <StakeholderProvider>
-                            <AppContent />
-                          </StakeholderProvider>
-                        </ResourceProvider>
-                      </TaskProvider>
-                    </ProjectProvider>
-                  </WorkspaceProvider>
+                  <EnterpriseProvider>
+                    <WorkspaceProvider>
+                      <ProjectProvider>
+                        <TaskProvider>
+                          <ResourceProvider>
+                            <StakeholderProvider>
+                              <AppContent />
+                            </StakeholderProvider>
+                          </ResourceProvider>
+                        </TaskProvider>
+                      </ProjectProvider>
+                    </WorkspaceProvider>
+                  </EnterpriseProvider>
                 </AuthProvider>
               </GlobalErrorHandler>
             </NetworkErrorHandler>

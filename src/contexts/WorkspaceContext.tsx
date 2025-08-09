@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Workspace, WorkspaceMember, WorkspaceSettings } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { useEnterprise } from './EnterpriseContext';
 
 interface WorkspaceContextType {
   currentWorkspace: Workspace | null;
@@ -21,7 +22,8 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading, isSystemOwner, role } = useAuth()
+  const { user, loading: authLoading, isSystemOwner, role } = useAuth();
+  const { currentEnterprise } = useEnterprise();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,10 +62,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
-  // Fetch workspaces from Supabase - enhanced for system owner
+  // Fetch workspaces from Supabase - scoped to current enterprise
   const fetchWorkspaces = async () => {
-    if (!user) {
-      console.log('[Workspace] No user, clearing workspaces')
+    if (!user || !currentEnterprise) {
+      console.log('[Workspace] No user or enterprise, clearing workspaces')
       setWorkspaces([])
       setCurrentWorkspace(null)
       setLoading(false)
@@ -71,46 +73,25 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return
     }
 
-    console.log('[Workspace] Fetching workspaces for user:', user.id, 'System owner:', isSystemOwner)
+    console.log('[Workspace] Fetching workspaces for enterprise:', currentEnterprise.id)
     setLoading(true)
     setError(null)
 
     try {
-      let workspaceQuery;
-
-      if (isSystemOwner) {
-        // System owners can see all workspaces
-        workspaceQuery = supabase
-          .from('workspaces')
-          .select(`
-            *,
-            workspace_members!inner(
-              id,
-              user_id,
-              role,
-              status,
-              joined_at
-            )
-          `);
-      } else {
-        // Regular users only see workspaces where they are members
-        workspaceQuery = supabase
-          .from('workspaces')
-          .select(`
-            *,
-            workspace_members!inner(
-              id,
-              user_id,
-              role,
-              status,
-              joined_at
-            )
-          `)
-          .eq('workspace_members.user_id', user.id)
-          .eq('workspace_members.status', 'active');
-      }
-
-      const { data: workspaceData, error: workspaceError } = await workspaceQuery;
+      // Fetch workspaces scoped to the current enterprise
+      const { data: workspaceData, error: workspaceError } = await supabase
+        .from('workspaces')
+        .select(`
+          *,
+          workspace_members(
+            id,
+            user_id,
+            role,
+            status,
+            joined_at
+          )
+        `)
+        .eq('enterprise_id', currentEnterprise.id);
 
       if (workspaceError) {
         console.error('[Workspace] Error fetching workspaces:', workspaceError);
@@ -125,7 +106,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         description: ws.description || '',
         createdAt: ws.created_at,
         ownerId: ws.owner_id,
-        members: ws.workspace_members.map((member: any) => ({
+        members: ws.workspace_members?.map((member: any) => ({
           id: member.id,
           userId: member.user_id,
           email: user.email || '',
@@ -133,22 +114,21 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           role: member.role,
           joinedAt: member.joined_at,
           status: member.status
-        })),
+        })) || [],
         settings: parseWorkspaceSettings(ws.settings)
       })) || [];
 
-      console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces')
+      console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces for enterprise')
       setWorkspaces(transformedWorkspaces);
       
-      // Set current workspace automatically only for non-admin/non-owner non-system-owner users
+      // Set current workspace automatically for regular users
       if (
         transformedWorkspaces.length > 0 &&
         !currentWorkspace &&
-        !isSystemOwner &&
-        !(role === 'owner' || role === 'admin')
+        !isSystemOwner
       ) {
         setCurrentWorkspace(transformedWorkspaces[0]);
-        console.log('[Workspace] Auto-selected workspace for regular user:', transformedWorkspaces[0].name)
+        console.log('[Workspace] Auto-selected workspace:', transformedWorkspaces[0].name)
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
@@ -158,7 +138,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // Load workspaces when user is available and auth loading is complete
+  // Load workspaces when user and enterprise are available
   useEffect(() => {
     if (authLoading) {
       console.log('[Workspace] Auth still loading, waiting...')
@@ -167,7 +147,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     console.log('[Workspace] Auth ready, fetching workspaces...')
     fetchWorkspaces();
-  }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
+  }, [user, authLoading, currentEnterprise?.id])
 
   // Ensure system owners/admins/owners default to no workspace selected
   useEffect(() => {
@@ -178,6 +158,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [isSystemOwner, role])
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
+    if (!currentEnterprise) {
+      throw new Error('No enterprise selected');
+    }
+
     try {
       const { data: workspaceId, error } = await supabase.rpc('create_workspace_with_owner', {
         workspace_name: name,
@@ -185,6 +169,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
 
       if (error) throw error;
+
+      // Update the workspace to include enterprise_id
+      await supabase
+        .from('workspaces')
+        .update({ enterprise_id: currentEnterprise.id })
+        .eq('id', workspaceId);
 
       // Refresh workspaces to include the new one
       await fetchWorkspaces();
