@@ -93,9 +93,33 @@ const RecycleBin = () => {
 
     setPermanentDeleting(item.id);
     try {
-      // Delete all related records in the correct order using comprehensive cascade delete
+      // 1) Remove any stored files from Supabase Storage first
+      try {
+        const [{ data: docFiles }, { data: metaFiles }] = await Promise.all([
+          supabase.from('project_documents').select('file_path').eq('project_id', item.id),
+          supabase.from('project_files').select('file_path').eq('project_id', item.id),
+        ]);
+
+        const storagePaths = [
+          ...(docFiles?.map((f: any) => f.file_path) || []),
+          ...(metaFiles?.map((f: any) => f.file_path) || []),
+        ].filter(Boolean);
+
+        if (storagePaths.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('project-files')
+            .remove(storagePaths);
+          if (storageError) {
+            console.warn('Failed to remove some storage files:', storageError);
+          }
+        }
+      } catch (storageFetchErr) {
+        console.warn('Storage files lookup/removal failed:', storageFetchErr);
+      }
+
+      // 2) Delete all related records in the correct order using comprehensive cascade delete
       const deleteOperations = [
-        // Delete project-specific data
+        // Project-scoped data
         supabase.from('project_ai_data').delete().eq('project_id', item.id),
         supabase.from('project_budgets').delete().eq('project_id', item.id),
         supabase.from('project_documents').delete().eq('project_id', item.id),
@@ -109,23 +133,26 @@ const RecycleBin = () => {
         supabase.from('project_issues').delete().eq('project_id', item.id),
         supabase.from('document_folders').delete().eq('project_id', item.id),
         supabase.from('calendar_events').delete().eq('project_id', item.id),
-        
-        // Delete tasks and milestones
+        supabase.from('stakeholders').delete().eq('project_id', item.id),
+        supabase.from('reports').delete().eq('project_id', item.id),
+
+        // Ordered deletions
         supabase.from('project_tasks').delete().eq('project_id', item.id),
         supabase.from('milestones').delete().eq('project_id', item.id),
+        supabase.from('phases').delete().eq('project_id', item.id),
       ];
 
       // Execute all delete operations
       const results = await Promise.allSettled(deleteOperations);
-      
-      // Check for any failures (but don't stop the process)
+
+      // Log any failures (but proceed)
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
           console.warn(`Failed to delete related data (operation ${index}):`, result.reason);
         }
       });
 
-      // Finally delete the project itself
+      // 3) Finally delete the project itself
       const { error: projectError } = await supabase
         .from('projects')
         .delete()
