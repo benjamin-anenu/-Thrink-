@@ -61,7 +61,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (emails.length === 0) return;
+    if (emails.length === 0 || isLoading) return;
 
     setIsLoading(true);
     
@@ -73,28 +73,52 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
           description: 'Please choose a workspace to send invites.',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
-      await Promise.all(
-        emails.map((emailAddress) => inviteMember(targetId, emailAddress, role))
-      );
-      
-      toast({
-        title: 'Invitations sent! 📧',
-        description: `Invited ${emails.length} member${emails.length > 1 ? 's' : ''} to join the workspace.`,
+      console.log('[InviteMemberModal] Sending invites to:', emails, 'for workspace:', targetId);
+
+      const invitePromises = emails.map(async (emailAddress) => {
+        try {
+          await inviteMember(targetId, emailAddress, role);
+          return { email: emailAddress, success: true };
+        } catch (error) {
+          console.error('[InviteMemberModal] Failed to invite:', emailAddress, error);
+          return { email: emailAddress, success: false, error: (error as any)?.message };
+        }
       });
+
+      const results = await Promise.all(invitePromises);
+      const successCount = results.filter(r => r.success).length;
+      const failedCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast({
+          title: 'Invitations sent! 📧',
+          description: `Successfully invited ${successCount} member${successCount > 1 ? 's' : ''} to join the workspace.${failedCount > 0 ? ` ${failedCount} invitation${failedCount > 1 ? 's' : ''} failed.` : ''}`,
+        });
+      }
+
+      if (failedCount > 0 && successCount === 0) {
+        toast({
+          title: "All invitations failed",
+          description: "Please check the email addresses and try again.",
+          variant: "destructive",
+        });
+      }
       
-      // Reset form
-      setEmails([]);
-      setEmail('');
-      setRole('member');
-      onOpenChange(false);
+      // Reset form only on success
+      if (successCount > 0) {
+        setEmails([]);
+        setEmail('');
+        setRole('member');
+        onOpenChange(false);
+      }
     } catch (error) {
+      console.error('[InviteMemberModal] Unexpected error:', error);
       toast({
         title: "Error sending invitations",
-        description: (error as any)?.message || (typeof error === 'string' ? error : 'Please try again later.'),
+        description: (error as any)?.message || 'Please try again later.',
         variant: "destructive",
       });
     } finally {
