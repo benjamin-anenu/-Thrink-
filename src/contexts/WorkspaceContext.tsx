@@ -8,7 +8,7 @@ interface WorkspaceContextType {
   workspaces: Workspace[];
   loading: boolean;
   error: string | null;
-  setCurrentWorkspace: (workspace: Workspace) => void;
+  setCurrentWorkspace: (workspace: Workspace | null) => void;
   addWorkspace: (name: string, description?: string) => Promise<string>;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
   removeWorkspace: (workspaceId: string) => void;
@@ -140,8 +140,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces')
       setWorkspaces(transformedWorkspaces);
       
-      // Set current workspace if none selected
-      if (transformedWorkspaces.length > 0 && !currentWorkspace) {
+      // Set current workspace automatically for regular users only
+      if (transformedWorkspaces.length > 0 && !currentWorkspace && !isSystemOwner) {
         setCurrentWorkspace(transformedWorkspaces[0]);
         console.log('[Workspace] Set current workspace:', transformedWorkspaces[0].name)
       }

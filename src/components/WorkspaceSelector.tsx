@@ -12,10 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 const WorkspaceSelector: React.FC = () => {
   const { currentWorkspace, workspaces, setCurrentWorkspace } = useWorkspace();
   const { isSystemOwner, role } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <DropdownMenu>
@@ -36,11 +37,15 @@ const WorkspaceSelector: React.FC = () => {
         
         {(isSystemOwner || role === 'owner' || role === 'admin') && (
           <>
-            <DropdownMenuItem asChild>
-              <Link to="/dashboard" className="flex items-center gap-2 p-3 cursor-pointer">
-                <LayoutDashboard size={14} />
-                <span className="text-sm">All Workspaces (Owner/Admin)</span>
-              </Link>
+            <DropdownMenuItem
+              onSelect={() => {
+                setCurrentWorkspace(null);
+                navigate('/dashboard');
+              }}
+              className="flex items-center gap-2 p-3 cursor-pointer"
+            >
+              <LayoutDashboard size={14} />
+              <span className="text-sm">System Owner Dashboard</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

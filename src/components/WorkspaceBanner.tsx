@@ -2,12 +2,15 @@
 import React from 'react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { LayoutDashboard } from 'lucide-react';
 
 const WorkspaceBanner = () => {
-  const { user } = useAuth();
-  const { currentWorkspace } = useWorkspace();
+  const { user, isSystemOwner } = useAuth();
+  const { currentWorkspace, setCurrentWorkspace } = useWorkspace();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
@@ -20,7 +23,7 @@ const WorkspaceBanner = () => {
   return (
     <div className="fixed top-16 left-0 right-0 z-40 bg-muted/20 backdrop-blur-sm border-b border-border/20">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex items-center justify-center py-1.5 md:py-2">
+        <div className="flex items-center justify-between py-1.5 md:py-2">
           <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2 text-center md:text-left">
             <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
               <span className="text-muted-foreground font-medium">Workspace:</span>
@@ -33,6 +36,22 @@ const WorkspaceBanner = () => {
               </div>
             )}
           </div>
+
+          {isSystemOwner && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                setCurrentWorkspace(null);
+                navigate('/dashboard');
+              }}
+            >
+              <LayoutDashboard size={14} className="mr-2" />
+              <span className="hidden md:inline">System Owner Dashboard</span>
+              <span className="md:hidden">Admin</span>
+            </Button>
+          )}
         </div>
       </div>
     </div>
