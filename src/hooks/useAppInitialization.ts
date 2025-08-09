@@ -13,7 +13,10 @@ export interface AppInitializationState {
   hasProjects: boolean;
 }
 
-export const useAppInitialization = (): AppInitializationState => {
+export interface AppInitializationOptions { mode?: 'default' | 'system'; }
+
+export const useAppInitialization = (options: AppInitializationOptions = {}): AppInitializationState => {
+  const { mode = 'default' } = options;
   const { user, loading: authLoading, isFirstUser } = useAuth();
   const { workspaces, loading: workspaceLoading, currentWorkspace } = useWorkspace();
   const { projects, loading: projectLoading } = useProject();
@@ -36,15 +39,19 @@ export const useAppInitialization = (): AppInitializationState => {
     const hasWorkspaces = workspaces.length > 0;
     const hasProjects = projects.length > 0;
     
-    // Consider app fully loaded when:
-    // 1. Auth is complete
-    // 2. Workspaces are loaded (even if empty for first user)
-    // 3. Projects are loaded if there's a workspace
-    const isFullyLoaded = authReady && workspacesReady && (
-      isFirstUser || // First user doesn't need workspace/project data
-      !currentWorkspace || // No workspace selected is a valid state
-      projectsReady // Projects are loaded for current workspace
-    );
+    // Consider app fully loaded based on mode
+    let isFullyLoaded: boolean;
+    if (mode === 'system') {
+      // System routes only need auth to be ready
+      isFullyLoaded = authReady;
+    } else {
+      // Default: require workspaces and (if applicable) projects
+      isFullyLoaded = authReady && workspacesReady && (
+        isFirstUser || // First user doesn't need workspace/project data
+        !currentWorkspace || // No workspace selected is a valid state
+        projectsReady // Projects are loaded for current workspace
+      );
+    }
     
     const isInitializing = !isFullyLoaded;
 

@@ -1,19 +1,22 @@
 import React from 'react';
 import { Loader2, Database, Users, FolderOpen } from 'lucide-react';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
+import { useLocation } from 'react-router-dom';
 
 interface AppInitializationLoaderProps {
   children: React.ReactNode;
 }
 
 export const AppInitializationLoader: React.FC<AppInitializationLoaderProps> = ({ children }) => {
+  const location = useLocation();
+  const isSystemRoute = location.pathname.startsWith('/system');
   const {
     authReady,
     workspacesReady,
     projectsReady,
     isFullyLoaded,
     isInitializing
-  } = useAppInitialization();
+  } = useAppInitialization({ mode: isSystemRoute ? 'system' : 'default' });
 
   if (!isInitializing) {
     return <>{children}</>;

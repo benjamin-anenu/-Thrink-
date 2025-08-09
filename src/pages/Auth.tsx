@@ -16,14 +16,15 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, isSystemOwner, permissionsContext, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
-    }
-  }, [user, navigate]);
+    if (!user || authLoading) return;
+    // Wait until permissions are loaded to route by role
+    if (!permissionsContext) return;
+    navigate(isSystemOwner ? '/system/overview' : '/dashboard', { replace: true });
+  }, [user, authLoading, permissionsContext, isSystemOwner, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +37,7 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       } else {
-        navigate('/dashboard');
+        // Routing will occur after permissions load
       }
     } catch (err) {
       setError('An unexpected error occurred');
