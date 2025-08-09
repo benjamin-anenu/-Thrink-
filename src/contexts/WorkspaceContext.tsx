@@ -145,7 +145,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         transformedWorkspaces.length > 0 &&
         !currentWorkspace &&
         !isSystemOwner &&
-        !(role === 'owner' || role === 'admin')
+        !(role === 'owner' || role === 'admin') &&
+        role !== null
       ) {
         setCurrentWorkspace(transformedWorkspaces[0]);
         console.log('[Workspace] Auto-selected workspace for regular user:', transformedWorkspaces[0].name)
