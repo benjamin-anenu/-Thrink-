@@ -16,15 +16,14 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const { user, signIn, signUp, isSystemOwner, loading: authLoading, refreshAuth } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authLoading && user) {
-      const target = isSystemOwner ? '/system/portfolio' : '/dashboard';
-      navigate(target, { replace: true });
+    if (user) {
+      navigate('/dashboard');
     }
-  }, [user, isSystemOwner, authLoading, navigate]);
+  }, [user, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +36,7 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       } else {
-        // Hydrate roles/profile immediately; redirect effect will handle navigation
-        await refreshAuth();
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('An unexpected error occurred');

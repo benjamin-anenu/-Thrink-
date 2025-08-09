@@ -104,9 +104,9 @@ const Workspaces: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={() => navigate('/system/portfolio')} className="gap-2">
+                  <Button onClick={() => navigate('/dashboard')} className="gap-2">
                     <LayoutDashboard size={16} />
-                    Open System Portfolio
+                    Open Dashboard
                   </Button>
                 </CardContent>
               </Card>
@@ -123,14 +123,14 @@ const Workspaces: React.FC = () => {
                 <Card 
                   key="all-workspaces" 
                   className="cursor-pointer transition-all duration-200 hover:shadow-md"
-                  onClick={() => navigate('/system/portfolio')}
+                  onClick={() => navigate('/dashboard')}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                       <LayoutDashboard size={20} className="text-primary" />
-                      <CardTitle className="text-lg">System Portfolio</CardTitle>
+                      <CardTitle className="text-lg">All Workspaces</CardTitle>
                     </div>
-                    <CardDescription>View portfolio across all workspaces</CardDescription>
+                    <CardDescription>View system-level dashboard</CardDescription>
                   </CardHeader>
                 </Card>
               )}
