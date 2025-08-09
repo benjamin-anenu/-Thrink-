@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Layout from '@/components/Layout';
@@ -8,11 +8,27 @@ import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
 import FirstUserOnboarding from '@/components/FirstUserOnboarding';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
+import { useEnterpriseOwnerPersistence } from '@/hooks/useEnterpriseOwnerPersistence';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, role } = useAuth();
+  const { user, isFirstUser, isSystemOwner, role, loading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
+  const { isEnterpriseOwner } = useEnterpriseOwnerPersistence();
+
+  // Debug logging for enterprise owner recognition
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('[Dashboard] Enterprise Owner Status Check:', {
+        isSystemOwner,
+        role,
+        isEnterpriseOwner,
+        currentWorkspace: !!currentWorkspace,
+        hasWorkspaces,
+        userEmail: user.email
+      });
+    }
+  }, [isSystemOwner, role, isEnterpriseOwner, currentWorkspace, hasWorkspaces, loading, user]);
 
   return (
     <AppInitializationLoader>
@@ -24,8 +40,8 @@ const Dashboard: React.FC = () => {
           <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <div className="space-y-8">
-                {/* Show workspace selection prompt if no current workspace and not system owner */}
-                {isFullyLoaded && !currentWorkspace && !(isSystemOwner || role === 'owner' || role === 'admin') && (
+                {/* Show workspace selection prompt if no current workspace and not enterprise owner */}
+                {isFullyLoaded && !currentWorkspace && !isEnterpriseOwner && (
                   <div className="text-center py-12">
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold text-foreground">No Workspace Selected</h2>
@@ -41,8 +57,8 @@ const Dashboard: React.FC = () => {
                   <SimpleDashboard />
                 )}
 
-                {/* System owner/administrative portfolio view when no workspace is selected */}
-                {isFullyLoaded && !currentWorkspace && (isSystemOwner || role === 'owner' || role === 'admin') && (
+                {/* System Administrator Dashboard for enterprise owners (priority view) */}
+                {isFullyLoaded && !currentWorkspace && isEnterpriseOwner && (
                   <SystemOwnerDashboard />
                 )}
               </div>

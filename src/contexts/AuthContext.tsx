@@ -14,6 +14,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isFirstUser, setIsFirstUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [contextError, setContextError] = useState<string | null>(null);
+  
+  // Enhanced state for enterprise owner persistence
+  const [roleCache, setRoleCache] = useState<{ 
+    role: AppRole | null; 
+    isSystemOwner: boolean; 
+    timestamp: number;
+    userId: string | null;
+  } | null>(null);
 
   const checkFirstUser = async (): Promise<boolean> => {
     if (!user) return false;
@@ -39,11 +47,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Load cached role data from localStorage
+  const loadCachedRole = (userId: string) => {
+    try {
+      const cached = localStorage.getItem(`thrink_role_cache_${userId}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        const isExpired = Date.now() - data.timestamp > 5 * 60 * 1000; // 5 minutes cache
+        if (!isExpired && data.userId === userId) {
+          console.log('[Auth] Using cached role data:', data);
+          setRole(data.role);
+          setIsSystemOwner(data.isSystemOwner);
+          setRoleCache(data);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('[Auth] Error loading cached role:', error);
+    }
+    return false;
+  };
+
+  // Save role data to localStorage
+  const saveCachedRole = (userId: string, role: AppRole | null, isSystemOwner: boolean) => {
+    try {
+      const data = {
+        role,
+        isSystemOwner,
+        timestamp: Date.now(),
+        userId
+      };
+      localStorage.setItem(`thrink_role_cache_${userId}`, JSON.stringify(data));
+      setRoleCache(data);
+    } catch (error) {
+      console.error('[Auth] Error saving cached role:', error);
+    }
+  };
+
   const refreshProfile = async () => {
     if (!user) return;
     
     try {
       console.log('[Auth] Refreshing profile for user:', user.id);
+      
+      // Try to load from cache first for faster response
+      const usedCache = loadCachedRole(user.id);
       
       // Fetch profile
       const { data: profileData, error: profileError } = await supabase
@@ -87,8 +135,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const enterpriseOwner = (rolesData || []).some((r: any) => !!r.is_enterprise_owner);
 
       setProfile(profileData);
-      setRole(effectiveRole);
-      setIsSystemOwner(enterpriseOwner);
+      
+      // Only update if different from cache to avoid unnecessary re-renders
+      if (!usedCache || roleCache?.role !== effectiveRole || roleCache?.isSystemOwner !== enterpriseOwner) {
+        setRole(effectiveRole);
+        setIsSystemOwner(enterpriseOwner);
+        saveCachedRole(user.id, effectiveRole, enterpriseOwner);
+      }
       
       console.log('[Auth] Computed role:', effectiveRole, 'is system owner:', enterpriseOwner);
     } catch (error) {
@@ -122,12 +175,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }, 0);
       } else {
-        // Logged out state
+        // Logged out state - clear cache
         setProfile(null);
         setRole(null);
         setIsSystemOwner(false);
         setIsFirstUser(false);
+        setRoleCache(null);
         setLoading(false);
+        
+        // Clear localStorage cache
+        try {
+          const keys = Object.keys(localStorage);
+          keys.forEach(key => {
+            if (key.startsWith('thrink_role_cache_')) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (error) {
+          console.error('[Auth] Error clearing role cache:', error);
+        }
       }
     });
 
