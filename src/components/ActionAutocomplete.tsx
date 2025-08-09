@@ -20,7 +20,7 @@ const ActionAutocomplete: React.FC<Props> = ({ query, onSelect }) => {
   if (results.length === 0) return null;
 
   return (
-    <div className="absolute z-50 mt-2 w-full rounded-md border border-border bg-popover shadow-lg">
+    <div className="absolute left-0 bottom-full mb-2 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-lg z-[9999]">
       <ul className="max-h-64 overflow-auto">
         {results.map(item => (
           <li
