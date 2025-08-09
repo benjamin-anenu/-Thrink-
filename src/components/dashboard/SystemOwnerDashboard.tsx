@@ -10,6 +10,7 @@ import {
   Building2,
   FolderOpen,
   TrendingUp,
+  Activity,
   AlertTriangle,
   CheckCircle,
   Clock,

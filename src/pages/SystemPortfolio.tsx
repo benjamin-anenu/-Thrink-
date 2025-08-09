@@ -5,9 +5,8 @@ import { useAppInitialization } from '@/hooks/useAppInitialization';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-const SystemReports: React.FC = () => {
+const SystemPortfolio: React.FC = () => {
   const { isFullyLoaded } = useAppInitialization();
-
   return (
     <AppInitializationLoader>
       {isFullyLoaded && (
@@ -16,10 +15,10 @@ const SystemReports: React.FC = () => {
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <Card>
                 <CardHeader>
-                  <CardTitle>Reports (Coming Soon)</CardTitle>
+                  <CardTitle>Portfolio (Coming Soon)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">Centralized reports and scheduling are coming soon.</p>
+                  <p className="text-muted-foreground">Cross-workspace portfolio analytics are coming soon for system owners.</p>
                   <div className="mt-4"><Badge variant="secondary">Coming soon</Badge></div>
                 </CardContent>
               </Card>
@@ -31,4 +30,4 @@ const SystemReports: React.FC = () => {
   );
 };
 
-export default SystemReports;
+export default SystemPortfolio;

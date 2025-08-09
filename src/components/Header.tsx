@@ -6,7 +6,7 @@ import WorkspaceSelector from './WorkspaceSelector';
 import { UserButton } from './auth/UserButton';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from './notifications/NotificationModal';
-import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain, Building2, Activity, TrendingUp, AlertTriangle, FileText } from 'lucide-react';
+import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Link, useLocation } from 'react-router-dom';
@@ -27,12 +27,11 @@ const Header = () => {
     else if (path === '/projects') setActivePage('projects');
     else if (path === '/resources') setActivePage('resources');
     else if (path === '/stakeholders') setActivePage('stakeholders');
-    else if (path === '/analytics') setActivePage(isSystemMode ? 'portfolio-analytics' : 'analytics');
-    else if (path === '/workspaces') setActivePage('workspaces');
+    else if (path === '/analytics') setActivePage('analytics');
+    else if (path === '/system/portfolio') setActivePage('portfolio');
     else if (path === '/system/health') setActivePage('system-health');
     else if (path === '/system/performance') setActivePage('performance');
     else if (path === '/system/escalations') setActivePage('escalations');
-    else if (path === '/system/reports') setActivePage('reports');
     else if (path === '/ai-hub') setActivePage('ai-hub');
     else if (path === '/' && location.hash) {
       const section = location.hash.substring(1);
@@ -138,30 +137,16 @@ const Header = () => {
                           </Link>
                         </ToggleGroupItem>
                         <ToggleGroupItem 
-                          value="workspaces" 
+                          value="portfolio" 
                           className={cn(
                             "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
-                            activePage === 'workspaces' 
+                            activePage === 'portfolio' 
                               ? 'text-primary-foreground bg-primary shadow-sm' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                           )}
                           asChild
                         >
-                          <Link to="/workspaces">
-                            <Building2 size={14} className="mr-1.5" /> Workspaces
-                          </Link>
-                        </ToggleGroupItem>
-                        <ToggleGroupItem 
-                          value="portfolio-analytics" 
-                          className={cn(
-                            "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
-                            activePage === 'portfolio-analytics' 
-                              ? 'text-primary-foreground bg-primary shadow-sm' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          )}
-                          asChild
-                        >
-                          <Link to="/analytics">
+                          <Link to="/system/portfolio">
                             <BarChart3 size={14} className="mr-1.5" /> Portfolio
                           </Link>
                         </ToggleGroupItem>
@@ -205,20 +190,6 @@ const Header = () => {
                         >
                           <Link to="/system/escalations">
                             <AlertTriangle size={14} className="mr-1.5" /> Escalations
-                          </Link>
-                        </ToggleGroupItem>
-                        <ToggleGroupItem 
-                          value="reports" 
-                          className={cn(
-                            "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
-                            activePage === 'reports' 
-                              ? 'text-primary-foreground bg-primary shadow-sm' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          )}
-                          asChild
-                        >
-                          <Link to="/system/reports">
-                            <FileText size={14} className="mr-1.5" /> Reports
                           </Link>
                         </ToggleGroupItem>
                       </>
@@ -396,20 +367,10 @@ const Header = () => {
                           <LayoutDashboard size={16} className="mr-2" /> Overview
                         </Link>
                         <Link 
-                          to="/workspaces" 
+                          to="/system/portfolio" 
                           className={cn(
                             "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                            activePage === 'workspaces' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Building2 size={16} className="mr-2" /> Workspaces
-                        </Link>
-                        <Link 
-                          to="/analytics" 
-                          className={cn(
-                            "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                            activePage === 'portfolio-analytics' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            activePage === 'portfolio' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                           )}
                           onClick={() => setMobileMenuOpen(false)}
                         >
@@ -444,16 +405,6 @@ const Header = () => {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <AlertTriangle size={16} className="mr-2" /> Escalations
-                        </Link>
-                        <Link 
-                          to="/system/reports" 
-                          className={cn(
-                            "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                            activePage === 'reports' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <FileText size={16} className="mr-2" /> Reports
                         </Link>
                       </>
                     ) : (

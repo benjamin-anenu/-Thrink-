@@ -21,6 +21,7 @@ import SystemHealth from "./pages/SystemHealth";
 import SystemPerformance from "./pages/SystemPerformance";
 import SystemEscalations from "./pages/SystemEscalations";
 import SystemReports from "./pages/SystemReports";
+import SystemPortfolio from "./pages/SystemPortfolio";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { ResourceProvider } from "./contexts/ResourceContext";
@@ -96,6 +97,11 @@ const AppContent: React.FC = () => {
         <Route path="/ai-hub" element={
           <ErrorBoundary>
             <AIHub />
+          </ErrorBoundary>
+        } />
+        <Route path="/system/portfolio" element={
+          <ErrorBoundary>
+            <SystemPortfolio />
           </ErrorBoundary>
         } />
         <Route path="/system/health" element={
