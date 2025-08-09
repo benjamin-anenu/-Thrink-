@@ -2,7 +2,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePermissions } from '@/hooks/usePermissions'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,8 +25,7 @@ import {
 } from 'lucide-react'
 
 export function UserButton() {
-  const { user, profile, signOut, loading } = useAuth()
-  const { getEffectiveRole } = usePermissions()
+  const { user, profile, role, signOut, loading } = useAuth()
   const navigate = useNavigate()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
@@ -70,8 +68,6 @@ export function UserButton() {
   // Use profile data if available, fallback to user email
   const displayName = profile?.full_name || user.email?.split('@')[0] || 'User'
   const displayEmail = user.email || ''
-  const role = getEffectiveRole()
-  const { isOwner, isSystemAdmin } = usePermissions()
 
   return (
     <DropdownMenu>
@@ -137,7 +133,7 @@ export function UserButton() {
           <span>Notifications</span>
         </DropdownMenuItem>
 
-        {(isOwner() || isSystemAdmin()) && (
+        {(role === 'admin' || role === 'owner') && (
           <DropdownMenuItem 
             className="cursor-pointer"
             onClick={() => navigate('/admin')}

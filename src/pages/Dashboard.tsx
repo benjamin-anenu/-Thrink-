@@ -1,24 +1,18 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import Layout from '@/components/Layout';
 import SimpleDashboard from '@/components/dashboard/SimpleDashboard';
+import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
 import FirstUserOnboarding from '@/components/FirstUserOnboarding';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, loading } = useAuth();
+  const { user, isFirstUser, isSystemOwner, role } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
-
-  // Only redirect system owners to their dedicated dashboard if they don't have a workspace selected
-  // This allows system owners to still access individual workspaces when needed
-  if (isSystemOwner && !loading && !currentWorkspace) {
-    return <Navigate to="/system/overview" replace />;
-  }
 
   return (
     <AppInitializationLoader>
@@ -30,8 +24,8 @@ const Dashboard: React.FC = () => {
           <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <div className="space-y-8">
-                {/* Show workspace selection prompt if no current workspace */}
-                {isFullyLoaded && !currentWorkspace && (
+                {/* Show workspace selection prompt if no current workspace and not system owner */}
+                {isFullyLoaded && !currentWorkspace && !(isSystemOwner || role === 'owner' || role === 'admin') && (
                   <div className="text-center py-12">
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold text-foreground">No Workspace Selected</h2>
@@ -42,9 +36,15 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Show workspace dashboard when a workspace is selected */}
-                {isFullyLoaded && currentWorkspace && <SimpleDashboard />}
+                {/* Workspace dashboard when a workspace is selected */}
+                {isFullyLoaded && currentWorkspace && (
+                  <SimpleDashboard />
+                )}
 
+                {/* System owner/administrative portfolio view when no workspace is selected */}
+                {isFullyLoaded && !currentWorkspace && (isSystemOwner || role === 'owner' || role === 'admin') && (
+                  <SystemOwnerDashboard />
+                )}
               </div>
             </div>
           </div>

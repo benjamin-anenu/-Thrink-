@@ -16,13 +16,14 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const { user, signIn, signUp, isSystemOwner, permissionsContext, loading: authLoading } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || authLoading) return;
-    navigate(isSystemOwner ? '/system/overview' : '/dashboard', { replace: true });
-  }, [user, authLoading, isSystemOwner, navigate]);
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +36,7 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       } else {
-        // Routing will occur after permissions load
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('An unexpected error occurred');

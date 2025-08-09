@@ -6,7 +6,7 @@ import WorkspaceSelector from './WorkspaceSelector';
 import { UserButton } from './auth/UserButton';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from './notifications/NotificationModal';
-import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain, Activity, TrendingUp, AlertTriangle, FileText } from 'lucide-react';
+import { Menu, X, CircleDot, LayoutDashboard, DollarSign, FolderOpen, Users, BarChart3, UserCheck, Brain, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Link, useLocation } from 'react-router-dom';
@@ -14,9 +14,9 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
-  const { user, isSystemOwner } = useAuth();
+  const { user, isSystemOwner, role } = useAuth();
   const { currentWorkspace } = useWorkspace();
-  const isSystemMode = isSystemOwner && !currentWorkspace;
+  const isSystemMode = (isSystemOwner || role === 'owner' || role === 'admin') && !currentWorkspace;
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -24,7 +24,6 @@ const Header = () => {
     // Set active page based on current route
     const path = location.pathname;
     if (path === '/dashboard') setActivePage('dashboard');
-    else if (path === '/system/overview') setActivePage('overview');
     else if (path === '/projects') setActivePage('projects');
     else if (path === '/resources') setActivePage('resources');
     else if (path === '/stakeholders') setActivePage('stakeholders');
@@ -33,7 +32,6 @@ const Header = () => {
     else if (path === '/system/health') setActivePage('system-health');
     else if (path === '/system/performance') setActivePage('performance');
     else if (path === '/system/escalations') setActivePage('escalations');
-    else if (path === '/system/reports') setActivePage('reports');
     else if (path === '/ai-hub') setActivePage('ai-hub');
     else if (path === '/' && location.hash) {
       const section = location.hash.substring(1);
@@ -125,16 +123,16 @@ const Header = () => {
                     {isSystemMode ? (
                       <>
                         <ToggleGroupItem 
-                          value="overview"
+                          value="dashboard"
                           className={cn(
                             "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
-                            activePage === 'overview' 
+                            activePage === 'dashboard' 
                               ? 'text-primary-foreground bg-primary shadow-sm' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                           )}
                           asChild
                         >
-                          <Link to="/system/overview">
+                          <Link to="/dashboard">
                             <LayoutDashboard size={14} className="mr-1.5" /> Overview
                           </Link>
                         </ToggleGroupItem>
@@ -192,20 +190,6 @@ const Header = () => {
                         >
                           <Link to="/system/escalations">
                             <AlertTriangle size={14} className="mr-1.5" /> Escalations
-                          </Link>
-                        </ToggleGroupItem>
-                        <ToggleGroupItem 
-                          value="reports" 
-                          className={cn(
-                            "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
-                            activePage === 'reports' 
-                              ? 'text-primary-foreground bg-primary shadow-sm' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          )}
-                          asChild
-                        >
-                          <Link to="/system/reports">
-                            <FileText size={14} className="mr-1.5" /> Reports
                           </Link>
                         </ToggleGroupItem>
                       </>
@@ -373,10 +357,10 @@ const Header = () => {
                     {isSystemMode ? (
                       <>
                         <Link 
-                          to="/system/overview" 
+                          to="/dashboard" 
                           className={cn(
                             "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                            activePage === 'overview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            activePage === 'dashboard' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                           )}
                           onClick={() => setMobileMenuOpen(false)}
                         >
@@ -421,16 +405,6 @@ const Header = () => {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <AlertTriangle size={16} className="mr-2" /> Escalations
-                        </Link>
-                        <Link 
-                          to="/system/reports" 
-                          className={cn(
-                            "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                            activePage === 'reports' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <FileText size={16} className="mr-2" /> Reports
                         </Link>
                       </>
                     ) : (
