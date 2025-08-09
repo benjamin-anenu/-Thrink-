@@ -4052,36 +4052,42 @@ export type Database = {
       workspace_members: {
         Row: {
           created_at: string
+          expires_at: string | null
           id: string
           invited_by: string | null
           joined_at: string | null
           permissions: Json | null
           role: string
           status: string | null
+          temporary: boolean
           updated_at: string
           user_id: string
           workspace_id: string
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
           id?: string
           invited_by?: string | null
           joined_at?: string | null
           permissions?: Json | null
           role?: string
           status?: string | null
+          temporary?: boolean
           updated_at?: string
           user_id: string
           workspace_id: string
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
           id?: string
           invited_by?: string | null
           joined_at?: string | null
           permissions?: Json | null
           role?: string
           status?: string | null
+          temporary?: boolean
           updated_at?: string
           user_id?: string
           workspace_id?: string
@@ -4156,6 +4162,10 @@ export type Database = {
     Functions: {
       accept_workspace_invitation: {
         Args: { invitation_token: string }
+        Returns: boolean
+      }
+      assume_workspace_access: {
+        Args: { _workspace_id: string; _ttl_minutes?: number; _role?: string }
         Returns: boolean
       }
       calculate_milestone_dates: {
@@ -4234,6 +4244,14 @@ export type Database = {
       cleanup_deleted_projects: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      cleanup_expired_workspace_access: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      clear_workspace_access: {
+        Args: { _workspace_id: string }
+        Returns: boolean
       }
       create_enterprise_with_owner: {
         Args: {

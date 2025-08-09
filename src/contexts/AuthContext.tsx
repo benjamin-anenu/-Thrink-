@@ -27,7 +27,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return false;
     
     try {
-      // Check if the current user has any workspaces (as owner or member)
       const { data: workspaces, error } = await supabase
         .from('workspaces')
         .select('id')
@@ -39,7 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // If user has no workspaces, they need onboarding
       return (workspaces || []).length === 0;
     } catch (error) {
       console.error('Error checking first user:', error);
@@ -47,7 +45,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Load cached role data from localStorage
   const loadCachedRole = (userId: string) => {
     try {
       const cached = localStorage.getItem(`thrink_role_cache_${userId}`);
@@ -68,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  // Save role data to localStorage
   const saveCachedRole = (userId: string, role: AppRole | null, isSystemOwner: boolean) => {
     try {
       const data = {
@@ -90,10 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('[Auth] Refreshing profile for user:', user.id);
       
-      // Try to load from cache first for faster response
       const usedCache = loadCachedRole(user.id);
       
-      // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -107,7 +101,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('[Auth] Profile data:', profileData);
 
-      // Prefer server-side context function to avoid RLS and compute highest role
       const { data: permCtx, error: permErr } = await supabase.rpc('get_user_permissions_context', {
         _user_id: user.id
       });
@@ -122,7 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('[Auth] Permissions context:', ctxRow);
 
-      // Fallback: also check enterprise ownership directly
       let isOwnerViaEnterprise = false;
       const { data: ownedEnterprises, error: entError } = await supabase
         .from('enterprises')
@@ -134,7 +126,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       isOwnerViaEnterprise = (ownedEnterprises || []).length > 0;
 
-      // Determine final effective values
       let effectiveRole: AppRole | null = serverRole;
       const enterpriseOwner = serverIsOwner || isOwnerViaEnterprise || serverRole === 'owner';
       if (enterpriseOwner) {
@@ -143,7 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setProfile(profileData);
       
-      // Only update if different from cache to avoid unnecessary re-renders
       if (!usedCache || roleCache?.role !== effectiveRole || roleCache?.isSystemOwner !== enterpriseOwner) {
         setRole(effectiveRole);
         setIsSystemOwner(enterpriseOwner);
@@ -157,19 +147,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Keep auth loading true until we hydrate profile/roles
     setLoading(true);
 
-    // 1) Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] Auth state change:', event, 'user:', session?.user?.email);
       
-      // Only synchronous updates inside the callback
       setSession(session as any);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Defer any Supabase reads to avoid deadlocks
         setTimeout(async () => {
           try {
             await refreshProfile();
@@ -182,7 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }, 0);
       } else {
-        // Logged out state - clear cache
         setProfile(null);
         setRole(null);
         setIsSystemOwner(false);
@@ -190,7 +175,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRoleCache(null);
         setLoading(false);
         
-        // Clear localStorage cache
         try {
           const keys = Object.keys(localStorage);
           keys.forEach(key => {
@@ -204,7 +188,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 2) Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('[Auth] Initial session:', session?.user?.email);
       
@@ -249,12 +232,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
       });
-      
-      // Don't set loading to false here - let the auth state change handle it
-      // This ensures role data is loaded before redirects happen
       return { error };
     } catch (e: any) {
-      setLoading(false); // Only set to false on error
+      setLoading(false);
       return { error: { message: e.message } };
     }
   };
@@ -262,6 +242,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     setLoading(true);
     try {
+      // Clear any temporary workspace access before logging out
+      const currentUser = user;
+      if (currentUser) {
+        const assumedWsId = localStorage.getItem(`thrink_assumed_workspace_${currentUser.id}`);
+        if (assumedWsId) {
+          console.log('[Auth] Clearing temporary workspace access on sign out for workspace:', assumedWsId);
+          try {
+            await supabase.rpc('clear_workspace_access', { _workspace_id: assumedWsId });
+          } catch (e) {
+            console.error('[Auth] Error clearing temp workspace access on sign out:', e);
+          } finally {
+            localStorage.removeItem(`thrink_assumed_workspace_${currentUser.id}`);
+          }
+        }
+      }
+
       const { error } = await supabase.auth.signOut();
       if (!error) {
         setUser(null);
@@ -295,7 +291,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        // Profile will be created by the database trigger
         await refreshProfile();
       }
       
@@ -336,7 +331,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasRole = (requiredRole: AppRole): boolean => {
-    // Treat enterprise owners as owners regardless of role record
     const effective = isSystemOwner ? 'owner' : role;
     if (!effective) return false;
     const roleHierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 };
@@ -344,7 +338,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasPermission = (action: string, resource?: string): boolean => {
-    // Enterprise owners have full access
     if (isSystemOwner) return true;
     if (!role) return false;
     if (role === 'owner') return true;

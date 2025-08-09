@@ -4,6 +4,7 @@ import { Workspace, WorkspaceMember, WorkspaceSettings } from '@/types/workspace
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useEnterprise } from './EnterpriseContext';
+import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
 
 interface WorkspaceContextType {
   currentWorkspace: Workspace | null;
@@ -24,11 +25,12 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
+  const [currentWorkspace, setCurrentWorkspaceState] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading, isSystemOwner, role } = useAuth();
   const { currentEnterprise } = useEnterprise();
+  const { assumeAccess, clearAccess } = useWorkspaceAccess();
 
   // Helper function to safely parse workspace settings
   const parseWorkspaceSettings = (settings: any): WorkspaceSettings => {
@@ -63,12 +65,42 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
+  // Wraps selection to assume/clear temporary access for enterprise owners/admins
+  const setCurrentWorkspaceWithAccess = (ws: Workspace | null) => {
+    const prev = currentWorkspace;
+    setCurrentWorkspaceState(ws);
+
+    const isEnterpriseOwnerLike = isSystemOwner || role === 'owner' || role === 'admin';
+    if (!isEnterpriseOwnerLike) {
+      return;
+    }
+
+    if (ws && prev && prev.id !== ws.id) {
+      // Switching between workspaces
+      console.log('[Workspace] Switching workspace selection, clearing previous then assuming new');
+      clearAccess(prev.id)
+        .catch((e) => console.error('[Workspace] Error clearing previous access:', e))
+        .finally(() => {
+          assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming new access:', e));
+        });
+      return;
+    }
+
+    if (ws && !prev) {
+      console.log('[Workspace] Selecting workspace, assuming temporary access');
+      assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming access:', e));
+    } else if (!ws && prev) {
+      console.log('[Workspace] Clearing selection, removing temporary access');
+      clearAccess(prev.id).catch((e) => console.error('[Workspace] Error clearing access:', e));
+    }
+  };
+
   // Fetch workspaces from Supabase - scoped to current enterprise
   const fetchWorkspaces = async () => {
     if (!user || !currentEnterprise) {
       console.log('[Workspace] No user or enterprise, clearing workspaces')
       setWorkspaces([])
-      setCurrentWorkspace(null)
+      setCurrentWorkspaceWithAccess(null)
       setLoading(false)
       setError(null)
       return
@@ -132,7 +164,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         role !== 'owner' &&
         role !== 'admin'
       ) {
-        setCurrentWorkspace(transformedWorkspaces[0]);
+        setCurrentWorkspaceWithAccess(transformedWorkspaces[0]);
         console.log('[Workspace] Auto-selected workspace:', transformedWorkspaces[0].name)
       }
     } catch (error) {
@@ -158,7 +190,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if ((isSystemOwner || role === 'owner' || role === 'admin') && currentWorkspace) {
       console.log('[Workspace] Admin/Owner/System owner detected, clearing current workspace selection')
-      setCurrentWorkspace(null)
+      setCurrentWorkspaceWithAccess(null)
     }
   }, [isSystemOwner, role])
 
@@ -200,7 +232,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setWorkspaces(updatedWorkspaces);
     
     if (currentWorkspace?.id === workspaceId) {
-      setCurrentWorkspace(prev => prev ? { ...prev, ...updates } : null);
+      setCurrentWorkspaceState(prev => prev ? { ...prev, ...updates } : null);
     }
 
     console.log('[Workspace] Updated workspace:', workspaceId)
@@ -211,7 +243,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     if (currentWorkspace?.id === workspaceId) {
       const remainingWorkspaces = workspaces.filter(ws => ws.id !== workspaceId);
-      setCurrentWorkspace(remainingWorkspaces[0] || null);
+      setCurrentWorkspaceWithAccess(remainingWorkspaces[0] || null);
     }
 
     console.log('[Workspace] Removed workspace:', workspaceId)
@@ -263,7 +295,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       workspaces,
       loading,
       error,
-      setCurrentWorkspace,
+      setCurrentWorkspace: setCurrentWorkspaceWithAccess,
       addWorkspace,
       updateWorkspace,
       removeWorkspace,
