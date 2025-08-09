@@ -445,7 +445,15 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
   };
 
   const handleActionSelect = (action: any) => {
-    const newVal = inputValue.replace(/@([\w\s-]*)$/, `@${action.keywords[0]} `);
+    const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : '');
+    const singularCategory = (action.category || '').replace(/s$/, '');
+    const catPlural = action.category || '';
+    let core = String(action.id || '');
+    if (core.endsWith(`_${catPlural}`)) core = core.slice(0, -(catPlural.length + 1));
+    if (core.startsWith(`${catPlural}_`)) core = core.slice(catPlural.length + 1);
+    const coreTitle = core.split('_').filter(Boolean).map(capitalize).join('_') || 'General';
+    const label = `${capitalize(singularCategory)}_${coreTitle}`;
+    const newVal = inputValue.replace(/@([\w\s-]*)$/, `@${label} `);
     setInputValue(newVal);
     setShowActionAutocomplete(false);
     setActionQuery('');
