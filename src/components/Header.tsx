@@ -16,7 +16,7 @@ const Header = () => {
   const location = useLocation();
   const { user, isSystemOwner, role } = useAuth();
   const { currentWorkspace } = useWorkspace();
-  const isSystemMode = (isSystemOwner || role === 'owner' || role === 'admin');
+  const isSystemMode = (isSystemOwner || role === 'owner' || role === 'admin') && !currentWorkspace;
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   

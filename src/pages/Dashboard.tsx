@@ -47,15 +47,13 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
-                {/* System owner/administrative portfolio view takes precedence regardless of workspace selection */}
-                {isFullyLoaded && (isSystemOwner || role === 'owner' || role === 'admin') ? (
+                {/* Show System Owner Dashboard when no workspace is selected for system owners/admins */}
+                {isFullyLoaded && !currentWorkspace && (isSystemOwner || role === 'owner' || role === 'admin') && (
                   <SystemOwnerDashboard />
-                ) : (
-                  <>
-                    {/* Workspace dashboard when a workspace is selected */}
-                    {isFullyLoaded && currentWorkspace && <SimpleDashboard />}
-                  </>
                 )}
+                
+                {/* Show workspace dashboard when a workspace is selected */}
+                {isFullyLoaded && currentWorkspace && <SimpleDashboard />}
 
               </div>
             </div>
