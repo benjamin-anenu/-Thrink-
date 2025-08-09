@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, Building2, Plus, Check } from 'lucide-react';
+import { ChevronDown, Building2, Plus, Check, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,10 +11,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-
 const WorkspaceSelector: React.FC = () => {
   const { currentWorkspace, workspaces, setCurrentWorkspace } = useWorkspace();
+  const { isSystemOwner, role } = useAuth();
 
   return (
     <DropdownMenu>
@@ -32,6 +33,18 @@ const WorkspaceSelector: React.FC = () => {
           Workspaces
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        
+        {(isSystemOwner || role === 'owner' || role === 'admin') && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link to="/dashboard" className="flex items-center gap-2 p-3 cursor-pointer">
+                <LayoutDashboard size={14} />
+                <span className="text-sm">All Workspaces (Owner/Admin)</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         
         {workspaces.map((workspace) => (
           <DropdownMenuItem
