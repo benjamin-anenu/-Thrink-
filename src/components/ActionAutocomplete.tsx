@@ -7,14 +7,33 @@ interface Props {
 }
 
 const ActionAutocomplete: React.FC<Props> = ({ query, onSelect }) => {
+  const getCommandLabel = (a: ActionWord) => {
+    const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : '');
+    const singularCategory = a.category.replace(/s$/, '');
+    const catPlural = a.category;
+    let core = a.id;
+    if (core.endsWith(`_${catPlural}`)) core = core.slice(0, -(catPlural.length + 1));
+    if (core.startsWith(`${catPlural}_`)) core = core.slice(catPlural.length + 1);
+    const coreTitle = core.split('_').filter(Boolean).map(capitalize).join('_');
+    return `${capitalize(singularCategory)}_${coreTitle || 'General'}`;
+  };
+
   const results = useMemo(() => {
-    const q = (query || '').toLowerCase();
-    if (!q) return ACTION_WORDS.slice(0, 10);
-    return ACTION_WORDS.filter(a =>
-      a.keywords.some(k => k.toLowerCase().includes(q)) ||
-      (a.aliases || []).some(al => al.toLowerCase().includes(q)) ||
-      a.description.toLowerCase().includes(q)
-    ).slice(0, 10);
+    const raw = (query || '').toLowerCase();
+    const q = raw.replace(/^@+/, '').trim();
+    if (!q) return ACTION_WORDS; // show all when typing "@" or empty
+    const qq = q.replace(/_/g, ' ');
+    return ACTION_WORDS.filter(a => {
+      const hay = [
+        a.id,
+        a.category,
+        ...(a.keywords || []),
+        ...((a.aliases || [])),
+        a.description,
+        getCommandLabel(a)
+      ].join(' ').toLowerCase().replace(/_/g, ' ');
+      return hay.includes(qq);
+    });
   }, [query]);
 
   if (results.length === 0) return null;
@@ -29,7 +48,7 @@ const ActionAutocomplete: React.FC<Props> = ({ query, onSelect }) => {
             onClick={() => onSelect(item)}
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium">@{item.keywords[0]}</span>
+              <span className="font-medium">@{getCommandLabel(item)}</span>
               <span className="text-xs text-muted-foreground">{item.category}</span>
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
