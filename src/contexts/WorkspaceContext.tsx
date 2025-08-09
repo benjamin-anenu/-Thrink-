@@ -224,25 +224,18 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const inviteMember = async (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
     if (!workspaceId) throw new Error('Workspace ID is required');
-    if (!user) throw new Error('User not authenticated');
 
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-    const { error } = await supabase
-      .from('workspace_invitations')
-      .insert([
-        {
-          workspace_id: workspaceId,
-          email,
-          role,
-          invited_by: user.id,
-          expires_at: expiresAt,
-          status: 'pending',
-        },
-      ]);
+    // Call edge function to create invite, create temp user, and send email
+    const { data, error } = await supabase.functions.invoke('send-workspace-invite', {
+      body: {
+        workspaceId,
+        emails: [email],
+        role,
+      },
+    });
 
     if (error) {
-      console.error('[Workspace] Error inviting member:', error);
+      console.error('[Workspace] Error sending invite via edge function:', error);
       throw error;
     }
 
@@ -261,7 +254,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       members: [...(workspaces.find(ws => ws.id === workspaceId)?.members || []), newMember],
     });
 
-    console.log('[Workspace] Invited member (pending):', email, 'to workspace:', workspaceId);
+    console.log('[Workspace] Invited member (pending):', email, 'to workspace:', workspaceId, 'edge data:', data);
   };
 
   const removeMember = (workspaceId: string, memberId: string) => {

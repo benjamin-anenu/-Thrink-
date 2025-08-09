@@ -3,3 +3,6 @@ project_id = "hkitnfvgxkozfqfpjrcz"
 
 [functions.enhanced-skill-analysis]
 verify_jwt = false
+
+[functions.send-workspace-invite]
+verify_jwt = true
