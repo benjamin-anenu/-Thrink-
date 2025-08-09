@@ -336,21 +336,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 export const useWorkspace = () => {
   const context = useContext(WorkspaceContext);
   if (context === undefined) {
-    console.warn('[Workspace] useWorkspace used outside provider - returning safe fallbacks');
-    return {
-      currentWorkspace: null,
-      workspaces: [],
-      loading: false,
-      error: null,
-      setCurrentWorkspace: () => {},
-      addWorkspace: async () => '',
-      updateWorkspace: () => {},
-      removeWorkspace: () => {},
-      inviteMember: () => {},
-      removeMember: () => {},
-      updateMemberRole: () => {},
-      refreshWorkspaces: async () => {},
-    } as WorkspaceContextType;
+    throw new Error('useWorkspace must be used within a WorkspaceProvider');
   }
   return context;
 };
