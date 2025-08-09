@@ -78,7 +78,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setError(null)
 
     try {
-      // Fetch workspaces scoped to the current enterprise
+      // Fetch workspaces - should now work with fixed RLS
       const { data: workspaceData, error: workspaceError } = await supabase
         .from('workspaces')
         .select(`
@@ -95,9 +95,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (workspaceError) {
         console.error('[Workspace] Error fetching workspaces:', workspaceError);
-        setError('Failed to load workspaces')
+        setError('Failed to load workspaces: ' + workspaceError.message)
         return;
       }
+
+      console.log('[Workspace] Raw workspace data:', workspaceData);
 
       // Transform the data to match our Workspace interface
       const transformedWorkspaces: Workspace[] = workspaceData?.map(ws => ({
@@ -132,7 +134,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
-      setError('An error occurred while loading workspaces')
+      setError('An error occurred while loading workspaces: ' + (error as Error).message)
     } finally {
       setLoading(false);
     }

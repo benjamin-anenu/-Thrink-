@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Profile, AppRole, AuthContextType } from '@/types/auth';
@@ -43,6 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
+      console.log('[Auth] Refreshing profile for user:', user.id);
+      
       // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -51,20 +52,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        console.error('[Auth] Error fetching profile:', profileError);
         return;
       }
 
-      // Fetch all roles and compute highest effective role and enterprise owner flag
+      console.log('[Auth] Profile data:', profileData);
+
+      // Fetch user roles - should now work without RLS recursion
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select('role, is_enterprise_owner')
+        .select('role, is_enterprise_owner, enterprise_id')
         .eq('user_id', user.id);
 
       if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
+        console.error('[Auth] Error fetching roles:', rolesError);
         return;
       }
+
+      console.log('[Auth] Roles data:', rolesData);
 
       // Compute highest role
       const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
@@ -83,9 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(profileData);
       setRole(effectiveRole);
       setIsSystemOwner(enterpriseOwner);
-      console.debug('[Auth] effectiveRole', effectiveRole, 'isEnterpriseOwner', enterpriseOwner);
+      
+      console.log('[Auth] Computed role:', effectiveRole, 'is system owner:', enterpriseOwner);
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      console.error('[Auth] Error refreshing profile:', error);
     }
   };
 
@@ -95,6 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 1) Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Auth] Auth state change:', event, 'user:', session?.user?.email);
+      
       // Only synchronous updates inside the callback
       setSession(session as any);
       setUser(session?.user ?? null);
@@ -107,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const first = await checkFirstUser();
             setIsFirstUser(first);
           } catch (e) {
-            console.error('Auth onAuthStateChange hydration error:', e);
+            console.error('[Auth] onAuthStateChange hydration error:', e);
           } finally {
             setLoading(false);
           }
@@ -124,6 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2) Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[Auth] Initial session:', session?.user?.email);
+      
       setSession(session as any);
       setUser(session?.user ?? null);
 
@@ -134,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const first = await checkFirstUser();
             setIsFirstUser(first);
           } catch (e) {
-            console.error('Auth initial session hydration error:', e);
+            console.error('[Auth] Initial session hydration error:', e);
           } finally {
             setLoading(false);
           }

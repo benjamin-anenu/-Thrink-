@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -25,32 +26,38 @@ export const EnterpriseProvider: React.FC<EnterpriseProviderProps> = ({ children
     }
 
     try {
+      console.log('[Enterprise] Fetching enterprises for user:', user.email);
       setLoading(true);
       setError(null);
 
-      // Fetch enterprises for the current user
+      // Fetch enterprises - should now work with fixed RLS
       const { data: enterpriseData, error: enterpriseError } = await supabase
         .from('enterprises')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (enterpriseError) {
+        console.error('[Enterprise] Error fetching enterprises:', enterpriseError);
         throw enterpriseError;
       }
+
+      console.log('[Enterprise] Raw enterprise data:', enterpriseData);
 
       const mappedEnterprises: Enterprise[] = (enterpriseData || []).map(e => ({
         ...e,
         settings: typeof e.settings === 'string' ? JSON.parse(e.settings) : (e.settings || {})
       }));
       
+      console.log('[Enterprise] Mapped enterprises:', mappedEnterprises);
       setEnterprises(mappedEnterprises);
 
       // Set current enterprise if not already set
       if (!currentEnterprise && mappedEnterprises.length > 0) {
+        console.log('[Enterprise] Auto-selecting first enterprise:', mappedEnterprises[0].name);
         setCurrentEnterprise(mappedEnterprises[0]);
       }
     } catch (err) {
-      console.error('Error fetching enterprises:', err);
+      console.error('[Enterprise] Error fetching enterprises:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch enterprises');
     } finally {
       setLoading(false);
