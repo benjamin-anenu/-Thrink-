@@ -29,23 +29,22 @@ export function useWorkspaceAccess() {
     return { ok: true };
   };
 
-  const clearAccess = async (workspaceId: string, options?: { silent?: boolean }) => {
+  const clearAccess = async (workspaceId: string) => {
     if (!user) {
       console.warn('[WorkspaceAccess] No user - cannot clear access');
       return { ok: false, error: 'Not authenticated' };
     }
-    console.log('[WorkspaceAccess] Clearing temporary access for workspace:', workspaceId, 'silent:', options?.silent);
+    console.log('[WorkspaceAccess] Clearing temporary access for workspace:', workspaceId);
     const { error } = await supabase.rpc('clear_workspace_access', {
       _workspace_id: workspaceId,
     });
     if (error) {
       console.error('[WorkspaceAccess] clear_workspace_access error:', error);
+      // Don't toast error aggressively here; sign-out/route changes might be happening
       return { ok: false, error };
     }
     localStorage.removeItem(key(user.id));
-    if (!options?.silent) {
-      toast.success('Workspace access cleared');
-    }
+    toast.success('Workspace access cleared');
     return { ok: true };
   };
 

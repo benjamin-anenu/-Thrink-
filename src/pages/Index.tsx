@@ -15,15 +15,10 @@ import Pricing from '@/components/Pricing';
 import Footer from '@/components/Footer';
 
 const Index = () => {
-  const { user, loading, isSystemOwner, role } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) return null;
-  if (user) {
-    if (isSystemOwner || role === 'owner' || role === 'admin') {
-      return <Navigate to="/admin" replace />;
-    }
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (user) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
