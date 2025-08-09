@@ -164,6 +164,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchWorkspaces();
   }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
 
+  // Ensure system owners default to no workspace selected
+  useEffect(() => {
+    if (isSystemOwner && currentWorkspace) {
+      console.log('[Workspace] System owner detected, clearing current workspace selection')
+      setCurrentWorkspace(null)
+    }
+  }, [isSystemOwner])
+
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     try {
       const { data: workspaceId, error } = await supabase.rpc('create_workspace_with_owner', {
