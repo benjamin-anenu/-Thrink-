@@ -14,7 +14,7 @@ const Dashboard: React.FC = () => {
   const { user, isFirstUser, isSystemOwner, role, loading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
-  const { isEnterpriseOwner } = useEnterpriseOwnerPersistence();
+  const { isEnterpriseOwner, preferences } = useEnterpriseOwnerPersistence();
 
   // Debug logging for enterprise owner recognition
   useEffect(() => {
@@ -52,14 +52,14 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Workspace dashboard when a workspace is selected */}
-                {isFullyLoaded && currentWorkspace && (
-                  <SimpleDashboard />
+                {/* System Administrator Dashboard for enterprise owners (priority view) */}
+                {isFullyLoaded && isEnterpriseOwner && preferences.preferSystemView && (
+                  <SystemOwnerDashboard />
                 )}
 
-                {/* System Administrator Dashboard for enterprise owners (priority view) */}
-                {isFullyLoaded && !currentWorkspace && isEnterpriseOwner && (
-                  <SystemOwnerDashboard />
+                {/* Workspace dashboard when a workspace is selected and not in system view */}
+                {isFullyLoaded && currentWorkspace && (!isEnterpriseOwner || !preferences.preferSystemView) && (
+                  <SimpleDashboard />
                 )}
               </div>
             </div>

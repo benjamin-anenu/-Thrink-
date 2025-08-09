@@ -68,6 +68,12 @@ export function useEnterpriseOwnerPersistence() {
       
       // For enterprise owners on dashboard route
       if (isOnDashboard) {
+        // Ensure enterprise owners start with system view preference if no explicit preference
+        if (prefs.timestamp === 0) {
+          console.log('[EnterpriseOwner] First time enterprise owner, setting system view preference');
+          savePreferences({ preferSystemView: true });
+        }
+        
         // If they prefer system view and currently have a workspace selected, clear it
         if (prefs.preferSystemView && currentWorkspace) {
           console.log('[EnterpriseOwner] Clearing workspace for system view preference');
