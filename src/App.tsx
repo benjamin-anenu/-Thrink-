@@ -17,6 +17,10 @@ import Auth from "./pages/Auth";
 import Login from "./pages/Login";
 import Workspaces from "./pages/Workspaces";
 import NotFound from "./pages/NotFound";
+import SystemHealth from "./pages/SystemHealth";
+import SystemPerformance from "./pages/SystemPerformance";
+import SystemEscalations from "./pages/SystemEscalations";
+import SystemReports from "./pages/SystemReports";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { ResourceProvider } from "./contexts/ResourceContext";
@@ -92,6 +96,26 @@ const AppContent: React.FC = () => {
         <Route path="/ai-hub" element={
           <ErrorBoundary>
             <AIHub />
+          </ErrorBoundary>
+        } />
+        <Route path="/system/health" element={
+          <ErrorBoundary>
+            <SystemHealth />
+          </ErrorBoundary>
+        } />
+        <Route path="/system/performance" element={
+          <ErrorBoundary>
+            <SystemPerformance />
+          </ErrorBoundary>
+        } />
+        <Route path="/system/escalations" element={
+          <ErrorBoundary>
+            <SystemEscalations />
+          </ErrorBoundary>
+        } />
+        <Route path="/system/reports" element={
+          <ErrorBoundary>
+            <SystemReports />
           </ErrorBoundary>
         } />
         <Route path="/project/:id" element={
