@@ -110,15 +110,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Fetch user roles - should now work without RLS recursion
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select('role, is_enterprise_owner, enterprise_id')
+        .select('role, enterprise_id')
         .eq('user_id', user.id);
 
       if (rolesError) {
         console.error('[Auth] Error fetching roles:', rolesError);
-        return;
       }
 
       console.log('[Auth] Roles data:', rolesData);
+
+      // Check enterprise ownership via enterprises table as source of truth
+      const { data: ownedEnterprises, error: entError } = await supabase
+        .from('enterprises')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1);
+
+      if (entError) {
+        console.error('[Auth] Error checking enterprise ownership:', entError);
+      }
+
+      const isOwnerOfAnyEnterprise = (ownedEnterprises || []).length > 0;
 
       // Compute highest role
       const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
@@ -132,7 +144,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      const enterpriseOwner = (rolesData || []).some((r: any) => !!r.is_enterprise_owner);
+      // If user owns an enterprise, they are effectively an owner
+      const enterpriseOwner = isOwnerOfAnyEnterprise || (rolesData || []).some((r: any) => r.role === 'owner');
+      if (enterpriseOwner) {
+        effectiveRole = 'owner';
+      }
 
       setProfile(profileData);
       
@@ -329,16 +345,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasRole = (requiredRole: AppRole): boolean => {
-    if (!role) return false;
+    // Treat enterprise owners as owners regardless of role record
+    const effective = isSystemOwner ? 'owner' : role;
+    if (!effective) return false;
     const roleHierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 };
-    return roleHierarchy[role] >= roleHierarchy[requiredRole];
+    return roleHierarchy[effective] >= roleHierarchy[requiredRole];
   };
 
   const hasPermission = (action: string, resource?: string): boolean => {
+    // Enterprise owners have full access
+    if (isSystemOwner) return true;
     if (!role) return false;
     if (role === 'owner') return true;
     
-    const rolePermissions = {
+    const rolePermissions: Record<string, string[]> = {
       admin: ['users:read', 'users:write', 'users:delete', 'projects:read', 'projects:write', 'projects:delete', 'settings:read', 'settings:write', 'audit:read'],
       manager: ['users:read', 'projects:read', 'projects:write', 'settings:read'],
       member: ['projects:read', 'projects:write'],
