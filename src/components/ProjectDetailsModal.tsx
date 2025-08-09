@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Calendar, Users, DollarSign, Target, Clock, AlertTriangle,
+  Calendar, Users, Target, Clock, AlertTriangle,
   CheckCircle, TrendingUp, FileText, MessageSquare, Settings
 } from 'lucide-react';
 import { ProjectDetailsModalData } from '@/types/project-modal';
@@ -30,7 +30,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
   onClose,
   onEdit
 }) => {
-  const { format } = useCurrency();
+  const { format, symbol, code } = useCurrency();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [extendedProject, setExtendedProject] = useState<ProjectDetailsModalData | null>(null);
@@ -278,7 +278,7 @@ const formatMoney = (amount: number | undefined): string => {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Budget</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span aria-label={`${code} currency`} className="text-muted-foreground text-sm font-semibold">{symbol}</span>
                   </CardHeader>
 <CardContent>
   <div className="text-2xl font-bold">{formatMoney(currentProject.spent)}</div>

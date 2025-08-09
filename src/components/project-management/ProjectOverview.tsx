@@ -9,6 +9,7 @@ import HealthIndicator from '@/components/HealthIndicator';
 import { Calendar, Users, Target, Clock, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
 import { ProjectHealthService } from '@/services/ProjectHealthService';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface ProjectOverviewProps {
   project: ProjectData;
@@ -28,6 +29,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   const [realTimeProgress, setRealTimeProgress] = useState<number>(0);
   const [projectDates, setProjectDates] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [healthData, setHealthData] = useState(project.health);
+  const { format, symbol, code } = useCurrency();
 
   // Load real-time data
   useEffect(() => {
@@ -240,10 +242,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
         <Card className="h-20 md:h-auto">
           <CardContent className="p-3 md:p-4">
             <div className="flex items-center gap-2 md:gap-3">
-              <DollarSign className="h-5 md:h-8 w-5 md:w-8 text-purple-500 flex-shrink-0" />
+              <span aria-label={`${code} currency`} className="text-purple-500 flex-shrink-0 text-base md:text-xl font-semibold">{symbol}</span>
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground">Budget</p>
-                <p className="text-sm md:text-base font-semibold truncate">{project.budget || 'Not set'}</p>
+                <p className="text-sm md:text-base font-semibold truncate">{typeof project.budget === 'number' ? format(project.budget) : 'Not set'}</p>
                 <p className="text-xs text-muted-foreground hidden md:block">Total allocated</p>
               </div>
             </div>

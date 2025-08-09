@@ -15,10 +15,11 @@ interface MilestoneCardProps {
 
 const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, progress, className }) => {
   const today = new Date();
-  const dueDate = new Date(milestone.date);
-  const isOverdue = milestone.status !== 'completed' && isAfter(today, dueDate);
+  const dueDate = milestone?.date ? new Date(milestone.date) : null;
+  const hasValidDueDate = dueDate instanceof Date && !isNaN(dueDate.getTime());
   const isCompleted = milestone.status === 'completed';
-  const daysRemaining = differenceInDays(dueDate, today);
+  const isOverdue = hasValidDueDate && milestone.status !== 'completed' && isAfter(today, dueDate as Date);
+  const daysRemaining = hasValidDueDate ? differenceInDays(dueDate as Date, today) : null;
 
   const getStatusColor = () => {
     if (isCompleted) return 'bg-green-500';
@@ -56,10 +57,10 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, progress, clas
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>Due: {format(dueDate, 'MMM dd, yyyy')}</span>
-            {!isCompleted && (
+            <span>Due: {hasValidDueDate ? format(dueDate as Date, 'MMM dd, yyyy') : 'Not set'}</span>
+            {!isCompleted && hasValidDueDate && (
               <span className={`ml-2 ${isOverdue ? 'text-red-600' : 'text-blue-600'}`}>
-                {isOverdue ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days remaining`}
+                {isOverdue ? `${Math.abs(daysRemaining as number)} days overdue` : `${daysRemaining} days remaining`}
               </span>
             )}
           </div>
