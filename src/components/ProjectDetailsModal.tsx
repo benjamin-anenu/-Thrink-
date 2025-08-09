@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
 import { ProjectDateService } from '@/services/ProjectDateService';
 import { ProjectHealthService } from '@/services/ProjectHealthService';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface ProjectDetailsModalProps {
   project: ProjectDetailsModalData | null;
@@ -29,6 +30,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
   onClose,
   onEdit
 }) => {
+  const { format } = useCurrency();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [extendedProject, setExtendedProject] = useState<ProjectDetailsModalData | null>(null);
@@ -211,13 +213,13 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
     }
   };
 
-  // Safe number formatting with fallbacks
-  const formatCurrency = (amount: number | undefined): string => {
-    if (typeof amount !== 'number' || isNaN(amount)) {
-      return '0';
-    }
-    return amount.toLocaleString();
-  };
+// Currency formatting using workspace settings
+const formatMoney = (amount: number | undefined): string => {
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return format(0);
+  }
+  return format(amount);
+};
 
   const calculateBudgetPercentage = (spent: number | undefined, budget: number | undefined): number => {
     if (!spent || !budget || budget === 0) return 0;
@@ -231,23 +233,23 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl font-bold">{currentProject.name}</DialogTitle>
-              <p className="text-muted-foreground mt-1">{currentProject.description}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={getStatusVariant(currentProject.status)}>
-                {currentProject.status}
-              </Badge>
-              <Badge variant={getPriorityVariant(currentProject.priority)}>
-                {currentProject.priority}
-              </Badge>
-            </div>
-          </div>
-        </DialogHeader>
+<DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+  <DialogHeader>
+    <div className="flex items-center justify-between">
+      <div>
+        <DialogTitle className="text-2xl font-bold">{currentProject.name}</DialogTitle>
+        <p className="text-muted-foreground mt-1">{currentProject.description}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge variant={getStatusVariant(currentProject.status)}>
+          {currentProject.status}
+        </Badge>
+        <Badge variant={getPriorityVariant(currentProject.priority)}>
+          {currentProject.priority}
+        </Badge>
+      </div>
+    </div>
+  </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <TabsList className="grid w-full grid-cols-5">
@@ -261,12 +263,12 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
           <div className="mt-4 overflow-y-auto">
             <TabsContent value="overview" className="space-y-6">
               {/* Project Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Progress</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">Progress</CardTitle>
+      <Target className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{currentProject.progress || 0}%</div>
                     <Progress value={currentProject.progress || 0} className="mt-2" />
@@ -278,13 +280,13 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
                     <CardTitle className="text-sm font-medium">Budget</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">${formatCurrency(currentProject.spent)}</div>
-                    <p className="text-xs text-muted-foreground">
-                      of ${formatCurrency(currentProject.budget)} ({calculateBudgetPercentage(currentProject.spent, currentProject.budget)}%)
-                    </p>
-                    <Progress value={calculateBudgetPercentage(currentProject.spent, currentProject.budget)} className="mt-2" />
-                  </CardContent>
+<CardContent>
+  <div className="text-2xl font-bold">{formatMoney(currentProject.spent)}</div>
+  <p className="text-xs text-muted-foreground">
+    of {formatMoney(currentProject.budget)} ({calculateBudgetPercentage(currentProject.spent, currentProject.budget)}%)
+  </p>
+  <Progress value={calculateBudgetPercentage(currentProject.spent, currentProject.budget)} className="mt-2" />
+</CardContent>
                 </Card>
 
                 <Card>
