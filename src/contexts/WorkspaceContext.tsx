@@ -166,15 +166,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     console.log('[Workspace] Auth ready, fetching workspaces...')
     fetchWorkspaces();
-  }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
-
-  // Ensure system owners default to no workspace selected initially
-  useEffect(() => {
-    if (isSystemOwner && currentWorkspace) {
-      console.log('[Workspace] System owner detected, clearing current workspace selection')
-      setCurrentWorkspace(null)
-    }
-  }, [isSystemOwner])
+  }, [user, authLoading, isSystemOwner])
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     try {
