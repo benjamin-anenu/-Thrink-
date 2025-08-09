@@ -180,7 +180,10 @@ serve(async (req) => {
             if (existingDuplicate?.invitation_token) {
               invitationToken = existingDuplicate.invitation_token;
             } else {
-              throw new Error(`Invitation already exists for ${email} but could not retrieve it`);
+              // If we can't retrieve the token, just continue without throwing error
+              console.log(`Warning: Invitation already exists for ${email} but could not retrieve token`);
+              results.push({ email, sent: false, createdNewUser: false, error: `Invitation already exists for ${email}` });
+              continue;
             }
           } else {
             throw insErr;
