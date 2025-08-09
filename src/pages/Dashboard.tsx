@@ -36,15 +36,16 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Workspace dashboard when a workspace is selected */}
-                {isFullyLoaded && currentWorkspace && (
-                  <SimpleDashboard />
+                {/* System owner/administrative portfolio view takes precedence regardless of workspace selection */}
+                {isFullyLoaded && (isSystemOwner || role === 'owner' || role === 'admin') ? (
+                  <SystemOwnerDashboard />
+                ) : (
+                  <>
+                    {/* Workspace dashboard when a workspace is selected */}
+                    {isFullyLoaded && currentWorkspace && <SimpleDashboard />}
+                  </>
                 )}
 
-                {/* System owner/administrative portfolio view when no workspace is selected */}
-                {isFullyLoaded && !currentWorkspace && (isSystemOwner || role === 'owner' || role === 'admin') && (
-                  <SystemOwnerDashboard />
-                )}
               </div>
             </div>
           </div>
