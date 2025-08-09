@@ -10,13 +10,13 @@ import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, loading, permissionsContext } = useAuth();
+  const { user, isFirstUser, isSystemOwner, loading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
 
   // Only redirect system owners to their dedicated dashboard if they don't have a workspace selected
   // This allows system owners to still access individual workspaces when needed
-  if (isSystemOwner && permissionsContext && !loading && !currentWorkspace) {
+  if (isSystemOwner && !loading && !currentWorkspace) {
     return <Navigate to="/system/overview" replace />;
   }
 
