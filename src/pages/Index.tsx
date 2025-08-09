@@ -15,10 +15,13 @@ import Pricing from '@/components/Pricing';
 import Footer from '@/components/Footer';
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isSystemOwner } = useAuth();
 
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) {
+    const target = isSystemOwner ? '/system/portfolio' : '/dashboard';
+    return <Navigate to={target} replace />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">

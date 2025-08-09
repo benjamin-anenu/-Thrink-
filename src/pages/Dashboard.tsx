@@ -2,6 +2,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import SimpleDashboard from '@/components/dashboard/SimpleDashboard';
 import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
@@ -13,6 +14,7 @@ const Dashboard: React.FC = () => {
   const { user, isFirstUser, isSystemOwner, role } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
+  const navigate = useNavigate();
 
   return (
     <AppInitializationLoader>
@@ -43,7 +45,12 @@ const Dashboard: React.FC = () => {
 
                 {/* System owner/administrative portfolio view when no workspace is selected */}
                 {isFullyLoaded && !currentWorkspace && (isSystemOwner || role === 'owner' || role === 'admin') && (
-                  <SystemOwnerDashboard />
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground mb-4">
+                      Redirecting to your system portfolio...
+                    </p>
+                    {setTimeout(() => navigate('/system/portfolio'), 100) && null}
+                  </div>
                 )}
               </div>
             </div>

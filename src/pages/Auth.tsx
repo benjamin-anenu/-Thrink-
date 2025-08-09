@@ -21,7 +21,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      const target = isSystemOwner ? '/dashboard' : '/dashboard';
+      const target = isSystemOwner ? '/system/portfolio' : '/dashboard';
       navigate(target, { replace: true });
     }
   }, [user, isSystemOwner, authLoading, navigate]);
