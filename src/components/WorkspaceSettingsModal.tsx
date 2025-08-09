@@ -124,14 +124,12 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
         },
       };
 
-      const { error } = await supabase
-        .from('workspaces')
-        .update({
-          name: name.trim(),
-          description: description.trim(),
-          settings: newSettings,
-        })
-        .eq('id', workspace.id);
+      const { error } = await supabase.rpc('update_workspace_settings', {
+        p_workspace_id: workspace.id,
+        p_name: name.trim(),
+        p_description: description.trim(),
+        p_settings: newSettings,
+      });
 
       if (error) throw error;
 

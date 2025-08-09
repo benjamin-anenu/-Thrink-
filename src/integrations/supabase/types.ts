@@ -4196,6 +4196,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      hard_delete_project: {
+        Args: { p_project_id: string; p_workspace_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args:
           | { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }
@@ -4231,6 +4235,15 @@ export type Database = {
       update_project_computed_dates: {
         Args: { project_id_param: string }
         Returns: undefined
+      }
+      update_workspace_settings: {
+        Args: {
+          p_workspace_id: string
+          p_name: string
+          p_description: string
+          p_settings: Json
+        }
+        Returns: boolean
       }
     }
     Enums: {
