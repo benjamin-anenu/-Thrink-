@@ -28,6 +28,7 @@ import DepartmentsManagement from './workspace-settings/DepartmentsManagement';
 import SkillsManagement from './workspace-settings/SkillsManagement';
 import EscalationTriggersManagement from './workspace-settings/EscalationTriggersManagement';
 import RecycleBin from './workspace-settings/RecycleBin';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WorkspaceSettingsModalProps {
   open: boolean;
@@ -52,7 +53,7 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   const [currency, setCurrency] = useState<string>('');
   const [timeZone, setTimeZone] = useState<string>('');
   
-  const { updateWorkspace } = useWorkspace();
+  const { updateWorkspace, refreshWorkspaces } = useWorkspace();
   const { toast } = useToast();
 
   // Supported values (fallback to minimal lists if not available)
@@ -110,23 +111,38 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     setIsLoading(true);
     
     try {
+      const newSettings = {
+        allowGuestAccess,
+        defaultProjectVisibility,
+        currency: currency || 'USD',
+        timeZone: timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        notificationSettings: {
+          emailNotifications,
+          projectUpdates,
+          taskAssignments,
+          deadlineReminders,
+        },
+      };
+
+      const { error } = await supabase
+        .from('workspaces')
+        .update({
+          name: name.trim(),
+          description: description.trim(),
+          settings: newSettings,
+        })
+        .eq('id', workspace.id);
+
+      if (error) throw error;
+
+      // Optimistic local update + ensure state refresh from DB
       updateWorkspace(workspace.id, {
         name: name.trim(),
         description: description.trim(),
-        settings: {
-          allowGuestAccess,
-          defaultProjectVisibility,
-          currency: currency || 'USD',
-          timeZone: timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-          notificationSettings: {
-            emailNotifications,
-            projectUpdates,
-            taskAssignments,
-            deadlineReminders
-          }
-        }
+        settings: newSettings,
       });
-      
+      await refreshWorkspaces();
+
       toast({
         title: "Settings updated! ⚙️",
         description: "Workspace settings have been saved successfully.",

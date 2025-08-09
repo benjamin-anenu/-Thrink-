@@ -132,7 +132,7 @@ const RecycleBin = () => {
         supabase.from('critical_path_analysis').delete().eq('project_id', item.id),
         supabase.from('project_issues').delete().eq('project_id', item.id),
         supabase.from('document_folders').delete().eq('project_id', item.id),
-        supabase.from('calendar_events').delete().eq('project_id', item.id),
+        supabase.from('calendar_events').delete().eq('project_id', item.id).eq('workspace_id', currentWorkspace.id),
         supabase.from('stakeholders').delete().eq('project_id', item.id),
         supabase.from('reports').delete().eq('project_id', item.id),
 
@@ -156,13 +156,30 @@ const RecycleBin = () => {
       const { error: projectError } = await supabase
         .from('projects')
         .delete()
-        .eq('id', item.id);
+        .eq('id', item.id)
+        .eq('workspace_id', currentWorkspace.id);
 
       if (projectError) throw projectError;
 
-      toast.success(`${item.name} has been permanently deleted`);
-      // Remove item from local state immediately
-      setDeletedItems(prev => prev.filter(i => i.id !== item.id));
+      // Double-check that the project is gone
+      const { data: remaining, error: checkError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', item.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.warn('Post-delete verification error:', checkError);
+      }
+
+      if (!remaining) {
+        toast.success(`${item.name} has been permanently deleted`);
+        // Remove item from local state immediately
+        setDeletedItems(prev => prev.filter(i => i.id !== item.id));
+      } else {
+        console.warn('Project still exists after delete attempt:', item.id);
+        toast.error('Delete may not have completed due to permissions. Please try again or contact support.');
+      }
     } catch (error) {
       console.error('Error permanently deleting item:', error);
       toast.error('Failed to permanently delete item. Please try again.');
