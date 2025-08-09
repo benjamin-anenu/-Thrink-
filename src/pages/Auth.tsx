@@ -21,10 +21,8 @@ export default function Auth() {
 
   useEffect(() => {
     if (!user || authLoading) return;
-    // Wait until permissions are loaded to route by role
-    if (!permissionsContext) return;
     navigate(isSystemOwner ? '/system/overview' : '/dashboard', { replace: true });
-  }, [user, authLoading, permissionsContext, isSystemOwner, navigate]);
+  }, [user, authLoading, isSystemOwner, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

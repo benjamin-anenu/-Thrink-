@@ -18,7 +18,7 @@ const Index = () => {
   const { user, loading, isSystemOwner, permissionsContext } = useAuth();
 
   if (loading) return null;
-  if (user && permissionsContext) {
+  if (user) {
     return <Navigate to={isSystemOwner ? "/system/overview" : "/dashboard"} replace />;
   }
 
