@@ -55,23 +55,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
+      // Fetch all roles and compute highest effective role and system owner flag
+      const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('role, is_system_owner')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('user_id', user.id);
 
-      if (roleError) {
-        console.error('Error fetching role:', roleError);
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
         return;
       }
 
+      // Compute highest role
+      const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
+      let effectiveRole: AppRole | null = null;
+      let max = 0;
+      (rolesData || []).forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
+        const score = hierarchy[r.role];
+        if (score > max) {
+          max = score;
+          effectiveRole = r.role;
+        }
+      });
+
+      const systemOwner = (rolesData || []).some((r: { is_system_owner?: boolean }) => !!r.is_system_owner);
+
       setProfile(profileData);
-      setRole(roleData?.role || null);
-      setIsSystemOwner(roleData?.is_system_owner || false);
+      setRole(effectiveRole);
+      setIsSystemOwner(systemOwner);
+      console.debug('[Auth] effectiveRole', effectiveRole, 'isSystemOwner', systemOwner);
     } catch (error) {
       console.error('Error refreshing profile:', error);
     }
