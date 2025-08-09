@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useSystemOwnerOverview } from '@/hooks/useSystemOwnerOverview';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -17,82 +18,57 @@ import {
 } from 'lucide-react';
 
 const SystemOwnerDashboard: React.FC = () => {
+  const { data, loading } = useSystemOwnerOverview();
+
   const systemMetrics = [
     {
       title: 'Total Workspaces',
-      value: '12',
-      change: '+2',
+      value: String(data?.totalWorkspaces ?? 0),
+      change: '',
       icon: Building2,
       color: 'text-blue-500'
     },
     {
       title: 'Total Users',
-      value: '148',
-      change: '+15',
+      value: String(data?.totalUsers ?? 0),
+      change: '',
       icon: Users,
       color: 'text-green-500'
     },
     {
       title: 'Active Projects',
-      value: '67',
-      change: '+8',
+      value: String(data?.activeProjects ?? 0),
+      change: '',
       icon: FolderOpen,
       color: 'text-purple-500'
     },
     {
-      title: 'System Health',
-      value: '98%',
-      change: '+1%',
+      title: 'Avg. Client Satisfaction',
+      value: `${data?.clientSatisfactionAvg ?? 0}`,
+      change: '',
       icon: Activity,
       color: 'text-emerald-500'
     }
   ];
 
-  const workspaceData = [
-    {
-      name: 'Engineering Team',
-      users: 25,
-      projects: 8,
-      progress: 85,
-      status: 'active',
-      lastActivity: '2 hours ago'
-    },
-    {
-      name: 'Marketing Department',
-      users: 12,
-      projects: 5,
-      progress: 72,
-      status: 'active',
-      lastActivity: '1 hour ago'
-    },
-    {
-      name: 'Product Design',
-      users: 18,
-      projects: 12,
-      progress: 91,
-      status: 'active',
-      lastActivity: '30 minutes ago'
-    },
-    {
-      name: 'Sales Team',
-      users: 8,
-      projects: 3,
-      progress: 45,
-      status: 'warning',
-      lastActivity: '5 hours ago'
-    }
-  ];
+  const workspaceData = (data?.workspaces ?? []).map(w => ({
+    name: w.name,
+    users: w.members,
+    projects: w.projects,
+    progress: w.progress ?? 75,
+    status: w.status ?? 'active',
+    lastActivity: w.lastActivity ?? '—'
+  }));
 
-  const topPerformers = [
-    { name: 'Alice Johnson', workspace: 'Engineering', completedTasks: 24, efficiency: '95%' },
-    { name: 'Bob Smith', workspace: 'Marketing', completedTasks: 18, efficiency: '89%' },
-    { name: 'Carol Davis', workspace: 'Design', completedTasks: 22, efficiency: '92%' },
-  ];
+  const topPerformers = (data?.topPerformers ?? []).map(p => ({
+    name: p.name,
+    workspace: p.workspaceName ?? '—',
+    completedTasks: p.completedTasks ?? 0,
+    efficiency: `${Math.round(p.efficiency ?? 0)}%`,
+  }));
 
   const systemAlerts = [
-    { type: 'warning', message: 'Sales Team workspace has low activity', time: '2 hours ago' },
-    { type: 'info', message: 'New workspace created: HR Department', time: '1 day ago' },
-    { type: 'success', message: 'System backup completed successfully', time: '1 day ago' },
+    ...(data && (data.clientSatisfactionAvg < 3.5) ? [{ type: 'warning', message: 'Client satisfaction trending low across portfolio', time: 'now' }] : []),
   ];
 
   return (

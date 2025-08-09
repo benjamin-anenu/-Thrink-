@@ -140,7 +140,7 @@ const Workspaces: React.FC = () => {
                   className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
                     currentWorkspace?.id === workspace.id ? 'ring-2 ring-primary' : ''
                   }`}
-                  onClick={() => setCurrentWorkspace(workspace)}
+                  onClick={() => { setCurrentWorkspace(workspace); navigate('/dashboard'); }}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
