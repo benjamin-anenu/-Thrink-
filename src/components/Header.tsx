@@ -14,11 +14,11 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isSystemOwner, role } = useAuth();
   const { currentWorkspace } = useWorkspace();
+  const isSystemMode = (isSystemOwner || role === 'owner' || role === 'admin') && !currentWorkspace;
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
   useEffect(() => {
     // Set active page based on current route
     const path = location.pathname;
@@ -185,20 +185,22 @@ const Header = () => {
                         <BarChart3 size={14} className="mr-1.5" /> Analytics
                       </Link>
                     </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="ai-hub" 
-                      className={cn(
-                        "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
-                        activePage === 'ai-hub' 
-                          ? 'text-primary-foreground bg-primary shadow-sm' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                      )}
-                      asChild
-                    >
-                      <Link to="/ai-hub">
-                        <Brain size={14} className="mr-1.5" /> AI Hub
-                      </Link>
-                    </ToggleGroupItem>
+                    {!isSystemMode && (
+                      <ToggleGroupItem 
+                        value="ai-hub" 
+                        className={cn(
+                          "px-3 py-1.5 rounded-full transition-all text-sm font-medium",
+                          activePage === 'ai-hub' 
+                            ? 'text-primary-foreground bg-primary shadow-sm' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        )}
+                        asChild
+                      >
+                        <Link to="/ai-hub">
+                          <Brain size={14} className="mr-1.5" /> AI Hub
+                        </Link>
+                      </ToggleGroupItem>
+                    )}
                   </>
                 )}
               </ToggleGroup>
@@ -320,16 +322,18 @@ const Header = () => {
                     >
                       <BarChart3 size={16} className="mr-2" /> Analytics
                     </Link>
-                    <Link 
-                      to="/ai-hub" 
-                      className={cn(
-                        "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
-                        activePage === 'ai-hub' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                      )}
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Brain size={16} className="mr-2" /> AI Hub
-                    </Link>
+                    {!isSystemMode && (
+                      <Link 
+                        to="/ai-hub" 
+                        className={cn(
+                          "px-3 py-2 text-sm rounded-lg transition-colors flex items-center",
+                          activePage === 'ai-hub' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        )}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Brain size={16} className="mr-2" /> AI Hub
+                      </Link>
+                    )}
                   </>
                 )}
                 

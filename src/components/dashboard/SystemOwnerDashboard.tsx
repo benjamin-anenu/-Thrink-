@@ -42,13 +42,6 @@ const SystemOwnerDashboard: React.FC = () => {
       icon: FolderOpen,
       color: 'text-purple-500'
     },
-    {
-      title: 'Avg. Client Satisfaction',
-      value: `${data?.clientSatisfactionAvg ?? 0}`,
-      change: '',
-      icon: Activity,
-      color: 'text-emerald-500'
-    }
   ];
 
   const workspaceData = (data?.workspaces ?? []).map(w => ({
@@ -67,8 +60,7 @@ const SystemOwnerDashboard: React.FC = () => {
     efficiency: `${Math.round(p.efficiency ?? 0)}%`,
   }));
 
-  const systemAlerts = [
-    ...(data && (data.clientSatisfactionAvg < 3.5) ? [{ type: 'warning', message: 'Client satisfaction trending low across portfolio', time: 'now' }] : []),
+  const systemAlerts: { type: 'warning' | 'success' | 'info'; message: string; time: string }[] = [
   ];
 
   return (
