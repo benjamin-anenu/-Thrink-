@@ -8,16 +8,16 @@ interface Props {
 
 const ActionAutocomplete: React.FC<Props> = ({ query, onSelect }) => {
   const results = useMemo(() => {
-    if (!query) return [] as ActionWord[];
-    const q = query.toLowerCase();
+    const q = (query || '').toLowerCase();
+    if (!q) return ACTION_WORDS.slice(0, 10);
     return ACTION_WORDS.filter(a =>
       a.keywords.some(k => k.toLowerCase().includes(q)) ||
       (a.aliases || []).some(al => al.toLowerCase().includes(q)) ||
       a.description.toLowerCase().includes(q)
-    ).slice(0, 8);
+    ).slice(0, 10);
   }, [query]);
 
-  if (!query || results.length === 0) return null;
+  if (results.length === 0) return null;
 
   return (
     <div className="absolute z-50 mt-2 w-full rounded-md border border-border bg-popover shadow-lg">
