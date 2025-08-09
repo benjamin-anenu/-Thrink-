@@ -147,6 +147,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setWorkspaces(transformedWorkspaces);
       
       // Only auto-select workspace for confirmed non-system owners
+      // System owners can manually select workspaces when they want to view them
       if (
         transformedWorkspaces.length > 0 &&
         !currentWorkspace &&
@@ -156,8 +157,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setCurrentWorkspace(transformedWorkspaces[0]);
         console.log('[Workspace] Auto-selected workspace for regular user:', transformedWorkspaces[0].name)
       } else if (isSystemOwner && permissionsContext) {
-        console.log('[Workspace] System owner confirmed, clearing workspace selection')
-        setCurrentWorkspace(null)
+        console.log('[Workspace] System owner - workspaces loaded but no auto-selection')
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
@@ -195,11 +195,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchWorkspaces();
   }, [user, authLoading, isSystemOwner, permissionsContext])
 
-  // Clear workspace selection when system owner status changes to true
+  // Clear workspace selection when system owner status changes to true (but allow manual selection)
   useEffect(() => {
     if (isSystemOwner && currentWorkspace && permissionsContext) {
-      console.log('[Workspace] System owner status confirmed, clearing workspace selection')
-      setCurrentWorkspace(null)
+      console.log('[Workspace] System owner status confirmed, allowing manual workspace selection')
+      // Don't automatically clear - let system owners choose
     }
   }, [isSystemOwner, permissionsContext])
 

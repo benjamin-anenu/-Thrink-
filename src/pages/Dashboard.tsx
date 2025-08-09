@@ -14,8 +14,9 @@ const Dashboard: React.FC = () => {
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
 
-  // Redirect system owners to their dedicated dashboard
-  if (isSystemOwner && permissionsContext && !loading) {
+  // Only redirect system owners to their dedicated dashboard if they don't have a workspace selected
+  // This allows system owners to still access individual workspaces when needed
+  if (isSystemOwner && permissionsContext && !loading && !currentWorkspace) {
     return <Navigate to="/system/portfolio" replace />;
   }
 
