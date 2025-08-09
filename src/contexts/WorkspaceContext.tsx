@@ -21,7 +21,7 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading, isSystemOwner } = useAuth()
+  const { user, loading: authLoading, isSystemOwner, permissionsContext } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return
     }
 
-    console.log('[Workspace] Fetching workspaces for user:', user.id, 'System owner:', isSystemOwner)
+    // Wait for permissions context to be loaded before making decisions
+    if (!permissionsContext) {
+      console.log('[Workspace] Permissions context not loaded yet, waiting...')
+      return
+    }
+
+    console.log('[Workspace] Fetching workspaces for user:', user.id, 'System owner:', isSystemOwner, 'Permissions loaded:', !!permissionsContext)
     setLoading(true)
     setError(null)
 
@@ -140,14 +146,18 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces')
       setWorkspaces(transformedWorkspaces);
       
-      // Set current workspace automatically only for non-system-owner users
+      // Only auto-select workspace for confirmed non-system owners
       if (
         transformedWorkspaces.length > 0 &&
         !currentWorkspace &&
-        !isSystemOwner
+        !isSystemOwner &&
+        permissionsContext
       ) {
         setCurrentWorkspace(transformedWorkspaces[0]);
         console.log('[Workspace] Auto-selected workspace for regular user:', transformedWorkspaces[0].name)
+      } else if (isSystemOwner && permissionsContext) {
+        console.log('[Workspace] System owner confirmed, clearing workspace selection')
+        setCurrentWorkspace(null)
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
@@ -164,9 +174,34 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return
     }
 
-    console.log('[Workspace] Auth ready, fetching workspaces...')
+    if (!user) {
+      console.log('[Workspace] No user, clearing workspaces')
+      setWorkspaces([])
+      setCurrentWorkspace(null)
+      setLoading(false)
+      return
+    }
+
+    // Wait for permissions context to be available
+    if (!permissionsContext) {
+      console.log('[Workspace] Permissions context not ready, waiting...')
+      return
+    }
+
+    console.log('[Workspace] Auth and permissions ready, fetching workspaces...', {
+      isSystemOwner,
+      permissionsLoaded: !!permissionsContext
+    })
     fetchWorkspaces();
-  }, [user, authLoading, isSystemOwner])
+  }, [user, authLoading, isSystemOwner, permissionsContext])
+
+  // Clear workspace selection when system owner status changes to true
+  useEffect(() => {
+    if (isSystemOwner && currentWorkspace && permissionsContext) {
+      console.log('[Workspace] System owner status confirmed, clearing workspace selection')
+      setCurrentWorkspace(null)
+    }
+  }, [isSystemOwner, permissionsContext])
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     try {
