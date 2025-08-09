@@ -32,6 +32,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const defaultSettings: WorkspaceSettings = {
       allowGuestAccess: false,
       defaultProjectVisibility: 'private' as const,
+      currency: 'USD',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       notificationSettings: {
         emailNotifications: true,
         projectUpdates: true,
@@ -47,6 +49,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return {
       allowGuestAccess: Boolean(settings.allowGuestAccess),
       defaultProjectVisibility: settings.defaultProjectVisibility || 'private',
+      currency: settings.currency || defaultSettings.currency,
+      timeZone: settings.timeZone || defaultSettings.timeZone,
       notificationSettings: {
         emailNotifications: Boolean(settings.notificationSettings?.emailNotifications ?? true),
         projectUpdates: Boolean(settings.notificationSettings?.projectUpdates ?? true),

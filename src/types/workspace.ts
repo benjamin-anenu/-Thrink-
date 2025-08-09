@@ -22,6 +22,8 @@ export interface WorkspaceMember {
 export interface WorkspaceSettings {
   allowGuestAccess: boolean;
   defaultProjectVisibility: 'private' | 'workspace' | 'public';
+  currency?: string;
+  timeZone?: string;
   notificationSettings: WorkspaceNotificationSettings;
 }
 
