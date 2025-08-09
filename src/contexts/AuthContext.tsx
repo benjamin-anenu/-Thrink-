@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
-      // Fetch profile
+      // 1) Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -52,38 +52,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
-        return;
       }
 
-      // Fetch all roles and compute highest effective role and system owner flag
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role, is_system_owner')
-        .eq('user_id', user.id);
+      // 2) Prefer secure RPCs for role + system owner
+      const [roleRpc, ownerRpc] = await Promise.all([
+        supabase.rpc('get_user_role', { _user_id: user.id }),
+        supabase.rpc('is_system_owner', { user_id_param: user.id })
+      ]);
 
-      if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
-        return;
-      }
+      let effectiveRole: AppRole | null = (roleRpc.data as AppRole | null) ?? null;
+      let systemOwner = Boolean(ownerRpc.data);
 
-      // Compute highest role
-      const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
-      let effectiveRole: AppRole | null = null;
-      let max = 0;
-      (rolesData || []).forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
-        const score = hierarchy[r.role];
-        if (score > max) {
-          max = score;
-          effectiveRole = r.role;
+      // 3) Fallback: direct table read only if RPC unavailable or returned null
+      if ((!effectiveRole || roleRpc.error) && !ownerRpc.error) {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role, is_system_owner')
+          .eq('user_id', user.id);
+
+        if (!rolesError && rolesData) {
+          const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
+          let max = 0;
+          (rolesData || []).forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
+            const score = hierarchy[r.role];
+            if (score > max) {
+              max = score;
+              effectiveRole = r.role;
+            }
+          });
+          systemOwner = (rolesData || []).some((r: { is_system_owner?: boolean }) => !!r.is_system_owner);
+        } else if (rolesError) {
+          console.warn('[Auth] Fallback role query failed due to RLS (expected for non-admins):', rolesError?.message);
         }
-      });
+      }
 
-      const systemOwner = (rolesData || []).some((r: { is_system_owner?: boolean }) => !!r.is_system_owner);
-
-      setProfile(profileData);
+      setProfile(profileData ?? null);
       setRole(effectiveRole);
       setIsSystemOwner(systemOwner);
       console.debug('[Auth] effectiveRole', effectiveRole, 'isSystemOwner', systemOwner);
+
+      // 4) One-time retry after slight delay if role not yet hydrated
+      if (!effectiveRole) {
+        setTimeout(async () => {
+          try {
+            const [{ data: roleRetry }, { data: ownerRetry }] = await Promise.all([
+              supabase.rpc('get_user_role', { _user_id: user.id }),
+              supabase.rpc('is_system_owner', { user_id_param: user.id })
+            ]);
+            if (roleRetry) setRole(roleRetry as AppRole);
+            if (typeof ownerRetry === 'boolean') setIsSystemOwner(ownerRetry);
+          } catch (e) {
+            console.debug('[Auth] Role retry failed (non-fatal):', e);
+          }
+        }, 500);
+      }
     } catch (error) {
       console.error('Error refreshing profile:', error);
     }
