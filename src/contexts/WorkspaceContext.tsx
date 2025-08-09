@@ -1,3 +1,4 @@
+// Cache-bust: 2025-08-09-21:10 - Force browser to reload this file
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Workspace, WorkspaceMember, WorkspaceSettings } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
