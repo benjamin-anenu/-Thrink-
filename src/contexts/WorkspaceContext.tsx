@@ -26,28 +26,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [contextError, setContextError] = useState<string | null>(null);
-  
-  // Safely get auth and enterprise contexts
-  let authData: any = { user: null, loading: false, isSystemOwner: false, role: null };
-  let enterpriseData: any = { currentEnterprise: null };
-  
-  try {
-    authData = useAuth();
-  } catch (err) {
-    console.error('[Workspace] Failed to get auth context:', err);
-    setContextError('Auth context not available');
-  }
-  
-  try {
-    enterpriseData = useEnterprise();
-  } catch (err) {
-    console.error('[Workspace] Failed to get enterprise context:', err);
-    setContextError('Enterprise context not available');
-  }
-  
-  const { user, loading: authLoading, isSystemOwner, role } = authData;
-  const { currentEnterprise } = enterpriseData;
+  const { user, loading: authLoading, isSystemOwner, role } = useAuth();
+  const { currentEnterprise } = useEnterprise();
 
   // Helper function to safely parse workspace settings
   const parseWorkspaceSettings = (settings: any): WorkspaceSettings => {
@@ -90,14 +70,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setCurrentWorkspace(null)
       setLoading(false)
       setError(null)
-      setContextError(null)
       return
     }
 
     console.log('[Workspace] Fetching workspaces for enterprise:', currentEnterprise.id)
     setLoading(true)
     setError(null)
-    setContextError(null)
 
     try {
       // Fetch workspaces - should now work with fixed RLS
@@ -156,9 +134,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
-      const errorMessage = 'An error occurred while loading workspaces: ' + (error as Error).message;
-      setError(errorMessage);
-      setContextError(errorMessage);
+      setError('An error occurred while loading workspaces: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -277,12 +253,6 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('[Workspace] Updated member role:', memberId, 'to', role)
     }
   };
-
-  // Render children even if there's a context error, but log it
-  if (contextError) {
-    console.error('[Workspace] WorkspaceProvider context error:', contextError);
-    // Don't block rendering - let children handle gracefully
-  }
 
   return (
     <WorkspaceContext.Provider value={{

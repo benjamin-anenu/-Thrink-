@@ -15,18 +15,7 @@ export const EnterpriseProvider: React.FC<EnterpriseProviderProps> = ({ children
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [contextError, setContextError] = useState<string | null>(null);
-  
-  // Safely get auth context
-  let authData: any = { user: null, isSystemOwner: false };
-  try {
-    authData = useAuth();
-  } catch (err) {
-    console.error('[Enterprise] Failed to get auth context:', err);
-    setContextError('Auth context not available');
-  }
-  
-  const { user, isSystemOwner } = authData;
+  const { user, isSystemOwner } = useAuth();
 
   const fetchEnterprises = async () => {
     if (!user) {
@@ -41,7 +30,6 @@ export const EnterpriseProvider: React.FC<EnterpriseProviderProps> = ({ children
       console.log('[Enterprise] Fetching enterprises for user:', user.email);
       setLoading(true);
       setError(null);
-      setContextError(null);
 
       // Fetch enterprises - should now work with fixed RLS
       const { data: enterpriseData, error: enterpriseError } = await supabase
@@ -71,9 +59,7 @@ export const EnterpriseProvider: React.FC<EnterpriseProviderProps> = ({ children
       }
     } catch (err) {
       console.error('[Enterprise] Error fetching enterprises:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch enterprises';
-      setError(errorMessage);
-      setContextError(errorMessage);
+      setError(err instanceof Error ? err.message : 'Failed to fetch enterprises');
     } finally {
       setLoading(false);
     }
@@ -137,12 +123,6 @@ export const EnterpriseProvider: React.FC<EnterpriseProviderProps> = ({ children
   useEffect(() => {
     fetchEnterprises();
   }, [user]);
-
-  // Render children even if there's an error, but log it
-  if (contextError) {
-    console.error('[Enterprise] EnterpriseProvider context error:', contextError);
-    // Don't block rendering - let children handle gracefully
-  }
 
   return (
     <EnterpriseContext.Provider

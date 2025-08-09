@@ -99,7 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Keep auth loading true until we hydrate profile/roles
     setLoading(true);
-    setContextError(null);
 
     // 1) Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -118,7 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsFirstUser(first);
           } catch (e) {
             console.error('[Auth] onAuthStateChange hydration error:', e);
-            setContextError(e instanceof Error ? e.message : 'Auth hydration error');
           } finally {
             setLoading(false);
           }
@@ -148,7 +146,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsFirstUser(first);
           } catch (e) {
             console.error('[Auth] Initial session hydration error:', e);
-            setContextError(e instanceof Error ? e.message : 'Initial auth hydration error');
           } finally {
             setLoading(false);
           }
@@ -284,25 +281,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fullAction = resource ? `${resource}:${action}` : action;
     return permissions.includes(fullAction);
   };
-
-  // Don't render children if there's a context error
-  if (contextError) {
-    console.error('[Auth] AuthProvider error, rendering fallback:', contextError);
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
-          <p className="text-muted-foreground mb-4">{contextError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={{

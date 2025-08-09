@@ -4368,6 +4368,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_in_enterprise: {
+        Args: { _enterprise_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      user_in_workspace: {
+        Args: { _workspace_id: string; _user_id?: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
