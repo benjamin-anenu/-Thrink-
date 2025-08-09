@@ -164,8 +164,30 @@ serve(async (req) => {
           .insert([insertPayload])
           .select('invitation_token')
           .single();
-        if (insErr) throw insErr;
-        invitationToken = inserted?.invitation_token ?? null;
+        
+        if (insErr) {
+          // Handle duplicate invitation constraint
+          if (insErr.code === '23505' && insErr.message?.includes('uidx_workspace_invite_pending_unique')) {
+            // Invitation already exists, try to get the existing one
+            const { data: existingDuplicate } = await adminClient
+              .from('workspace_invitations')
+              .select('invitation_token')
+              .eq('workspace_id', workspaceId)
+              .eq('email', email)
+              .eq('status', 'pending')
+              .single();
+            
+            if (existingDuplicate?.invitation_token) {
+              invitationToken = existingDuplicate.invitation_token;
+            } else {
+              throw new Error(`Invitation already exists for ${email} but could not retrieve it`);
+            }
+          } else {
+            throw insErr;
+          }
+        } else {
+          invitationToken = inserted?.invitation_token ?? null;
+        }
       }
 
       let createdNewUser = false;
