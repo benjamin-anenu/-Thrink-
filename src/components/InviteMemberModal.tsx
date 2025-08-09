@@ -49,12 +49,12 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
   };
 
   const addEmail = () => {
-    if (email && !emails.includes(email) && email.includes('@')) {
-      setEmails(prev => [...prev, email]);
-      setEmail('');
-    }
+    const normalized = email.trim().toLowerCase();
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!normalized || !EMAIL_RE.test(normalized)) return;
+    setEmails(prev => (prev.includes(normalized) ? prev : [...prev, normalized]));
+    setEmail('');
   };
-
   const removeEmail = (emailToRemove: string) => {
     setEmails(prev => prev.filter(e => e !== emailToRemove));
   };
@@ -94,7 +94,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
     } catch (error) {
       toast({
         title: "Error sending invitations",
-        description: "Please try again later.",
+        description: (error as any)?.message || (typeof error === 'string' ? error : 'Please try again later.'),
         variant: "destructive",
       });
     } finally {
@@ -128,7 +128,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={handleKeyDown}
-              onBlur={addEmail}
+              
               placeholder="Enter email and press Enter"
             />
             <div className="flex flex-wrap gap-2 mt-2">

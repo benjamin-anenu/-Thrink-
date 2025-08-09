@@ -3929,6 +3929,7 @@ export type Database = {
           metadata: Json | null
           role: string
           status: string | null
+          updated_at: string
           workspace_id: string
         }
         Insert: {
@@ -3943,6 +3944,7 @@ export type Database = {
           metadata?: Json | null
           role?: string
           status?: string | null
+          updated_at?: string
           workspace_id: string
         }
         Update: {
@@ -3957,6 +3959,7 @@ export type Database = {
           metadata?: Json | null
           role?: string
           status?: string | null
+          updated_at?: string
           workspace_id?: string
         }
         Relationships: [

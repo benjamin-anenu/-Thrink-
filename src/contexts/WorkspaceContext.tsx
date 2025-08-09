@@ -236,7 +236,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     if (error) {
       console.error('[Workspace] Error sending invite via edge function:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to send invitation');
+    }
+
+    // Check result payload for per-email failures
+    const sent = (data as any)?.results?.[0]?.sent ?? true;
+    if (!sent) {
+      const errMsg = (data as any)?.results?.[0]?.error || 'Failed to send invitation';
+      throw new Error(errMsg);
     }
 
     // Optimistically reflect pending invite in UI
