@@ -10,9 +10,20 @@ import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, role } = useAuth();
+  const { user, isFirstUser, isSystemOwner, role, loading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
+
+  // Debug logging for auth state
+  console.log('[Dashboard] Auth state:', {
+    user: user?.email,
+    role,
+    isSystemOwner,
+    loading,
+    isFirstUser,
+    currentWorkspace: currentWorkspace?.name,
+    isFullyLoaded
+  });
 
   return (
     <AppInitializationLoader>

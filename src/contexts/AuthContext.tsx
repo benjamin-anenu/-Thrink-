@@ -60,36 +60,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase.rpc('is_system_owner', { user_id_param: user.id })
       ]);
 
+      console.log('[Auth] RPC responses:', { roleRpc, ownerRpc });
+
       let effectiveRole: AppRole | null = (roleRpc.data as AppRole | null) ?? null;
       let systemOwner = Boolean(ownerRpc.data);
 
-      // 3) Fallback: direct table read only if RPC unavailable or returned null
-      if ((!effectiveRole || roleRpc.error) && !ownerRpc.error) {
+      console.log('[Auth] Initial RPC results:', { effectiveRole, systemOwner });
+
+      // 3) Fallback: direct table read if RPC fails or returns null
+      if (!effectiveRole || !systemOwner || roleRpc.error || ownerRpc.error) {
+        console.log('[Auth] Using fallback table query because:', { 
+          noRole: !effectiveRole, 
+          noOwner: !systemOwner, 
+          roleError: roleRpc.error?.message, 
+          ownerError: ownerRpc.error?.message 
+        });
+
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select('role, is_system_owner')
           .eq('user_id', user.id);
 
-        if (!rolesError && rolesData) {
+        console.log('[Auth] Fallback query result:', { rolesData, rolesError });
+
+        if (!rolesError && rolesData && rolesData.length > 0) {
           const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
           let max = 0;
-          (rolesData || []).forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
+          let fallbackRole: AppRole | null = null;
+          let fallbackSystemOwner = false;
+
+          rolesData.forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
             const score = hierarchy[r.role];
             if (score > max) {
               max = score;
-              effectiveRole = r.role;
+              fallbackRole = r.role;
+            }
+            if (r.is_system_owner) {
+              fallbackSystemOwner = true;
             }
           });
-          systemOwner = (rolesData || []).some((r: { is_system_owner?: boolean }) => !!r.is_system_owner);
+
+          // Only override if we got better data from fallback
+          if (!effectiveRole && fallbackRole) {
+            effectiveRole = fallbackRole;
+          }
+          if (!systemOwner && fallbackSystemOwner) {
+            systemOwner = fallbackSystemOwner;
+          }
+
+          console.log('[Auth] Fallback results applied:', { effectiveRole, systemOwner });
         } else if (rolesError) {
-          console.warn('[Auth] Fallback role query failed due to RLS (expected for non-admins):', rolesError?.message);
+          console.warn('[Auth] Fallback role query failed:', rolesError.message);
         }
       }
 
       setProfile(profileData ?? null);
       setRole(effectiveRole);
       setIsSystemOwner(systemOwner);
-      console.debug('[Auth] effectiveRole', effectiveRole, 'isSystemOwner', systemOwner);
+      console.log('[Auth] Final auth state set:', { 
+        effectiveRole, 
+        systemOwner, 
+        userId: user.id,
+        email: user.email 
+      });
 
       // 4) One-time retry after slight delay if role not yet hydrated
       if (!effectiveRole) {
