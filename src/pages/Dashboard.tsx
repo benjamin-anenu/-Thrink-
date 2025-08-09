@@ -8,18 +8,22 @@ import FirstUserOnboarding from '@/components/FirstUserOnboarding';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 import { useEnterpriseOwnerPersistence } from '@/hooks/useEnterpriseOwnerPersistence';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, role, loading } = useAuth();
+  const { user, isFirstUser, loading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
-  const { isEnterpriseOwner, preferences } = useEnterpriseOwnerPersistence();
+  const { isEnterpriseOwner } = useEnterpriseOwnerPersistence();
+  const navigate = useNavigate();
 
-  // Redirect enterprise owners to admin dashboard if they prefer system view
-  if (!loading && isEnterpriseOwner && preferences.preferSystemView) {
-    return <Navigate to="/admin" replace />;
-  }
+  // Handle enterprise owner redirect in useEffect to avoid hook violations
+  useEffect(() => {
+    if (!loading && user && isEnterpriseOwner) {
+      console.log('[Dashboard] Redirecting enterprise owner to admin');
+      navigate('/admin', { replace: true });
+    }
+  }, [user, loading, isEnterpriseOwner, navigate]);
 
   return (
     <AppInitializationLoader>

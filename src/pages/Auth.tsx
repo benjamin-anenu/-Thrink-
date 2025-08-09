@@ -16,14 +16,22 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, isSystemOwner, role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
+    if (user && !authLoading) {
+      // Check if user is enterprise owner and redirect accordingly
+      const isEnterpriseOwner = isSystemOwner || role === 'owner' || role === 'admin';
+      console.log('[Auth] User authenticated, redirecting enterprise owner:', isEnterpriseOwner);
+      
+      if (isEnterpriseOwner) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [user, navigate]);
+  }, [user, isSystemOwner, role, authLoading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,9 +43,8 @@ export default function Auth() {
       const { error } = await signIn(email, password);
       if (error) {
         setError(error.message);
-      } else {
-        navigate('/dashboard');
       }
+      // Navigation handled by useEffect after auth state updates
     } catch (err) {
       setError('An unexpected error occurred');
     } finally {

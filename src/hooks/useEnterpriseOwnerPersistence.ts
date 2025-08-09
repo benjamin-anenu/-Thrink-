@@ -64,23 +64,12 @@ export function useEnterpriseOwnerPersistence() {
       console.log('[EnterpriseOwner] Enterprise owner detected, checking navigation...');
       
       const prefs = getPreferences();
-      const isOnDashboard = location.pathname === '/dashboard';
       const isOnAdmin = location.pathname === '/admin';
       
-      // Handle route navigation for enterprise owners
-      if (isOnDashboard) {
-        // Ensure enterprise owners start with system view preference if no explicit preference
-        if (prefs.timestamp === 0) {
-          console.log('[EnterpriseOwner] First time enterprise owner, setting system view preference');
-          savePreferences({ preferSystemView: true });
-        }
-        
-        // If they prefer system view, redirect to admin dashboard
-        if (prefs.preferSystemView) {
-          console.log('[EnterpriseOwner] Redirecting to admin dashboard');
-          navigate('/admin', { replace: true });
-          return;
-        }
+      // Ensure enterprise owners have system view preference set
+      if (prefs.timestamp === 0) {
+        console.log('[EnterpriseOwner] First time enterprise owner, setting system view preference');
+        savePreferences({ preferSystemView: true });
       }
       
       // Clear workspace for enterprise owners on admin route
@@ -89,7 +78,7 @@ export function useEnterpriseOwnerPersistence() {
         setCurrentWorkspace(null);
       }
     }
-  }, [user, isSystemOwner, role, loading, currentWorkspace, location.pathname, navigate, setCurrentWorkspace]);
+  }, [user, isSystemOwner, role, loading, currentWorkspace, location.pathname, setCurrentWorkspace]);
 
   // Toggle between system view and workspace view
   const toggleSystemView = useCallback(() => {
