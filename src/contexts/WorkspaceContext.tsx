@@ -68,31 +68,62 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Wraps selection to assume/clear temporary access for enterprise owners/admins
   const setCurrentWorkspaceWithAccess = (ws: Workspace | null) => {
     const prev = currentWorkspace;
-    setCurrentWorkspaceState(ws);
-
     const isEnterpriseOwnerLike = isSystemOwner || role === 'owner' || role === 'admin';
+
+    // Regular users: just set state
     if (!isEnterpriseOwnerLike) {
+      setCurrentWorkspaceState(ws);
       return;
     }
 
+    // Same selection, nothing to do
+    if ((prev?.id ?? null) === (ws?.id ?? null)) {
+      return;
+    }
+
+    // Switching between different workspaces
     if (ws && prev && prev.id !== ws.id) {
-      // Switching between workspaces
-      console.log('[Workspace] Switching workspace selection, clearing previous then assuming new');
-      clearAccess(prev.id)
-        .catch((e) => console.error('[Workspace] Error clearing previous access:', e))
-        .finally(() => {
-          assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming new access:', e));
-        });
+      (async () => {
+        console.log('[Workspace] Switching workspace selection from', prev.id, 'to', ws.id);
+        try {
+          await clearAccess(prev.id, { silent: true });
+        } catch (e) {
+          console.warn('[Workspace] clearAccess during switch failed (continuing):', e);
+        }
+        const res = await assumeAccess(ws.id);
+        if (res?.ok) {
+          setCurrentWorkspaceState(ws);
+        } else {
+          console.error('[Workspace] assumeAccess failed, staying on previous workspace');
+        }
+      })();
       return;
     }
 
+    // Selecting first workspace
     if (ws && !prev) {
-      console.log('[Workspace] Selecting workspace, assuming temporary access');
-      assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming access:', e));
-    } else if (!ws && prev) {
-      console.log('[Workspace] Clearing selection, removing temporary access');
-      clearAccess(prev.id).catch((e) => console.error('[Workspace] Error clearing access:', e));
+      (async () => {
+        console.log('[Workspace] Selecting workspace, assuming temporary access');
+        const res = await assumeAccess(ws.id);
+        if (res?.ok) {
+          setCurrentWorkspaceState(ws);
+        }
+      })();
+      return;
     }
+
+    // Clearing selection
+    if (!ws && prev) {
+      (async () => {
+        console.log('[Workspace] Clearing selection, removing temporary access');
+        await clearAccess(prev.id);
+        setCurrentWorkspaceState(null);
+      })();
+      return;
+    }
+
+    // Base case
+    setCurrentWorkspaceState(ws);
   };
 
   // Fetch workspaces from Supabase - scoped to current enterprise
@@ -186,13 +217,6 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchWorkspaces();
   }, [user, authLoading, currentEnterprise?.id])
 
-  // Ensure system owners/admins/owners default to no workspace selected
-  useEffect(() => {
-    if ((isSystemOwner || role === 'owner' || role === 'admin') && currentWorkspace) {
-      console.log('[Workspace] Admin/Owner/System owner detected, clearing current workspace selection')
-      setCurrentWorkspaceWithAccess(null)
-    }
-  }, [isSystemOwner, role])
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     if (!currentEnterprise) {
