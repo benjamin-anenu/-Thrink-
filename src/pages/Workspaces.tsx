@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +19,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
-import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
-import { toast } from '@/components/ui/use-toast';
+
+
 
 const Workspaces: React.FC = () => {
   const { workspaces, currentWorkspace, setCurrentWorkspace, removeMember, updateMemberRole } = useWorkspace();
@@ -30,6 +30,13 @@ const Workspaces: React.FC = () => {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState(currentWorkspace);
   const navigate = useNavigate();
+
+  // Auto-refresh roles/access when system owner logs in
+  useEffect(() => {
+    if (isSystemOwner) {
+      refreshProfile();
+    }
+  }, [isSystemOwner, refreshProfile]);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -74,9 +81,6 @@ const Workspaces: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={async () => { await refreshProfile(); toast({ title: 'Access updated', description: 'Your roles and permissions were refreshed.' }); }}>
-              Refresh access
-            </Button>
             <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
               <Plus size={16} />
               Create Workspace
@@ -112,11 +116,6 @@ const Workspaces: React.FC = () => {
               </Card>
             )}
 
-            {(isSystemOwner || role === 'owner' || role === 'admin') && (
-              <div>
-                <SystemOwnerDashboard />
-              </div>
-            )}
             
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {(isSystemOwner || role === 'owner' || role === 'admin') && (
