@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,8 +34,13 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
   const [role, setRole] = useState<'admin' | 'member' | 'viewer'>('member');
   const [emails, setEmails] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { inviteMember } = useWorkspace();
+  const { inviteMember, workspaces, currentWorkspace } = useWorkspace();
   const { toast } = useToast();
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(workspaceId || currentWorkspace?.id || '');
+
+  useEffect(() => {
+    setSelectedWorkspaceId(workspaceId || currentWorkspace?.id || '');
+  }, [workspaceId, currentWorkspace, open]);
 
   const roleDescriptions = {
     admin: 'Can manage workspace settings and members',
@@ -61,13 +66,23 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
     setIsLoading(true);
     
     try {
-      // Send invitations for all emails
-      for (const emailAddress of emails) {
-        inviteMember(workspaceId, emailAddress, role);
+      const targetId = workspaceId || selectedWorkspaceId;
+      if (!targetId) {
+        toast({
+          title: 'Select a workspace',
+          description: 'Please choose a workspace to send invites.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
       }
+
+      await Promise.all(
+        emails.map((emailAddress) => inviteMember(targetId, emailAddress, role))
+      );
       
       toast({
-        title: "Invitations sent! 📧",
+        title: 'Invitations sent! 📧',
         description: `Invited ${emails.length} member${emails.length > 1 ? 's' : ''} to join the workspace.`,
       });
       
@@ -133,6 +148,23 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
               ))}
             </div>
           </div>
+          {!workspaceId && (
+            <div className="space-y-2">
+              <Label htmlFor="workspace">Workspace</Label>
+              <Select value={selectedWorkspaceId} onValueChange={(val) => setSelectedWorkspaceId(val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a workspace" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workspaces.map((ws) => (
+                    <SelectItem key={ws.id} value={ws.id}>
+                      {ws.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
@@ -182,7 +214,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ open, onOpenChang
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={emails.length === 0 || isLoading}>
+            <Button type="submit" disabled={emails.length === 0 || isLoading || (!workspaceId && !selectedWorkspaceId)}>
               {isLoading ? 'Sending...' : `Send ${emails.length} Invitation${emails.length > 1 ? 's' : ''}`}
             </Button>
           </DialogFooter>

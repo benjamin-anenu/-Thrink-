@@ -12,7 +12,7 @@ interface WorkspaceContextType {
   addWorkspace: (name: string, description?: string) => Promise<string>;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
   removeWorkspace: (workspaceId: string) => void;
-  inviteMember: (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => void;
+  inviteMember: (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => Promise<void>;
   removeMember: (workspaceId: string, memberId: string) => void;
   updateMemberRole: (workspaceId: string, memberId: string, role: 'admin' | 'member' | 'viewer') => void;
   refreshWorkspaces: () => Promise<void>;
@@ -222,22 +222,46 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     console.log('[Workspace] Removed workspace:', workspaceId)
   };
 
-  const inviteMember = (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
+  const inviteMember = async (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
+    if (!workspaceId) throw new Error('Workspace ID is required');
+    if (!user) throw new Error('User not authenticated');
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { error } = await supabase
+      .from('workspace_invitations')
+      .insert([
+        {
+          workspace_id: workspaceId,
+          email,
+          role,
+          invited_by: user.id,
+          expires_at: expiresAt,
+          status: 'pending',
+        },
+      ]);
+
+    if (error) {
+      console.error('[Workspace] Error inviting member:', error);
+      throw error;
+    }
+
+    // Optimistically reflect pending invite in UI
     const newMember: WorkspaceMember = {
-      id: `member-${Date.now()}`,
-      userId: `user-${Date.now()}`,
+      id: `invite-${Date.now()}`,
+      userId: '',
       email,
       name: email.split('@')[0],
       role,
       joinedAt: new Date().toISOString(),
-      status: 'pending'
+      status: 'pending',
     };
 
     updateWorkspace(workspaceId, {
-      members: [...(workspaces.find(ws => ws.id === workspaceId)?.members || []), newMember]
+      members: [...(workspaces.find(ws => ws.id === workspaceId)?.members || []), newMember],
     });
 
-    console.log('[Workspace] Invited member:', email, 'to workspace:', workspaceId)
+    console.log('[Workspace] Invited member (pending):', email, 'to workspace:', workspaceId);
   };
 
   const removeMember = (workspaceId: string, memberId: string) => {
