@@ -107,45 +107,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('[Auth] Profile data:', profileData);
 
-      // Fetch user roles - should now work without RLS recursion
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role, enterprise_id')
-        .eq('user_id', user.id);
+      // Prefer server-side context function to avoid RLS and compute highest role
+      const { data: permCtx, error: permErr } = await supabase.rpc('get_user_permissions_context', {
+        _user_id: user.id
+      });
 
-      if (rolesError) {
-        console.error('[Auth] Error fetching roles:', rolesError);
+      if (permErr) {
+        console.error('[Auth] Error fetching permissions context:', permErr);
       }
 
-      console.log('[Auth] Roles data:', rolesData);
+      const ctxRow = Array.isArray(permCtx) ? permCtx[0] : permCtx;
+      const serverIsOwner: boolean = !!ctxRow?.is_system_owner;
+      const serverRole: AppRole | null = (ctxRow?.system_role as AppRole) ?? null;
 
-      // Check enterprise ownership via enterprises table as source of truth
+      console.log('[Auth] Permissions context:', ctxRow);
+
+      // Fallback: also check enterprise ownership directly
+      let isOwnerViaEnterprise = false;
       const { data: ownedEnterprises, error: entError } = await supabase
         .from('enterprises')
         .select('id')
         .eq('owner_id', user.id)
         .limit(1);
-
       if (entError) {
         console.error('[Auth] Error checking enterprise ownership:', entError);
       }
+      isOwnerViaEnterprise = (ownedEnterprises || []).length > 0;
 
-      const isOwnerOfAnyEnterprise = (ownedEnterprises || []).length > 0;
-
-      // Compute highest role
-      const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
-      let effectiveRole: AppRole | null = null;
-      let max = 0;
-      (rolesData || []).forEach((r: any) => {
-        const score = hierarchy[r.role as AppRole];
-        if (score > max) {
-          max = score;
-          effectiveRole = r.role as AppRole;
-        }
-      });
-
-      // If user owns an enterprise, they are effectively an owner
-      const enterpriseOwner = isOwnerOfAnyEnterprise || (rolesData || []).some((r: any) => r.role === 'owner');
+      // Determine final effective values
+      let effectiveRole: AppRole | null = serverRole;
+      const enterpriseOwner = serverIsOwner || isOwnerViaEnterprise || serverRole === 'owner';
       if (enterpriseOwner) {
         effectiveRole = 'owner';
       }
