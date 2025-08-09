@@ -14,35 +14,48 @@ export class EnhancedLocalService {
 
   async processQuery(userInput: string, workspaceId: string): Promise<EnhancedLocalResult> {
     const startTime = Date.now();
-    
+
+    // New local NLP-first path (non-AI). Falls back to legacy strategy on failure.
+    try {
+      const { LocalNLPProcessor } = await import('./local/LocalNLPProcessor');
+      const { QueryBuilder } = await import('./local/QueryBuilder');
+      const { ResponseGenerator } = await import('./local/ResponseGenerator');
+
+      const nlp = new LocalNLPProcessor();
+      const qb = new QueryBuilder();
+      const rg = new ResponseGenerator();
+
+      const processed = nlp.process(userInput);
+      const { data, planUsed } = await qb.execute(processed, workspaceId);
+      const response = rg.build(processed.intent.intent, data);
+
+      return {
+        success: true,
+        response,
+        dataCount: data.length,
+        processingTime: Date.now() - startTime,
+        searchType: `local-${planUsed}`,
+      };
+    } catch (e) {
+      console.warn('[Local NLP] Falling back to legacy strategy:', e);
+    }
+
+    // Legacy path preserved as fallback
     try {
       console.log('Processing enhanced local query:', userInput);
-      
-      // Extract meaningful keywords
       const keywords = this.extractKeywords(userInput);
-      console.log('Extracted keywords:', keywords);
-      
-      // Determine query type and search strategy
       const searchStrategy = this.determineSearchStrategy(userInput, keywords);
-      console.log('Search strategy:', searchStrategy);
-      
-      // Execute smart search
       const data = await this.executeSmartSearch(searchStrategy, workspaceId, keywords, userInput);
-      console.log('Search results:', data);
-      
-      // Generate human-like response
       const response = this.generateHumanResponse(searchStrategy, data, userInput, keywords);
-      
-      // Generate insights
       const insights = this.generateInsights(data, searchStrategy);
-      
+
       return {
         success: true,
         response,
         dataCount: data.length,
         processingTime: Date.now() - startTime,
         searchType: searchStrategy.type,
-        insights
+        insights,
       };
     } catch (error) {
       console.error('Enhanced local search error:', error);
@@ -51,7 +64,7 @@ export class EnhancedLocalService {
         response: this.generateErrorResponse(userInput),
         dataCount: 0,
         processingTime: Date.now() - startTime,
-        searchType: 'error'
+        searchType: 'error',
       };
     }
   }
