@@ -19,10 +19,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
+import SystemOwnerDashboard from '@/components/dashboard/SystemOwnerDashboard';
+import { toast } from '@/components/ui/use-toast';
 
 const Workspaces: React.FC = () => {
   const { workspaces, currentWorkspace, setCurrentWorkspace, removeMember, updateMemberRole } = useWorkspace();
-  const { isSystemOwner, role } = useAuth();
+  const { isSystemOwner, role, refreshProfile } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -71,10 +73,15 @@ const Workspaces: React.FC = () => {
               }
             </p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
-            <Plus size={16} />
-            Create Workspace
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={async () => { await refreshProfile(); toast({ title: 'Access updated', description: 'Your roles and permissions were refreshed.' }); }}>
+              Refresh access
+            </Button>
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+              <Plus size={16} />
+              Create Workspace
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
@@ -104,6 +111,12 @@ const Workspaces: React.FC = () => {
                 </CardContent>
               </Card>
             )}
+
+            {(isSystemOwner || role === 'owner' || role === 'admin') && (
+              <div>
+                <SystemOwnerDashboard />
+              </div>
+            )}
             
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {(isSystemOwner || role === 'owner' || role === 'admin') && (
@@ -123,6 +136,7 @@ const Workspaces: React.FC = () => {
               )}
               {workspaces.map((workspace) => (
                 <Card 
+                  key={workspace.id}
                   className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
                     currentWorkspace?.id === workspace.id ? 'ring-2 ring-primary' : ''
                   }`}
