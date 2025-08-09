@@ -24,7 +24,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Workspaces: React.FC = () => {
   const { workspaces, currentWorkspace, setCurrentWorkspace, removeMember, updateMemberRole } = useWorkspace();
-  const { isSystemOwner, role, refreshProfile } = useAuth();
+  const { isSystemOwner, refreshProfile } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -118,7 +118,7 @@ const Workspaces: React.FC = () => {
 
             
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {(isSystemOwner || role === 'owner' || role === 'admin') && (
+              {isSystemOwner && (
                 <Card 
                   key="all-workspaces" 
                   className="cursor-pointer transition-all duration-200 hover:shadow-md"

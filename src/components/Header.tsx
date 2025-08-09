@@ -14,9 +14,9 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 const Header = () => {
   const location = useLocation();
-  const { user, isSystemOwner, role } = useAuth();
+  const { user, isSystemOwner } = useAuth();
   const { currentWorkspace } = useWorkspace();
-  const isSystemMode = (isSystemOwner || role === 'owner' || role === 'admin') && !currentWorkspace;
+  const isSystemMode = isSystemOwner && !currentWorkspace;
   const [activePage, setActivePage] = useState('features');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   

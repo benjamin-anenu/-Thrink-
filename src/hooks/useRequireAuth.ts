@@ -18,7 +18,7 @@ export function useRequireAuth(options: UseRequireAuthOptions = {}) {
     resource 
   } = options
   
-  const { user, loading, hasRole, hasPermission } = useAuth()
+  const { user, loading, hasSystemRole, hasAdminPermission } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -31,22 +31,22 @@ export function useRequireAuth(options: UseRequireAuthOptions = {}) {
     }
 
     // Check role requirement
-    if (requiredRole && !hasRole(requiredRole)) {
+    if (requiredRole && !hasSystemRole(requiredRole)) {
       navigate('/unauthorized')
       return
     }
 
     // Check permission requirement
-    if (requiredPermission && !hasPermission(requiredPermission, resource)) {
+    if (requiredPermission && !hasAdminPermission(requiredPermission, resource)) {
       navigate('/unauthorized')
       return
     }
-  }, [user, loading, requiredRole, requiredPermission, resource, hasRole, hasPermission, navigate, redirectTo])
+  }, [user, loading, requiredRole, requiredPermission, resource, hasSystemRole, hasAdminPermission, navigate, redirectTo])
 
   return {
     isAuthenticated: !!user,
-    isAuthorized: (!requiredRole || hasRole(requiredRole)) && 
-                  (!requiredPermission || hasPermission(requiredPermission, resource)),
+    isAuthorized: (!requiredRole || hasSystemRole(requiredRole)) && 
+                  (!requiredPermission || hasAdminPermission(requiredPermission, resource)),
     loading
   }
 }

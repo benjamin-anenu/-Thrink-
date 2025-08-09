@@ -10,14 +10,13 @@ import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner, role, loading } = useAuth();
+  const { user, isFirstUser, isSystemOwner, loading } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
 
   // Debug logging for auth state
   console.log('[Dashboard] Auth state:', {
     user: user?.email,
-    role,
     isSystemOwner,
     loading,
     isFirstUser,
@@ -36,7 +35,7 @@ const Dashboard: React.FC = () => {
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <div className="space-y-8">
                 {/* Show workspace selection prompt if no current workspace and not system owner */}
-                {isFullyLoaded && !currentWorkspace && !(isSystemOwner || role === 'owner' || role === 'admin') && (
+                {isFullyLoaded && !currentWorkspace && !isSystemOwner && (
                   <div className="text-center py-12">
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold text-foreground">No Workspace Selected</h2>
@@ -47,8 +46,8 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Show System Owner Dashboard when no workspace is selected for system owners/admins */}
-                {isFullyLoaded && !currentWorkspace && (isSystemOwner || role === 'owner' || role === 'admin') && (
+                {/* Show System Owner Dashboard when no workspace is selected for system owners */}
+                {isFullyLoaded && !currentWorkspace && isSystemOwner && (
                   <SystemOwnerDashboard />
                 )}
                 

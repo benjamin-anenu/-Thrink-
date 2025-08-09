@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 const WorkspaceSelector: React.FC = () => {
   const { currentWorkspace, workspaces, setCurrentWorkspace } = useWorkspace();
-  const { isSystemOwner, role } = useAuth();
+  const { isSystemOwner } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -35,7 +35,7 @@ const WorkspaceSelector: React.FC = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {(isSystemOwner || role === 'owner' || role === 'admin') && (
+        {isSystemOwner && (
           <>
             <DropdownMenuItem
               onSelect={() => {

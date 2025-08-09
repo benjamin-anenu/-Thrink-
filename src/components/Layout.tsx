@@ -10,7 +10,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, isSystemOwner, role, loading } = useAuth();
+  const { user, isSystemOwner, loading } = useAuth();
   const { currentWorkspace, setCurrentWorkspace } = useWorkspace();
 
   // Remove automatic workspace clearing to allow system owners to access workspaces

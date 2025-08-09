@@ -1,19 +1,18 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
-import { Profile, AppRole, AuthContextType } from '@/types/auth';
+import { User, Session } from '@supabase/supabase-js';
+import { Profile, AppRole, WorkspaceRole, AuthContextType, UserPermissionsContext } from '@/types/auth';
 import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
   const [isSystemOwner, setIsSystemOwner] = useState(false);
   const [isFirstUser, setIsFirstUser] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [permissionsContext, setPermissionsContext] = useState<UserPermissionsContext | null>(null);
 
   const checkFirstUser = async (): Promise<boolean> => {
     if (!user) return false;
@@ -43,6 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
+      console.log('[AuthContext] Refreshing profile for user:', user.id);
+      
       // 1) Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -51,136 +52,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        console.error('[AuthContext] Error fetching profile:', profileError);
       }
 
-      // 2) First try RPC functions with proper error handling
-      let effectiveRole: AppRole | null = null;
-      let systemOwner = false;
+      // 2) Get user permissions context using the new function
+      const { data: contextData, error: contextError } = await supabase
+        .rpc('get_user_permissions_context', { _user_id: user.id });
 
-      try {
-        const { data: roleData, error: roleError } = await supabase.rpc('get_user_role', { 
-          _user_id: user.id 
-        });
-        
-        console.log('[Auth] Role RPC result:', { roleData, roleError });
-        
-        if (!roleError && roleData) {
-          effectiveRole = roleData as AppRole;
-        }
-      } catch (error) {
-        console.log('[Auth] Role RPC failed:', error);
-      }
+      console.log('[AuthContext] Permissions context result:', { contextData, contextError });
 
-      try {
-        const { data: ownerData, error: ownerError } = await supabase.rpc('is_system_owner', { 
-          user_id_param: user.id 
-        });
-        
-        console.log('[Auth] System owner RPC result:', { ownerData, ownerError });
-        
-        if (!ownerError && typeof ownerData === 'boolean') {
-          systemOwner = ownerData;
-        }
-      } catch (error) {
-        console.log('[Auth] System owner RPC failed:', error);
-      }
+      if (!contextError && contextData && contextData.length > 0) {
+        const data = contextData[0]; // RPC returns array, take first result
+        const context: UserPermissionsContext = {
+          is_system_owner: data.is_system_owner || false,
+          system_role: (data.system_role && ['owner', 'admin', 'member', 'viewer'].includes(data.system_role)) 
+            ? data.system_role as AppRole 
+            : null,
+          admin_permissions: Array.isArray(data.admin_permissions) 
+            ? data.admin_permissions.map((p: any) => ({
+                id: p.id || '',
+                user_id: p.user_id || '',
+                permission_type: p.permission_type || '',
+                permission_scope: p.permission_scope,
+                granted_by: p.granted_by,
+                is_active: p.is_active || true,
+                created_at: p.created_at || '',
+                updated_at: p.updated_at || ''
+              }))
+            : [],
+          workspace_memberships: Array.isArray(data.workspace_memberships) 
+            ? data.workspace_memberships.map((m: any) => ({
+                workspace_id: m.workspace_id || '',
+                role: m.role || 'viewer',
+                status: m.status || 'active'
+              }))
+            : []
+        };
 
-      // 3) Fallback to direct table query if RPCs failed
-      if (!effectiveRole || !systemOwner) {
-        console.log('[Auth] Using fallback table query for missing data:', { 
-          needsRole: !effectiveRole, 
-          needsOwner: !systemOwner 
-        });
-
+        setPermissionsContext(context);
+        setIsSystemOwner(context.is_system_owner);
+        
+        console.log('[AuthContext] Updated permissions context:', context);
+      } else {
+        console.error('[AuthContext] Failed to get permissions context:', contextError);
+        // Fallback: try to get basic system owner status
         try {
-          const { data: rolesData, error: rolesError } = await supabase
-            .from('user_roles')
-            .select('role, is_system_owner')
-            .eq('user_id', user.id);
-
-          console.log('[Auth] Fallback query result:', { rolesData, rolesError });
-
-          if (!rolesError && rolesData && rolesData.length > 0) {
-            const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
-            let max = 0;
-            let fallbackRole: AppRole | null = null;
-            let fallbackSystemOwner = false;
-
-            rolesData.forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
-              const score = hierarchy[r.role];
-              if (score > max) {
-                max = score;
-                fallbackRole = r.role;
-              }
-              if (r.is_system_owner) {
-                fallbackSystemOwner = true;
-              }
+          const { data: ownerData } = await supabase.rpc('is_system_owner', { 
+            user_id_param: user.id 
+          });
+          
+          if (typeof ownerData === 'boolean') {
+            setIsSystemOwner(ownerData);
+            setPermissionsContext({
+              is_system_owner: ownerData,
+              system_role: ownerData ? 'owner' : null,
+              admin_permissions: [],
+              workspace_memberships: []
             });
-
-            // Use fallback data if we don't have RPC data
-            if (!effectiveRole && fallbackRole) {
-              effectiveRole = fallbackRole;
-            }
-            if (!systemOwner && fallbackSystemOwner) {
-              systemOwner = fallbackSystemOwner;
-            }
-
-            console.log('[Auth] Fallback results applied:', { effectiveRole, systemOwner });
           }
         } catch (fallbackError) {
-          console.error('[Auth] Fallback query failed:', fallbackError);
+          console.error('[AuthContext] Fallback also failed:', fallbackError);
         }
       }
 
       setProfile(profileData ?? null);
-      setRole(effectiveRole);
-      setIsSystemOwner(systemOwner);
-      console.log('[Auth] Final auth state set:', { 
-        effectiveRole, 
-        systemOwner, 
-        userId: user.id,
-        email: user.email 
-      });
-
-      // 4) Always try to retry if we still don't have role data
-      if (!effectiveRole) {
-        setTimeout(async () => {
-          try {
-            console.log('[Auth] Retrying role detection...');
-            const [{ data: roleRetry }, { data: ownerRetry }] = await Promise.all([
-              supabase.rpc('get_user_role', { _user_id: user.id }),
-              supabase.rpc('is_system_owner', { user_id_param: user.id })
-            ]);
-            
-            console.log('[Auth] Retry results:', { roleRetry, ownerRetry });
-            
-            if (roleRetry) {
-              setRole(roleRetry as AppRole);
-              console.log('[Auth] Role updated from retry:', roleRetry);
-            }
-            if (typeof ownerRetry === 'boolean') {
-              setIsSystemOwner(ownerRetry);
-              console.log('[Auth] System owner updated from retry:', ownerRetry);
-            }
-          } catch (e) {
-            console.error('[Auth] Role retry failed:', e);
-          }
-        }, 1000);
-      }
+      
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      console.error('[AuthContext] Error refreshing profile:', error);
     }
   };
 
   useEffect(() => {
-    // Keep auth loading true until we hydrate profile/roles
+    console.log('[AuthContext] Initializing auth state');
     setLoading(true);
 
     // 1) Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthContext] Auth state changed:', event, !!session?.user);
+      
       // Only synchronous updates inside the callback
-      setSession(session as any);
+      setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
@@ -191,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const first = await checkFirstUser();
             setIsFirstUser(first);
           } catch (e) {
-            console.error('Auth onAuthStateChange hydration error:', e);
+            console.error('[AuthContext] Auth state change hydration error:', e);
           } finally {
             setLoading(false);
           }
@@ -199,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         // Logged out state
         setProfile(null);
-        setRole(null);
+        setPermissionsContext(null);
         setIsSystemOwner(false);
         setIsFirstUser(false);
         setLoading(false);
@@ -208,7 +159,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2) Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session as any);
+      console.log('[AuthContext] Initial session check:', !!session?.user);
+      setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
@@ -218,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const first = await checkFirstUser();
             setIsFirstUser(first);
           } catch (e) {
-            console.error('Auth initial session hydration error:', e);
+            console.error('[AuthContext] Initial session hydration error:', e);
           } finally {
             setLoading(false);
           }
@@ -264,7 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!error) {
         setUser(null);
         setProfile(null);
-        setRole(null);
+        setPermissionsContext(null);
         setIsSystemOwner(false);
       }
       return { error };
@@ -282,6 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: fullName || email.split('@')[0],
           },
@@ -307,7 +260,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
       return { error };
     } catch (e: any) {
       return { error: { message: e.message } };
@@ -333,26 +288,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const hasRole = (requiredRole: AppRole): boolean => {
-    if (!role) return false;
-    const roleHierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 };
-    return roleHierarchy[role] >= roleHierarchy[requiredRole];
+  // Authorization methods
+  const hasSystemRole = (requiredRole: AppRole): boolean => {
+    if (!permissionsContext) return false;
+    if (permissionsContext.is_system_owner) return true;
+    if (!permissionsContext.system_role) return false;
+    
+    const roleHierarchy = { owner: 4, admin: 3, member: 2, viewer: 1 };
+    const userLevel = roleHierarchy[permissionsContext.system_role];
+    const requiredLevel = roleHierarchy[requiredRole];
+    
+    return userLevel >= requiredLevel;
   };
 
-  const hasPermission = (action: string, resource?: string): boolean => {
-    if (!role) return false;
-    if (role === 'owner') return true;
+  const hasWorkspaceRole = (workspaceId: string, requiredRole: WorkspaceRole): boolean => {
+    if (!permissionsContext) return false;
+    if (permissionsContext.is_system_owner) return true;
     
-    const rolePermissions = {
-      admin: ['users:read', 'users:write', 'users:delete', 'projects:read', 'projects:write', 'projects:delete', 'settings:read', 'settings:write', 'audit:read'],
-      manager: ['users:read', 'projects:read', 'projects:write', 'settings:read'],
-      member: ['projects:read', 'projects:write'],
-      viewer: ['projects:read'],
-    };
+    const membership = permissionsContext.workspace_memberships.find(
+      m => m.workspace_id === workspaceId && m.status === 'active'
+    );
+    
+    if (!membership) return false;
+    
+    const roleHierarchy = { owner: 4, admin: 3, member: 2, viewer: 1 };
+    const userLevel = roleHierarchy[membership.role];
+    const requiredLevel = roleHierarchy[requiredRole];
+    
+    return userLevel >= requiredLevel;
+  };
 
-    const permissions = rolePermissions[role] || [];
-    const fullAction = resource ? `${resource}:${action}` : action;
-    return permissions.includes(fullAction);
+  const hasAdminPermission = (permissionType: string, scope?: string): boolean => {
+    if (!permissionsContext) return false;
+    if (permissionsContext.is_system_owner) return true;
+    
+    return permissionsContext.admin_permissions.some(
+      p => p.permission_type === permissionType && 
+           (scope === undefined || p.permission_scope === scope) &&
+           p.is_active
+    );
   };
 
   return (
@@ -360,19 +334,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       session,
       profile,
-      role,
       isSystemOwner,
       isFirstUser,
       loading,
+      permissionsContext,
       signIn,
       signUp,
       signOut,
       resetPassword,
       updateProfile,
-      hasRole,
-      hasPermission,
       refreshProfile,
-      refreshAuth
+      refreshAuth,
+      hasSystemRole,
+      hasWorkspaceRole,
+      hasAdminPermission
     }}>
       {children}
     </AuthContext.Provider>

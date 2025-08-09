@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Profile, AppRole } from '@/types/auth'
 
 export function useProfile() {
-  const { user, profile, role, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile, permissionsContext } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -63,7 +63,7 @@ export function useProfile() {
 
   return {
     profile,
-    role,
+    role: permissionsContext?.system_role || null,
     loading,
     error,
     refreshProfile

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_permissions: {
+        Row: {
+          created_at: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          permission_scope: string | null
+          permission_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission_scope?: string | null
+          permission_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission_scope?: string | null
+          permission_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_assignment_recommendations: {
         Row: {
           alternative_assignments: Json | null
@@ -3838,7 +3871,6 @@ export type Database = {
           is_system_owner: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
-          workspace_id: string | null
         }
         Insert: {
           created_at?: string
@@ -3847,7 +3879,6 @@ export type Database = {
           is_system_owner?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
-          workspace_id?: string | null
         }
         Update: {
           created_at?: string
@@ -3856,7 +3887,6 @@ export type Database = {
           is_system_owner?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-          workspace_id?: string | null
         }
         Relationships: []
       }
@@ -4198,12 +4228,29 @@ export type Database = {
           path: string[]
         }[]
       }
+      get_user_permissions_context: {
+        Args: { _user_id: string }
+        Returns: {
+          is_system_owner: boolean
+          system_role: Database["public"]["Enums"]["app_role"]
+          admin_permissions: Json
+          workspace_memberships: Json
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       hard_delete_project: {
         Args: { p_project_id: string; p_workspace_id: string }
+        Returns: boolean
+      }
+      has_admin_permission: {
+        Args: {
+          _user_id: string
+          _permission_type: string
+          _permission_scope?: string
+        }
         Returns: boolean
       }
       has_role: {
@@ -4253,7 +4300,15 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "admin" | "manager" | "member" | "viewer"
+      app_role:
+        | "owner"
+        | "admin"
+        | "manager"
+        | "member"
+        | "viewer"
+        | "workspace_admin"
+        | "workspace_member"
+        | "workspace_viewer"
       invitation_status: "pending" | "accepted" | "revoked" | "expired"
       invite_status: "pending" | "accepted" | "revoked" | "expired"
     }
@@ -4383,7 +4438,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "manager", "member", "viewer"],
+      app_role: [
+        "owner",
+        "admin",
+        "manager",
+        "member",
+        "viewer",
+        "workspace_admin",
+        "workspace_member",
+        "workspace_viewer",
+      ],
       invitation_status: ["pending", "accepted", "revoked", "expired"],
       invite_status: ["pending", "accepted", "revoked", "expired"],
     },
