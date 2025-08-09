@@ -2,8 +2,8 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import ComingSoon from '@/components/common/ComingSoon';
+import { TrendingUp } from 'lucide-react';
 
 const SystemPerformance: React.FC = () => {
   const { isFullyLoaded } = useAppInitialization();
@@ -14,15 +14,17 @@ const SystemPerformance: React.FC = () => {
         <Layout>
           <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance (Coming Soon)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Cross-workspace performance insights are coming.</p>
-                  <div className="mt-4"><Badge variant="secondary">Coming soon</Badge></div>
-                </CardContent>
-              </Card>
+              <ComingSoon 
+                title="Performance Insights"
+                description="Track team performance, SLA adherence, and productivity trends across all workspaces."
+                icon={<TrendingUp className="h-5 w-5" />}
+                features={[
+                  'Org-wide productivity trends',
+                  'SLA compliance and alerts',
+                  'Resource performance heatmaps',
+                  'Bottleneck detection'
+                ]}
+              />
             </div>
           </div>
         </Layout>

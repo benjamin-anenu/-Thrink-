@@ -2,8 +2,8 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import ComingSoon from '@/components/common/ComingSoon';
+import { FileText } from 'lucide-react';
 
 const SystemReports: React.FC = () => {
   const { isFullyLoaded } = useAppInitialization();
@@ -14,15 +14,17 @@ const SystemReports: React.FC = () => {
         <Layout>
           <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
             <div className="container mx-auto px-4 py-8 max-w-7xl">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Reports (Coming Soon)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Centralized reports and scheduling are coming soon.</p>
-                  <div className="mt-4"><Badge variant="secondary">Coming soon</Badge></div>
-                </CardContent>
-              </Card>
+              <ComingSoon 
+                title="Reports"
+                description="Centralized reporting and scheduling to keep leadership informed across all initiatives."
+                icon={<FileText className="h-5 w-5" />}
+                features={[
+                  'Executive summaries and scorecards',
+                  'Automated scheduling and delivery',
+                  'Export to PDF/CSV',
+                  'Customizable templates'
+                ]}
+              />
             </div>
           </div>
         </Layout>
