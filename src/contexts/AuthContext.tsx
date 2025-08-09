@@ -156,6 +156,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        // Prime role/system owner from cache immediately to respect enterprise owner precedence
+        loadCachedRole(session.user.id);
         setTimeout(async () => {
           try {
             await refreshProfile();
@@ -195,6 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        // Prime role/system owner from cache immediately to respect enterprise owner precedence
+        loadCachedRole(session.user.id);
         setTimeout(async () => {
           try {
             await refreshProfile();
