@@ -100,7 +100,18 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             )}
             <CardTitle className="text-lg font-semibold">{name || 'Unknown'}</CardTitle>
           </div>
-          <StatusBadge status={getStatusValue(status)} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={getStatusValue(status)} />
+            {(utilization || 0) >= 100 && (
+              <Badge 
+                variant="destructive" 
+                className="cursor-pointer"
+                onClick={() => onViewDetails(resource)}
+              >
+                Overloaded
+              </Badge>
+            )}
+          </div>
         </div>
         <CardDescription>{role} • {department}</CardDescription>
       </CardHeader>
@@ -142,8 +153,8 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
         <div>
           <p className="text-sm font-medium mb-2">Availability</p>
           <div className="flex items-center space-x-2">
-            <Progress value={availabilityPercent} />
-            <p className="text-sm text-muted-foreground">{availability}</p>
+            <Progress value={Math.max(0, 100 - (utilization || 0))} />
+            <p className="text-sm text-muted-foreground">{Math.max(0, 100 - (utilization || 0))}%</p>
           </div>
         </div>
 

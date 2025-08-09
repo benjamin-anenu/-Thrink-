@@ -35,47 +35,47 @@ const EnhancedResourceStats = () => {
     : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Resources</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+      <Card className="h-24 md:h-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 p-3 md:p-6">
+          <CardTitle className="text-xs md:text-sm font-medium">Total Resources</CardTitle>
+          <Users className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground flex-shrink-0" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{totalResources}</div>
-          <p className="text-xs text-muted-foreground">
-            {activeResources} active resources
+        <CardContent className="p-3 md:p-6 pt-0">
+          <div className="text-lg md:text-2xl font-bold">{totalResources}</div>
+          <p className="text-xs text-muted-foreground truncate">
+            {activeResources} active
           </p>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Avg Utilization</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+      <Card className="h-24 md:h-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 p-3 md:p-6">
+          <CardTitle className="text-xs md:text-sm font-medium">Avg Utilization</CardTitle>
+          <TrendingUp className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground flex-shrink-0" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{avgUtilization}%</div>
-          {avgUtilization > 0 && <Progress value={avgUtilization} className="mt-2" />}
+        <CardContent className="p-3 md:p-6 pt-0">
+          <div className="text-lg md:text-2xl font-bold">{avgUtilization}%</div>
+          {avgUtilization > 0 && <Progress value={avgUtilization} className="mt-1 md:mt-2 h-1 md:h-2" />}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Resource Health</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+      <Card className="h-24 md:h-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 p-3 md:p-6">
+          <CardTitle className="text-xs md:text-sm font-medium">Resource Health</CardTitle>
+          <AlertTriangle className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground flex-shrink-0" />
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
+        <CardContent className="p-3 md:p-6 pt-0">
+          <div className="space-y-1 md:space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm">Overloaded</span>
-              <Badge variant={overloadedResources > 0 ? "destructive" : "secondary"}>
+              <span className="text-xs md:text-sm truncate">Overloaded</span>
+              <Badge variant={overloadedResources > 0 ? "destructive" : "secondary"} className="text-xs">
                 {overloadedResources}
               </Badge>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm">Underutilized</span>
-              <Badge variant={underutilizedResources > 0 ? "outline" : "secondary"}>
+              <span className="text-xs md:text-sm truncate">Under-used</span>
+              <Badge variant={underutilizedResources > 0 ? "outline" : "secondary"} className="text-xs">
                 {underutilizedResources}
               </Badge>
             </div>
@@ -83,20 +83,20 @@ const EnhancedResourceStats = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">AI Insights</CardTitle>
-          <Brain className="h-4 w-4 text-muted-foreground" />
+      <Card className="h-24 md:h-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 p-3 md:p-6">
+          <CardTitle className="text-xs md:text-sm font-medium">AI Insights</CardTitle>
+          <Brain className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground flex-shrink-0" />
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
+        <CardContent className="p-3 md:p-6 pt-0">
+          <div className="space-y-1 md:space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm">Recommendations</span>
-              <Badge variant="secondary">{aiRecommendationsCount}</Badge>
+              <span className="text-xs md:text-sm truncate">Recommend</span>
+              <Badge variant="secondary" className="text-xs">{aiRecommendationsCount}</Badge>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm">Bottleneck Risk</span>
-              <Badge variant={bottleneckRisk > 7 ? "destructive" : bottleneckRisk > 4 ? "outline" : "secondary"}>
+              <span className="text-xs md:text-sm truncate">Risk</span>
+              <Badge variant={bottleneckRisk > 7 ? "destructive" : bottleneckRisk > 4 ? "outline" : "secondary"} className="text-xs">
                 {bottleneckRisk}/10
               </Badge>
             </div>

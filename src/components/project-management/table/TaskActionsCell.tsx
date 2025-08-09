@@ -3,11 +3,14 @@ import React, { useState } from 'react';
 import { ProjectTask } from '@/types/project';
 import { TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, AlertTriangle, Bug } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 import RebaselineDialog from './RebaselineDialog';
 
 interface TaskActionsCellProps {
   task: ProjectTask;
+  projectId?: string;
   onEdit?: (task: ProjectTask) => void;
   onDelete?: (taskId: string) => void;
   onRebaseline?: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
@@ -17,10 +20,12 @@ interface TaskActionsCellProps {
   onRebaselineTask?: (taskId: string, newStartDate: string, newEndDate: string, reason: string) => void;
   densityClass?: string;
   disabled?: boolean;
+  issueCount?: number;
 }
 
 const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   task,
+  projectId,
   isDelayed = false,
   onEditTask,
   onDeleteTask,
@@ -29,8 +34,10 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
   onDelete,
   onRebaseline,
   densityClass = 'py-3 px-4',
-  disabled = false
+  disabled = false,
+  issueCount = 0
 }) => {
+  const navigate = useNavigate();
   // Use the newer prop names if available, otherwise fallback to old ones
   const handleEdit = onEdit || onEditTask;
   const handleDelete = onDelete || onDeleteTask;
@@ -46,6 +53,12 @@ const TaskActionsCell: React.FC<TaskActionsCellProps> = ({
       handleRebaselineAction(taskId, newStartDate, newEndDate, reason);
     }
     setShowRebaselineDialog(false);
+  };
+
+  const handleViewTaskIssues = () => {
+    if (projectId) {
+      navigate(`/project/${projectId}?tab=issues&taskFilter=${task.id}`);
+    }
   };
 
   return (

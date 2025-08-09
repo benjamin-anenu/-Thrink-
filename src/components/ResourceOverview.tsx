@@ -65,6 +65,7 @@ const ResourceOverview = ({ resources, loading = false, onViewDetails, onShowRes
         resources={filteredResources}
         onViewDetails={onViewDetails}
         onShowResourceForm={onShowResourceForm}
+        loading={loading}
       />
     </div>
   );

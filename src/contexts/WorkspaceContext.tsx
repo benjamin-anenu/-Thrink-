@@ -8,11 +8,11 @@ interface WorkspaceContextType {
   workspaces: Workspace[];
   loading: boolean;
   error: string | null;
-  setCurrentWorkspace: (workspace: Workspace) => void;
+  setCurrentWorkspace: (workspace: Workspace | null) => void;
   addWorkspace: (name: string, description?: string) => Promise<string>;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
   removeWorkspace: (workspaceId: string) => void;
-  inviteMember: (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => void;
+  inviteMember: (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => Promise<void>;
   removeMember: (workspaceId: string, memberId: string) => void;
   updateMemberRole: (workspaceId: string, memberId: string, role: 'admin' | 'member' | 'viewer') => void;
   refreshWorkspaces: () => Promise<void>;
@@ -21,7 +21,7 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading, isSystemOwner } = useAuth()
+  const { user, loading: authLoading, isSystemOwner, role } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +32,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const defaultSettings: WorkspaceSettings = {
       allowGuestAccess: false,
       defaultProjectVisibility: 'private' as const,
+      currency: 'USD',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       notificationSettings: {
         emailNotifications: true,
         projectUpdates: true,
@@ -47,6 +49,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return {
       allowGuestAccess: Boolean(settings.allowGuestAccess),
       defaultProjectVisibility: settings.defaultProjectVisibility || 'private',
+      currency: settings.currency || defaultSettings.currency,
+      timeZone: settings.timeZone || defaultSettings.timeZone,
       notificationSettings: {
         emailNotifications: Boolean(settings.notificationSettings?.emailNotifications ?? true),
         projectUpdates: Boolean(settings.notificationSettings?.projectUpdates ?? true),
@@ -136,10 +140,16 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces')
       setWorkspaces(transformedWorkspaces);
       
-      // Set current workspace if none selected
-      if (transformedWorkspaces.length > 0 && !currentWorkspace) {
+      // Set current workspace automatically only for non-admin/non-owner non-system-owner users
+      if (
+        transformedWorkspaces.length > 0 &&
+        !currentWorkspace &&
+        !isSystemOwner &&
+        !(role === 'owner' || role === 'admin') &&
+        role !== null
+      ) {
         setCurrentWorkspace(transformedWorkspaces[0]);
-        console.log('[Workspace] Set current workspace:', transformedWorkspaces[0].name)
+        console.log('[Workspace] Auto-selected workspace for regular user:', transformedWorkspaces[0].name)
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
@@ -159,6 +169,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     console.log('[Workspace] Auth ready, fetching workspaces...')
     fetchWorkspaces();
   }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
+
+  // Ensure system owners/admins/owners default to no workspace selected
+  useEffect(() => {
+    if ((isSystemOwner || role === 'owner' || role === 'admin') && currentWorkspace) {
+      console.log('[Workspace] Admin/Owner/System owner detected, clearing current workspace selection')
+      setCurrentWorkspace(null)
+    }
+  }, [isSystemOwner, role])
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     try {
@@ -205,22 +223,46 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     console.log('[Workspace] Removed workspace:', workspaceId)
   };
 
-  const inviteMember = (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
+  const inviteMember = async (workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
+    if (!workspaceId) throw new Error('Workspace ID is required');
+
+    // Call edge function to create invite, create temp user, and send email
+    const { data, error } = await supabase.functions.invoke('send-workspace-invite', {
+      body: {
+        workspaceId,
+        emails: [email],
+        role,
+      },
+    });
+
+    if (error) {
+      console.error('[Workspace] Error sending invite via edge function:', error);
+      throw new Error(error.message || 'Failed to send invitation');
+    }
+
+    // Check result payload for per-email failures
+    const sent = (data as any)?.results?.[0]?.sent ?? true;
+    if (!sent) {
+      const errMsg = (data as any)?.results?.[0]?.error || 'Failed to send invitation';
+      throw new Error(errMsg);
+    }
+
+    // Optimistically reflect pending invite in UI
     const newMember: WorkspaceMember = {
-      id: `member-${Date.now()}`,
-      userId: `user-${Date.now()}`,
+      id: `invite-${Date.now()}`,
+      userId: '',
       email,
       name: email.split('@')[0],
       role,
       joinedAt: new Date().toISOString(),
-      status: 'pending'
+      status: 'pending',
     };
 
     updateWorkspace(workspaceId, {
-      members: [...(workspaces.find(ws => ws.id === workspaceId)?.members || []), newMember]
+      members: [...(workspaces.find(ws => ws.id === workspaceId)?.members || []), newMember],
     });
 
-    console.log('[Workspace] Invited member:', email, 'to workspace:', workspaceId)
+    console.log('[Workspace] Invited member (pending):', email, 'to workspace:', workspaceId, 'edge data:', data);
   };
 
   const removeMember = (workspaceId: string, memberId: string) => {

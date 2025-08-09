@@ -4,12 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, PieChart, TrendingUp, Clock } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar } from 'recharts';
 import { ChartData } from '@/hooks/useReportsData';
+import { useCurrency } from '@/hooks/useCurrency';
+
 
 interface ProjectReportsChartsProps {
   chartData: ChartData;
 }
 
 const ProjectReportsCharts: React.FC<ProjectReportsChartsProps> = ({ chartData }) => {
+  const { format } = useCurrency();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
@@ -138,14 +141,14 @@ const ProjectReportsCharts: React.FC<ProjectReportsChartsProps> = ({ chartData }
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
                   <YAxis dataKey="category" type="category" stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip 
-                    formatter={(value) => [`$${value.toLocaleString()}`, '']}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
+<Tooltip 
+  formatter={(value) => [format(Number(value)), '']}
+  contentStyle={{ 
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px'
+  }}
+/>
                   <Legend />
                   <Bar 
                     dataKey="budgeted" 

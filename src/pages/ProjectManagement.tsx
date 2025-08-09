@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar, Layers, AlertTriangle, History } from 'lucide-react';
+import { CalendarDays, Users, FileText, Settings, BarChart3, Kanban, Calendar, Layers, AlertTriangle, History, Download, Upload } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Layout from '@/components/Layout';
 import ProjectOverview from '@/components/project-management/ProjectOverview';
 import TaskStatistics from '@/components/project-management/TaskStatistics';
@@ -23,12 +24,18 @@ import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useProject } from '@/contexts/ProjectContext';
 import ProjectCalendarModal from '@/components/project-management/ProjectCalendarModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
+import ProjectManagementMobile from '@/components/project-management/ProjectManagementMobile';
 import { useTasks } from '@/hooks/useTasks';
 import { useResources } from '@/hooks/useResources';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { ProjectTask } from '@/types/project';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
+import BulkImportModal from '@/components/BulkImportModal';
+import { toast } from 'sonner';
+import { generateTaskImportTemplate } from '@/utils/generateTaskTemplate';
+import { BulkTaskImportService, ParsedRow } from '@/services/BulkTaskImportService';
 
 const ProjectManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +43,7 @@ const ProjectManagement: React.FC = () => {
   const { isFullyLoaded } = useAppInitialization();
   const [viewMode, setViewMode] = useState<'gantt' | 'kanban'>('gantt');
   const [issueTaskFilter, setIssueTaskFilter] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState('overview');
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -45,6 +53,7 @@ const ProjectManagement: React.FC = () => {
   const { tasks } = useTasks(id || '');
   const { resources } = useResources();
   const { updateTask } = useTaskManagement(id || '');
+  const { isMobile } = useMobileComplexity();
 
   return (
     <AppInitializationLoader>
@@ -55,6 +64,8 @@ const ProjectManagement: React.FC = () => {
         isFullyLoaded={isFullyLoaded}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         issueTaskFilter={issueTaskFilter}
         setIssueTaskFilter={setIssueTaskFilter}
         isCalendarModalOpen={isCalendarModalOpen}
@@ -68,6 +79,7 @@ const ProjectManagement: React.FC = () => {
         tasks={tasks}
         resources={resources}
         updateTask={updateTask}
+        isMobile={isMobile}
       />
     </AppInitializationLoader>
   );
@@ -80,6 +92,8 @@ const ProjectManagementContent: React.FC<{
   isFullyLoaded: boolean;
   viewMode: 'gantt' | 'kanban';
   setViewMode: (mode: 'gantt' | 'kanban') => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
   issueTaskFilter: string | undefined;
   setIssueTaskFilter: (filter: string | undefined) => void;
   isCalendarModalOpen: boolean;
@@ -93,11 +107,12 @@ const ProjectManagementContent: React.FC<{
   tasks: any[];
   resources: any[];
   updateTask: any;
+  isMobile: boolean;
 }> = ({ 
   id, projects, loading, isFullyLoaded, viewMode, setViewMode, 
-  issueTaskFilter, setIssueTaskFilter, isCalendarModalOpen, setIsCalendarModalOpen,
+  activeTab, setActiveTab, issueTaskFilter, setIssueTaskFilter, isCalendarModalOpen, setIsCalendarModalOpen,
   selectedTask, setSelectedTask, isTaskModalOpen, setIsTaskModalOpen,
-  events, createEvent, tasks, resources, updateTask 
+  events, createEvent, tasks, resources, updateTask, isMobile 
 }) => {
   
   const project = projects.find(p => p.id === id);
@@ -145,12 +160,10 @@ const ProjectManagementContent: React.FC<{
   }
 
   const handleSwitchToIssueLog = (taskId?: string) => {
+    console.log('handleSwitchToIssueLog called with taskId:', taskId);
     setIssueTaskFilter(taskId);
-    // We'll need to programmatically switch to the issues tab
-    const tabsTrigger = document.querySelector('[data-value="issues"]') as HTMLElement;
-    if (tabsTrigger) {
-      tabsTrigger.click();
-    }
+    setActiveTab('issues');
+    console.log('Switched to issues tab');
   };
 
   const handleClearTaskFilter = () => {
@@ -191,124 +204,158 @@ const ProjectManagementContent: React.FC<{
     }
   };
 
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const handleBulkImport = async (data: ParsedRow[]) => {
+    try {
+      const res = await BulkTaskImportService.importTasks(project.id, data);
+      toast.success(`Imported ${res.inserted} tasks, updated ${res.updated}.`);
+    } catch (err: any) {
+      console.error('[Bulk Import] Failed', err);
+      toast.error(err?.message || 'Import failed');
+    }
+  };
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Project Header */}
-        <div className="border-b pb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold">{project.name}</h1>
-              <p className="text-muted-foreground mt-1">{project.description}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
-                {project.status}
-              </Badge>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsCalendarModalOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Calendar View
-              </Button>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </div>
-          </div>
-
-          {/* Project Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Start Date</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(() => {
-                        const displayDate = project.computed_start_date || project.startDate;
-                        console.log(`[ProjectManagement] Start Date Card - using ${project.computed_start_date ? 'computed' : 'manual'} date:`, {
-                          computed_start_date: project.computed_start_date,
-                          manual_startDate: project.startDate,
-                          displaying: displayDate
-                        });
-                        return formatDate(displayDate);
-                      })()}
-                    </p>
-                  </div>
+        <div className="border-b pb-4 md:pb-6">
+          {isMobile ? (
+            <ProjectManagementMobile
+              project={project}
+              teamSize={teamSize}
+              totalTasks={totalTasks}
+              formatDate={formatDate}
+              onCalendarClick={() => setIsCalendarModalOpen(true)}
+              onSettingsClick={() => {}}
+            />
+          ) : (
+            <>
+              {/* Desktop header layout */}
+              <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-4">
+                <div className="flex-1">
+                  <h1 className="text-2xl md:text-3xl font-bold">{project.name}</h1>
+                  <p className="text-muted-foreground mt-1 text-sm md:text-base">{project.description}</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">End Date</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(() => {
-                        const displayDate = project.computed_end_date || project.endDate;
-                        console.log(`[ProjectManagement] End Date Card - using ${project.computed_end_date ? 'computed' : 'manual'} date:`, {
-                          computed_end_date: project.computed_end_date,
-                          manual_endDate: project.endDate,
-                          displaying: displayDate
-                        });
-                        return formatDate(displayDate);
-                      })()}
-                    </p>
-                  </div>
+                
+                {/* Desktop badge and actions */}
+                <div className="flex items-center gap-2">
+                  <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>
+                    {project.status}
+                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsCalendarModalOpen(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Calendar View
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Team Size</p>
-                    <p className="text-xs text-muted-foreground">{teamSize} members</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Project Quick Stats - Desktop grid */}
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">Start Date</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {(() => {
+                            const displayDate = project.computed_start_date || project.startDate;
+                            return formatDate(displayDate);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Tasks</p>
-                    <p className="text-xs text-muted-foreground">{totalTasks} tasks</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">End Date</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {(() => {
+                            const displayDate = project.computed_end_date || project.endDate;
+                            return formatDate(displayDate);
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">Team Size</p>
+                        <p className="text-xs text-muted-foreground truncate">{teamSize} members</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6 p-6">
+                    <div className="flex items-center">
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="ml-2 min-w-0">
+                        <p className="text-sm font-medium truncate">Tasks</p>
+                        <p className="text-xs text-muted-foreground truncate">{totalTasks} tasks</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Task Statistics */}
         <TaskStatistics />
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-9">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="phases">Phases</TabsTrigger>
-            <TabsTrigger value="plan">Project Plan</TabsTrigger>
-            <TabsTrigger value="resources">Resources</TabsTrigger>
-            <TabsTrigger value="issues" data-value="issues">Issues</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="rebaseline">Rebaseline History</TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          {/* Mobile-optimized horizontally scrollable tabs */}
+          <div className="relative">
+            <TabsList className="hidden md:grid w-full grid-cols-9">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="phases">Phases</TabsTrigger>
+              <TabsTrigger value="plan">Project Plan</TabsTrigger>
+              <TabsTrigger value="resources">Resources</TabsTrigger>
+              <TabsTrigger value="issues" data-value="issues">Issues</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="rebaseline">Rebaseline History</TabsTrigger>
+            </TabsList>
+            
+            {/* Mobile scrollable tabs */}
+            <div className="md:hidden overflow-x-auto">
+              <TabsList className="flex w-max min-w-full no-scrollbar p-1">
+                <TabsTrigger value="overview" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Overview</TabsTrigger>
+                <TabsTrigger value="phases" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Phases</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Plan</TabsTrigger>
+                <TabsTrigger value="resources" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Resources</TabsTrigger>
+                <TabsTrigger value="issues" data-value="issues" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Issues</TabsTrigger>
+                <TabsTrigger value="timeline" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Timeline</TabsTrigger>
+                <TabsTrigger value="reports" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Reports</TabsTrigger>
+                <TabsTrigger value="documents" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">Docs</TabsTrigger>
+                <TabsTrigger value="rebaseline" className="flex-shrink-0 h-11 px-3 text-xs whitespace-nowrap">History</TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="space-y-4">
             <ProjectOverview project={project} />
@@ -319,13 +366,34 @@ const ProjectManagementContent: React.FC<{
           </TabsContent>
 
           <TabsContent value="plan" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Project Plan</h2>
+            <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+              {/* Left: Import actions (replace Project Plan heading) */}
               <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm" className="h-11 md:h-9">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import & Templates
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => setIsBulkImportOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" /> Upload Tasks
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => generateTaskImportTemplate()}>
+                      <Download className="h-4 w-4 mr-2" /> Download Template
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              
+              {/* Right: View toggles */}
+              <div className="flex flex-col gap-2 md:flex-row md:gap-2">
                 <Button
                   variant={viewMode === 'gantt' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('gantt')}
+                  className="w-full md:w-auto h-11 md:h-9"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Table View
@@ -334,6 +402,7 @@ const ProjectManagementContent: React.FC<{
                   variant={viewMode === 'kanban' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('kanban')}
+                  className="w-full md:w-auto h-11 md:h-9"
                 >
                   <Kanban className="h-4 w-4 mr-2" />
                   Kanban Board
@@ -414,6 +483,13 @@ const ProjectManagementContent: React.FC<{
             setSelectedTask(null);
           }}
           onUpdate={updateTask}
+        />
+
+        {/* Bulk Import Modal */}
+        <BulkImportModal
+          isOpen={isBulkImportOpen}
+          onClose={() => setIsBulkImportOpen(false)}
+          onImport={handleBulkImport}
         />
       </div>
     </Layout>

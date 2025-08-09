@@ -9,6 +9,7 @@ export const useEnhancedResourcesWithUtilization = () => {
   const [baseResources, setBaseResources] = useState<any[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const { currentWorkspace } = useWorkspace();
 
   const loadBaseResources = async () => {
@@ -30,9 +31,11 @@ export const useEnhancedResourcesWithUtilization = () => {
       if (error) throw error;
       
       setBaseResources(data || []);
+      setInitialLoadComplete(true);
     } catch (error) {
       console.error('Error loading resources:', error);
       toast.error('Failed to load resources');
+      setInitialLoadComplete(true);
     } finally {
       setLoading(false);
     }
@@ -44,7 +47,8 @@ export const useEnhancedResourcesWithUtilization = () => {
 
   // Update resources when utilization metrics change or base resources change
   useEffect(() => {
-    if (baseResources.length > 0) {
+    // Only update resources when both base resources and utilization are ready
+    if (baseResources.length > 0 && !utilizationLoading && initialLoadComplete) {
       const mappedData = baseResources.map(item => {
         const utilizationData = utilizationMetrics[item.id] || {
           utilization_percentage: 0,
@@ -59,7 +63,7 @@ export const useEnhancedResourcesWithUtilization = () => {
           skills: [] as string[],
           availability: item.availability ? `${item.availability}%` : '100%',
           cost: 0,
-          utilization: utilizationData.utilization_percentage, // Use calculated utilization
+          utilization: utilizationData.utilization_percentage,
           workspace_id: item.workspace_id || '',
           name: item.name || '',
           email: item.email || '',
@@ -78,8 +82,11 @@ export const useEnhancedResourcesWithUtilization = () => {
       });
       
       setResources(mappedData);
+    } else if (baseResources.length === 0 && initialLoadComplete && !utilizationLoading) {
+      // Handle empty state after load is complete
+      setResources([]);
     }
-  }, [baseResources, utilizationMetrics]);
+  }, [baseResources, utilizationMetrics, utilizationLoading, initialLoadComplete]);
 
   const deleteResource = async (resourceId: string) => {
     if (!currentWorkspace) return false;
@@ -104,14 +111,18 @@ export const useEnhancedResourcesWithUtilization = () => {
   };
 
   const refreshResources = async () => {
-    await loadBaseResources();
-    await refreshUtilizationData();
+    if (initialLoadComplete) {
+      await loadBaseResources();
+      await refreshUtilizationData();
+    }
   };
 
   useEffect(() => {
+    if (!currentWorkspace) return;
+    
     loadBaseResources();
     
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions - but don't reload if already loaded
     const resourceSubscription = supabase
       .channel('resources_changes')
       .on(
@@ -122,8 +133,11 @@ export const useEnhancedResourcesWithUtilization = () => {
           table: 'resources',
           filter: `workspace_id=eq.${currentWorkspace?.id}`
         },
-        () => {
-          loadBaseResources();
+        (payload) => {
+          // Only reload if we've already completed initial load
+          if (initialLoadComplete) {
+            loadBaseResources();
+          }
         }
       )
       .subscribe();
@@ -131,11 +145,11 @@ export const useEnhancedResourcesWithUtilization = () => {
     return () => {
       supabase.removeChannel(resourceSubscription);
     };
-  }, [currentWorkspace]);
+  }, [currentWorkspace?.id]); // Only depend on workspace ID to prevent unnecessary reloads
 
   return {
     resources,
-    loading: loading || utilizationLoading,
+    loading: !initialLoadComplete || utilizationLoading || baseResources.length === 0,
     refreshResources,
     deleteResource,
     utilizationMetrics,

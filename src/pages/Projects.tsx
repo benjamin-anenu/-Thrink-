@@ -232,9 +232,12 @@ const ProjectsContent: React.FC = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Projects</h1>
-          <div className="flex items-center gap-2">
+        {/* Mobile Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Projects</h1>
+          
+          {/* Desktop Controls */}
+          <div className="hidden md:flex items-center gap-2">
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
@@ -249,6 +252,19 @@ const ProjectsContent: React.FC = () => {
               New Project
             </Button>
           </div>
+
+          {/* Mobile Filter Toggle */}
+          <div className="md:hidden w-full flex justify-between items-center">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </Button>
+            {/* Hide view toggle on mobile since we force single column */}
+          </div>
         </div>
 
         {showFilters && (
@@ -262,28 +278,51 @@ const ProjectsContent: React.FC = () => {
         )}
 
         <div className="space-y-6">
-          {(loading || !isFullyLoaded) && filteredProjects.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <div className="text-muted-foreground">Loading projects...</div>
-            </div>
-          ) : currentView === 'grid' ? (
+          {/* Mobile view - Always use grid layout */}
+          <div className="md:hidden">
             <ProjectDisplay
               projects={filteredProjects}
               onViewDetails={handleViewDetails}
               onManageProject={handleManageProject}
               onDeleteProject={handleDeleteProject}
               deletingProject={deletingProject}
+              loading={loading || !isFullyLoaded}
             />
-          ) : (
-            <ProjectListView
-              projects={filteredProjects}
-              onViewDetails={handleViewDetails}
-              onManageProject={handleManageProject}
-              onDeleteProject={handleDeleteProject}
-              deletingProject={deletingProject}
-            />
-          )}
+          </div>
+          
+          {/* Desktop view toggle */}
+          <div className="hidden md:block">
+            {currentView === 'grid' ? (
+              <ProjectDisplay
+                projects={filteredProjects}
+                onViewDetails={handleViewDetails}
+                onManageProject={handleManageProject}
+                onDeleteProject={handleDeleteProject}
+                deletingProject={deletingProject}
+                loading={loading || !isFullyLoaded}
+              />
+            ) : (
+              <ProjectListView
+                projects={filteredProjects}
+                onViewDetails={handleViewDetails}
+                onManageProject={handleManageProject}
+                onDeleteProject={handleDeleteProject}
+                deletingProject={deletingProject}
+                loading={loading || !isFullyLoaded}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Floating Action Button for Mobile */}
+        <div className="md:hidden fixed bottom-6 right-6 z-40">
+          <Button 
+            onClick={() => setIsWizardOpen(true)} 
+            size="lg"
+            className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
         </div>
 
         {isWizardOpen && (

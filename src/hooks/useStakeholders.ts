@@ -36,23 +36,16 @@ export const useStakeholders = (workspaceId?: string) => {
         name: item.name || '',
         email: item.email || '',
         role: item.role || '',
-        influence: (item.influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-        status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: '', // Database doesn't have notes field
+        department: item.department || '',
+        phone: item.phone || '',
+        communicationPreference: (item.communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person') || 'Email',
+        projects: item.projects || [],
+        influence: (item.influence || item.influence_level) as 'low' | 'medium' | 'high' | 'critical' || 'medium',
+        interest: (item.interest as 'low' | 'medium' | 'high' | 'critical') || 'medium',
+        status: 'active' as 'active' | 'inactive' | 'pending', // Will add proper status mapping
+        notes: item.notes || '',
         created_at: item.created_at || '',
-        updated_at: item.updated_at || '',
-        // Add missing interface properties
-        projects: null,
-        department: null,
-        phone: null,
-        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
-        avatar: null,
-        escalation_level: null,
-        contact_info: {},
-        project_id: null,
-        department_id: null,
-        organization: null
+        updated_at: item.updated_at || ''
       }));
       
       setStakeholders(mappedData);
@@ -73,13 +66,18 @@ export const useStakeholders = (workspaceId?: string) => {
         return null;
       }
 
-      // Only send fields that exist in the database
+      // Map interface fields to database fields
       const dbData = {
         name: stakeholder.name,
         email: stakeholder.email,
         role: stakeholder.role,
+        department: stakeholder.department,
+        phone: stakeholder.phone,
+        communication_preference: stakeholder.communicationPreference,
+        projects: stakeholder.projects,
+        influence: stakeholder.influence,
+        interest: stakeholder.interest,
         workspace_id: targetWorkspaceId,
-        influence_level: stakeholder.influence,
         notes: stakeholder.notes || '',
       };
       
@@ -98,21 +96,14 @@ export const useStakeholders = (workspaceId?: string) => {
         name: data[0].name,
         email: data[0].email,
         role: data[0].role,
-        influence: (data[0].influence_level as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-        interest: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        department: data[0].department,
+        phone: data[0].phone,
+        communicationPreference: data[0].communication_preference as 'Email' | 'Phone' | 'Slack' | 'In-person',
+        projects: data[0].projects,
+        influence: data[0].influence as 'low' | 'medium' | 'high' | 'critical',
+        interest: data[0].interest as 'low' | 'medium' | 'high' | 'critical',
         status: 'active' as 'active' | 'inactive' | 'pending',
-        notes: '', // Database doesn't have notes field
-        // Add missing interface properties
-        projects: null,
-        department: null,
-        phone: null,
-        communicationPreference: 'Email' as 'Email' | 'Phone' | 'Slack' | 'In-person',
-        avatar: null,
-        escalation_level: null,
-        contact_info: {},
-        project_id: null,
-        department_id: null,
-        organization: null,
+        notes: data[0].notes,
         created_at: data[0].created_at,
         updated_at: data[0].updated_at,
       } : null;
@@ -127,13 +118,18 @@ export const useStakeholders = (workspaceId?: string) => {
 
   const updateStakeholder = async (id: string, updates: Partial<Stakeholder>) => {
     try {
-      // Only send fields that exist in the database
+      // Map interface fields to database fields
       const dbUpdates: any = {};
       
-      if (updates.name) dbUpdates.name = updates.name;
-      if (updates.email) dbUpdates.email = updates.email;
-      if (updates.role) dbUpdates.role = updates.role;
-      if (updates.influence) dbUpdates.influence_level = updates.influence;
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.email !== undefined) dbUpdates.email = updates.email;
+      if (updates.role !== undefined) dbUpdates.role = updates.role;
+      if (updates.department !== undefined) dbUpdates.department = updates.department;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+      if (updates.communicationPreference !== undefined) dbUpdates.communication_preference = updates.communicationPreference;
+      if (updates.projects !== undefined) dbUpdates.projects = updates.projects;
+      if (updates.influence !== undefined) dbUpdates.influence = updates.influence;
+      if (updates.interest !== undefined) dbUpdates.interest = updates.interest;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       
       const { error } = await supabase

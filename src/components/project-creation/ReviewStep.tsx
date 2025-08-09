@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Clock, Users, DollarSign, Target, Calendar, FileText } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { useCurrency } from '@/hooks/useCurrency';
+
 
 interface ReviewStepProps {
   onBack: () => void;
@@ -17,14 +19,19 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
   onSubmit,
   formData
 }) => {
+  const { code: workspaceCurrency, format } = useCurrency();
   const formatCurrency = (amount: number) => {
-    const currency = formData.currency || 'USD';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
+    const code = formData.currency || workspaceCurrency;
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(amount);
+    } catch {
+      return format(amount);
+    }
   };
 
   const formatDate = (dateString: string) => {

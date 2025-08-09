@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, BarChart3, Users } from 'lucide-react';
 import { useEnhancedResourcesWithUtilization } from '@/hooks/useEnhancedResourcesWithUtilization';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
+import { DesktopRecommendation } from '@/components/ui/desktop-recommendation';
 import { Resource } from '@/types/resource';
 import ResourceEditModal from '@/components/ResourceEditModal';
 import { AppInitializationLoader } from '@/components/AppInitializationLoader';
@@ -25,7 +27,8 @@ const Resources: React.FC = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'resources'>('dashboard');
-
+  
+  const { isMobile } = useMobileComplexity();
   const { resources, loading, utilizationMetrics, refreshResources } = useEnhancedResourcesWithUtilization();
 
   const handleShowResourceForm = () => {
@@ -73,7 +76,8 @@ const Resources: React.FC = () => {
     <AppInitializationLoader>
       {isFullyLoaded && (
         <Layout>
-          <div className="p-6 space-y-6">
+          <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">Resource Management</h1>
@@ -100,33 +104,43 @@ const Resources: React.FC = () => {
               </TabsList>
 
               <TabsContent value="dashboard" className="space-y-6">
-                <ResourceDashboard />
+                {isMobile ? (
+                  <DesktopRecommendation
+                    title="Resource Dashboard - Better on Desktop"
+                    description="The resource dashboard with charts and detailed analytics is optimized for desktop viewing."
+                  />
+                ) : (
+                  <ResourceDashboard />
+                )}
               </TabsContent>
 
               <TabsContent value="resources" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <ViewToggle 
-                    view={currentView} 
-                    onViewChange={setCurrentView}
-                  />
-                </div>
+                {!isMobile && (
+                  <div className="flex justify-between items-center">
+                    <ViewToggle 
+                      view={currentView} 
+                      onViewChange={setCurrentView}
+                    />
+                  </div>
+                )}
 
                 <ResourceQuickInsights />
 
-                {currentView === 'grid' ? (
+                {isMobile || currentView === 'list' ? (
+                  <ResourceListView 
+                    resources={transformedResources}
+                    onViewDetails={handleViewDetails}
+                    onEditResource={handleEditResource}
+                    onShowResourceForm={handleShowResourceForm}
+                  />
+                ) : (
                   <EnhancedResourceGrid 
                     resources={transformedResources}
                     utilizationMetrics={utilizationMetrics}
                     onViewDetails={handleViewDetails}
                     onEditResource={handleEditResource}
                     onShowResourceForm={handleShowResourceForm}
-                  />
-                ) : (
-                  <ResourceListView 
-                    resources={transformedResources}
-                    onViewDetails={handleViewDetails}
-                    onEditResource={handleEditResource}
-                    onShowResourceForm={handleShowResourceForm}
+                    loading={loading || !isFullyLoaded}
                   />
                 )}
               </TabsContent>
@@ -154,6 +168,7 @@ const Resources: React.FC = () => {
                 onResourceUpdated={handleResourceUpdated}
               />
             )}
+            </div>
           </div>
         </Layout>
       )}

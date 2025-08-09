@@ -17,7 +17,7 @@ const ProjectReportsKPIs: React.FC<ProjectReportsKPIsProps> = ({ reportData }) =
           <div className="flex items-center gap-3">
             <BarChart3 className="h-8 w-8 text-blue-500" />
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground">Overall Progress</p>
+              <p className="text-sm text-muted-foreground">Task Progress</p>
               <p className="font-semibold">{reportData.overallProgress}%</p>
               <Progress value={reportData.overallProgress} className="mt-1 h-1" />
             </div>

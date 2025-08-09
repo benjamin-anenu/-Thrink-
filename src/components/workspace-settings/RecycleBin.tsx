@@ -93,49 +93,21 @@ const RecycleBin = () => {
 
     setPermanentDeleting(item.id);
     try {
-      // Delete all related records in the correct order using comprehensive cascade delete
-      const deleteOperations = [
-        // Delete project-specific data
-        supabase.from('project_ai_data').delete().eq('project_id', item.id),
-        supabase.from('project_budgets').delete().eq('project_id', item.id),
-        supabase.from('project_documents').delete().eq('project_id', item.id),
-        supabase.from('project_files').delete().eq('project_id', item.id),
-        supabase.from('project_initiation_documents').delete().eq('project_id', item.id),
-        supabase.from('project_kickoff_data').delete().eq('project_id', item.id),
-        supabase.from('project_requirements').delete().eq('project_id', item.id),
-        supabase.from('project_team_members').delete().eq('project_id', item.id),
-        supabase.from('project_escalation_matrix').delete().eq('project_id', item.id),
-        supabase.from('critical_path_analysis').delete().eq('project_id', item.id),
-        supabase.from('project_issues').delete().eq('project_id', item.id),
-        supabase.from('document_folders').delete().eq('project_id', item.id),
-        supabase.from('calendar_events').delete().eq('project_id', item.id),
-        
-        // Delete tasks and milestones
-        supabase.from('project_tasks').delete().eq('project_id', item.id),
-        supabase.from('milestones').delete().eq('project_id', item.id),
-      ];
-
-      // Execute all delete operations
-      const results = await Promise.allSettled(deleteOperations);
-      
-      // Check for any failures (but don't stop the process)
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.warn(`Failed to delete related data (operation ${index}):`, result.reason);
-        }
+      const { data: success, error } = await supabase.rpc('hard_delete_project', {
+        p_project_id: item.id,
+        p_workspace_id: currentWorkspace.id,
       });
 
-      // Finally delete the project itself
-      const { error: projectError } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', item.id);
+      if (error) throw error;
 
-      if (projectError) throw projectError;
-
-      toast.success(`${item.name} has been permanently deleted`);
-      // Remove item from local state immediately
-      setDeletedItems(prev => prev.filter(i => i.id !== item.id));
+      if (success) {
+        toast.success(`${item.name} has been permanently deleted`);
+        // Remove item from local state immediately
+        setDeletedItems(prev => prev.filter(i => i.id !== item.id));
+      } else {
+        console.warn('Project still exists after delete attempt:', item.id);
+        toast.error('Delete may not have completed due to permissions. Please try again or contact support.');
+      }
     } catch (error) {
       console.error('Error permanently deleting item:', error);
       toast.error('Failed to permanently delete item. Please try again.');

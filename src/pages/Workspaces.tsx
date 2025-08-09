@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, Settings, Plus, Mail, MoreHorizontal, Crown, Shield, Eye, UserPlus } from 'lucide-react';
+import { Building2, Users, Settings, Plus, Mail, MoreHorizontal, Crown, Shield, Eye, UserPlus, LayoutDashboard } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
@@ -18,14 +18,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useNavigate } from 'react-router-dom';
+
+
 
 const Workspaces: React.FC = () => {
   const { workspaces, currentWorkspace, setCurrentWorkspace, removeMember, updateMemberRole } = useWorkspace();
-  const { isSystemOwner } = useAuth();
+  const { isSystemOwner, role, refreshProfile } = useAuth();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState(currentWorkspace);
+  const navigate = useNavigate();
+
+  // Auto-refresh roles/access when system owner logs in
+  useEffect(() => {
+    if (isSystemOwner) {
+      refreshProfile();
+    }
+  }, [isSystemOwner, refreshProfile]);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -69,10 +80,12 @@ const Workspaces: React.FC = () => {
               }
             </p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
-            <Plus size={16} />
-            Create Workspace
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+              <Plus size={16} />
+              Create Workspace
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
@@ -94,17 +107,39 @@ const Workspaces: React.FC = () => {
                     You have access to all {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''} in the system
                   </CardDescription>
                 </CardHeader>
+                <CardContent>
+                  <Button onClick={() => navigate('/dashboard')} className="gap-2">
+                    <LayoutDashboard size={16} />
+                    Open Dashboard
+                  </Button>
+                </CardContent>
               </Card>
             )}
+
             
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {(isSystemOwner || role === 'owner' || role === 'admin') && (
+                <Card 
+                  key="all-workspaces" 
+                  className="cursor-pointer transition-all duration-200 hover:shadow-md"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard size={20} className="text-primary" />
+                      <CardTitle className="text-lg">All Workspaces</CardTitle>
+                    </div>
+                    <CardDescription>View system-level dashboard</CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
               {workspaces.map((workspace) => (
                 <Card 
-                  key={workspace.id} 
+                  key={workspace.id}
                   className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
                     currentWorkspace?.id === workspace.id ? 'ring-2 ring-primary' : ''
                   }`}
-                  onClick={() => setCurrentWorkspace(workspace)}
+                  onClick={() => { setCurrentWorkspace(workspace); navigate('/dashboard'); }}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">

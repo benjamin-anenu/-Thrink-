@@ -51,13 +51,32 @@ export const useIssueManagement = (projectId: string) => {
       if (error) throw error;
       
       const mappedIssues: ProjectIssue[] = (data || []).map(issue => {
-        const scheduleVariance = issue.resolved_at && issue.due_date
-          ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24))
-          : undefined;
+        const currentDate = new Date();
+        const resolvedDate = issue.resolved_at ? new Date(issue.resolved_at) : null;
+        const dueDate = issue.due_date ? new Date(issue.due_date) : null;
+        const identifiedDate = new Date(issue.date_identified);
 
-        const timeToResolve = issue.resolved_at && issue.date_identified
-          ? Math.ceil((new Date(issue.resolved_at).getTime() - new Date(issue.date_identified).getTime()) / (1000 * 60 * 60 * 24))
-          : undefined;
+        // Calculate schedule variance
+        let scheduleVariance: number | undefined;
+        if (dueDate) {
+          if (resolvedDate) {
+            // For resolved issues: days difference between resolved date and due date
+            scheduleVariance = Math.ceil((resolvedDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+          } else {
+            // For open issues: days difference between current date and due date (negative = overdue)
+            scheduleVariance = Math.ceil((currentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+          }
+        }
+
+        // Calculate time to resolve
+        let timeToResolve: number | undefined;
+        if (resolvedDate) {
+          // For resolved issues: days from identification to resolution
+          timeToResolve = Math.ceil((resolvedDate.getTime() - identifiedDate.getTime()) / (1000 * 60 * 60 * 24));
+        } else {
+          // For open issues: days from identification to current date
+          timeToResolve = Math.ceil((currentDate.getTime() - identifiedDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
 
         return {
           ...issue,
@@ -211,14 +230,23 @@ export const useIssueManagement = (projectId: string) => {
   // Update issue
   const updateIssue = async (issueId: string, updates: Partial<ProjectIssue>) => {
     try {
+      // Filter out computed fields that don't exist in the database
+      const filteredUpdates = { ...updates };
+      delete filteredUpdates.milestone_name;
+      delete filteredUpdates.task_name;
+      delete filteredUpdates.schedule_variance_days;
+      delete filteredUpdates.time_to_resolve_days;
+      delete (filteredUpdates as any).milestones;
+      delete (filteredUpdates as any).project_tasks;
+      
       // Set resolved_at when status changes to Resolved or Closed
-      if (updates.status && ['Resolved', 'Closed'].includes(updates.status)) {
-        updates.resolved_at = new Date().toISOString();
+      if (filteredUpdates.status && ['Resolved', 'Closed'].includes(filteredUpdates.status)) {
+        filteredUpdates.resolved_at = new Date().toISOString();
       }
       
       const { data, error } = await supabase
         .from('project_issues')
-        .update(updates)
+        .update(filteredUpdates)
         .eq('id', issueId)
         .select()
         .single();

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Edit, Trash2, Users, Calendar } from 'lucide-react';
 import { ProjectData, determineProjectStatus } from '@/types/project';
+import { calculateRealTimeProjectProgress } from '@/utils/phaseCalculations';
+import { ListRowSkeleton } from '@/components/ui/list-row-skeleton';
+import { ProjectDateService } from '@/services/ProjectDateService';
+import { ProjectHealthService } from '@/services/ProjectHealthService';
 
 interface ProjectListViewProps {
   projects: ProjectData[];
@@ -14,6 +18,7 @@ interface ProjectListViewProps {
   onManageProject: (project: ProjectData) => void;
   onDeleteProject: (project: ProjectData) => void;
   deletingProject: string | null;
+  loading?: boolean;
 }
 
 const ProjectListView: React.FC<ProjectListViewProps> = ({
@@ -21,8 +26,11 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
   onViewDetails,
   onManageProject,
   onDeleteProject,
-  deletingProject
+  deletingProject,
+  loading = false
 }) => {
+  const [projectProgress, setProjectProgress] = useState<Record<string, number>>({});
+  const [projectHealth, setProjectHealth] = useState<Record<string, any>>({});
   const getStatusVariant = (status: string): 'destructive' | 'secondary' | 'outline' | 'default' => {
     switch (status) {
       case 'Completed': return 'default';
@@ -42,13 +50,47 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
     }
   };
 
+  // Load progress and health for all projects
+  useEffect(() => {
+    const loadProjectData = async () => {
+      const progressData: Record<string, number> = {};
+      const healthData: Record<string, any> = {};
+      
+      for (const project of projects) {
+        try {
+          const [progress, health] = await Promise.all([
+            calculateRealTimeProjectProgress(project.id),
+            ProjectHealthService.calculateRealTimeProjectHealth(project.id)
+          ]);
+          progressData[project.id] = progress;
+          healthData[project.id] = health;
+        } catch (error) {
+          console.error(`Error calculating data for project ${project.id}:`, error);
+          progressData[project.id] = 0;
+          healthData[project.id] = { healthStatus: 'yellow', healthScore: 50 };
+        }
+      }
+      
+      setProjectProgress(progressData);
+      setProjectHealth(healthData);
+    };
+
+    if (projects.length > 0) {
+      loadProjectData();
+    }
+  }, [projects]);
+
+  if (loading) {
+    return <ListRowSkeleton count={5} showActions={true} />;
+  }
+
   const calculateProjectStats = (project: ProjectData) => {
     const tasks = project.tasks || [];
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     const totalTasks = tasks.length;
     
-    // Calculate real-time progress and status
-    const actualProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    // Use centralized progress calculation
+    const actualProgress = projectProgress[project.id] ?? 0;
     const actualStatus = totalTasks === 0 ? project.status :
                         completedTasks === totalTasks ? 'Closure' as const :
                         completedTasks > 0 ? 'Execution' as const :
@@ -135,20 +177,20 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
               <TableCell>
                 <div className="text-sm text-muted-foreground">
                   <div>
-                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'}
+                    {ProjectDateService.getProjectFullDates(project).startDateFull}
                   </div>
                   <div>
-                    {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Not set'}
+                    {ProjectDateService.getProjectFullDates(project).endDateFull}
                   </div>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    project.health?.status === 'green' ? 'bg-green-500' :
-                    project.health?.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                    ((projectHealth[project.id] ? projectHealth[project.id].healthStatus : project.health?.status) === 'green') ? 'bg-green-500' :
+                    ((projectHealth[project.id] ? projectHealth[project.id].healthStatus : project.health?.status) === 'yellow') ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
-                  <span className="text-sm">{project.health?.score || 100}%</span>
+                  <span className="text-sm">{projectHealth[project.id] ? projectHealth[project.id].healthScore : (project.health?.score ?? 50)}%</span>
                 </div>
               </TableCell>
               <TableCell className="text-right">

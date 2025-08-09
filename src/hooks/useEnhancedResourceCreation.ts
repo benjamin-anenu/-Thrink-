@@ -21,6 +21,7 @@ export const useEnhancedResourceCreation = () => {
           email: formData.email,
           role: formData.role,
           department: formData.department,
+          hourly_rate: formData.hourlyRate ?? null,
           workspace_id: workspaceId,
         })
         .select()

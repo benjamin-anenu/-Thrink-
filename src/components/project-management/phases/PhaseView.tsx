@@ -3,6 +3,7 @@ import { usePhaseManagement } from '@/hooks/usePhaseManagement';
 import { ProjectPhase } from '@/types/project';
 import { PhaseCard } from './PhaseCard';
 import { PhaseCreateModal } from './PhaseCreateModal';
+import { MilestoneQuickCreateModal } from './MilestoneQuickCreateModal';
 import { MilestoneAssignmentModal } from './MilestoneAssignmentModal';
 import { Button } from '@/components/ui/button';
 import { Plus, Layers } from 'lucide-react';
@@ -27,6 +28,7 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isMilestoneCreateModalOpen, setIsMilestoneCreateModalOpen] = useState(false);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
 
   const handleToggleExpand = (phaseId: string) => {
@@ -57,8 +59,8 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
   };
 
   const handleAddMilestone = (phaseId: string) => {
-    // TODO: Open milestone creation modal
-    console.log('Add milestone to phase:', phaseId);
+    setSelectedPhaseId(phaseId);
+    setIsMilestoneCreateModalOpen(true);
   };
 
   const handleAssignMilestones = (phaseId: string) => {
@@ -68,6 +70,12 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
 
   const handleMilestonesAssigned = () => {
     refreshPhases();
+  };
+
+  const handleMilestoneCreated = () => {
+    refreshPhases();
+    setIsMilestoneCreateModalOpen(false);
+    setSelectedPhaseId(null);
   };
 
   if (loading) {
@@ -97,6 +105,13 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
           <Plus className="h-4 w-4 mr-2" />
           Create First Phase
         </Button>
+
+        <PhaseCreateModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreatePhase={handleCreatePhase}
+          projectId={projectId}
+        />
       </div>
     );
   }
@@ -139,17 +154,30 @@ export const PhaseView: React.FC<PhaseViewProps> = ({ projectId }) => {
       />
 
       {selectedPhaseId && (
-        <MilestoneAssignmentModal
-          isOpen={isAssignModalOpen}
-          onClose={() => {
-            setIsAssignModalOpen(false);
-            setSelectedPhaseId(null);
-          }}
-          phaseId={selectedPhaseId}
-          projectId={projectId}
-          onMilestonesAssigned={handleMilestonesAssigned}
-        />
+        <>
+          <MilestoneAssignmentModal
+            isOpen={isAssignModalOpen}
+            onClose={() => {
+              setIsAssignModalOpen(false);
+            }}
+            phaseId={selectedPhaseId}
+            projectId={projectId}
+            onMilestonesAssigned={handleMilestonesAssigned}
+          />
+
+          <MilestoneQuickCreateModal
+            isOpen={isMilestoneCreateModalOpen}
+            onClose={() => {
+              setIsMilestoneCreateModalOpen(false);
+              setSelectedPhaseId(null);
+            }}
+            projectId={projectId}
+            phaseId={selectedPhaseId}
+            onMilestoneCreated={handleMilestoneCreated}
+          />
+        </>
       )}
+
     </div>
   );
 };

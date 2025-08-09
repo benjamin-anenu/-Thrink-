@@ -14,6 +14,7 @@ import InlineMultiSelectEdit from './InlineMultiSelectEdit';
 import InlineDateEdit from './InlineDateEdit';
 import InlineDependencyEdit from './InlineDependencyEdit';
 import { DependencyCalculationService } from '@/services/DependencyCalculationService';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface TaskTableRowProps {
   task: ProjectTask;
@@ -29,6 +30,9 @@ interface TaskTableRowProps {
   issueCount?: number;
   onIssueWarningClick?: (taskId: string) => void;
   projectId?: string;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (taskId: string, selected: boolean) => void;
 }
 
 const TaskTableRow: React.FC<TaskTableRowProps> = ({
@@ -44,7 +48,10 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
   densityClass,
   issueCount = 0,
   onIssueWarningClick,
-  projectId
+  projectId,
+  selectable,
+  selected,
+  onToggleSelect
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [cascadeUpdates, setCascadeUpdates] = useState<Array<{
@@ -340,6 +347,22 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
           </div>
         )}
 
+        {/* Select */}
+        <TableCell className={densityClass}>
+          {typeof selected !== 'undefined' ? (
+            <Checkbox
+              checked={!!selected}
+              onCheckedChange={(checked) => {
+                // Radix can pass boolean or 'indeterminate'
+                const isChecked = typeof checked === 'boolean' ? checked : !!checked;
+                onToggleSelect?.(task.id, isChecked);
+              }}
+              disabled={isUpdating}
+              aria-label="Select task"
+            />
+          ) : null}
+        </TableCell>
+
         {/* Task Name */}
         <TableCell className={cn("font-medium", densityClass)}>
           <InlineTextEdit
@@ -494,16 +517,37 @@ const TaskTableRow: React.FC<TaskTableRowProps> = ({
 
         {/* Issues */}
         <TableCell className={densityClass}>
-          {issueCount > 0 && (
+          {issueCount > 0 ? (
             <Button
+              type="button"
               variant="ghost"
               size="sm"
-              onClick={() => onIssueWarningClick?.(task.id)}
-              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Issue icon clicked for task:', task.id, 'with issue count:', issueCount);
+                if (onIssueWarningClick) {
+                  onIssueWarningClick(task.id);
+                } else {
+                  console.error('onIssueWarningClick not provided');
+                }
+              }}
+              className="h-8 w-8 p-0 text-warning hover:text-warning/80 hover:bg-warning/10 relative cursor-pointer"
+              title={`View ${issueCount} issue${issueCount > 1 ? 's' : ''} for this task`}
             >
               <AlertTriangle className="h-4 w-4" />
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-4 w-4 p-0 text-[10px] font-bold flex items-center justify-center pointer-events-none"
+              >
+                {issueCount}
+              </Badge>
               <span className="sr-only">{issueCount} issue{issueCount > 1 ? 's' : ''}</span>
             </Button>
+          ) : (
+            <div className="h-8 w-8 flex items-center justify-center">
+              <span className="text-muted-foreground text-xs">-</span>
+            </div>
           )}
         </TableCell>
 

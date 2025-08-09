@@ -711,6 +711,7 @@ export type Database = {
           created_at: string
           id: string
           level_id: string
+          project_id: string | null
           stakeholder_id: string
           trigger_id: string
           updated_at: string
@@ -720,6 +721,7 @@ export type Database = {
           created_at?: string
           id?: string
           level_id: string
+          project_id?: string | null
           stakeholder_id: string
           trigger_id: string
           updated_at?: string
@@ -729,6 +731,7 @@ export type Database = {
           created_at?: string
           id?: string
           level_id?: string
+          project_id?: string | null
           stakeholder_id?: string
           trigger_id?: string
           updated_at?: string
@@ -740,6 +743,13 @@ export type Database = {
             columns: ["level_id"]
             isOneToOne: false
             referencedRelation: "escalation_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -838,6 +848,7 @@ export type Database = {
           id: string
           level_order: number
           name: string
+          project_id: string | null
           updated_at: string
           workspace_id: string
         }
@@ -846,6 +857,7 @@ export type Database = {
           id?: string
           level_order: number
           name: string
+          project_id?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -854,10 +866,19 @@ export type Database = {
           id?: string
           level_order?: number
           name?: string
+          project_id?: string | null
           updated_at?: string
           workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "escalation_levels_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       escalation_triggers: {
         Row: {
@@ -868,6 +889,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          project_id: string | null
           threshold_unit: string | null
           threshold_value: number | null
           updated_at: string
@@ -881,6 +903,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          project_id?: string | null
           threshold_unit?: string | null
           threshold_value?: number | null
           updated_at?: string
@@ -894,12 +917,20 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          project_id?: string | null
           threshold_unit?: string | null
           threshold_value?: number | null
           updated_at?: string
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "escalation_triggers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "escalation_triggers_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -3890,6 +3921,7 @@ export type Database = {
           accepted_at: string | null
           created_at: string
           email: string
+          email_sent_at: string | null
           expires_at: string
           id: string
           invitation_token: string
@@ -3897,12 +3929,14 @@ export type Database = {
           metadata: Json | null
           role: string
           status: string | null
+          updated_at: string
           workspace_id: string
         }
         Insert: {
           accepted_at?: string | null
           created_at?: string
           email: string
+          email_sent_at?: string | null
           expires_at?: string
           id?: string
           invitation_token?: string
@@ -3910,12 +3944,14 @@ export type Database = {
           metadata?: Json | null
           role?: string
           status?: string | null
+          updated_at?: string
           workspace_id: string
         }
         Update: {
           accepted_at?: string | null
           created_at?: string
           email?: string
+          email_sent_at?: string | null
           expires_at?: string
           id?: string
           invitation_token?: string
@@ -3923,6 +3959,7 @@ export type Database = {
           metadata?: Json | null
           role?: string
           status?: string | null
+          updated_at?: string
           workspace_id?: string
         }
         Relationships: [
@@ -4165,6 +4202,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      hard_delete_project: {
+        Args: { p_project_id: string; p_workspace_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args:
           | { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }
@@ -4201,9 +4242,20 @@ export type Database = {
         Args: { project_id_param: string }
         Returns: undefined
       }
+      update_workspace_settings: {
+        Args: {
+          p_workspace_id: string
+          p_name: string
+          p_description: string
+          p_settings: Json
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "manager" | "member" | "viewer"
+      invitation_status: "pending" | "accepted" | "revoked" | "expired"
+      invite_status: "pending" | "accepted" | "revoked" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4332,6 +4384,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "admin", "manager", "member", "viewer"],
+      invitation_status: ["pending", "accepted", "revoked", "expired"],
+      invite_status: ["pending", "accepted", "revoked", "expired"],
     },
   },
 } as const

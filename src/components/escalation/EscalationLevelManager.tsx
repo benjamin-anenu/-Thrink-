@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,28 +12,33 @@ import { useEscalationAssignments } from '@/hooks/useEscalationAssignments';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface EscalationLevelManagerProps {
+  projectId?: string;
   onLevelChange?: () => void;
 }
 
-const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ onLevelChange }) => {
+const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ projectId, onLevelChange }) => {
   const [showLevelDialog, setShowLevelDialog] = useState(false);
   const [editingLevel, setEditingLevel] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
-    level_order: 1
+    level_order: 1,
+    isProjectSpecific: false
   });
 
   const { currentWorkspace } = useWorkspace();
-  const { levels, createLevel, updateLevel, deleteLevel } = useEscalationLevels();
-  const { getAssignmentsByLevel } = useEscalationAssignments();
+  const { levels, createLevel, updateLevel, deleteLevel } = useEscalationLevels(projectId);
+  const { getAssignmentsByLevel } = useEscalationAssignments(projectId);
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) return;
     
     if (editingLevel) {
-      await updateLevel(editingLevel.id, formData);
+      await updateLevel(editingLevel.id, {
+        name: formData.name,
+        level_order: formData.level_order
+      });
     } else {
-      await createLevel(formData.name, formData.level_order);
+      await createLevel(formData.name, formData.level_order, formData.isProjectSpecific);
     }
     
     setShowLevelDialog(false);
@@ -41,7 +47,7 @@ const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ onLevel
   };
 
   const resetForm = () => {
-    setFormData({ name: '', level_order: 1 });
+    setFormData({ name: '', level_order: 1, isProjectSpecific: false });
     setEditingLevel(null);
   };
 
@@ -50,13 +56,15 @@ const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ onLevel
       setEditingLevel(level);
       setFormData({
         name: level.name,
-        level_order: level.level_order
+        level_order: level.level_order,
+        isProjectSpecific: !!level.project_id
       });
     } else {
       setEditingLevel(null);
       setFormData({
         name: '',
-        level_order: Math.max(...levels.map(l => l.level_order), 0) + 1
+        level_order: Math.max(...levels.map(l => l.level_order), 0) + 1,
+        isProjectSpecific: false
       });
     }
     setShowLevelDialog(true);
@@ -105,6 +113,7 @@ const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ onLevel
       <div className="space-y-3">
         {levels.sort((a, b) => a.level_order - b.level_order).map((level) => {
           const assignments = getAssignmentsByLevel(level.id);
+          const isProjectSpecific = !!level.project_id;
           
           return (
             <Card key={level.id} className="border-l-4 border-l-primary">
@@ -115,7 +124,18 @@ const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ onLevel
                       {level.level_order}
                     </div>
                     <div>
-                      <div className="font-medium">{level.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium">{level.name}</div>
+                        {isProjectSpecific ? (
+                          <Badge className="bg-blue-100 text-blue-700 text-xs">
+                            Project-specific
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            Workspace
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         {assignments.length} assignments
                       </div>
@@ -186,6 +206,30 @@ const EscalationLevelManager: React.FC<EscalationLevelManagerProps> = ({ onLevel
                 min={1}
               />
             </div>
+            
+            {projectId && !editingLevel && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Configuration Type</Label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isProjectSpecific"
+                    checked={formData.isProjectSpecific}
+                    onChange={(e) => setFormData({ ...formData, isProjectSpecific: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isProjectSpecific" className="text-sm">
+                    Project-specific (only applies to this project)
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {formData.isProjectSpecific 
+                    ? "This level will only be available for the current project"
+                    : "This level will be available across the workspace"
+                  }
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 mt-6">
             <Button variant="outline" onClick={() => setShowLevelDialog(false)}>

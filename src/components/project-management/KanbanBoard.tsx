@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, User, AlertTriangle, CheckCircle, Circle, Clock } from 'lucide-react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
 import { ProjectTask } from '@/types/project';
 import { formatDate } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +22,7 @@ interface KanbanBoardProps {
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => {
   const { tasks, loading, updateTask, refreshTasks } = useTaskManagement(projectId);
   const [draggedTask, setDraggedTask] = useState<ProjectTask | null>(null);
+  const { isMobile } = useMobileComplexity();
 
   // Set up real-time subscriptions for task updates
   useEffect(() => {
@@ -95,8 +98,84 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
     }
   }, [updateTask]);
 
+  const MobileTaskCard = ({ task }: { task: ProjectTask }) => (
+    <Card
+      className={`mb-3 cursor-pointer transition-all duration-200 hover:shadow-md bg-card border-border ${
+        isOverdue(task.endDate) ? 'border-l-4 border-l-destructive bg-destructive/5' : ''
+      }`}
+      onClick={() => onTaskClick?.(task)}
+    >
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Task Title and Priority */}
+          <div className="flex items-start justify-between">
+            <h4 className="font-medium text-sm line-clamp-2 flex-1 text-card-foreground">{task.name}</h4>
+            <Badge 
+              variant="outline" 
+              className={`ml-2 text-xs ${getPriorityColor(task.priority)}`}
+            >
+              {task.priority}
+            </Badge>
+          </div>
+
+          {/* Status Selector for Mobile */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Status</span>
+              <Select
+                value={task.status}
+                onValueChange={(value) => updateTask(task.id, { status: value as any })}
+              >
+                <SelectTrigger className="w-32 h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Not Started">To Do</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="On Hold">Blocked</SelectItem>
+                  <SelectItem value="Completed">Done</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Progress</span>
+                <span className="text-xs font-medium">{getProgressPercentage(task)}%</span>
+              </div>
+              <Progress value={getProgressPercentage(task)} className="h-2" />
+            </div>
+          </div>
+
+          {/* Due Date and Assignment */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3 text-muted-foreground" />
+              <span className={`${isOverdue(task.endDate) ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                {formatDate(task.endDate)}
+              </span>
+              {isOverdue(task.endDate) && (
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  Overdue
+                </Badge>
+              )}
+            </div>
+            
+            {task.assignedResources && task.assignedResources.length > 0 && (
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3 text-muted-foreground" />
+                <span>{task.assignedResources.length}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const TaskCard = ({ task, index }: { task: ProjectTask; index: number }) => (
-    <Draggable draggableId={task.id} index={index}>
+    <Draggable draggableId={task.id} index={index} isDragDisabled={isMobile}>
       {(provided, snapshot) => (
         <Card
           ref={provided.innerRef}
@@ -204,6 +283,32 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, onTaskClick }) => 
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-muted-foreground">Loading tasks...</div>
+      </div>
+    );
+  }
+
+  // Mobile view - single column with status dropdowns
+  if (isMobile) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold mb-1">Tasks</h2>
+          <p className="text-sm text-muted-foreground">
+            Tap a task to view details. Change status using the dropdown.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {tasks.map((task) => (
+            <MobileTaskCard key={task.id} task={task} />
+          ))}
+          
+          {tasks.length === 0 && (
+            <div className="text-center py-12 border border-dashed border-border/30 rounded-lg bg-muted/20">
+              <p className="text-muted-foreground text-sm">No tasks found</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

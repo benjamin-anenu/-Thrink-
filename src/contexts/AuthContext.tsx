@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
-      // Fetch profile
+      // 1) Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -52,73 +52,185 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
-        return;
       }
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role, is_system_owner')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // 2) First try RPC functions with proper error handling
+      let effectiveRole: AppRole | null = null;
+      let systemOwner = false;
 
-      if (roleError) {
-        console.error('Error fetching role:', roleError);
-        return;
+      try {
+        const { data: roleData, error: roleError } = await supabase.rpc('get_user_role', { 
+          _user_id: user.id 
+        });
+        
+        console.log('[Auth] Role RPC result:', { roleData, roleError });
+        
+        if (!roleError && roleData) {
+          effectiveRole = roleData as AppRole;
+        }
+      } catch (error) {
+        console.log('[Auth] Role RPC failed:', error);
       }
 
-      setProfile(profileData);
-      setRole(roleData?.role || null);
-      setIsSystemOwner(roleData?.is_system_owner || false);
+      try {
+        const { data: ownerData, error: ownerError } = await supabase.rpc('is_system_owner', { 
+          user_id_param: user.id 
+        });
+        
+        console.log('[Auth] System owner RPC result:', { ownerData, ownerError });
+        
+        if (!ownerError && typeof ownerData === 'boolean') {
+          systemOwner = ownerData;
+        }
+      } catch (error) {
+        console.log('[Auth] System owner RPC failed:', error);
+      }
+
+      // 3) Fallback to direct table query if RPCs failed
+      if (!effectiveRole || !systemOwner) {
+        console.log('[Auth] Using fallback table query for missing data:', { 
+          needsRole: !effectiveRole, 
+          needsOwner: !systemOwner 
+        });
+
+        try {
+          const { data: rolesData, error: rolesError } = await supabase
+            .from('user_roles')
+            .select('role, is_system_owner')
+            .eq('user_id', user.id);
+
+          console.log('[Auth] Fallback query result:', { rolesData, rolesError });
+
+          if (!rolesError && rolesData && rolesData.length > 0) {
+            const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
+            let max = 0;
+            let fallbackRole: AppRole | null = null;
+            let fallbackSystemOwner = false;
+
+            rolesData.forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
+              const score = hierarchy[r.role];
+              if (score > max) {
+                max = score;
+                fallbackRole = r.role;
+              }
+              if (r.is_system_owner) {
+                fallbackSystemOwner = true;
+              }
+            });
+
+            // Use fallback data if we don't have RPC data
+            if (!effectiveRole && fallbackRole) {
+              effectiveRole = fallbackRole;
+            }
+            if (!systemOwner && fallbackSystemOwner) {
+              systemOwner = fallbackSystemOwner;
+            }
+
+            console.log('[Auth] Fallback results applied:', { effectiveRole, systemOwner });
+          }
+        } catch (fallbackError) {
+          console.error('[Auth] Fallback query failed:', fallbackError);
+        }
+      }
+
+      setProfile(profileData ?? null);
+      setRole(effectiveRole);
+      setIsSystemOwner(systemOwner);
+      console.log('[Auth] Final auth state set:', { 
+        effectiveRole, 
+        systemOwner, 
+        userId: user.id,
+        email: user.email 
+      });
+
+      // 4) Always try to retry if we still don't have role data
+      if (!effectiveRole) {
+        setTimeout(async () => {
+          try {
+            console.log('[Auth] Retrying role detection...');
+            const [{ data: roleRetry }, { data: ownerRetry }] = await Promise.all([
+              supabase.rpc('get_user_role', { _user_id: user.id }),
+              supabase.rpc('is_system_owner', { user_id_param: user.id })
+            ]);
+            
+            console.log('[Auth] Retry results:', { roleRetry, ownerRetry });
+            
+            if (roleRetry) {
+              setRole(roleRetry as AppRole);
+              console.log('[Auth] Role updated from retry:', roleRetry);
+            }
+            if (typeof ownerRetry === 'boolean') {
+              setIsSystemOwner(ownerRetry);
+              console.log('[Auth] System owner updated from retry:', ownerRetry);
+            }
+          } catch (e) {
+            console.error('[Auth] Role retry failed:', e);
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error refreshing profile:', error);
     }
   };
 
   useEffect(() => {
-    const loadSession = async () => {
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    // Keep auth loading true until we hydrate profile/roles
+    setLoading(true);
 
-        if (session) {
-          setUser(session.user);
-          setSession(session);
-          await refreshProfile();
-        }
-
-        const firstUser = await checkFirstUser();
-        setIsFirstUser(firstUser);
-      } catch (e: any) {
-        console.error('Auth error:', e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSession();
-
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION') {
-        return;
-      }
-
-      setUser(session?.user || null);
-      setSession(session);
+    // 1) Set up listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only synchronous updates inside the callback
+      setSession(session as any);
+      setUser(session?.user ?? null);
 
       if (session?.user) {
-        await refreshProfile();
-        const firstUser = await checkFirstUser();
-        setIsFirstUser(firstUser);
+        // Defer any Supabase reads to avoid deadlocks
+        setTimeout(async () => {
+          try {
+            await refreshProfile();
+            const first = await checkFirstUser();
+            setIsFirstUser(first);
+          } catch (e) {
+            console.error('Auth onAuthStateChange hydration error:', e);
+          } finally {
+            setLoading(false);
+          }
+        }, 0);
       } else {
+        // Logged out state
         setProfile(null);
         setRole(null);
         setIsSystemOwner(false);
         setIsFirstUser(false);
+        setLoading(false);
       }
     });
+
+    // 2) Then check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session as any);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setTimeout(async () => {
+          try {
+            await refreshProfile();
+            const first = await checkFirstUser();
+            setIsFirstUser(first);
+          } catch (e) {
+            console.error('Auth initial session hydration error:', e);
+          } finally {
+            setLoading(false);
+          }
+        }, 0);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const refreshAuth = async () => {

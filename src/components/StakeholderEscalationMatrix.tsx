@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Users, Shield } from 'lucide-react';
 import IntelligentEscalationMatrix from '@/components/IntelligentEscalationMatrix';
+import StakeholderEscalationMatrixMobile from '@/components/StakeholderEscalationMatrixMobile';
 import { useProjects } from '@/hooks/useProjects';
 import { useEscalationMatrix } from '@/hooks/useEscalationMatrix';
 import { useStakeholders } from '@/hooks/useStakeholders';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
 
 const StakeholderEscalationMatrix: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -17,6 +19,10 @@ const StakeholderEscalationMatrix: React.FC = () => {
   const { currentWorkspace } = useWorkspace();
   const { escalationMatrix, loading } = useEscalationMatrix(selectedProjectId);
   const { stakeholders } = useStakeholders(currentWorkspace?.id);
+  const { shouldShowDesktopRecommendation } = useMobileComplexity({
+    requiresInteractivity: true,
+    recommendDesktop: true
+  });
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
@@ -39,6 +45,10 @@ const StakeholderEscalationMatrix: React.FC = () => {
       return acc;
     }, {} as Record<string, number>)
   };
+
+  if (shouldShowDesktopRecommendation) {
+    return <StakeholderEscalationMatrixMobile />;
+  }
 
   return (
     <div className="space-y-6">
@@ -74,60 +84,9 @@ const StakeholderEscalationMatrix: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            
-            {selectedProject && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{escalationStats.stakeholdersInvolved} stakeholders involved</span>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Escalation Overview */}
-      {selectedProjectId && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                <span className="text-sm font-medium">Escalation Levels</span>
-              </div>
-              <div className="text-2xl font-bold">{escalationStats.totalLevels}</div>
-              <p className="text-xs text-muted-foreground">
-                Defined escalation levels
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">Stakeholders</span>
-              </div>
-              <div className="text-2xl font-bold">{escalationStats.stakeholdersInvolved}</div>
-              <p className="text-xs text-muted-foreground">
-                Involved in escalation
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-medium">Issue Types</span>
-              </div>
-              <div className="text-2xl font-bold">{Object.keys(escalationStats.coverageByType).length}</div>
-              <p className="text-xs text-muted-foreground">
-                Types covered
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Intelligent Matrix */}
       <Card>
@@ -138,7 +97,7 @@ const StakeholderEscalationMatrix: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <IntelligentEscalationMatrix projectId={selectedProjectId} />
+          <IntelligentEscalationMatrix projectId={selectedProjectId} projects={projects} />
         </CardContent>
       </Card>
     </div>

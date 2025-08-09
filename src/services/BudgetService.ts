@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { BudgetStatusEngine } from './BudgetStatusEngine';
 
 export interface BudgetData {
   id: string;
@@ -17,6 +18,8 @@ export interface BudgetSummary {
   totalSpent: number;
   utilizationRate: number;
   currency: string;
+  budgetHealth: number;
+  budgetStatus: string;
 }
 
 class BudgetService {
@@ -50,18 +53,25 @@ class BudgetService {
         totalAllocated: 0,
         totalSpent: 0,
         utilizationRate: 0,
-        currency: 'USD'
+        currency: 'USD',
+        budgetHealth: 100,
+        budgetStatus: 'Healthy'
       };
     }
 
     const totalAllocated = data.reduce((sum, item) => sum + Number(item.allocated_amount), 0);
     const totalSpent = data.reduce((sum, item) => sum + Number(item.spent_amount), 0);
     
+    // Get budget status from the engine
+    const budgetStatus = await BudgetStatusEngine.calculateProjectBudgetStatus(projectId);
+    
     return {
       totalAllocated,
       totalSpent,
       utilizationRate: totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0,
-      currency: data[0]?.currency || 'USD'
+      currency: data[0]?.currency || 'USD',
+      budgetHealth: Math.round(budgetStatus.budget_health * 100),
+      budgetStatus: budgetStatus.status
     };
   }
 
@@ -83,18 +93,25 @@ class BudgetService {
         totalAllocated: 0,
         totalSpent: 0,
         utilizationRate: 0,
-        currency: 'USD'
+        currency: 'USD',
+        budgetHealth: 100,
+        budgetStatus: 'Healthy'
       };
     }
 
     const totalAllocated = data.reduce((sum, item) => sum + Number(item.allocated_amount), 0);
     const totalSpent = data.reduce((sum, item) => sum + Number(item.spent_amount), 0);
     
+    // Get workspace budget status from the engine
+    const budgetStatus = await BudgetStatusEngine.calculateWorkspaceBudgetStatus(workspaceId);
+    
     return {
       totalAllocated,
       totalSpent,
       utilizationRate: totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0,
-      currency: data[0]?.currency || 'USD'
+      currency: data[0]?.currency || 'USD',
+      budgetHealth: Math.round(budgetStatus.budget_health * 100),
+      budgetStatus: budgetStatus.status
     };
   }
 }

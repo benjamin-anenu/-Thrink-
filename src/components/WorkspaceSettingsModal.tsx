@@ -28,6 +28,7 @@ import DepartmentsManagement from './workspace-settings/DepartmentsManagement';
 import SkillsManagement from './workspace-settings/SkillsManagement';
 import EscalationTriggersManagement from './workspace-settings/EscalationTriggersManagement';
 import RecycleBin from './workspace-settings/RecycleBin';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WorkspaceSettingsModalProps {
   open: boolean;
@@ -49,9 +50,29 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   const [taskAssignments, setTaskAssignments] = useState(true);
   const [deadlineReminders, setDeadlineReminders] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [currency, setCurrency] = useState<string>('');
+  const [timeZone, setTimeZone] = useState<string>('');
   
-  const { updateWorkspace } = useWorkspace();
+  const { updateWorkspace, refreshWorkspaces } = useWorkspace();
   const { toast } = useToast();
+
+  // Supported values (fallback to minimal lists if not available)
+  const supportedCurrencies: string[] = (Intl as any).supportedValuesOf
+    ? (Intl as any).supportedValuesOf('currency')
+    : ['USD', 'EUR', 'GBP', 'NGN'];
+  const supportedTimeZones: string[] = (Intl as any).supportedValuesOf
+    ? (Intl as any).supportedValuesOf('timeZone')
+    : [Intl.DateTimeFormat().resolvedOptions().timeZone];
+
+  const formatCurrencyLabel = (code: string) => {
+    try {
+      const parts = new Intl.NumberFormat(undefined, { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(1);
+      const symbol = parts.find(p => p.type === 'currency')?.value || code;
+      return `${code} (${symbol})`;
+    } catch {
+      return code;
+    }
+  };
 
   useEffect(() => {
     if (workspace) {
@@ -63,6 +84,23 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
       setProjectUpdates(workspace.settings.notificationSettings.projectUpdates);
       setTaskAssignments(workspace.settings.notificationSettings.taskAssignments);
       setDeadlineReminders(workspace.settings.notificationSettings.deadlineReminders);
+      setCurrency(workspace.settings.currency || '');
+      setTimeZone(workspace.settings.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+      // If currency/timezone not set, try to detect from IP
+      const detectDefaults = async () => {
+        try {
+          const res = await fetch('https://ipapi.co/json/');
+          const data = await res.json();
+          if (!workspace.settings.currency && data?.currency) setCurrency(data.currency);
+          if (!workspace.settings.timeZone && data?.timezone) setTimeZone(data.timezone);
+        } catch {
+          // ignore network errors and keep fallbacks
+        }
+      };
+      if (!workspace.settings.currency || !workspace.settings.timeZone) {
+        detectDefaults();
+      }
     }
   }, [workspace]);
 
@@ -73,21 +111,36 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     setIsLoading(true);
     
     try {
+      const newSettings = {
+        allowGuestAccess,
+        defaultProjectVisibility,
+        currency: currency || 'USD',
+        timeZone: timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        notificationSettings: {
+          emailNotifications,
+          projectUpdates,
+          taskAssignments,
+          deadlineReminders,
+        },
+      };
+
+      const { error } = await supabase.rpc('update_workspace_settings', {
+        p_workspace_id: workspace.id,
+        p_name: name.trim(),
+        p_description: description.trim(),
+        p_settings: newSettings,
+      });
+
+      if (error) throw error;
+
+      // Optimistic local update + ensure state refresh from DB
       updateWorkspace(workspace.id, {
         name: name.trim(),
         description: description.trim(),
-        settings: {
-          allowGuestAccess,
-          defaultProjectVisibility,
-          notificationSettings: {
-            emailNotifications,
-            projectUpdates,
-            taskAssignments,
-            deadlineReminders
-          }
-        }
+        settings: newSettings,
       });
-      
+      await refreshWorkspaces();
+
       toast({
         title: "Settings updated! ⚙️",
         description: "Workspace settings have been saved successfully.",
@@ -187,6 +240,41 @@ const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
                       <SelectItem value="public">Public - Anyone with link</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Regional Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Regional Settings</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency</Label>
+                    <Select value={currency} onValueChange={setCurrency}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supportedCurrencies.map((code) => (
+                          <SelectItem key={code} value={code}>{formatCurrencyLabel(code)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone">Time Zone</Label>
+                    <Select value={timeZone} onValueChange={setTimeZone}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select time zone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supportedTimeZones.map((tz) => (
+                          <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 

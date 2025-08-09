@@ -9,6 +9,7 @@ interface MilestoneListProps {
   milestones: ProjectMilestone[];
   phaseId: string;
   onAddMilestone: (phaseId: string) => void;
+  onAssignExisting: (phaseId: string) => void;
 }
 
 const statusColors = {
@@ -21,7 +22,8 @@ const statusColors = {
 export const MilestoneList: React.FC<MilestoneListProps> = ({
   milestones,
   phaseId,
-  onAddMilestone
+  onAddMilestone,
+  onAssignExisting
 }) => {
   const [milestoneProgress, setMilestoneProgress] = useState<Record<string, number>>({});
 
@@ -58,10 +60,15 @@ export const MilestoneList: React.FC<MilestoneListProps> = ({
       <div className="text-center py-8">
         <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-muted-foreground mb-4">No milestones in this phase</p>
-        <Button onClick={() => onAddMilestone(phaseId)} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add First Milestone
-        </Button>
+        <div className="flex items-center justify-center gap-2">
+          <Button onClick={() => onAddMilestone(phaseId)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Milestone
+          </Button>
+          <Button onClick={() => onAssignExisting(phaseId)} size="sm" variant="outline">
+            Assign Existing
+          </Button>
+        </div>
       </div>
     );
   }
@@ -72,10 +79,15 @@ export const MilestoneList: React.FC<MilestoneListProps> = ({
         <h4 className="text-sm font-medium text-foreground">
           Milestones ({milestones.length})
         </h4>
-        <Button onClick={() => onAddMilestone(phaseId)} size="sm" variant="outline">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Milestone
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => onAssignExisting(phaseId)} size="sm" variant="outline">
+            Assign Existing
+          </Button>
+          <Button onClick={() => onAddMilestone(phaseId)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Create
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">

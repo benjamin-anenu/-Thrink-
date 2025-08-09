@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DollarSign, Calculator, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface BudgetStepProps {
   onNext: () => void;
@@ -21,8 +22,9 @@ const BudgetStep: React.FC<BudgetStepProps> = ({
   formData,
   updateFormData
 }) => {
+  const { code: workspaceCurrency } = useCurrency();
   const [budget, setBudget] = useState<number>(formData.budget || 0);
-  const [currency, setCurrency] = useState<string>(formData.currency || 'USD');
+  const [currency, setCurrency] = useState<string>(formData.currency || workspaceCurrency);
   const [budgetType, setBudgetType] = useState<string>(formData.budgetType || 'fixed');
   const [budgetNotes, setBudgetNotes] = useState<string>(formData.budgetNotes || '');
   const [costBreakdown, setCostBreakdown] = useState<{

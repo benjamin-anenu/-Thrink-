@@ -9,11 +9,12 @@ export interface EscalationLevel {
   name: string;
   level_order: number;
   workspace_id: string;
+  project_id?: string;
   created_at: string;
   updated_at: string;
 }
 
-export const useEscalationLevels = () => {
+export const useEscalationLevels = (projectId?: string) => {
   const [levels, setLevels] = useState<EscalationLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
@@ -23,11 +24,20 @@ export const useEscalationLevels = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('escalation_levels')
         .select('*')
-        .eq('workspace_id', currentWorkspace.id)
-        .order('level_order');
+        .eq('workspace_id', currentWorkspace.id);
+
+      if (projectId) {
+        // Get both workspace-level (inherited) and project-specific levels
+        query = query.or(`project_id.is.null,project_id.eq.${projectId}`);
+      } else {
+        // Only workspace-level configurations
+        query = query.is('project_id', null);
+      }
+
+      const { data, error } = await query.order('level_order');
 
       if (error) throw error;
       setLevels(data || []);
@@ -39,13 +49,18 @@ export const useEscalationLevels = () => {
     }
   };
 
-  const createLevel = async (name: string, level_order: number) => {
+  const createLevel = async (name: string, level_order: number, isProjectSpecific: boolean = false) => {
     if (!currentWorkspace?.id) return null;
 
     try {
       const { data, error } = await supabase
         .from('escalation_levels')
-        .insert([{ name, level_order, workspace_id: currentWorkspace.id }])
+        .insert([{ 
+          name, 
+          level_order, 
+          workspace_id: currentWorkspace.id,
+          project_id: isProjectSpecific && projectId ? projectId : null
+        }])
         .select()
         .single();
 

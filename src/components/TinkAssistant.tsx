@@ -10,6 +10,8 @@ import { EnhancedLocalService } from '@/services/EnhancedLocalService';
 import ModelSelector from './ModelSelector';
 import FormattedMessage from './FormattedMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
+import ActionAutocomplete from '@/components/ActionAutocomplete';
 
 interface TinkMessage {
   id: string;
@@ -38,6 +40,7 @@ export const TinkAssistant: React.FC = () => {
   const [isDragStarted, setIsDragStarted] = useState(false);
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<TinkMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -50,6 +53,8 @@ export const TinkAssistant: React.FC = () => {
   const [aiService, setAiService] = useState<AIService | null>(null);
   const [localService] = useState(new EnhancedLocalService());
   const [apiKeyMissing, setApiKeyMissing] = useState(true);
+  const [showActionAutocomplete, setShowActionAutocomplete] = useState(false);
+  const [actionQuery, setActionQuery] = useState('');
 
   // Drag functionality state - position in bottom right by default
   const [position, setPosition] = useState<Position>({ x: window.innerWidth - 220, y: window.innerHeight - 220 });
@@ -427,13 +432,39 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
   };
 
 
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    const match = value.match(/@([\w\s-]*)$/);
+    if (match) {
+      setShowActionAutocomplete(true);
+      setActionQuery((match[1] || '').trim());
+    } else {
+      setShowActionAutocomplete(false);
+      setActionQuery('');
+    }
+  };
+
+  const handleActionSelect = (action: any) => {
+    const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : '');
+    const singularCategory = (action.category || '').replace(/s$/, '');
+    const catPlural = action.category || '';
+    let core = String(action.id || '');
+    if (core.endsWith(`_${catPlural}`)) core = core.slice(0, -(catPlural.length + 1));
+    if (core.startsWith(`${catPlural}_`)) core = core.slice(catPlural.length + 1);
+    const coreTitle = core.split('_').filter(Boolean).map(capitalize).join('_') || 'General';
+    const label = `${capitalize(singularCategory)}_${coreTitle}`;
+    const newVal = inputValue.replace(/@([\w\s-]*)$/, `@${label} `);
+    setInputValue(newVal);
+    setShowActionAutocomplete(false);
+    setActionQuery('');
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
-
   const quickActions = {
     ai: [
       { label: "Team Performance", icon: Brain, query: "How is my team performing this month?" },
@@ -480,6 +511,11 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
         </div>
       </div>
     );
+  }
+
+  // Don't render on mobile
+  if (isMobile) {
+    return null;
   }
 
   return (
@@ -701,21 +737,26 @@ ${apiKeyMissing ? 'Currently running in Local Mode. ' : 'AI Mode is available! '
             {/* Input Area */}
             <div className="p-4 border-t border-border bg-muted/30 rounded-b-2xl">
               <div className="flex gap-2">
-                <textarea
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder={
-                    chatMode === 'ai' 
-                      ? "Ask me anything: 'How is my team performing?' or 'What are my project risks?'" 
-                      : "Search your data: 'my tasks today', 'overdue projects', 'team performance'"
-                  }
-                  className="flex-1 min-h-[60px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
-                           rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 
-                           focus:border-primary/50 transition-all duration-200 resize-none
-                           placeholder:text-muted-foreground/60"
-                  rows={2}
-                />
+                <div className="relative flex-1">
+                  <textarea
+                    value={inputValue}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder={
+                      chatMode === 'ai' 
+                        ? "Ask me anything: 'How is my team performing?' or 'What are my project risks?'" 
+                        : "Search your data: 'my tasks today', 'overdue projects', 'team performance'"
+                    }
+                    className="w-full min-h-[60px] max-h-[120px] px-3 py-2 text-sm bg-background border border-border 
+                             rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 
+                             focus:border-primary/50 transition-all duration-200 resize-none
+                             placeholder:text-muted-foreground/60"
+                    rows={2}
+                  />
+                  {showActionAutocomplete && (
+                    <ActionAutocomplete query={actionQuery} onSelect={handleActionSelect} />
+                  )}
+                </div>
                 
                 <Button 
                   onClick={sendMessage} 

@@ -11,6 +11,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useIssueManagement } from '@/hooks/useIssueManagement';
+import { useMobileComplexity } from '@/hooks/useMobileComplexity';
+import { DesktopRecommendation } from '@/components/ui/desktop-recommendation';
+import { MobileTaskList } from './MobileTaskList';
 import TaskCreationDialog from './gantt/TaskCreationDialog';
 import MilestoneManagementDialog from './MilestoneManagementDialog';
 import TaskFilterDialog, { TaskFilters } from './table/TaskFilterDialog';
@@ -19,8 +22,11 @@ import TableControls from './table/TableControls';
 import InlineTaskEditor from './table/InlineTaskEditor';
 import InlineMilestoneEditor from './table/InlineMilestoneEditor';
 import MilestoneActionsCell from './table/MilestoneActionsCell';
+import BulkActionsBar from './table/BulkActionsBar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { BulkTaskImportService } from '@/services/BulkTaskImportService';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ProjectGanttChartProps {
   projectId: string;
@@ -29,6 +35,11 @@ interface ProjectGanttChartProps {
 
 const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwitchToIssueLog }) => {
   const { getProject } = useProject();
+  const { shouldShowDesktopRecommendation } = useMobileComplexity({
+    requiresInteractivity: true,
+    recommendDesktop: true
+  });
+  const [showMobileView, setShowMobileView] = useState(false);
   
   if (!projectId) {
     return <div>No project ID provided</div>;
@@ -64,9 +75,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
   const [zoomLevel, setZoomLevel] = useState(1);
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact');
 
-  // New state for inline editing
-  const [showInlineTaskEditor, setShowInlineTaskEditor] = useState(false);
-  const [showInlineMilestoneEditor, setShowInlineMilestoneEditor] = useState(false);
+// New state for inline editing
+const [showInlineTaskEditor, setShowInlineTaskEditor] = useState(false);
+const [showInlineMilestoneEditor, setShowInlineMilestoneEditor] = useState(false);
+
+// Bulk selection state
+const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
   // Load resources and stakeholders
   const [availableResources, setAvailableResources] = useState<Array<{ id: string; name: string; role: string; email?: string }>>([]);
@@ -123,6 +137,22 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
       loadResourcesAndStakeholders();
     }
   }, [project?.workspaceId]);
+
+  // One-time patch: fill missing dates for existing tasks, then refresh
+  React.useEffect(() => {
+    let ran = false;
+    if (!ran && projectId) {
+      ran = true;
+      BulkTaskImportService.patchMissingDates(projectId)
+        .then(({ updated }) => {
+          if (updated > 0) {
+            toast.success(`Patched ${updated} task${updated > 1 ? 's' : ''} with dates`);
+            refreshData();
+          }
+        })
+        .catch((e) => console.warn('[PatchMissingDates] skipped', e));
+    }
+  }, [projectId]);
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -196,8 +226,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
   }, [filteredTasks, milestones]);
 
   const handleIssueWarningClick = (taskId: string) => {
+    console.log('Issue warning clicked for task:', taskId);
+    console.log('onSwitchToIssueLog function:', onSwitchToIssueLog);
     if (onSwitchToIssueLog) {
       onSwitchToIssueLog(taskId);
+    } else {
+      console.error('onSwitchToIssueLog prop not provided');
     }
   };
 
@@ -407,11 +441,64 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
     return <div className="p-6 text-center text-muted-foreground">Loading tasks and milestones...</div>;
   }
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+  if (shouldShowDesktopRecommendation && !showMobileView) {
+    return (
+      <DesktopRecommendation
+        title="Project Plan - Better on Desktop"
+        description="The project plan table with all its features is optimized for desktop viewing. For a simplified mobile experience, you can view the task list below."
+        showSimplified={true}
+        onViewSimplified={() => setShowMobileView(true)}
+      >
+        <MobileTaskList 
+          tasks={filteredTasks} 
+          onTaskClick={(task) => {
+            // Handle task click - could open a modal or navigate
+            console.log('Task clicked:', task);
+          }}
+        />
+      </DesktopRecommendation>
+    );
+  }
+
+  // Bulk helpers
+  const visibleIds = filteredTasks.map(t => t.id);
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedTaskIds.has(id));
+
+  const toggleTaskSelect = (taskId: string, isSelected: boolean) => {
+    const next = new Set(selectedTaskIds);
+    if (isSelected) next.add(taskId); else next.delete(taskId);
+    setSelectedTaskIds(next);
+  };
+
+  const clearSelection = () => setSelectedTaskIds(new Set());
+
+  const applyBulk = async ({ resourceId, status, priority, milestoneId }: { resourceId?: string; status?: string; priority?: string; milestoneId?: string; }) => {
+    const updates: Partial<ProjectTask> = {};
+    if (typeof resourceId !== 'undefined') {
+      updates.assignedResources = resourceId === 'none' ? [] : [resourceId];
+    }
+    if (status) updates.status = status as any;
+    if (priority) updates.priority = priority as any;
+    if (typeof milestoneId !== 'undefined') updates.milestoneId = milestoneId === 'none' ? undefined : milestoneId;
+
+    await Promise.all([...selectedTaskIds].map(id => handleUpdateTask(id, updates)));
+    toast.success(`Applied to ${selectedTaskIds.size} task${selectedTaskIds.size !== 1 ? 's' : ''}`);
+    clearSelection();
+  };
+      return (
+        <div className="space-y-6">
+          {selectedTaskIds.size > 0 && (
+            <BulkActionsBar
+              selectedCount={selectedTaskIds.size}
+              resources={availableResources.map(r => ({ id: r.id, name: r.name }))}
+              milestones={milestones.map(m => ({ id: m.id, name: m.name }))}
+              onApply={applyBulk}
+              onClearSelection={clearSelection}
+            />
+          )}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Project Task Management
               {tasks.some(task => task.dependencies.length > 0) && (
@@ -476,6 +563,20 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
             <Table className="min-w-full">
               <TableHeader>
                 <TableRow>
+                  <TableHead className={cn(`w-10`, getDensityClass())}>
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(checked) => {
+                        const isChecked = typeof checked === 'boolean' ? checked : !!checked;
+                        if (isChecked) {
+                          setSelectedTaskIds(new Set(visibleIds));
+                        } else {
+                          clearSelection();
+                        }
+                      }}
+                      aria-label="Select all visible tasks"
+                    />
+                  </TableHead>
                   <TableHead className={cn(`w-80 min-w-[320px]`, getDensityClass())}>Task Name</TableHead>
                   <TableHead className={cn(`w-40 min-w-[160px]`, getDensityClass())}>Status</TableHead>
                   <TableHead className={cn(`w-32`, getDensityClass())}>Priority</TableHead>
@@ -510,11 +611,12 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                 )}
 
                 {/* Existing grouped tasks */}
-                {Object.entries(groupedTasks).map(([groupKey, group]) => (
-                  <React.Fragment key={groupKey}>
-                    {group.milestone && (
-                      <TableRow>
-                        <TableCell colSpan={13} className="p-0 border-b">
+                {Object.entries(groupedTasks).flatMap(([groupKey, group]) => {
+                  const rows: React.ReactNode[] = [];
+                  if (group.milestone) {
+                    rows.push(
+                      <TableRow key={`ms-${groupKey}`}>
+                        <TableCell colSpan={14} className="p-0 border-b">
                           <Collapsible
                             open={expandedMilestones.has(group.milestone.id)}
                             onOpenChange={() => toggleMilestone(group.milestone.id)}
@@ -545,34 +647,40 @@ const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId, onSwit
                           </Collapsible>
                         </TableCell>
                       </TableRow>
-                    )}
-                    
-                    {(groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) && (
-                      <>
-                        {group.tasks.map((task) => (
-                          <TaskTableRow
-                            key={task.id}
-                            task={task}
-                            milestones={milestones}
-                            availableResources={availableResources}
-                            availableStakeholders={availableStakeholders}
-                            allTasks={tasks}
-                            onUpdateTask={handleUpdateTask}
-                            onDeleteTask={handleDeleteTask}
-                            onEditTask={(task) => {
-                              setEditingTask(task);
-                              setShowTaskDialog(true);
-                            }}
-                            onRebaselineTask={handleRebaselineTask}
-                            densityClass={getDensityClass()}
-                            issueCount={taskIssueMap[task.id] || 0}
-                            onIssueWarningClick={handleIssueWarningClick}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
+                    );
+                  }
+
+                  if (groupKey === 'no-milestone' || (group.milestone && expandedMilestones.has(group.milestone.id))) {
+                    rows.push(
+                      ...group.tasks.map((task) => (
+                        <TaskTableRow
+                          key={task.id}
+                          task={task}
+                          milestones={milestones}
+                          availableResources={availableResources}
+                          availableStakeholders={availableStakeholders}
+                          allTasks={tasks}
+                          onUpdateTask={handleUpdateTask}
+                          onDeleteTask={handleDeleteTask}
+                          onEditTask={(task) => {
+                            setEditingTask(task);
+                            setShowTaskDialog(true);
+                          }}
+                          onRebaselineTask={handleRebaselineTask}
+                          densityClass={getDensityClass()}
+                          issueCount={taskIssueMap[task.id] || 0}
+                          onIssueWarningClick={handleIssueWarningClick}
+                          projectId={projectId}
+                          selectable
+                          selected={selectedTaskIds.has(task.id)}
+                          onToggleSelect={toggleTaskSelect}
+                        />
+                      ))
+                    );
+                  }
+                  return rows;
+                })}
+
               </TableBody>
             </Table>
           </div>

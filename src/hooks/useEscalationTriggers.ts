@@ -13,11 +13,12 @@ export interface EscalationTrigger {
   threshold_unit: string;
   is_active: boolean;
   workspace_id: string;
+  project_id?: string;
   created_at: string;
   updated_at: string;
 }
 
-export const useEscalationTriggers = () => {
+export const useEscalationTriggers = (projectId?: string) => {
   const [triggers, setTriggers] = useState<EscalationTrigger[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentWorkspace } = useWorkspace();
@@ -26,23 +27,24 @@ export const useEscalationTriggers = () => {
     try {
       setLoading(true);
       
-      // Load both global triggers (workspace_id IS NULL) and workspace-specific triggers
-      const { data, error } = await supabase
+      let query = supabase
         .from('escalation_triggers')
         .select('*')
-        .or(`workspace_id.is.null,workspace_id.eq.${currentWorkspace?.id || 'null'}`)
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
+
+      if (projectId) {
+        // Get workspace-level and project-specific triggers
+        query = query.or(`and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.is.null),and(workspace_id.eq.${currentWorkspace?.id || 'null'},project_id.eq.${projectId})`);
+      } else {
+        // Get workspace-level triggers only (project_id is null)
+        query = query.eq('workspace_id', currentWorkspace?.id || 'null').is('project_id', null);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) throw error;
       
-      // If we have a workspace, assign workspace_id to global triggers for local management
-      const processedTriggers = data?.map(trigger => ({
-        ...trigger,
-        workspace_id: trigger.workspace_id || currentWorkspace?.id || ''
-      })) || [];
-      
-      setTriggers(processedTriggers);
+      setTriggers(data || []);
     } catch (error) {
       console.error('Error loading escalation triggers:', error);
       toast.error('Failed to load escalation triggers');
@@ -56,7 +58,8 @@ export const useEscalationTriggers = () => {
     description: string,
     condition_type: string,
     threshold_value: number,
-    threshold_unit: string
+    threshold_unit: string,
+    isProjectSpecific: boolean = false
   ) => {
     if (!currentWorkspace?.id) return null;
 
@@ -70,6 +73,7 @@ export const useEscalationTriggers = () => {
           threshold_value,
           threshold_unit,
           workspace_id: currentWorkspace.id,
+          project_id: isProjectSpecific && projectId ? projectId : null,
           is_active: true
         }])
         .select()

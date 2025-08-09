@@ -1,6 +1,6 @@
 import { ProjectPhase, ProjectMilestone, ProjectTask, ProjectHealth, PhaseStatus, Priority } from '@/types/project';
 import { supabase } from '@/integrations/supabase/client';
-
+import { ProjectHealthService } from '@/services/ProjectHealthService';
 export type HealthStatus = 'on-track' | 'caution' | 'at-risk' | 'critical';
 
 // Convert health status to numeric score for aggregation
@@ -200,114 +200,24 @@ export const calculatePhaseHealth = async (phase: ProjectPhase): Promise<HealthS
   }
 };
 
-// Level 4: Project Health (aggregated from phases)
 export const calculateProjectHealth = async (projectId: string): Promise<ProjectHealth> => {
   try {
-    // Get project phases
-    const { data: phases, error: phasesError } = await supabase
-      .from('phases')
-      .select(`
-        *,
-        milestones (
-          id,
-          name,
-          description,
-          due_date,
-          baseline_date,
-          status,
-          progress,
-          task_ids
-        )
-      `)
-      .eq('project_id', projectId);
-
-    if (phasesError || !phases?.length) {
-      // Fallback to milestone-based calculation for projects without phases
-      return calculateProjectHealthFromMilestones(projectId);
-    }
-
-    const mappedPhases: ProjectPhase[] = phases.map(phase => ({
-      id: phase.id,
-      projectId: phase.project_id,
-      name: phase.name,
-      description: phase.description,
-      startDate: phase.start_date,
-      endDate: phase.end_date,
-      baselineStartDate: phase.baseline_start_date,
-      baselineEndDate: phase.baseline_end_date,
-      status: (phase.status as PhaseStatus) || 'planned',
-      priority: (phase.priority as Priority) || 'Medium',
-      progress: phase.progress || 0,
-      sortOrder: phase.sort_order || 0,
-      color: phase.color,
-      milestones: (phase.milestones || []).map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description || '',
-        date: m.due_date || '',
-        baselineDate: m.baseline_date || '',
-        status: (m.status as ProjectMilestone['status']) || 'upcoming',
-        tasks: m.task_ids || [],
-        progress: m.progress || 0
-      }))
-    }));
-
-    const phaseHealths = await Promise.all(
-      mappedPhases.map(phase => calculatePhaseHealth(phase))
-    );
-    
-    // Calculate weighted health score with heavy penalty for overdue tasks
-    const healthScores = phaseHealths.map(health => getHealthScore(health));
-    const avgScore = healthScores.reduce((sum, score) => sum + score, 0) / healthScores.length;
-    
-    // Additional penalty for critical phases (overdue tasks)
-    const criticalPenalty = phaseHealths.filter(h => h === 'critical').length * 15;
-    const atRiskPenalty = phaseHealths.filter(h => h === 'at-risk').length * 8;
-    
-    const finalScore = Math.max(10, Math.round(avgScore - criticalPenalty - atRiskPenalty));
-    
-    // Determine status based on final score
-    if (finalScore >= 85) return { status: 'green', score: finalScore };
-    if (finalScore >= 65) return { status: 'yellow', score: finalScore };
-    return { status: 'red', score: finalScore };
+    const result = await ProjectHealthService.calculateRealTimeProjectHealth(projectId);
+    return {
+      status: result.healthStatus,
+      score: result.healthScore
+    } as ProjectHealth;
   } catch (error) {
     console.error('Error calculating project health:', error);
     return { status: 'yellow', score: 50 };
   }
 };
 
-// Fallback health calculation from milestones
+// Fallback retained for backward compatibility but no longer used
 const calculateProjectHealthFromMilestones = async (projectId: string): Promise<ProjectHealth> => {
   try {
-    const { data: milestones, error } = await supabase
-      .from('milestones')
-      .select('*')
-      .eq('project_id', projectId);
-
-    if (error || !milestones?.length) {
-      return { status: 'yellow', score: 50 };
-    }
-
-    const milestoneHealths = await Promise.all(
-      milestones.map(m => calculateMilestoneHealth({
-        id: m.id,
-        name: m.name,
-        description: m.description || '',
-        date: m.due_date || '',
-        baselineDate: m.baseline_date || '',
-        status: (m.status as ProjectMilestone['status']) || 'upcoming',
-        tasks: m.task_ids || [],
-        progress: m.progress || 0
-      }))
-    );
-
-    const avgScore = milestoneHealths.reduce((sum, health) => sum + getHealthScore(health), 0) / milestoneHealths.length;
-    const overallHealth = scoreToHealth(avgScore);
-
-    return {
-      status: overallHealth === 'on-track' ? 'green' : overallHealth === 'caution' ? 'yellow' : 'red',
-      score: avgScore
-    };
+    const result = await ProjectHealthService.calculateRealTimeProjectHealth(projectId);
+    return { status: result.healthStatus, score: result.healthScore };
   } catch (error) {
     console.error('Error calculating fallback project health:', error);
     return { status: 'yellow', score: 50 };

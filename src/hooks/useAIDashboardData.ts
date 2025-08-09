@@ -7,6 +7,7 @@ import { PerformanceTracker } from '@/services/PerformanceTracker';
 import { EventBus } from '@/services/EventBus';
 import { clientSatisfactionService } from '@/services/ClientSatisfactionService';
 import { budgetService } from '@/services/BudgetService';
+import { BudgetStatusEngine } from '@/services/BudgetStatusEngine';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AIInsight {
@@ -99,10 +100,8 @@ export const useAIDashboardData = () => {
       ? Math.round(workspaceResources.reduce((acc, r) => acc + (r.utilization || 0), 0) / workspaceResources.length)
       : 0;
     
-    // Get actual budget health from loaded budget data
-    const budgetHealth = budgetData 
-      ? Math.max(0, Math.min(100, 100 - (budgetData.totalSpent / budgetData.totalAllocated * 100)))
-      : 0;
+    // Get actual budget health from Budget Status Engine
+    const budgetHealth = budgetData?.budgetHealth || 0;
     
     // Calculate risk score based on actual overdue tasks
     const overdueTasksCount = workspaceProjects.reduce((acc, project) => {

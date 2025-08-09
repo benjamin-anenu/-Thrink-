@@ -6,10 +6,13 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useTaskManagement } from '@/hooks/useTaskManagement';
 import { useMilestones } from '@/hooks/useMilestones';
+import { usePhaseManagement } from '@/hooks/usePhaseManagement';
 import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import MilestoneCard from './timeline/MilestoneCard';
 import CriticalPathAnalysis from './timeline/CriticalPathAnalysis';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ProjectHealthService, ProjectHealthData } from '@/services/ProjectHealthService';
 
 interface ProjectTimelineProps {
   projectId: string;
@@ -18,7 +21,9 @@ interface ProjectTimelineProps {
 const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
   const { tasks, loading: tasksLoading } = useTaskManagement(projectId);
   const { milestones, loading: milestonesLoading } = useMilestones(projectId);
+  const { phases, loading: phasesLoading } = usePhaseManagement(projectId);
   const [realTimeData, setRealTimeData] = useState<any>(null);
+  const [projectHealth, setProjectHealth] = useState<ProjectHealthData | null>(null);
 
   // Real-time data subscription
   useEffect(() => {
@@ -57,48 +62,29 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
     };
   }, [projectId]);
 
-  if (tasksLoading || milestonesLoading) {
+  // Calculate project health using standardized service
+  useEffect(() => {
+    const calculateHealth = async () => {
+      if (tasks.length > 0 || milestones.length > 0) {
+        const healthData = await ProjectHealthService.calculateProjectHealthData(
+          projectId,
+          tasks,
+          milestones
+        );
+        setProjectHealth(healthData);
+      }
+    };
+    
+    calculateHealth();
+  }, [projectId, tasks, milestones]);
+
+  if (tasksLoading || milestonesLoading || phasesLoading) {
     return (
       <div className="p-6 text-center text-muted-foreground">
         Loading timeline data...
       </div>
     );
   }
-
-  // Calculate real-time metrics
-  const today = new Date();
-  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
-  const totalTasks = tasks.length;
-  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  // Calculate overdue items
-  const overdueTasks = tasks.filter(task => 
-    task.status !== 'Completed' && 
-    isAfter(today, new Date(task.endDate))
-  );
-
-  const overdueMilestones = milestones.filter(milestone => 
-    milestone.status !== 'completed' && 
-    isAfter(today, new Date(milestone.date))
-  );
-
-  // Find next milestone
-  const upcomingMilestones = milestones
-    .filter(m => m.status !== 'completed' && !isAfter(today, new Date(m.date)))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  const nextMilestone = upcomingMilestones[0];
-
-  // Calculate project health
-  const criticalTasks = tasks.filter(task => 
-    (task.priority === 'High' || task.priority === 'Critical') && 
-    task.status !== 'Completed'
-  ).length;
-
-  const healthScore = Math.max(0, 100 - (overdueTasks.length * 10) - (overdueMilestones.length * 15) - (criticalTasks * 5));
-  let healthStatus: 'red' | 'yellow' | 'green' = 'green';
-  if (healthScore < 60) healthStatus = 'red';
-  else if (healthScore < 80) healthStatus = 'yellow';
 
   // Calculate milestone progress
   const getMilestoneProgress = (milestone: any) => {
@@ -108,6 +94,39 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
     const completedMilestoneTasks = milestoneTasks.filter(task => task.status === 'Completed').length;
     return Math.round((completedMilestoneTasks / milestoneTasks.length) * 100);
   };
+
+  // Calculate real-time metrics
+  const today = new Date();
+  const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+  const totalTasks = tasks.length;
+  
+  // Calculate phase-based overall progress (more accurate than simple task completion ratio)
+  const overallProgress = phases.length > 0 
+    ? Math.round(phases.reduce((sum, phase) => sum + (phase.progress || 0), 0) / phases.length)
+    : totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Find next milestone
+  const upcomingMilestones = milestones
+    .filter(m => {
+      const progress = getMilestoneProgress(m);
+      const status = progress === 100 ? 'completed' : m.status;
+      return status !== 'completed' && !isAfter(today, new Date(m.date));
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const nextMilestone = upcomingMilestones[0];
+
+  // Use standardized project health data
+  const healthData = projectHealth || {
+    healthScore: 0,
+    healthStatus: 'green' as const,
+    overdueTasks: 0,
+    overdueMilestones: 0,
+    criticalTasks: 0,
+    totalTasks,
+    completedTasks
+  };
+
 
   // Calculate variance metrics
   const taskVariances = tasks.map(task => {
@@ -153,12 +172,12 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <AlertTriangle className={`h-8 w-8 ${overdueTasks.length > 0 ? 'text-red-500' : 'text-green-500'}`} />
+              <AlertTriangle className={`h-8 w-8 ${(healthData.overdueTasks + healthData.overdueMilestones) > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
               <div>
                 <p className="text-sm text-muted-foreground">Overdue Items</p>
-                <p className="font-semibold">{overdueTasks.length + overdueMilestones.length}</p>
+                <p className="font-semibold">{healthData.overdueTasks + healthData.overdueMilestones}</p>
                 <p className="text-xs text-muted-foreground">
-                  {overdueTasks.length} tasks, {overdueMilestones.length} milestones
+                  {healthData.overdueTasks} tasks, {healthData.overdueMilestones} milestones
                 </p>
               </div>
             </div>
@@ -168,15 +187,27 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <TrendingUp className={`h-8 w-8 ${
-                healthStatus === 'red' ? 'text-red-500' : 
-                healthStatus === 'yellow' ? 'text-yellow-500' : 'text-green-500'
-              }`} />
+              <TrendingUp className={`h-8 w-8 ${ProjectHealthService.getHealthColorClass(healthData.healthStatus)}`} />
               <div>
                 <p className="text-sm text-muted-foreground">Project Health</p>
-                <p className="font-semibold">{healthScore}/100</p>
-                <Badge variant={healthStatus === 'red' ? 'destructive' : healthStatus === 'yellow' ? 'secondary' : 'default'}>
-                  {healthStatus === 'red' ? 'At Risk' : healthStatus === 'yellow' ? 'Caution' : 'Healthy'}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="font-semibold cursor-help">{healthData.healthScore}/100</p>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-sm">Standardized health calculation</p>
+                      <p className="text-xs mt-1">
+                        Based on task completion, overdue items, critical tasks, and project phases
+                      </p>
+                      <p className="text-xs mt-1 opacity-75">
+                        Overdue tasks: {healthData.overdueTasks}, Critical tasks: {healthData.criticalTasks}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Badge variant={ProjectHealthService.getHealthBadgeVariant(healthData.healthStatus)}>
+                  {ProjectHealthService.getHealthDescription(healthData.healthStatus)}
                 </Badge>
               </div>
             </div>
@@ -228,11 +259,18 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Milestones Completed</span>
                 <span className="font-medium">
-                  {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
+                  {milestones.filter(m => {
+                    const progress = getMilestoneProgress(m);
+                    return progress === 100 || m.status === 'completed';
+                  }).length}/{milestones.length}
                 </span>
               </div>
               <Progress 
-                value={milestones.length > 0 ? (milestones.filter(m => m.status === 'completed').length / milestones.length) * 100 : 0}
+                value={milestones.length > 0 ? 
+                  (milestones.filter(m => {
+                    const progress = getMilestoneProgress(m);
+                    return progress === 100 || m.status === 'completed';
+                  }).length / milestones.length) * 100 : 0}
                 className="h-2"
               />
             </div>
@@ -240,10 +278,10 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Critical Tasks</span>
-                <span className="font-medium text-red-600">{criticalTasks}</span>
+                <span className="font-medium text-red-600">{healthData.criticalTasks}</span>
               </div>
               <Progress 
-                value={totalTasks > 0 ? (criticalTasks / totalTasks) * 100 : 0}
+                value={totalTasks > 0 ? (healthData.criticalTasks / totalTasks) * 100 : 0}
                 className="h-2"
               />
             </div>
@@ -272,9 +310,9 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
               <h4 className="font-semibold mb-2">Next Milestone</h4>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">{nextMilestone.name}</span>
-                <span className="font-medium">
-                  {Math.max(0, differenceInDays(new Date(nextMilestone.date), today))} days remaining
-                </span>
+                 <span className="font-medium">
+                   {Math.max(0, differenceInDays(new Date(nextMilestone.date), today))} days remaining
+                 </span>
               </div>
             </div>
           )}
