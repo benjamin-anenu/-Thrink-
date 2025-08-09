@@ -21,7 +21,7 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading, isSystemOwner } = useAuth()
+  const { user, loading: authLoading, isSystemOwner, role } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -140,10 +140,15 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('[Workspace] Loaded', transformedWorkspaces.length, 'workspaces')
       setWorkspaces(transformedWorkspaces);
       
-      // Set current workspace automatically for regular users only
-      if (transformedWorkspaces.length > 0 && !currentWorkspace && !isSystemOwner) {
+      // Set current workspace automatically only for non-admin/non-owner non-system-owner users
+      if (
+        transformedWorkspaces.length > 0 &&
+        !currentWorkspace &&
+        !isSystemOwner &&
+        !(role === 'owner' || role === 'admin')
+      ) {
         setCurrentWorkspace(transformedWorkspaces[0]);
-        console.log('[Workspace] Set current workspace:', transformedWorkspaces[0].name)
+        console.log('[Workspace] Auto-selected workspace for regular user:', transformedWorkspaces[0].name)
       }
     } catch (error) {
       console.error('[Workspace] Exception in fetchWorkspaces:', error);
@@ -164,13 +169,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchWorkspaces();
   }, [user, authLoading, isSystemOwner]) // Added isSystemOwner dependency
 
-  // Ensure system owners default to no workspace selected
+  // Ensure system owners/admins/owners default to no workspace selected
   useEffect(() => {
-    if (isSystemOwner && currentWorkspace) {
-      console.log('[Workspace] System owner detected, clearing current workspace selection')
+    if ((isSystemOwner || role === 'owner' || role === 'admin') && currentWorkspace) {
+      console.log('[Workspace] Admin/Owner/System owner detected, clearing current workspace selection')
       setCurrentWorkspace(null)
     }
-  }, [isSystemOwner])
+  }, [isSystemOwner, role])
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     try {
