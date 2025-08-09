@@ -235,6 +235,33 @@ export type Database = {
           },
         ]
       }
+      assumed_workspace_access: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          role?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string

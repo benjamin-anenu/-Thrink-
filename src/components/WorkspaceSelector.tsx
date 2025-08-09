@@ -88,7 +88,7 @@ const WorkspaceSelector: React.FC = () => {
               key={workspace.id}
               onSelect={() => {
                 setPendingWorkspaceId(workspace.id);
-                setConfirmOpen(true);
+                setTimeout(() => setConfirmOpen(true), 0);
               }}
               className="flex items-center justify-between p-3 cursor-pointer"
             >
