@@ -10,7 +10,7 @@ import { AppInitializationLoader } from '@/components/AppInitializationLoader';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 
 const Dashboard: React.FC = () => {
-  const { user, isFirstUser, isSystemOwner } = useAuth();
+  const { user, isFirstUser, isSystemOwner, role } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { isFullyLoaded, hasWorkspaces } = useAppInitialization();
 
@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
             <div className="container mx-auto px-4 py-8 max-w-7xl">
               <div className="space-y-8">
                 {/* Show workspace selection prompt if no current workspace and not system owner */}
-                {isFullyLoaded && !currentWorkspace && !isSystemOwner && (
+                {isFullyLoaded && !currentWorkspace && !(isSystemOwner || role === 'owner' || role === 'admin') && (
                   <div className="text-center py-12">
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold text-foreground">No Workspace Selected</h2>
@@ -37,9 +37,9 @@ const Dashboard: React.FC = () => {
                 )}
                 
                 {/* Show appropriate dashboard based on user role */}
-                {isFullyLoaded && (isSystemOwner || currentWorkspace) && (
+                {isFullyLoaded && ((isSystemOwner || role === 'owner' || role === 'admin') || currentWorkspace) && (
                   <>
-                    {isSystemOwner ? (
+                    {(isSystemOwner || role === 'owner' || role === 'admin') ? (
                       <SystemOwnerDashboard />
                     ) : (
                       <SimpleDashboard />
