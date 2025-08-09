@@ -54,63 +54,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error fetching profile:', profileError);
       }
 
-      // 2) Prefer secure RPCs for role + system owner
-      const [roleRpc, ownerRpc] = await Promise.all([
-        supabase.rpc('get_user_role', { _user_id: user.id }),
-        supabase.rpc('is_system_owner', { user_id_param: user.id })
-      ]);
+      // 2) First try RPC functions with proper error handling
+      let effectiveRole: AppRole | null = null;
+      let systemOwner = false;
 
-      console.log('[Auth] RPC responses:', { roleRpc, ownerRpc });
+      try {
+        const { data: roleData, error: roleError } = await supabase.rpc('get_user_role', { 
+          _user_id: user.id 
+        });
+        
+        console.log('[Auth] Role RPC result:', { roleData, roleError });
+        
+        if (!roleError && roleData) {
+          effectiveRole = roleData as AppRole;
+        }
+      } catch (error) {
+        console.log('[Auth] Role RPC failed:', error);
+      }
 
-      let effectiveRole: AppRole | null = (roleRpc.data as AppRole | null) ?? null;
-      let systemOwner = Boolean(ownerRpc.data);
+      try {
+        const { data: ownerData, error: ownerError } = await supabase.rpc('is_system_owner', { 
+          user_id_param: user.id 
+        });
+        
+        console.log('[Auth] System owner RPC result:', { ownerData, ownerError });
+        
+        if (!ownerError && typeof ownerData === 'boolean') {
+          systemOwner = ownerData;
+        }
+      } catch (error) {
+        console.log('[Auth] System owner RPC failed:', error);
+      }
 
-      console.log('[Auth] Initial RPC results:', { effectiveRole, systemOwner });
-
-      // 3) Fallback: direct table read if RPC fails or returns null
-      if (!effectiveRole || !systemOwner || roleRpc.error || ownerRpc.error) {
-        console.log('[Auth] Using fallback table query because:', { 
-          noRole: !effectiveRole, 
-          noOwner: !systemOwner, 
-          roleError: roleRpc.error?.message, 
-          ownerError: ownerRpc.error?.message 
+      // 3) Fallback to direct table query if RPCs failed
+      if (!effectiveRole || !systemOwner) {
+        console.log('[Auth] Using fallback table query for missing data:', { 
+          needsRole: !effectiveRole, 
+          needsOwner: !systemOwner 
         });
 
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role, is_system_owner')
-          .eq('user_id', user.id);
+        try {
+          const { data: rolesData, error: rolesError } = await supabase
+            .from('user_roles')
+            .select('role, is_system_owner')
+            .eq('user_id', user.id);
 
-        console.log('[Auth] Fallback query result:', { rolesData, rolesError });
+          console.log('[Auth] Fallback query result:', { rolesData, rolesError });
 
-        if (!rolesError && rolesData && rolesData.length > 0) {
-          const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
-          let max = 0;
-          let fallbackRole: AppRole | null = null;
-          let fallbackSystemOwner = false;
+          if (!rolesError && rolesData && rolesData.length > 0) {
+            const hierarchy = { owner: 5, admin: 4, manager: 3, member: 2, viewer: 1 } as const;
+            let max = 0;
+            let fallbackRole: AppRole | null = null;
+            let fallbackSystemOwner = false;
 
-          rolesData.forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
-            const score = hierarchy[r.role];
-            if (score > max) {
-              max = score;
-              fallbackRole = r.role;
+            rolesData.forEach((r: { role: AppRole; is_system_owner?: boolean }) => {
+              const score = hierarchy[r.role];
+              if (score > max) {
+                max = score;
+                fallbackRole = r.role;
+              }
+              if (r.is_system_owner) {
+                fallbackSystemOwner = true;
+              }
+            });
+
+            // Use fallback data if we don't have RPC data
+            if (!effectiveRole && fallbackRole) {
+              effectiveRole = fallbackRole;
             }
-            if (r.is_system_owner) {
-              fallbackSystemOwner = true;
+            if (!systemOwner && fallbackSystemOwner) {
+              systemOwner = fallbackSystemOwner;
             }
-          });
 
-          // Only override if we got better data from fallback
-          if (!effectiveRole && fallbackRole) {
-            effectiveRole = fallbackRole;
+            console.log('[Auth] Fallback results applied:', { effectiveRole, systemOwner });
           }
-          if (!systemOwner && fallbackSystemOwner) {
-            systemOwner = fallbackSystemOwner;
-          }
-
-          console.log('[Auth] Fallback results applied:', { effectiveRole, systemOwner });
-        } else if (rolesError) {
-          console.warn('[Auth] Fallback role query failed:', rolesError.message);
+        } catch (fallbackError) {
+          console.error('[Auth] Fallback query failed:', fallbackError);
         }
       }
 
@@ -124,20 +143,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: user.email 
       });
 
-      // 4) One-time retry after slight delay if role not yet hydrated
+      // 4) Always try to retry if we still don't have role data
       if (!effectiveRole) {
         setTimeout(async () => {
           try {
+            console.log('[Auth] Retrying role detection...');
             const [{ data: roleRetry }, { data: ownerRetry }] = await Promise.all([
               supabase.rpc('get_user_role', { _user_id: user.id }),
               supabase.rpc('is_system_owner', { user_id_param: user.id })
             ]);
-            if (roleRetry) setRole(roleRetry as AppRole);
-            if (typeof ownerRetry === 'boolean') setIsSystemOwner(ownerRetry);
+            
+            console.log('[Auth] Retry results:', { roleRetry, ownerRetry });
+            
+            if (roleRetry) {
+              setRole(roleRetry as AppRole);
+              console.log('[Auth] Role updated from retry:', roleRetry);
+            }
+            if (typeof ownerRetry === 'boolean') {
+              setIsSystemOwner(ownerRetry);
+              console.log('[Auth] System owner updated from retry:', ownerRetry);
+            }
           } catch (e) {
-            console.debug('[Auth] Role retry failed (non-fatal):', e);
+            console.error('[Auth] Role retry failed:', e);
           }
-        }, 500);
+        }, 1000);
       }
     } catch (error) {
       console.error('Error refreshing profile:', error);
