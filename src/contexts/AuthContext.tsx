@@ -90,47 +90,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const loadSession = async () => {
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    // Keep auth loading true until we hydrate profile/roles
+    setLoading(true);
 
-        if (session) {
-          setUser(session.user);
-          setSession(session);
-          await refreshProfile();
-        }
-
-        const firstUser = await checkFirstUser();
-        setIsFirstUser(firstUser);
-      } catch (e: any) {
-        console.error('Auth error:', e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSession();
-
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION') {
-        return;
-      }
-
-      setUser(session?.user || null);
-      setSession(session);
+    // 1) Set up listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only synchronous updates inside the callback
+      setSession(session as any);
+      setUser(session?.user ?? null);
 
       if (session?.user) {
-        await refreshProfile();
-        const firstUser = await checkFirstUser();
-        setIsFirstUser(firstUser);
+        // Defer any Supabase reads to avoid deadlocks
+        setTimeout(async () => {
+          try {
+            await refreshProfile();
+            const first = await checkFirstUser();
+            setIsFirstUser(first);
+          } catch (e) {
+            console.error('Auth onAuthStateChange hydration error:', e);
+          } finally {
+            setLoading(false);
+          }
+        }, 0);
       } else {
+        // Logged out state
         setProfile(null);
         setRole(null);
         setIsSystemOwner(false);
         setIsFirstUser(false);
+        setLoading(false);
       }
     });
+
+    // 2) Then check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session as any);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setTimeout(async () => {
+          try {
+            await refreshProfile();
+            const first = await checkFirstUser();
+            setIsFirstUser(first);
+          } catch (e) {
+            console.error('Auth initial session hydration error:', e);
+          } finally {
+            setLoading(false);
+          }
+        }, 0);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const refreshAuth = async () => {
