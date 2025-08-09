@@ -101,19 +101,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('[Auth] Profile data:', profileData);
 
-      const { data: permCtx, error: permErr } = await supabase.rpc('get_user_permissions_context', {
-        _user_id: user.id
-      });
+      // Determine owner/role using stable RPCs
+      const [{ data: isOwnerResult, error: ownerErr }, { data: roleResult, error: roleErr }] = await Promise.all([
+        supabase.rpc('is_system_owner', { user_id_param: user.id }),
+        supabase.rpc('get_user_role', { _user_id: user.id }),
+      ]);
 
-      if (permErr) {
-        console.error('[Auth] Error fetching permissions context:', permErr);
+      if (ownerErr) {
+        console.error('[Auth] Error checking system owner via RPC:', ownerErr);
+      }
+      if (roleErr) {
+        console.error('[Auth] Error fetching user role via RPC:', roleErr);
       }
 
-      const ctxRow = Array.isArray(permCtx) ? permCtx[0] : permCtx;
-      const serverIsOwner: boolean = !!ctxRow?.is_system_owner;
-      const serverRole: AppRole | null = (ctxRow?.system_role as AppRole) ?? null;
+      const serverIsOwner: boolean = !!(Array.isArray(isOwnerResult) ? isOwnerResult?.[0] : isOwnerResult);
+      const serverRole: AppRole | null = (Array.isArray(roleResult) ? (roleResult?.[0] as AppRole) : (roleResult as AppRole)) ?? null;
 
-      console.log('[Auth] Permissions context:', ctxRow);
+      console.log('[Auth] Owner/role via RPC:', { serverIsOwner, serverRole });
 
       let isOwnerViaEnterprise = false;
       const { data: ownedEnterprises, error: entError } = await supabase
