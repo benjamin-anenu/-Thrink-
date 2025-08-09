@@ -30,7 +30,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading, isSystemOwner, role } = useAuth();
   const { currentEnterprise } = useEnterprise();
-  const { assumeAccess, clearAccess } = useWorkspaceAccess();
+  const { assumeAccess, clearAccess, getAssumedWorkspaceId } = useWorkspaceAccess();
 
   // Helper function to safely parse workspace settings
   const parseWorkspaceSettings = (settings: any): WorkspaceSettings => {
@@ -75,23 +75,35 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
+    const assumedId = getAssumedWorkspaceId?.();
+
     if (ws && prev && prev.id !== ws.id) {
       // Switching between workspaces
-      console.log('[Workspace] Switching workspace selection, clearing previous then assuming new');
-      clearAccess(prev.id)
-        .catch((e) => console.error('[Workspace] Error clearing previous access:', e))
-        .finally(() => {
-          assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming new access:', e));
-        });
+      console.log('[Workspace] Switching workspace selection');
+      if (assumedId && assumedId === prev.id) {
+        clearAccess(prev.id)
+          .catch((e) => console.error('[Workspace] Error clearing previous access:', e))
+          .finally(() => {
+            if (assumedId !== ws.id) {
+              assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming new access:', e));
+            }
+          });
+      } else if (!assumedId || assumedId !== ws.id) {
+        assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming new access:', e));
+      }
       return;
     }
 
     if (ws && !prev) {
-      console.log('[Workspace] Selecting workspace, assuming temporary access');
-      assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming access:', e));
+      if (!assumedId || assumedId !== ws.id) {
+        console.log('[Workspace] Selecting workspace, assuming temporary access');
+        assumeAccess(ws.id).catch((e) => console.error('[Workspace] Error assuming access:', e));
+      }
     } else if (!ws && prev) {
-      console.log('[Workspace] Clearing selection, removing temporary access');
-      clearAccess(prev.id).catch((e) => console.error('[Workspace] Error clearing access:', e));
+      if (assumedId) {
+        console.log('[Workspace] Clearing selection, removing temporary access');
+        clearAccess(prev.id).catch((e) => console.error('[Workspace] Error clearing access:', e));
+      }
     }
   };
 
@@ -186,13 +198,31 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchWorkspaces();
   }, [user, authLoading, currentEnterprise?.id])
 
-  // Ensure system owners/admins/owners default to no workspace selected
+  // Ensure system owners/admins/owners default to no workspace selected unless they've assumed access
   useEffect(() => {
     if ((isSystemOwner || role === 'owner' || role === 'admin') && currentWorkspace) {
-      console.log('[Workspace] Admin/Owner/System owner detected, clearing current workspace selection')
-      setCurrentWorkspaceWithAccess(null)
+      const assumedId = getAssumedWorkspaceId?.();
+      if (!assumedId) {
+        console.log('[Workspace] Admin/Owner/System owner without assumed access, clearing selection');
+        // Clear selection without calling clearAccess since nothing was assumed
+        setCurrentWorkspaceState(null);
+      }
     }
-  }, [isSystemOwner, role])
+  }, [isSystemOwner, role]);
+
+  // Restore selection from assumed access on load
+  useEffect(() => {
+    const isEnterpriseOwnerLike = isSystemOwner || role === 'owner' || role === 'admin';
+    if (!isEnterpriseOwnerLike) return;
+    const assumedId = getAssumedWorkspaceId?.();
+    if (assumedId && !currentWorkspace && workspaces.length > 0) {
+      const ws = workspaces.find(w => w.id === assumedId) || null;
+      if (ws) {
+        console.log('[Workspace] Restoring assumed workspace selection:', ws.name);
+        setCurrentWorkspaceState(ws);
+      }
+    }
+  }, [workspaces, isSystemOwner, role]);
 
   const addWorkspace = async (name: string, description?: string): Promise<string> => {
     if (!currentEnterprise) {
