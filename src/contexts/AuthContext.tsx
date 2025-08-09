@@ -242,11 +242,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
       });
+      
+      // Don't set loading to false here - let the auth state change handle it
+      // This ensures role data is loaded before redirects happen
       return { error };
     } catch (e: any) {
+      setLoading(false); // Only set to false on error
       return { error: { message: e.message } };
-    } finally {
-      setLoading(false);
     }
   };
 

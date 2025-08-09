@@ -21,13 +21,17 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !authLoading) {
-      // Check if user is enterprise owner and redirect accordingly
+      // Wait for role data to be loaded before making redirect decisions
       const isEnterpriseOwner = isSystemOwner || role === 'owner' || role === 'admin';
-      console.log('[Auth] User authenticated, redirecting enterprise owner:', isEnterpriseOwner);
+      console.log('[Auth] User authenticated:', user.email);
+      console.log('[Auth] Role data loaded:', { role, isSystemOwner, isEnterpriseOwner });
+      console.log('[Auth] Redirecting enterprise owner:', isEnterpriseOwner);
       
       if (isEnterpriseOwner) {
+        console.log('[Auth] → Redirecting to /admin');
         navigate('/admin');
       } else {
+        console.log('[Auth] → Redirecting to /dashboard');
         navigate('/dashboard');
       }
     }
@@ -44,7 +48,7 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       }
-      // Navigation handled by useEffect after auth state updates
+      // Navigation handled by useEffect after auth state and role data are loaded
     } catch (err) {
       setError('An unexpected error occurred');
     } finally {
